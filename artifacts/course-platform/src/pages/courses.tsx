@@ -1,0 +1,107 @@
+import { useState } from "react";
+import { useListCourses, getListCoursesQueryKey } from "@workspace/api-client-react";
+import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+export default function CoursesPage() {
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("all");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  const { data, isLoading } = useListCourses(
+    { search: debouncedSearch || undefined, category: category === "all" ? undefined : category, limit: 20, offset: 0 },
+    { query: { queryKey: getListCoursesQueryKey({ search: debouncedSearch, category }) } }
+  );
+
+  const courses = data?.courses ?? [];
+
+  const handleSearch = (v: string) => {
+    setSearch(v);
+    setTimeout(() => setDebouncedSearch(v), 400);
+  };
+
+  const levelColors: Record<string, string> = {
+    beginner: "bg-green-500/10 text-green-400 border-green-500/20",
+    intermediate: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+    advanced: "bg-red-500/10 text-red-400 border-red-500/20",
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-12">
+        <div className="mb-10">
+          <h1 className="text-4xl font-bold tracking-tight mb-2">Course Catalog</h1>
+          <p className="text-muted-foreground">Proven systems to build and scale your online income.</p>
+        </div>
+        <div className="flex gap-4 mb-8">
+          <Input
+            placeholder="Search courses..."
+            value={search}
+            onChange={e => handleSearch(e.target.value)}
+            className="max-w-sm bg-card border-border"
+          />
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger className="w-52 bg-card border-border">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              <SelectItem value="Affiliate Marketing">Affiliate Marketing</SelectItem>
+              <SelectItem value="E-commerce">E-commerce</SelectItem>
+              <SelectItem value="Dropshipping">Dropshipping</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1,2,3,4,5,6].map(i => <div key={i} className="h-72 bg-card rounded-xl animate-pulse" />)}
+          </div>
+        ) : courses.length === 0 ? (
+          <div className="text-center py-20 text-muted-foreground">No courses found.</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {courses.map(course => (
+              <Link href={`/courses/${course.id}`} key={course.id}>
+                <Card className="h-full bg-card border-border hover:border-primary/50 transition-all duration-200 cursor-pointer group">
+                  <div className="h-40 bg-gradient-to-br from-primary/20 to-blue-900/30 rounded-t-lg flex items-center justify-center">
+                    <div className="text-4xl font-black text-primary/30 select-none">
+                      {course.category.charAt(0)}
+                    </div>
+                  </div>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${levelColors[course.level] ?? ""}`}>
+                        {course.level}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{course.category}</span>
+                    </div>
+                    <h3 className="font-bold text-foreground group-hover:text-primary transition-colors line-clamp-2">{course.title}</h3>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{course.description}</p>
+                    <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+                      <span>{course.lessonCount} lessons</span>
+                      <span>{course.enrollmentCount} students</span>
+                      <span>{Math.round(course.durationMinutes / 60)}h</span>
+                    </div>
+                  </CardContent>
+                  <CardFooter className="pt-0">
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-xl font-bold text-foreground">${course.price}</span>
+                      <span className="text-xs text-primary">View details &rarr;</span>
+                    </div>
+                  </CardFooter>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

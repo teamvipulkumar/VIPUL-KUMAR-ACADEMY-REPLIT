@@ -1,0 +1,169 @@
+Build a fully functional SaaS-level web platform for selling online courses (Affiliate Marketing, E-commerce, Dropshipping) with a complete admin panel, user system, and affiliate program.
+
+## 🎯 Project Overview
+
+Create a modern, high-performance web application similar to platforms like Kajabi, Teachable, and ClickFunnels combined.
+
+The platform should allow:
+
+* Selling courses
+* Managing users
+* Running an affiliate program
+* Accepting payments
+* Delivering course content securely
+
+---
+
+## 🎨 UI/UX Requirements
+
+* Theme: Dark + Dark Blue (premium SaaS feel)
+* Clean, modern, minimal interface
+* Smooth animations and transitions
+* Fully responsive (mobile + desktop)
+* Dashboard style UI like SaaS tools (cards, graphs, analytics)
+
+---
+
+## 👤 User Roles
+
+1. Admin
+2. Student/User
+3. Affiliate Partner
+
+---
+
+## 🔐 Authentication System
+
+* User signup/login (Email + Password)
+* Social login (Google optional)
+* Forgot password system
+* Secure JWT/session-based authentication
+
+---
+
+## 📚 Course Management System (LMS)
+
+Admin can:
+
+* Create courses
+* Add modules & lessons
+* Upload videos, PDFs, links
+* Set course price
+* Edit/Delete courses
+
+User can:
+
+* Enroll in courses
+* Track progress
+* Watch videos
+* Download resources
+
+---
+
+## 💰 Payment System
+
+* Integrate payment gateways:
+
+  * Razorpay (India)
+  * Stripe (International)
+* Support:
+
+  * One-time payments
+  * Coupons/discounts
+* Auto enrollment after successful payment
+
+---
+
+## 🤝 Affiliate System
+
+* Each user gets a unique referral link
+* Affiliate dashboard includes:
+
+  * Total earnings
+  * Clicks
+  * Conversions
+* Commission system (admin controlled %)
+* Payout request system
+* Track referrals with cookies
+
+---
+
+## 🧑‍💼 Admin Panel (Super Dashboard)
+
+Admin should have:
+
+* User management (view, edit, ban)
+* Course management
+* Affiliate management
+* Sales analytics dashboard
+* Revenue reports
+* Payout approval system
+* Coupon creation
+* Content moderation
+
+---
+
+## 📊 Dashboard Features
+
+* Charts (sales, users, revenue)
+* Real-time analytics
+* Notifications system
+
+---
+
+## 📧 Email Automation
+
+* Send emails for:
+
+  * Signup
+  * Purchase confirmation
+  * Affiliate earnings
+* Integration with SMTP or email API
+
+---
+
+## 🔔 Notification System
+
+* In-app notifications
+* Email alerts
+
+---
+
+## 🔒 Security
+
+* Secure API architecture
+* Role-based access control
+* Prevent unauthorized content access
+
+---
+
+## ⚙️ Tech Stack (Preferred)
+
+* Frontend: React / Next.js
+* Backend: Node.js / Express
+* Database: MongoDB or PostgreSQL
+* Hosting: Vercel / AWS / DigitalOcean
+
+---
+
+## 📦 Additional Features
+
+* Landing page builder (basic)
+* Blog system (optional)
+* SEO optimized pages
+* Fast loading speed
+
+---
+
+## 🧾 Deliverables
+
+* Full source code
+* Deployment instructions
+* Admin login credentials
+* Sample data (courses, users)
+
+---
+
+## 🎯 Goal
+
+Create a scalable, production-ready platform that can handle thousands of users and generate revenue through course sales and affiliate marketing.

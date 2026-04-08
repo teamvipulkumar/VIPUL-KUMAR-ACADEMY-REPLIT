@@ -1,0 +1,91 @@
+import { useState } from "react";
+import { useGetAdminAnalytics, getGetAdminAnalyticsQueryKey, useGetRevenueReport, getGetRevenueReportQueryKey } from "@workspace/api-client-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+
+export default function AdminDashboard() {
+  const [period, setPeriod] = useState<"7d" | "30d" | "90d" | "1y">("30d");
+  const { data: analytics } = useGetAdminAnalytics({ query: { queryKey: getGetAdminAnalyticsQueryKey() } });
+  const { data: revenue } = useGetRevenueReport({ period }, { query: { queryKey: getGetRevenueReportQueryKey({ period }) } });
+
+  const stats = [
+    { label: "Total Users", value: analytics?.totalUsers ?? 0, trend: `+${analytics?.newUsersThisMonth ?? 0} this month` },
+    { label: "Total Enrollments", value: analytics?.totalEnrollments ?? 0, trend: `+${analytics?.newEnrollmentsThisMonth ?? 0} this month` },
+    { label: "Total Revenue", value: `$${(analytics?.totalRevenue ?? 0).toFixed(2)}`, trend: `$${(analytics?.revenueThisMonth ?? 0).toFixed(2)} this month` },
+    { label: "Total Courses", value: analytics?.totalCourses ?? 0, trend: "Published & Drafts" },
+  ];
+
+  return (
+    <div className="p-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+        <p className="text-muted-foreground">Platform overview and analytics.</p>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {stats.map(s => (
+          <Card key={s.label} className="bg-card border-border">
+            <CardContent className="p-5">
+              <div className="text-sm text-muted-foreground mb-1">{s.label}</div>
+              <div className="text-2xl font-bold mb-1">{s.value}</div>
+              <div className="text-xs text-primary">{s.trend}</div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2 bg-card border-border">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base">Revenue Overview</CardTitle>
+            <Select value={period} onValueChange={(v) => setPeriod(v as "7d" | "30d" | "90d" | "1y")}>
+              <SelectTrigger className="w-28 h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7d">7 days</SelectItem>
+                <SelectItem value="30d">30 days</SelectItem>
+                <SelectItem value="90d">90 days</SelectItem>
+                <SelectItem value="1y">1 year</SelectItem>
+              </SelectContent>
+            </Select>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold mb-4">${(revenue?.totalRevenue ?? 0).toFixed(2)}</div>
+            {revenue?.chartData && revenue.chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={200}>
+                <AreaChart data={revenue.chartData}>
+                  <defs><linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} /><stop offset="95%" stopColor="#2563eb" stopOpacity={0} /></linearGradient></defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#64748b" }} />
+                  <YAxis tick={{ fontSize: 10, fill: "#64748b" }} />
+                  <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: "8px", fontSize: "12px" }} />
+                  <Area type="monotone" dataKey="revenue" stroke="#2563eb" fill="url(#revGrad)" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">No revenue data yet</div>}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border">
+          <CardHeader><CardTitle className="text-base">Top Courses</CardTitle></CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {(analytics?.topCourses ?? []).map((c, i) => (
+                <div key={c.id} className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-muted-foreground w-4">{i + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{c.title}</p>
+                    <p className="text-xs text-muted-foreground">{c.enrollmentCount} enrollments</p>
+                  </div>
+                </div>
+              ))}
+              {(!analytics?.topCourses || analytics.topCourses.length === 0) && (
+                <p className="text-sm text-muted-foreground text-center py-4">No data yet</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

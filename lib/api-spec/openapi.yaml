@@ -3,20 +3,44 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Course Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: courses
+    description: Course management
+  - name: modules
+    description: Course module management
+  - name: lessons
+    description: Lesson management
+  - name: enrollments
+    description: Student enrollments
+  - name: payments
+    description: Payment operations
+  - name: affiliates
+    description: Affiliate program
+  - name: users
+    description: User management
+  - name: admin
+    description: Admin operations
+  - name: coupons
+    description: Coupon management
+  - name: notifications
+    description: Notifications
+  - name: analytics
+    description: Analytics and reporting
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +48,1081 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # Auth endpoints
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterBody"
+      responses:
+        "201":
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      tags: [auth]
+      summary: Request password reset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordBody"
+      responses:
+        "200":
+          description: Reset email sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/reset-password:
+    post:
+      operationId: resetPassword
+      tags: [auth]
+      summary: Reset password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordBody"
+      responses:
+        "200":
+          description: Password reset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # Courses
+  /courses:
+    get:
+      operationId: listCourses
+      tags: [courses]
+      summary: List all published courses
+      parameters:
+        - in: query
+          name: category
+          schema:
+            type: string
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of courses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseListResponse"
+    post:
+      operationId: createCourse
+      tags: [courses]
+      summary: Create a new course (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCourseBody"
+      responses:
+        "201":
+          description: Course created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+
+  /courses/{courseId}:
+    get:
+      operationId: getCourse
+      tags: [courses]
+      summary: Get course details
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Course details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseDetail"
+    put:
+      operationId: updateCourse
+      tags: [courses]
+      summary: Update course (admin only)
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCourseBody"
+      responses:
+        "200":
+          description: Course updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+    delete:
+      operationId: deleteCourse
+      tags: [courses]
+      summary: Delete course (admin only)
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Course deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /courses/{courseId}/modules:
+    get:
+      operationId: listModules
+      tags: [modules]
+      summary: List course modules
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of modules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Module"
+    post:
+      operationId: createModule
+      tags: [modules]
+      summary: Create a module (admin only)
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateModuleBody"
+      responses:
+        "201":
+          description: Module created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Module"
+
+  /courses/{courseId}/modules/{moduleId}:
+    put:
+      operationId: updateModule
+      tags: [modules]
+      summary: Update module (admin only)
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: moduleId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateModuleBody"
+      responses:
+        "200":
+          description: Module updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Module"
+    delete:
+      operationId: deleteModule
+      tags: [modules]
+      summary: Delete module (admin only)
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: moduleId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Module deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /courses/{courseId}/modules/{moduleId}/lessons:
+    get:
+      operationId: listLessons
+      tags: [lessons]
+      summary: List lessons in a module
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: moduleId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of lessons
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lesson"
+    post:
+      operationId: createLesson
+      tags: [lessons]
+      summary: Create lesson (admin only)
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: moduleId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLessonBody"
+      responses:
+        "201":
+          description: Lesson created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+
+  /courses/{courseId}/modules/{moduleId}/lessons/{lessonId}:
+    get:
+      operationId: getLesson
+      tags: [lessons]
+      summary: Get lesson content (enrolled users only)
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: moduleId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: lessonId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lesson details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+    put:
+      operationId: updateLesson
+      tags: [lessons]
+      summary: Update lesson (admin only)
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: moduleId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: lessonId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLessonBody"
+      responses:
+        "200":
+          description: Lesson updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+    delete:
+      operationId: deleteLesson
+      tags: [lessons]
+      summary: Delete lesson (admin only)
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: moduleId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: lessonId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lesson deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /lessons/{lessonId}/complete:
+    post:
+      operationId: completeLesson
+      tags: [lessons]
+      summary: Mark lesson as completed
+      parameters:
+        - in: path
+          name: lessonId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lesson marked complete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # Enrollments
+  /enrollments:
+    get:
+      operationId: listMyEnrollments
+      tags: [enrollments]
+      summary: Get current user's enrollments
+      responses:
+        "200":
+          description: My enrollments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Enrollment"
+
+  /enrollments/{courseId}/progress:
+    get:
+      operationId: getCourseProgress
+      tags: [enrollments]
+      summary: Get progress for a specific course
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Course progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseProgress"
+
+  # Payments
+  /payments/checkout:
+    post:
+      operationId: createCheckout
+      tags: [payments]
+      summary: Create payment checkout session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCheckoutBody"
+      responses:
+        "200":
+          description: Checkout session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutResponse"
+
+  /payments/verify:
+    post:
+      operationId: verifyPayment
+      tags: [payments]
+      summary: Verify payment and enroll user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyPaymentBody"
+      responses:
+        "200":
+          description: Payment verified, enrollment confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentVerifyResponse"
+
+  /payments/history:
+    get:
+      operationId: getPaymentHistory
+      tags: [payments]
+      summary: Get user payment history
+      responses:
+        "200":
+          description: Payment history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payment"
+
+  # Affiliate
+  /affiliate/dashboard:
+    get:
+      operationId: getAffiliateDashboard
+      tags: [affiliates]
+      summary: Get affiliate dashboard data
+      responses:
+        "200":
+          description: Affiliate stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AffiliateDashboard"
+
+  /affiliate/referrals:
+    get:
+      operationId: listReferrals
+      tags: [affiliates]
+      summary: List my referrals
+      responses:
+        "200":
+          description: List of referrals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Referral"
+
+  /affiliate/payout-request:
+    post:
+      operationId: requestPayout
+      tags: [affiliates]
+      summary: Request affiliate payout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PayoutRequestBody"
+      responses:
+        "200":
+          description: Payout requested
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /affiliate/track:
+    post:
+      operationId: trackReferral
+      tags: [affiliates]
+      summary: Track affiliate click/visit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrackReferralBody"
+      responses:
+        "200":
+          description: Tracked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # Users (admin)
+  /admin/users:
+    get:
+      operationId: adminListUsers
+      tags: [admin]
+      summary: List all users (admin)
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: role
+          schema:
+            type: string
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserListResponse"
+
+  /admin/users/{userId}:
+    get:
+      operationId: adminGetUser
+      tags: [admin]
+      summary: Get user details (admin)
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserDetail"
+    put:
+      operationId: adminUpdateUser
+      tags: [admin]
+      summary: Update user (admin)
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUpdateUserBody"
+      responses:
+        "200":
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /admin/users/{userId}/ban:
+    post:
+      operationId: banUser
+      tags: [admin]
+      summary: Ban/unban user (admin)
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BanUserBody"
+      responses:
+        "200":
+          description: User ban status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /admin/analytics:
+    get:
+      operationId: getAdminAnalytics
+      tags: [admin]
+      summary: Get admin analytics dashboard data
+      responses:
+        "200":
+          description: Analytics data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAnalytics"
+
+  /admin/revenue:
+    get:
+      operationId: getRevenueReport
+      tags: [admin]
+      summary: Get revenue report with chart data
+      parameters:
+        - in: query
+          name: period
+          schema:
+            type: string
+            enum: [7d, 30d, 90d, 1y]
+            default: 30d
+      responses:
+        "200":
+          description: Revenue report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevenueReport"
+
+  /admin/affiliates:
+    get:
+      operationId: adminListAffiliates
+      tags: [admin]
+      summary: List all affiliates (admin)
+      responses:
+        "200":
+          description: Affiliate list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AffiliateUser"
+
+  /admin/payouts:
+    get:
+      operationId: adminListPayouts
+      tags: [admin]
+      summary: List payout requests (admin)
+      responses:
+        "200":
+          description: Payout requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PayoutRequest"
+
+  /admin/payouts/{payoutId}/approve:
+    post:
+      operationId: approvePayout
+      tags: [admin]
+      summary: Approve a payout request (admin)
+      parameters:
+        - in: path
+          name: payoutId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Payout approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /admin/payouts/{payoutId}/reject:
+    post:
+      operationId: rejectPayout
+      tags: [admin]
+      summary: Reject a payout request (admin)
+      parameters:
+        - in: path
+          name: payoutId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectPayoutBody"
+      responses:
+        "200":
+          description: Payout rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /admin/enrollments:
+    get:
+      operationId: adminListEnrollments
+      tags: [admin]
+      summary: List all enrollments (admin)
+      parameters:
+        - in: query
+          name: courseId
+          schema:
+            type: integer
+        - in: query
+          name: userId
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Enrollment list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminEnrollment"
+
+  /admin/courses:
+    get:
+      operationId: adminListCourses
+      tags: [admin]
+      summary: List all courses including drafts (admin)
+      responses:
+        "200":
+          description: All courses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Course"
+
+  /admin/settings:
+    get:
+      operationId: getAdminSettings
+      tags: [admin]
+      summary: Get platform settings (admin)
+      responses:
+        "200":
+          description: Platform settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformSettings"
+    put:
+      operationId: updateAdminSettings
+      tags: [admin]
+      summary: Update platform settings (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsBody"
+      responses:
+        "200":
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformSettings"
+
+  # Coupons
+  /coupons:
+    get:
+      operationId: listCoupons
+      tags: [coupons]
+      summary: List coupons (admin)
+      responses:
+        "200":
+          description: Coupons list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Coupon"
+    post:
+      operationId: createCoupon
+      tags: [coupons]
+      summary: Create coupon (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCouponBody"
+      responses:
+        "201":
+          description: Coupon created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Coupon"
+
+  /coupons/validate:
+    post:
+      operationId: validateCoupon
+      tags: [coupons]
+      summary: Validate a coupon code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidateCouponBody"
+      responses:
+        "200":
+          description: Coupon validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CouponValidation"
+
+  /coupons/{couponId}:
+    delete:
+      operationId: deleteCoupon
+      tags: [coupons]
+      summary: Delete coupon (admin)
+      parameters:
+        - in: path
+          name: couponId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Coupon deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # Notifications
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: Get my notifications
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+
+  /notifications/{notificationId}/read:
+    post:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark notification as read
+      parameters:
+        - in: path
+          name: notificationId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Marked as read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark all notifications as read
+      responses:
+        "200":
+          description: All marked as read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # Analytics - wow endpoints
+  /analytics/summary:
+    get:
+      operationId: getAnalyticsSummary
+      tags: [analytics]
+      summary: Get dashboard summary for current user
+      responses:
+        "200":
+          description: Summary stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsSummary"
+
+  /analytics/recent-activity:
+    get:
+      operationId: getRecentActivity
+      tags: [analytics]
+      summary: Get recent platform activity
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Recent activity feed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +1130,902 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required: [error]
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+
+    # Auth schemas
+    RegisterBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        name:
+          type: string
+        referralCode:
+          type: string
+      required: [email, password, name]
+
+    LoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required: [email, password]
+
+    ForgotPasswordBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required: [email]
+
+    ResetPasswordBody:
+      type: object
+      properties:
+        token:
+          type: string
+        password:
+          type: string
+          minLength: 8
+      required: [token, password]
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        message:
+          type: string
+      required: [user]
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, student, affiliate]
+        avatarUrl:
+          type: string
+          nullable: true
+        referralCode:
+          type: string
+        isBanned:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, email, name, role, referralCode, isBanned, createdAt]
+
+    UserDetail:
+      allOf:
+        - $ref: "#/components/schemas/User"
+        - type: object
+          properties:
+            enrollmentCount:
+              type: integer
+            totalSpent:
+              type: number
+            affiliateEarnings:
+              type: number
+
+    UserListResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required: [users, total, limit, offset]
+
+    # Course schemas
+    Course:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        thumbnailUrl:
+          type: string
+          nullable: true
+        price:
+          type: number
+        category:
+          type: string
+        level:
+          type: string
+          enum: [beginner, intermediate, advanced]
+        status:
+          type: string
+          enum: [draft, published]
+        enrollmentCount:
+          type: integer
+        moduleCount:
+          type: integer
+        lessonCount:
+          type: integer
+        durationMinutes:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, title, description, price, category, level, status, enrollmentCount, moduleCount, lessonCount, durationMinutes, createdAt, updatedAt]
+
+    CourseDetail:
+      allOf:
+        - $ref: "#/components/schemas/Course"
+        - type: object
+          properties:
+            modules:
+              type: array
+              items:
+                $ref: "#/components/schemas/Module"
+            isEnrolled:
+              type: boolean
+          required: [isEnrolled]
+
+    CourseListResponse:
+      type: object
+      properties:
+        courses:
+          type: array
+          items:
+            $ref: "#/components/schemas/Course"
+        total:
+          type: integer
+      required: [courses, total]
+
+    CreateCourseBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        thumbnailUrl:
+          type: string
+          nullable: true
+        price:
+          type: number
+        category:
+          type: string
+        level:
+          type: string
+          enum: [beginner, intermediate, advanced]
+        status:
+          type: string
+          enum: [draft, published]
+      required: [title, description, price, category, level]
+
+    UpdateCourseBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        thumbnailUrl:
+          type: string
+          nullable: true
+        price:
+          type: number
+        category:
+          type: string
+        level:
+          type: string
+          enum: [beginner, intermediate, advanced]
+        status:
+          type: string
+          enum: [draft, published]
+
+    # Module schemas
+    Module:
+      type: object
+      properties:
+        id:
+          type: integer
+        courseId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        order:
+          type: integer
+        lessons:
+          type: array
+          items:
+            $ref: "#/components/schemas/Lesson"
+      required: [id, courseId, title, order]
+
+    CreateModuleBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        order:
+          type: integer
+      required: [title, order]
+
+    UpdateModuleBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        order:
+          type: integer
+
+    # Lesson schemas
+    Lesson:
+      type: object
+      properties:
+        id:
+          type: integer
+        moduleId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: [video, text, pdf, quiz]
+        videoUrl:
+          type: string
+          nullable: true
+        content:
+          type: string
+          nullable: true
+        resourceUrl:
+          type: string
+          nullable: true
+        durationMinutes:
+          type: integer
+          nullable: true
+        order:
+          type: integer
+        isFree:
+          type: boolean
+        isCompleted:
+          type: boolean
+      required: [id, moduleId, title, type, order, isFree, isCompleted]
+
+    CreateLessonBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: [video, text, pdf, quiz]
+        videoUrl:
+          type: string
+          nullable: true
+        content:
+          type: string
+          nullable: true
+        resourceUrl:
+          type: string
+          nullable: true
+        durationMinutes:
+          type: integer
+          nullable: true
+        order:
+          type: integer
+        isFree:
+          type: boolean
+      required: [title, type, order]
+
+    UpdateLessonBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: [video, text, pdf, quiz]
+        videoUrl:
+          type: string
+          nullable: true
+        content:
+          type: string
+          nullable: true
+        resourceUrl:
+          type: string
+          nullable: true
+        durationMinutes:
+          type: integer
+          nullable: true
+        order:
+          type: integer
+        isFree:
+          type: boolean
+
+    # Enrollment schemas
+    Enrollment:
+      type: object
+      properties:
+        id:
+          type: integer
+        courseId:
+          type: integer
+        userId:
+          type: integer
+        enrolledAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        progressPercent:
+          type: number
+        course:
+          $ref: "#/components/schemas/Course"
+      required: [id, courseId, userId, enrolledAt, progressPercent]
+
+    AdminEnrollment:
+      type: object
+      properties:
+        id:
+          type: integer
+        courseId:
+          type: integer
+        userId:
+          type: integer
+        enrolledAt:
+          type: string
+          format: date-time
+        progressPercent:
+          type: number
+        user:
+          $ref: "#/components/schemas/User"
+        course:
+          $ref: "#/components/schemas/Course"
+      required: [id, courseId, userId, enrolledAt, progressPercent]
+
+    CourseProgress:
+      type: object
+      properties:
+        courseId:
+          type: integer
+        progressPercent:
+          type: number
+        completedLessons:
+          type: integer
+        totalLessons:
+          type: integer
+        lastActivityAt:
+          type: string
+          format: date-time
+          nullable: true
+      required: [courseId, progressPercent, completedLessons, totalLessons]
+
+    # Payment schemas
+    CreateCheckoutBody:
+      type: object
+      properties:
+        courseId:
+          type: integer
+        couponCode:
+          type: string
+          nullable: true
+        gateway:
+          type: string
+          enum: [stripe, razorpay]
+      required: [courseId, gateway]
+
+    CheckoutResponse:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        gateway:
+          type: string
+        redirectUrl:
+          type: string
+          nullable: true
+        razorpayOrderId:
+          type: string
+          nullable: true
+        razorpayKey:
+          type: string
+          nullable: true
+      required: [sessionId, amount, currency, gateway]
+
+    VerifyPaymentBody:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        paymentId:
+          type: string
+          nullable: true
+        signature:
+          type: string
+          nullable: true
+      required: [sessionId]
+
+    PaymentVerifyResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        enrollmentId:
+          type: integer
+          nullable: true
+        message:
+          type: string
+      required: [success, message]
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+        courseId:
+          type: integer
+        amount:
+          type: number
+        currency:
+          type: string
+        status:
+          type: string
+          enum: [pending, completed, failed, refunded]
+        gateway:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        course:
+          $ref: "#/components/schemas/Course"
+      required: [id, courseId, amount, currency, status, gateway, createdAt]
+
+    # Affiliate schemas
+    AffiliateDashboard:
+      type: object
+      properties:
+        referralCode:
+          type: string
+        referralLink:
+          type: string
+        totalClicks:
+          type: integer
+        totalConversions:
+          type: integer
+        totalEarnings:
+          type: number
+        pendingEarnings:
+          type: number
+        paidEarnings:
+          type: number
+        commissionRate:
+          type: number
+      required: [referralCode, referralLink, totalClicks, totalConversions, totalEarnings, pendingEarnings, paidEarnings, commissionRate]
+
+    Referral:
+      type: object
+      properties:
+        id:
+          type: integer
+        referredUserName:
+          type: string
+        courseTitle:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [click, signup, purchase]
+        commission:
+          type: number
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, referredUserName, status, createdAt]
+
+    PayoutRequestBody:
+      type: object
+      properties:
+        amount:
+          type: number
+        paymentMethod:
+          type: string
+        paymentDetails:
+          type: string
+      required: [amount, paymentMethod, paymentDetails]
+
+    TrackReferralBody:
+      type: object
+      properties:
+        referralCode:
+          type: string
+        courseId:
+          type: integer
+          nullable: true
+      required: [referralCode]
+
+    AffiliateUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        referralCode:
+          type: string
+        totalClicks:
+          type: integer
+        totalConversions:
+          type: integer
+        totalEarnings:
+          type: number
+        pendingEarnings:
+          type: number
+      required: [id, name, email, referralCode, totalClicks, totalConversions, totalEarnings, pendingEarnings]
+
+    PayoutRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: string
+        amount:
+          type: number
+        paymentMethod:
+          type: string
+        paymentDetails:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        requestedAt:
+          type: string
+          format: date-time
+        processedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, userId, userName, amount, paymentMethod, paymentDetails, status, requestedAt]
+
+    RejectPayoutBody:
+      type: object
+      properties:
+        reason:
+          type: string
+      required: [reason]
+
+    # Admin analytics
+    AdminAnalytics:
+      type: object
+      properties:
+        totalUsers:
+          type: integer
+        totalCourses:
+          type: integer
+        totalEnrollments:
+          type: integer
+        totalRevenue:
+          type: number
+        activeUsers:
+          type: integer
+        newUsersThisMonth:
+          type: integer
+        newEnrollmentsThisMonth:
+          type: integer
+        revenueThisMonth:
+          type: number
+        topCourses:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopCourse"
+        recentPayments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Payment"
+      required: [totalUsers, totalCourses, totalEnrollments, totalRevenue, activeUsers, newUsersThisMonth, newEnrollmentsThisMonth, revenueThisMonth, topCourses, recentPayments]
+
+    TopCourse:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        enrollmentCount:
+          type: integer
+        revenue:
+          type: number
+      required: [id, title, enrollmentCount, revenue]
+
+    RevenueReport:
+      type: object
+      properties:
+        period:
+          type: string
+        totalRevenue:
+          type: number
+        chartData:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChartDataPoint"
+        byGateway:
+          type: object
+          properties:
+            stripe:
+              type: number
+            razorpay:
+              type: number
+          required: [stripe, razorpay]
+      required: [period, totalRevenue, chartData, byGateway]
+
+    ChartDataPoint:
+      type: object
+      properties:
+        date:
+          type: string
+        revenue:
+          type: number
+        enrollments:
+          type: integer
+      required: [date, revenue, enrollments]
+
+    # Platform settings
+    PlatformSettings:
+      type: object
+      properties:
+        siteName:
+          type: string
+        siteDescription:
+          type: string
+        commissionRate:
+          type: number
+        currency:
+          type: string
+        stripeEnabled:
+          type: boolean
+        razorpayEnabled:
+          type: boolean
+        emailNotificationsEnabled:
+          type: boolean
+      required: [siteName, siteDescription, commissionRate, currency, stripeEnabled, razorpayEnabled, emailNotificationsEnabled]
+
+    UpdateSettingsBody:
+      type: object
+      properties:
+        siteName:
+          type: string
+        siteDescription:
+          type: string
+        commissionRate:
+          type: number
+        currency:
+          type: string
+        stripeEnabled:
+          type: boolean
+        razorpayEnabled:
+          type: boolean
+        emailNotificationsEnabled:
+          type: boolean
+
+    # Admin user update
+    AdminUpdateUserBody:
+      type: object
+      properties:
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, student, affiliate]
+        isBanned:
+          type: boolean
+
+    BanUserBody:
+      type: object
+      properties:
+        banned:
+          type: boolean
+      required: [banned]
+
+    # Coupons
+    Coupon:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        discountType:
+          type: string
+          enum: [percentage, fixed]
+        discountValue:
+          type: number
+        maxUses:
+          type: integer
+          nullable: true
+        usedCount:
+          type: integer
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        courseId:
+          type: integer
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, code, discountType, discountValue, usedCount, isActive, createdAt]
+
+    CreateCouponBody:
+      type: object
+      properties:
+        code:
+          type: string
+        discountType:
+          type: string
+          enum: [percentage, fixed]
+        discountValue:
+          type: number
+        maxUses:
+          type: integer
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        courseId:
+          type: integer
+          nullable: true
+      required: [code, discountType, discountValue]
+
+    ValidateCouponBody:
+      type: object
+      properties:
+        code:
+          type: string
+        courseId:
+          type: integer
+      required: [code, courseId]
+
+    CouponValidation:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        discountType:
+          type: string
+          nullable: true
+        discountValue:
+          type: number
+          nullable: true
+        finalPrice:
+          type: number
+          nullable: true
+        message:
+          type: string
+      required: [valid, message]
+
+    # Notifications
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        message:
+          type: string
+        type:
+          type: string
+          enum: [info, success, warning, error]
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, title, message, type, isRead, createdAt]
+
+    # Analytics
+    AnalyticsSummary:
+      type: object
+      properties:
+        enrolledCourses:
+          type: integer
+        completedCourses:
+          type: integer
+        totalSpent:
+          type: number
+        affiliateEarnings:
+          type: number
+        referralCount:
+          type: integer
+        unreadNotifications:
+          type: integer
+      required: [enrolledCourses, completedCourses, totalSpent, affiliateEarnings, referralCount, unreadNotifications]
+
+    ActivityItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [enrollment, payment, lesson_complete, referral, payout]
+        description:
+          type: string
+        userId:
+          type: integer
+          nullable: true
+        userName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, type, description, createdAt]
