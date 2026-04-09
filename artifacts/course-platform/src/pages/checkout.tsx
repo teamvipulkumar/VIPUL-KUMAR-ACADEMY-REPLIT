@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { useGetCourse, useValidateCoupon } from "@workspace/api-client-react";
@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Shield, Lock, Check, Tag, CreditCard, ChevronLeft,
   BookOpen, Users, Clock, Award, Eye, EyeOff, PartyPopper, Copy,
+  X, Smartphone, Wallet, AlertCircle, Loader2,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -30,6 +31,228 @@ type SuccessResult = {
   courseId: number;
   courseTitle: string;
 };
+
+// ── Stripe Card Number Formatter ─────────────────────────────────────────────
+function fmtCard(v: string) { return v.replace(/\D/g, "").slice(0, 16).replace(/(.{4})/g, "$1 ").trim(); }
+function fmtExpiry(v: string) { const d = v.replace(/\D/g, "").slice(0, 4); return d.length > 2 ? `${d.slice(0,2)}/${d.slice(2)}` : d; }
+
+// ── Payment Gateway Simulation Modal ─────────────────────────────────────────
+type PaymentModalProps = {
+  gateway: "stripe" | "razorpay";
+  amount: number;
+  courseName: string;
+  onClose: () => void;
+  onPay: () => Promise<void>;
+};
+
+function PaymentModal({ gateway, amount, courseName, onClose, onPay }: PaymentModalProps) {
+  const [tab, setTab] = useState<"upi" | "card" | "wallet">("upi");
+  const [card, setCard] = useState({ number: "", expiry: "", cvv: "", name: "" });
+  const [upi, setUpi] = useState("");
+  const [wallet, setWallet] = useState("");
+  const [step, setStep] = useState<"form" | "processing" | "verifying">("form");
+  const [error, setError] = useState("");
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  const validateStripe = () => {
+    const raw = card.number.replace(/\s/g, "");
+    if (raw.length < 16) return "Enter a valid 16-digit card number";
+    const [m, y] = card.expiry.split("/");
+    const month = parseInt(m ?? "0"), year = 2000 + parseInt(y ?? "0");
+    const now = new Date();
+    if (!m || !y || month < 1 || month > 12 || year < now.getFullYear() || (year === now.getFullYear() && month < now.getMonth() + 1)) return "Enter a valid expiry date";
+    if (card.cvv.length < 3) return "Enter a valid CVV";
+    if (!card.name.trim()) return "Enter the cardholder name";
+    return "";
+  };
+
+  const validateRazorpay = () => {
+    if (tab === "upi") {
+      if (!upi.includes("@") || upi.length < 5) return "Enter a valid UPI ID (e.g., name@upi)";
+    }
+    if (tab === "card") {
+      const raw = card.number.replace(/\s/g, "");
+      if (raw.length < 16) return "Enter a valid card number";
+      if (card.cvv.length < 3) return "Enter a valid CVV";
+    }
+    if (tab === "wallet" && !wallet) return "Select a wallet";
+    return "";
+  };
+
+  const handlePay = async () => {
+    setError("");
+    const err = gateway === "stripe" ? validateStripe() : validateRazorpay();
+    if (err) { setError(err); return; }
+
+    setStep("processing");
+    await new Promise(r => setTimeout(r, 1500));
+    setStep("verifying");
+    await new Promise(r => setTimeout(r, 1200));
+    await onPay();
+  };
+
+  return (
+    <div ref={overlayRef} className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={e => { if (e.target === overlayRef.current) onClose(); }}>
+      <div className="bg-[#0d1424] border border-white/10 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className={`px-5 pt-5 pb-4 flex items-center justify-between ${gateway === "stripe" ? "bg-[#635BFF]/10 border-b border-[#635BFF]/20" : "bg-blue-500/10 border-b border-blue-500/20"}`}>
+          <div className="flex items-center gap-2.5">
+            <span className="text-2xl">{gateway === "stripe" ? "💳" : "🇮🇳"}</span>
+            <div>
+              <p className="font-bold text-sm text-foreground">{gateway === "stripe" ? "Stripe Checkout" : "Razorpay"}</p>
+              <p className="text-xs text-muted-foreground">{courseName}</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="font-bold text-lg text-foreground">${amount.toFixed(2)}</p>
+            <div className="flex items-center gap-1 text-[10px] text-green-400 justify-end">
+              <Lock className="w-2.5 h-2.5" />Secure
+            </div>
+          </div>
+        </div>
+
+        {/* Processing overlay */}
+        {(step === "processing" || step === "verifying") && (
+          <div className="px-5 py-10 text-center space-y-4">
+            <div className="w-14 h-14 rounded-full border-4 border-primary/20 border-t-primary animate-spin mx-auto" />
+            <div>
+              <p className="font-semibold text-foreground">{step === "processing" ? "Processing Payment..." : "Verifying with bank..."}</p>
+              <p className="text-xs text-muted-foreground mt-1">Please do not close this window</p>
+            </div>
+            <div className="flex justify-center gap-1 pt-2">
+              {[0,1,2].map(i => <div key={i} className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}
+            </div>
+          </div>
+        )}
+
+        {/* Form */}
+        {step === "form" && (
+          <div className="p-5 space-y-4">
+            {gateway === "stripe" ? (
+              /* ── Stripe Card Form ── */
+              <div className="space-y-3.5">
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">Card Number</Label>
+                  <div className="relative">
+                    <Input
+                      placeholder="1234 5678 9012 3456"
+                      value={card.number}
+                      onChange={e => setCard(c => ({ ...c, number: fmtCard(e.target.value) }))}
+                      className="bg-background border-border font-mono pr-10"
+                      maxLength={19}
+                    />
+                    <CreditCard className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1.5 block">Expiry (MM/YY)</Label>
+                    <Input
+                      placeholder="MM/YY"
+                      value={card.expiry}
+                      onChange={e => setCard(c => ({ ...c, expiry: fmtExpiry(e.target.value) }))}
+                      className="bg-background border-border font-mono"
+                      maxLength={5}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1.5 block">CVV</Label>
+                    <Input
+                      placeholder="•••"
+                      type="password"
+                      value={card.cvv}
+                      onChange={e => setCard(c => ({ ...c, cvv: e.target.value.replace(/\D/g, "").slice(0, 4) }))}
+                      className="bg-background border-border font-mono"
+                      maxLength={4}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">Name on Card</Label>
+                  <Input
+                    placeholder="John Doe"
+                    value={card.name}
+                    onChange={e => setCard(c => ({ ...c, name: e.target.value }))}
+                    className="bg-background border-border"
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground text-center">Use any valid-looking test card (e.g. 4242 4242 4242 4242)</p>
+              </div>
+            ) : (
+              /* ── Razorpay Form ── */
+              <div className="space-y-3">
+                {/* Tabs */}
+                <div className="grid grid-cols-3 gap-1.5 bg-background rounded-lg p-1">
+                  {(["upi", "card", "wallet"] as const).map(t => (
+                    <button key={t} type="button" onClick={() => { setTab(t); setError(""); }}
+                      className={`py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-1 transition-colors ${tab === t ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
+                      {t === "upi" && <Smartphone className="w-3 h-3" />}
+                      {t === "card" && <CreditCard className="w-3 h-3" />}
+                      {t === "wallet" && <Wallet className="w-3 h-3" />}
+                      {t.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+
+                {tab === "upi" && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1.5 block">UPI ID</Label>
+                    <Input placeholder="yourname@upi" value={upi} onChange={e => setUpi(e.target.value)} className="bg-background border-border font-mono" />
+                    <p className="text-[10px] text-muted-foreground mt-1">Enter any valid-looking UPI ID (e.g. test@upi)</p>
+                  </div>
+                )}
+
+                {tab === "card" && (
+                  <div className="space-y-2.5">
+                    <Input placeholder="Card Number (16 digits)" value={card.number} onChange={e => setCard(c => ({ ...c, number: fmtCard(e.target.value) }))} className="bg-background border-border font-mono" maxLength={19} />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input placeholder="MM/YY" value={card.expiry} onChange={e => setCard(c => ({ ...c, expiry: fmtExpiry(e.target.value) }))} className="bg-background border-border font-mono" maxLength={5} />
+                      <Input placeholder="CVV" type="password" value={card.cvv} onChange={e => setCard(c => ({ ...c, cvv: e.target.value.replace(/\D/g, "").slice(0, 4) }))} className="bg-background border-border font-mono" maxLength={4} />
+                    </div>
+                  </div>
+                )}
+
+                {tab === "wallet" && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {["Paytm","PhonePe","GPay","Amazon","BHIM","Freecharge"].map(w => (
+                      <button key={w} type="button" onClick={() => setWallet(w)}
+                        className={`py-2.5 rounded-lg border text-xs font-medium transition-colors ${wallet === w ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                        {w}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Error */}
+            {error && (
+              <div className="flex items-center gap-2 text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />{error}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex flex-col gap-2 pt-1">
+              <Button onClick={handlePay} className="w-full bg-primary hover:bg-primary/90 gap-2 font-semibold">
+                <Lock className="w-4 h-4" />Pay ${amount.toFixed(2)} Securely
+              </Button>
+              <button type="button" onClick={onClose} className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-center gap-1">
+                <X className="w-3 h-3" />Cancel
+              </button>
+            </div>
+
+            <div className="flex items-center justify-center gap-3 text-[10px] text-muted-foreground pt-1 border-t border-border">
+              <span className="flex items-center gap-1"><Shield className="w-3 h-3 text-green-400" />SSL Encrypted</span>
+              <span>·</span>
+              <span>Simulated (no real charge)</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ── Success Screen ────────────────────────────────────────────────────────────
 function SuccessScreen({ result, onContinue }: { result: SuccessResult; onContinue: () => void }) {
@@ -107,6 +330,7 @@ export default function CheckoutPage() {
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number; type: string } | null>(null);
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState<SuccessResult | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const [form, setForm] = useState({
     email: "",
@@ -156,14 +380,7 @@ export default function CheckoutPage() {
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.email || !form.fullName) {
-      toast({ title: "Please fill in all required fields", variant: "destructive" }); return;
-    }
-    if (!/^\S+@\S+\.\S+$/.test(form.email)) {
-      toast({ title: "Please enter a valid email address", variant: "destructive" }); return;
-    }
+  const executePayment = async () => {
     setProcessing(true);
     try {
       const res = await fetch(`${API_BASE}/api/payments/checkout/guest`, {
@@ -196,6 +413,17 @@ export default function CheckoutPage() {
     }
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.email || !form.fullName) {
+      toast({ title: "Please fill in all required fields", variant: "destructive" }); return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(form.email)) {
+      toast({ title: "Please enter a valid email address", variant: "destructive" }); return;
+    }
+    setShowPaymentModal(true);
+  };
+
   if (success) {
     return <SuccessScreen result={success} onContinue={async () => { await queryClient.invalidateQueries(); navigate(`/learn/${success.courseId}`); }} />;
   }
@@ -213,6 +441,7 @@ export default function CheckoutPage() {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-background py-8 px-4">
       <div className="max-w-5xl mx-auto">
         {/* Top bar */}
@@ -449,5 +678,19 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+
+    {showPaymentModal && (
+      <PaymentModal
+        gateway={gateway}
+        amount={discountedPrice}
+        courseName={course.title}
+        onClose={() => setShowPaymentModal(false)}
+        onPay={async () => {
+          setShowPaymentModal(false);
+          await executePayment();
+        }}
+      />
+    )}
+    </>
   );
 }
