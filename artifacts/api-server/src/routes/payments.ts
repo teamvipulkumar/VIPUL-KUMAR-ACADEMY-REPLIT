@@ -292,8 +292,9 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
   const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.gatewayOrderId, orderId)).limit(1);
   if (!payment) { res.status(404).json({ error: "Payment record not found" }); return; }
   if (payment.status === "completed") {
+    // Payment was already processed (by webhook or previous verify call) — show success, not "already enrolled"
     const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
-    res.json({ success: true, alreadyEnrolled: true, courseId: payment.courseId, courseTitle: course?.title });
+    res.json({ success: true, enrolled: true, courseId: payment.courseId, courseTitle: course?.title });
     return;
   }
 

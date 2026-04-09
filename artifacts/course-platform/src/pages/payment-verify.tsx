@@ -1,21 +1,28 @@
 import { useEffect, useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { Loader2, CheckCircle2, XCircle, AlertCircle, BookOpen } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, AlertCircle, BookOpen, Copy, Eye, EyeOff, KeyRound, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 type VerifyState = "verifying" | "success" | "pending" | "failed" | "error";
 
+type NewUserCreds = {
+  email: string;
+  tempPassword: string;
+};
+
 type SuccessData = {
   courseId: number;
   courseTitle: string;
-  alreadyEnrolled?: boolean;
+  newUser?: NewUserCreds;
 };
 
 export default function PaymentVerifyPage() {
   const search = useSearch();
   const [, navigate] = useLocation();
+  const { toast } = useToast();
   const params = new URLSearchParams(search);
   const orderId = params.get("order_id");
   const gateway = params.get("gateway") ?? "cashfree";
@@ -23,6 +30,7 @@ export default function PaymentVerifyPage() {
   const [state, setState] = useState<VerifyState>("verifying");
   const [message, setMessage] = useState("");
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
+  const [showPass, setShowPass] = useState(false);
 
   useEffect(() => {
     if (!orderId) { setState("error"); setMessage("No order ID found in the URL."); return; }
@@ -44,8 +52,22 @@ export default function PaymentVerifyPage() {
         }
 
         if (data.success && (data.enrolled || data.alreadyEnrolled)) {
+          // Read new-user credentials from sessionStorage (saved before Cashfree redirect)
+          let newUser: NewUserCreds | undefined;
+          try {
+            const raw = sessionStorage.getItem("cf_new_user_creds");
+            if (raw) {
+              const parsed = JSON.parse(raw) as { email: string; tempPassword: string; orderId: string };
+              // Only use if the orderId matches to avoid showing stale creds
+              if (parsed.orderId === orderId) {
+                newUser = { email: parsed.email, tempPassword: parsed.tempPassword };
+              }
+              sessionStorage.removeItem("cf_new_user_creds");
+            }
+          } catch { /* ignore */ }
+
           setState("success");
-          setSuccessData({ courseId: data.courseId, courseTitle: data.courseTitle, alreadyEnrolled: data.alreadyEnrolled });
+          setSuccessData({ courseId: data.courseId, courseTitle: data.courseTitle, newUser });
         } else if (data.pending) {
           setState("pending");
           setMessage(data.message ?? "Payment is processing. Please wait a moment.");
@@ -61,6 +83,11 @@ export default function PaymentVerifyPage() {
 
     verify();
   }, [orderId, gateway]);
+
+  const copy = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: `${label} copied!`, description: "Saved to clipboard." });
+  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -86,15 +113,53 @@ export default function PaymentVerifyPage() {
             <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4">
               <CheckCircle2 className="w-9 h-9 text-green-400" />
             </div>
-            <h2 className="text-xl font-bold text-foreground mb-1">
-              {successData.alreadyEnrolled ? "Already Enrolled!" : "Payment Successful!"}
-            </h2>
-            <p className="text-sm text-muted-foreground mb-1">
-              {successData.alreadyEnrolled
-                ? `You're already enrolled in`
-                : `You've been enrolled in`}
-            </p>
-            <p className="font-semibold text-foreground mb-6">"{successData.courseTitle}"</p>
+
+            <h2 className="text-xl font-bold text-foreground mb-1">Payment Successful!</h2>
+            <p className="text-sm text-muted-foreground mb-1">You've been enrolled in</p>
+            <p className="font-semibold text-foreground mb-5">"{successData.courseTitle}"</p>
+
+            {/* New user credentials box */}
+            {successData.newUser && (
+              <div className="bg-primary/10 border border-primary/30 rounded-xl p-4 mb-5 text-left">
+                <div className="flex items-center gap-2 mb-3">
+                  <KeyRound className="w-4 h-4 text-primary" />
+                  <p className="text-sm font-semibold text-foreground">Your Account Credentials</p>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  A new account has been created for you. Save these login details — you can change your password later from your profile.
+                </p>
+
+                {/* Email */}
+                <div className="bg-card border border-border rounded-lg px-3 py-2 flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Mail className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                    <span className="text-xs font-mono text-foreground truncate">{successData.newUser.email}</span>
+                  </div>
+                  <button onClick={() => copy(successData.newUser!.email, "Email")} className="text-muted-foreground hover:text-foreground ml-2 flex-shrink-0">
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Password */}
+                <div className="bg-card border border-border rounded-lg px-3 py-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <KeyRound className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                    <span className="text-xs font-mono text-foreground">
+                      {showPass ? successData.newUser.tempPassword : "••••••••••"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+                    <button onClick={() => setShowPass(v => !v)} className="text-muted-foreground hover:text-foreground">
+                      {showPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                    <button onClick={() => copy(successData.newUser!.tempPassword, "Password")} className="text-muted-foreground hover:text-foreground">
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <Button onClick={() => navigate(`/learn/${successData.courseId}`)} className="w-full bg-primary gap-2">
               <BookOpen className="w-4 h-4" />Start Learning Now
             </Button>

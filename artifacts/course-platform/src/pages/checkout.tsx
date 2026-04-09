@@ -462,6 +462,15 @@ export default function CheckoutPage() {
 
       const { paymentSessionId, orderId, isTestMode } = data;
 
+      // Persist new-user credentials before leaving the page (redirect will lose them)
+      if (data.isNewUser && data.tempPassword) {
+        sessionStorage.setItem("cf_new_user_creds", JSON.stringify({
+          email: form.email.trim(),
+          tempPassword: data.tempPassword,
+          orderId,
+        }));
+      }
+
       // Step 2: Load Cashfree JS SDK dynamically
       if (!document.getElementById("cashfree-sdk")) {
         await new Promise<void>((resolve, reject) => {
