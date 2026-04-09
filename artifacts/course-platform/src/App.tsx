@@ -28,6 +28,7 @@ import AdminAffiliatesPage from "@/pages/admin/affiliates";
 import AdminPayoutsPage from "@/pages/admin/payouts";
 import AdminCouponsPage from "@/pages/admin/coupons";
 import AdminOrdersPage from "@/pages/admin/orders";
+import AdminEnrollmentsPage from "@/pages/admin/enrollments";
 import AdminSettingsPage from "@/pages/admin/settings";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import TermsOfServicePage from "@/pages/terms-of-service";
@@ -66,6 +67,7 @@ function Router() {
       <Route path="/admin/payouts" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminPayoutsPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/coupons" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminCouponsPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/orders" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminOrdersPage /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/enrollments" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminEnrollmentsPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/settings" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminSettingsPage /></AdminLayout></ProtectedRoute>} />
 
       <Route component={() => <AppLayout><NotFound /></AppLayout>} />

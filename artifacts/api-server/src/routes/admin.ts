@@ -212,20 +212,83 @@ router.post("/payouts/:payoutId/reject", requireAdmin, async (req, res): Promise
 });
 
 router.get("/enrollments", requireAdmin, async (req, res): Promise<void> => {
-  const { courseId, userId } = req.query as Record<string, string>;
-  const conditions = [];
-  if (courseId) conditions.push(eq(enrollmentsTable.courseId, parseInt(courseId)));
-  if (userId) conditions.push(eq(enrollmentsTable.userId, parseInt(userId)));
+  const { search, courseId, limit = "100", offset = "0" } = req.query as Record<string, string>;
 
-  const enrollments = await db.select().from(enrollmentsTable).where(conditions.length > 0 ? and(...conditions) : undefined);
-  const enriched = await Promise.all(enrollments.map(async (e) => {
-    const [[user], [course]] = await Promise.all([
-      db.select({ id: usersTable.id, email: usersTable.email, name: usersTable.name, role: usersTable.role, avatarUrl: usersTable.avatarUrl, referralCode: usersTable.referralCode, isBanned: usersTable.isBanned, createdAt: usersTable.createdAt }).from(usersTable).where(eq(usersTable.id, e.userId)).limit(1),
-      db.select().from(coursesTable).where(eq(coursesTable.id, e.courseId)).limit(1),
-    ]);
-    return { ...e, progressPercent: 0, user, course: course ? { ...course, price: parseFloat(course.price), moduleCount: 0, lessonCount: 0, enrollmentCount: 0 } : null };
-  }));
-  res.json(enriched);
+  const rows = await db.select({
+    id: enrollmentsTable.id,
+    userId: enrollmentsTable.userId,
+    courseId: enrollmentsTable.courseId,
+    enrolledAt: enrollmentsTable.enrolledAt,
+    completedAt: enrollmentsTable.completedAt,
+    userName: usersTable.name,
+    userEmail: usersTable.email,
+    courseTitle: coursesTable.title,
+    courseThumbnail: coursesTable.thumbnailUrl,
+  })
+  .from(enrollmentsTable)
+  .innerJoin(usersTable, eq(enrollmentsTable.userId, usersTable.id))
+  .innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id))
+  .where(courseId ? eq(enrollmentsTable.courseId, parseInt(courseId)) : undefined)
+  .orderBy(desc(enrollmentsTable.enrolledAt))
+  .limit(parseInt(limit))
+  .offset(parseInt(offset));
+
+  let result = rows;
+  if (search) {
+    const s = search.toLowerCase();
+    result = rows.filter(r =>
+      r.userName.toLowerCase().includes(s) ||
+      r.userEmail.toLowerCase().includes(s) ||
+      r.courseTitle.toLowerCase().includes(s)
+    );
+  }
+
+  const [totalResult] = await db.select({ total: count() }).from(enrollmentsTable);
+  const [completedResult] = await db.select({ total: count() }).from(enrollmentsTable).where(sql`completed_at IS NOT NULL`);
+
+  res.json({
+    enrollments: result,
+    total: totalResult?.total ?? 0,
+    stats: {
+      total: totalResult?.total ?? 0,
+      completed: completedResult?.total ?? 0,
+      active: (totalResult?.total ?? 0) - (completedResult?.total ?? 0),
+    }
+  });
+});
+
+router.post("/enrollments", requireAdmin, async (req, res): Promise<void> => {
+  const { userId, courseId } = req.body;
+  if (!userId || !courseId) { res.status(400).json({ error: "userId and courseId are required" }); return; }
+
+  const [user] = await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, parseInt(userId))).limit(1);
+  const [course] = await db.select({ id: coursesTable.id, title: coursesTable.title }).from(coursesTable).where(eq(coursesTable.id, parseInt(courseId))).limit(1);
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+  if (!course) { res.status(404).json({ error: "Course not found" }); return; }
+
+  const [existing] = await db.select({ id: enrollmentsTable.id }).from(enrollmentsTable)
+    .where(and(eq(enrollmentsTable.userId, parseInt(userId)), eq(enrollmentsTable.courseId, parseInt(courseId)))).limit(1);
+  if (existing) { res.status(409).json({ error: `${user.name} is already enrolled in "${course.title}"` }); return; }
+
+  const [enrollment] = await db.insert(enrollmentsTable).values({ userId: parseInt(userId), courseId: parseInt(courseId) }).returning();
+  res.status(201).json({ ...enrollment, userName: user.name, courseTitle: course.title });
+});
+
+router.delete("/enrollments/:enrollmentId", requireAdmin, async (req, res): Promise<void> => {
+  const enrollmentId = parseInt(req.params.enrollmentId);
+  const [enrollment] = await db.select().from(enrollmentsTable).where(eq(enrollmentsTable.id, enrollmentId)).limit(1);
+  if (!enrollment) { res.status(404).json({ error: "Enrollment not found" }); return; }
+
+  const courseModules = await db.select({ id: modulesTable.id }).from(modulesTable).where(eq(modulesTable.courseId, enrollment.courseId));
+  for (const mod of courseModules) {
+    const modLessons = await db.select({ id: lessonsTable.id }).from(lessonsTable).where(eq(lessonsTable.moduleId, mod.id));
+    for (const lesson of modLessons) {
+      await db.delete(lessonCompletionsTable).where(and(eq(lessonCompletionsTable.userId, enrollment.userId), eq(lessonCompletionsTable.lessonId, lesson.id)));
+    }
+  }
+
+  await db.delete(enrollmentsTable).where(eq(enrollmentsTable.id, enrollmentId));
+  res.json({ message: "Enrollment removed" });
 });
 
 router.get("/courses", requireAdmin, async (req, res): Promise<void> => {
