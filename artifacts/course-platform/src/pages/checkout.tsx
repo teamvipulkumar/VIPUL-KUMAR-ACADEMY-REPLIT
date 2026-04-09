@@ -439,6 +439,61 @@ export default function CheckoutPage() {
     }
   };
 
+  // ── Real Cashfree Payment ──────────────────────────────────────────────────
+  const handleCashfreePayment = async () => {
+    setProcessing(true);
+    try {
+      // Step 1: Create order on backend (creates user if needed)
+      const res = await fetch(`${API_BASE}/api/payments/cashfree/create-order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          courseId,
+          email: form.email.trim(),
+          fullName: form.fullName.trim(),
+          state: form.state,
+          mobile: form.mobile.trim(),
+          couponCode: appliedCoupon?.code || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to initiate Cashfree payment");
+
+      const { paymentSessionId, orderId, isTestMode } = data;
+
+      // Step 2: Load Cashfree JS SDK dynamically
+      if (!document.getElementById("cashfree-sdk")) {
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement("script");
+          script.id = "cashfree-sdk";
+          script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error("Failed to load Cashfree SDK"));
+          document.head.appendChild(script);
+        });
+      }
+
+      // Step 3: Initialise SDK and redirect to hosted checkout
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cashfree = (window as any).Cashfree({ mode: isTestMode ? "sandbox" : "production" });
+
+      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const returnUrl = `${window.location.origin}${base}/payment/verify?order_id={order_id}&gateway=cashfree`;
+
+      cashfree.checkout({
+        paymentSessionId,
+        returnUrl,
+        redirectTarget: "_self",
+      });
+
+    } catch (err: unknown) {
+      toast({ title: "Cashfree payment failed", description: (err as Error).message, variant: "destructive" });
+      setProcessing(false);
+    }
+    // Note: setProcessing(false) is intentionally NOT called on success — page redirects away
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.email || !form.fullName) {
@@ -446,6 +501,11 @@ export default function CheckoutPage() {
     }
     if (!/^\S+@\S+\.\S+$/.test(form.email)) {
       toast({ title: "Please enter a valid email address", variant: "destructive" }); return;
+    }
+    // Real Cashfree — redirect to hosted checkout (no simulation modal)
+    if (gateway === "cashfree") {
+      handleCashfreePayment();
+      return;
     }
     setShowPaymentModal(true);
   };
@@ -635,7 +695,12 @@ export default function CheckoutPage() {
               {/* Submit */}
               <Button type="submit" size="lg" disabled={processing || !gateway || activeGateways.length === 0} className="w-full bg-primary hover:bg-primary/90 text-base font-semibold gap-2 h-12">
                 <CreditCard className="w-5 h-5" />
-                {processing ? "Processing payment..." : `Pay $${discountedPrice.toFixed(2)} · Enroll Now`}
+                {processing
+                  ? (gateway === "cashfree" ? "Redirecting to Cashfree…" : "Processing payment...")
+                  : gateway === "cashfree"
+                    ? `Continue to Cashfree · ₹${discountedPrice.toFixed(2)}`
+                    : `Pay $${discountedPrice.toFixed(2)} · Enroll Now`
+                }
               </Button>
               <p className="text-xs text-muted-foreground text-center">
                 By completing this purchase, you agree to our Terms of Service.{" "}
