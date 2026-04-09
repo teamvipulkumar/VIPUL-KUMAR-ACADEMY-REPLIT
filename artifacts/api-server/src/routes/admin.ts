@@ -3,7 +3,8 @@ import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
 import {
   usersTable, coursesTable, modulesTable, enrollmentsTable, paymentsTable, referralsTable,
-  payoutRequestsTable, platformSettingsTable, lessonCompletionsTable, lessonsTable
+  payoutRequestsTable, platformSettingsTable, lessonCompletionsTable, lessonsTable,
+  paymentGatewaysTable
 } from "@workspace/db";
 import { eq, count, sum, gte, and, ilike, or, sql, desc, ne } from "drizzle-orm";
 import { requireAdmin, type JwtPayload } from "../middlewares/auth";
@@ -409,6 +410,97 @@ router.post("/orders/:orderId/refund", requireAdmin, async (req, res): Promise<v
   await db.delete(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId)));
 
   res.json({ message: "Refund processed. User has been unenrolled from the course." });
+});
+
+// ── Payment Gateways ──────────────────────────────────────────────────────────
+const SUPPORTED_GATEWAYS = [
+  { name: "stripe", displayName: "Stripe", keyLabel: "Publishable Key", secretLabel: "Secret Key", supportedCountries: "Global" },
+  { name: "razorpay", displayName: "Razorpay", keyLabel: "Key ID", secretLabel: "Key Secret", supportedCountries: "India" },
+  { name: "cashfree", displayName: "Cashfree", keyLabel: "App ID", secretLabel: "Secret Key", supportedCountries: "India" },
+  { name: "paytm", displayName: "Paytm Payments", keyLabel: "Merchant ID", secretLabel: "Merchant Key", supportedCountries: "India" },
+  { name: "payu", displayName: "PayU", keyLabel: "Merchant Key", secretLabel: "Merchant Salt", supportedCountries: "India" },
+];
+
+router.get("/payment-gateways", requireAdmin, async (req, res): Promise<void> => {
+  const gateways = await db.select().from(paymentGatewaysTable);
+  const result = SUPPORTED_GATEWAYS.map(sg => {
+    const config = gateways.find(g => g.name === sg.name);
+    return {
+      ...sg,
+      id: config?.id ?? null,
+      apiKey: config?.apiKey ?? "",
+      secretKey: config ? "••••••••" : "",
+      webhookSecret: config?.webhookSecret ? "••••••••" : "",
+      isActive: config?.isActive ?? false,
+      isTestMode: config?.isTestMode ?? true,
+      isConfigured: !!(config?.apiKey && config?.secretKey),
+    };
+  });
+  res.json(result);
+});
+
+router.put("/payment-gateways/:name", requireAdmin, async (req, res): Promise<void> => {
+  const { name } = req.params;
+  const supported = SUPPORTED_GATEWAYS.find(g => g.name === name);
+  if (!supported) { res.status(400).json({ error: "Unsupported gateway" }); return; }
+
+  const { apiKey, secretKey, webhookSecret, isActive, isTestMode } = req.body;
+
+  const [existing] = await db.select().from(paymentGatewaysTable).where(eq(paymentGatewaysTable.name, name)).limit(1);
+
+  if (existing) {
+    const update: { isActive: boolean; isTestMode: boolean; updatedAt: Date; apiKey?: string; secretKey?: string; webhookSecret?: string | null } = {
+      isActive: isActive ?? existing.isActive,
+      isTestMode: isTestMode ?? existing.isTestMode,
+      updatedAt: new Date(),
+    };
+    if (apiKey !== undefined && apiKey !== "••••••••" && apiKey !== "") update.apiKey = apiKey;
+    if (secretKey !== undefined && secretKey !== "••••••••" && secretKey !== "") update.secretKey = secretKey;
+    if (webhookSecret !== undefined && webhookSecret !== "••••••••") update.webhookSecret = webhookSecret || null;
+    const [updated] = await db.update(paymentGatewaysTable).set(update).where(eq(paymentGatewaysTable.name, name)).returning();
+    res.json({ ...updated, secretKey: "••••••••", webhookSecret: updated.webhookSecret ? "••••••••" : "" });
+  } else {
+    if (!apiKey || !secretKey) { res.status(400).json({ error: "API Key and Secret Key are required" }); return; }
+    const [created] = await db.insert(paymentGatewaysTable).values({
+      name, displayName: supported.displayName,
+      apiKey, secretKey, webhookSecret: webhookSecret || null,
+      isActive: isActive ?? false, isTestMode: isTestMode ?? true,
+    }).returning();
+    res.json({ ...created, secretKey: "••••••••", webhookSecret: created.webhookSecret ? "••••••••" : "" });
+  }
+});
+
+router.delete("/payment-gateways/:name", requireAdmin, async (req, res): Promise<void> => {
+  const { name } = req.params;
+  await db.delete(paymentGatewaysTable).where(eq(paymentGatewaysTable.name, name));
+  res.json({ message: "Gateway configuration removed" });
+});
+
+router.get("/payment-gateways/:name/test", requireAdmin, async (req, res): Promise<void> => {
+  const { name } = req.params;
+  const [gw] = await db.select().from(paymentGatewaysTable).where(eq(paymentGatewaysTable.name, name)).limit(1);
+  if (!gw || !gw.apiKey || !gw.secretKey) { res.status(400).json({ error: "Gateway not configured" }); return; }
+
+  try {
+    if (name === "razorpay") {
+      const creds = Buffer.from(`${gw.apiKey}:${gw.secretKey}`).toString("base64");
+      const r = await fetch("https://api.razorpay.com/v1/orders?count=1", { headers: { Authorization: `Basic ${creds}` } });
+      if (!r.ok) throw new Error(`Razorpay API error: ${r.status}`);
+    } else if (name === "stripe") {
+      const r = await fetch("https://api.stripe.com/v1/balance", { headers: { Authorization: `Bearer ${gw.secretKey}` } });
+      if (!r.ok) throw new Error(`Stripe API error: ${r.status}`);
+    } else if (name === "cashfree") {
+      const r = await fetch(`https://${gw.isTestMode ? "sandbox" : "api"}.cashfree.com/pg/orders?limit=1`, {
+        headers: { "x-api-version": "2023-08-01", "x-client-id": gw.apiKey, "x-client-secret": gw.secretKey }
+      });
+      if (r.status === 401) throw new Error("Invalid Cashfree credentials");
+    } else {
+      res.json({ success: true, message: `${name} credentials saved (connection test not available for this gateway)` }); return;
+    }
+    res.json({ success: true, message: "Connection successful! Gateway is configured correctly." });
+  } catch (err: unknown) {
+    res.status(400).json({ error: (err as Error).message });
+  }
 });
 
 export default router;

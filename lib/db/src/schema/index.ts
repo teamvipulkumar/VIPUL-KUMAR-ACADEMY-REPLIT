@@ -5,3 +5,4 @@ export * from "./payments";
 export * from "./affiliates";
 export * from "./coupons";
 export * from "./notifications";
+export * from "./payment-gateways";

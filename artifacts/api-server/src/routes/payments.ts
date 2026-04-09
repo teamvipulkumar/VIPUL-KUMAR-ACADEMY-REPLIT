@@ -2,7 +2,7 @@ import { Router } from "express";
 import { nanoid } from "nanoid";
 import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
-import { paymentsTable, coursesTable, enrollmentsTable, couponsTable, notificationsTable, usersTable } from "@workspace/db";
+import { paymentsTable, coursesTable, enrollmentsTable, couponsTable, notificationsTable, usersTable, paymentGatewaysTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth, signToken, verifyToken, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
@@ -169,6 +169,86 @@ router.post("/checkout/guest", async (req, res): Promise<void> => {
 
   const { password: _, ...safeUser } = freshUser!;
   res.json({ success: true, isNewUser, tempPassword, user: safeUser, courseId: parseInt(courseId), courseTitle: course.title });
+});
+
+// ── Public: Active Gateways for Checkout ─────────────────────────────────────
+router.get("/gateways/active", async (req, res): Promise<void> => {
+  const gateways = await db.select({
+    id: paymentGatewaysTable.id,
+    name: paymentGatewaysTable.name,
+    displayName: paymentGatewaysTable.displayName,
+    apiKey: paymentGatewaysTable.apiKey,
+    isTestMode: paymentGatewaysTable.isTestMode,
+  }).from(paymentGatewaysTable).where(eq(paymentGatewaysTable.isActive, true));
+  res.json(gateways);
+});
+
+// ── Initiate Real Payment ─────────────────────────────────────────────────────
+router.post("/initiate", async (req, res): Promise<void> => {
+  const { courseId, gateway: gatewayName, couponCode, amount: reqAmount } = req.body;
+  if (!courseId || !gatewayName) { res.status(400).json({ error: "courseId and gateway required" }); return; }
+
+  const [gw] = await db.select().from(paymentGatewaysTable).where(
+    and(eq(paymentGatewaysTable.name, gatewayName), eq(paymentGatewaysTable.isActive, true))
+  ).limit(1);
+  if (!gw) { res.status(400).json({ error: "Gateway not configured or inactive" }); return; }
+
+  const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, parseInt(courseId))).limit(1);
+  if (!course) { res.status(404).json({ error: "Course not found" }); return; }
+
+  let amount = reqAmount ?? parseFloat(course.price);
+  if (couponCode) {
+    const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, couponCode.toUpperCase())).limit(1);
+    if (coupon?.isActive && (!coupon.maxUses || coupon.usedCount < coupon.maxUses)) {
+      const d = parseFloat(String(coupon.discountValue));
+      amount = coupon.discountType === "percentage" ? amount * (1 - d / 100) : Math.max(0, amount - d);
+    }
+  }
+
+  const amountInPaise = Math.round(amount * 100);
+
+  try {
+    if (gatewayName === "razorpay") {
+      const creds = Buffer.from(`${gw.apiKey}:${gw.secretKey}`).toString("base64");
+      const r = await fetch("https://api.razorpay.com/v1/orders", {
+        method: "POST",
+        headers: { Authorization: `Basic ${creds}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: amountInPaise, currency: "INR", receipt: `rcpt_${nanoid(8)}` }),
+      });
+      const order = await r.json();
+      if (!r.ok) throw new Error(order.error?.description ?? "Razorpay order failed");
+      res.json({ gateway: "razorpay", orderId: order.id, keyId: gw.apiKey, amount: amountInPaise, currency: "INR", courseName: course.title });
+
+    } else if (gatewayName === "stripe") {
+      const body = new URLSearchParams({ amount: String(amountInPaise), currency: "usd", "payment_method_types[]": "card" });
+      const r = await fetch("https://api.stripe.com/v1/payment_intents", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${gw.secretKey}`, "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+      });
+      const intent = await r.json();
+      if (!r.ok) throw new Error(intent.error?.message ?? "Stripe PaymentIntent failed");
+      res.json({ gateway: "stripe", clientSecret: intent.client_secret, publishableKey: gw.apiKey, amount: amountInPaise, currency: "usd", courseName: course.title });
+
+    } else if (gatewayName === "cashfree") {
+      const host = gw.isTestMode ? "https://sandbox.cashfree.com" : "https://api.cashfree.com";
+      const r = await fetch(`${host}/pg/orders`, {
+        method: "POST",
+        headers: { "x-api-version": "2023-08-01", "x-client-id": gw.apiKey, "x-client-secret": gw.secretKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ order_id: `ord_${nanoid(12)}`, order_amount: amount, order_currency: "INR", customer_details: { customer_id: "cust_01", customer_email: "buyer@example.com", customer_phone: "9999999999" } }),
+      });
+      const order = await r.json();
+      if (!r.ok) throw new Error(order.message ?? "Cashfree order failed");
+      res.json({ gateway: "cashfree", paymentSessionId: order.payment_session_id, orderId: order.order_id, amount, currency: "INR", appId: gw.apiKey, isTestMode: gw.isTestMode });
+
+    } else if (gatewayName === "payu" || gatewayName === "paytm") {
+      res.json({ gateway: gatewayName, amount, note: "Redirect gateway — use hosted checkout", keyId: gw.apiKey });
+    } else {
+      res.status(400).json({ error: "Unsupported gateway" });
+    }
+  } catch (err: unknown) {
+    res.status(500).json({ error: (err as Error).message });
+  }
 });
 
 export default router;
