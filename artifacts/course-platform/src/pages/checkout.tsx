@@ -36,9 +36,20 @@ type SuccessResult = {
 function fmtCard(v: string) { return v.replace(/\D/g, "").slice(0, 16).replace(/(.{4})/g, "$1 ").trim(); }
 function fmtExpiry(v: string) { const d = v.replace(/\D/g, "").slice(0, 4); return d.length > 2 ? `${d.slice(0,2)}/${d.slice(2)}` : d; }
 
+// ── Gateway display metadata ──────────────────────────────────────────────────
+const GATEWAY_META: Record<string, { icon: string; label: string; tagline: string }> = {
+  stripe:   { icon: "💳", label: "Stripe",           tagline: "Cards · International" },
+  razorpay: { icon: "🇮🇳", label: "Razorpay",         tagline: "UPI · Cards · Wallets" },
+  cashfree: { icon: "🟢", label: "Cashfree",          tagline: "UPI · Cards · Instant" },
+  paytm:    { icon: "🔵", label: "Paytm",             tagline: "Paytm Wallet · UPI · Cards" },
+  payu:     { icon: "🟠", label: "PayU",              tagline: "UPI · Cards · EMI" },
+};
+
+type ActiveGateway = { id: number; name: string; displayName: string; apiKey: string; isTestMode: boolean };
+
 // ── Payment Gateway Simulation Modal ─────────────────────────────────────────
 type PaymentModalProps = {
-  gateway: "stripe" | "razorpay";
+  gateway: string;
   amount: number;
   courseName: string;
   onClose: () => void;
@@ -46,6 +57,8 @@ type PaymentModalProps = {
 };
 
 function PaymentModal({ gateway, amount, courseName, onClose, onPay }: PaymentModalProps) {
+  const isStripe = gateway === "stripe";
+  const meta = GATEWAY_META[gateway] ?? { icon: "💰", label: gateway, tagline: "Secure Payment" };
   const [tab, setTab] = useState<"upi" | "card" | "wallet">("upi");
   const [card, setCard] = useState({ number: "", expiry: "", cvv: "", name: "" });
   const [upi, setUpi] = useState("");
@@ -66,7 +79,7 @@ function PaymentModal({ gateway, amount, courseName, onClose, onPay }: PaymentMo
     return "";
   };
 
-  const validateRazorpay = () => {
+  const validateIndia = () => {
     if (tab === "upi") {
       if (!upi.includes("@") || upi.length < 5) return "Enter a valid UPI ID (e.g., name@upi)";
     }
@@ -81,7 +94,7 @@ function PaymentModal({ gateway, amount, courseName, onClose, onPay }: PaymentMo
 
   const handlePay = async () => {
     setError("");
-    const err = gateway === "stripe" ? validateStripe() : validateRazorpay();
+    const err = isStripe ? validateStripe() : validateIndia();
     if (err) { setError(err); return; }
 
     setStep("processing");
@@ -95,11 +108,11 @@ function PaymentModal({ gateway, amount, courseName, onClose, onPay }: PaymentMo
     <div ref={overlayRef} className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={e => { if (e.target === overlayRef.current) onClose(); }}>
       <div className="bg-[#0d1424] border border-white/10 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className={`px-5 pt-5 pb-4 flex items-center justify-between ${gateway === "stripe" ? "bg-[#635BFF]/10 border-b border-[#635BFF]/20" : "bg-blue-500/10 border-b border-blue-500/20"}`}>
+        <div className={`px-5 pt-5 pb-4 flex items-center justify-between ${isStripe ? "bg-[#635BFF]/10 border-b border-[#635BFF]/20" : "bg-blue-500/10 border-b border-blue-500/20"}`}>
           <div className="flex items-center gap-2.5">
-            <span className="text-2xl">{gateway === "stripe" ? "💳" : "🇮🇳"}</span>
+            <span className="text-2xl">{meta.icon}</span>
             <div>
-              <p className="font-bold text-sm text-foreground">{gateway === "stripe" ? "Stripe Checkout" : "Razorpay"}</p>
+              <p className="font-bold text-sm text-foreground">{meta.label} Checkout</p>
               <p className="text-xs text-muted-foreground">{courseName}</p>
             </div>
           </div>
@@ -128,7 +141,7 @@ function PaymentModal({ gateway, amount, courseName, onClose, onPay }: PaymentMo
         {/* Form */}
         {step === "form" && (
           <div className="p-5 space-y-4">
-            {gateway === "stripe" ? (
+            {isStripe ? (
               /* ── Stripe Card Form ── */
               <div className="space-y-3.5">
                 <div>
@@ -325,7 +338,9 @@ export default function CheckoutPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const [gateway, setGateway] = useState<"stripe" | "razorpay">("stripe");
+  const [activeGateways, setActiveGateways] = useState<ActiveGateway[]>([]);
+  const [gatewaysLoading, setGatewaysLoading] = useState(true);
+  const [gateway, setGateway] = useState<string>("");
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number; type: string } | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -361,6 +376,17 @@ export default function CheckoutPage() {
       }));
     }
   }, [isAuthenticated, authUser]);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/payments/gateways/active`)
+      .then(r => r.json())
+      .then((data: ActiveGateway[]) => {
+        setActiveGateways(data);
+        if (data.length > 0) setGateway(data[0].name);
+      })
+      .catch(() => {})
+      .finally(() => setGatewaysLoading(false));
+  }, []);
 
   // Already enrolled: redirect to learn (only if not just purchased)
   useEffect(() => {
@@ -535,29 +561,41 @@ export default function CheckoutPage() {
                   <span className="w-5 h-5 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold">2</span>
                   Payment Method
                 </h2>
-                <div className="grid grid-cols-2 gap-3">
-                  {(["stripe", "razorpay"] as const).map(g => (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => setGateway(g)}
-                      className={`py-3.5 px-4 rounded-xl border-2 transition-all text-sm font-semibold flex flex-col items-center gap-1.5 ${
-                        gateway === g
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground hover:border-border/80"
-                      }`}
-                    >
-                      <span className="text-xl">{g === "stripe" ? "💳" : "🇮🇳"}</span>
-                      <span>{g === "stripe" ? "Stripe" : "Razorpay"}</span>
-                      <span className="text-[10px] font-normal text-muted-foreground">
-                        {g === "stripe" ? "Cards · International" : "UPI · Cards · Wallets"}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+                {gatewaysLoading ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    {[0, 1].map(i => <div key={i} className="h-20 rounded-xl bg-background animate-pulse" />)}
+                  </div>
+                ) : activeGateways.length === 0 ? (
+                  <div className="flex items-start gap-2.5 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span>No payment methods are configured yet. Please contact support or try again later.</span>
+                  </div>
+                ) : (
+                  <div className={`grid gap-3 ${activeGateways.length === 1 ? "grid-cols-1" : activeGateways.length === 2 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3"}`}>
+                    {activeGateways.map(g => {
+                      const m = GATEWAY_META[g.name] ?? { icon: "💰", label: g.displayName, tagline: "Secure Payment" };
+                      return (
+                        <button
+                          key={g.name}
+                          type="button"
+                          onClick={() => setGateway(g.name)}
+                          className={`py-3.5 px-4 rounded-xl border-2 transition-all text-sm font-semibold flex flex-col items-center gap-1.5 ${
+                            gateway === g.name
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border text-muted-foreground hover:border-border/80"
+                          }`}
+                        >
+                          <span className="text-xl">{m.icon}</span>
+                          <span>{m.label}</span>
+                          <span className="text-[10px] font-normal text-muted-foreground text-center leading-tight">{m.tagline}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
                   <Shield className="w-3.5 h-3.5 text-green-400" />
-                  <span>256-bit SSL encryption · Simulated payment (no real charge)</span>
+                  <span>256-bit SSL encryption · Your payment is secure</span>
                 </div>
               </div>
 
@@ -595,7 +633,7 @@ export default function CheckoutPage() {
               </div>
 
               {/* Submit */}
-              <Button type="submit" size="lg" disabled={processing} className="w-full bg-primary hover:bg-primary/90 text-base font-semibold gap-2 h-12">
+              <Button type="submit" size="lg" disabled={processing || !gateway || activeGateways.length === 0} className="w-full bg-primary hover:bg-primary/90 text-base font-semibold gap-2 h-12">
                 <CreditCard className="w-5 h-5" />
                 {processing ? "Processing payment..." : `Pay $${discountedPrice.toFixed(2)} · Enroll Now`}
               </Button>
