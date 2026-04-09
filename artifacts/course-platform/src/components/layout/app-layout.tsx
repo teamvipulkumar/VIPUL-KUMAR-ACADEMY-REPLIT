@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { useLogout, useListNotifications, getListNotificationsQueryKey } from "@workspace/api-client-react";
-import { Bell, Menu, X, BookOpen, LayoutDashboard, Share2, GraduationCap, LogOut, ShieldCheck, ChevronRight, Mail, Youtube, Twitter, Linkedin, Instagram } from "lucide-react";
+import { Bell, Menu, X, BookOpen, Share2, GraduationCap, LogOut, ShieldCheck, ChevronRight, Mail, Youtube, Twitter, Linkedin, Instagram } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 function AcademyLogo({ size = 32 }: { size?: number }) {
@@ -34,7 +34,6 @@ export function Navbar() {
   const navLinks = [
     { href: "/courses", label: "Courses", icon: BookOpen },
     ...(isAuthenticated ? [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/my-courses", label: "My Learning", icon: GraduationCap },
       { href: "/affiliate", label: "Affiliate", icon: Share2 },
     ] : []),
@@ -109,9 +108,7 @@ export function Navbar() {
                       <p className="text-xs font-semibold text-foreground truncate">{user?.name}</p>
                       <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                     </div>
-                    <DropdownMenuItem asChild><Link href="/dashboard">Dashboard</Link></DropdownMenuItem>
-                    <DropdownMenuItem asChild><Link href="/my-courses">My Courses</Link></DropdownMenuItem>
-                    <DropdownMenuItem asChild><Link href="/payments">Payment History</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/my-courses">My Learning</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/affiliate">Affiliate</Link></DropdownMenuItem>
                     {isAdmin && (
                       <>
@@ -222,10 +219,8 @@ function SiteFooter() {
   const footerNav = {
     platform: [
       { label: "Browse Courses", href: "/courses" },
-      { label: "Dashboard", href: "/dashboard" },
       { label: "My Learning", href: "/my-courses" },
       { label: "Affiliate Program", href: "/affiliate" },
-      { label: "Payment History", href: "/payments" },
     ],
     company: [
       { label: "About Us", href: "#" },
