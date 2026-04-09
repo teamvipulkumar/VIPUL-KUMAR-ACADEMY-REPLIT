@@ -64,7 +64,7 @@ export function Navbar() {
           </Link>
 
           {/* ── Center nav (desktop) ── */}
-          <nav className="hidden md:flex items-center gap-7 flex-1 justify-center">
+          <nav className="hidden md:flex items-center gap-7 flex-1 justify-end">
             {navLinks.map(link => (
               <Link key={link.href} href={link.href} className={linkClass(link.href)}>
                 {link.label}
