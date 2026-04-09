@@ -2,8 +2,8 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
 import {
-  usersTable, coursesTable, enrollmentsTable, paymentsTable, referralsTable,
-  payoutRequestsTable, platformSettingsTable
+  usersTable, coursesTable, modulesTable, enrollmentsTable, paymentsTable, referralsTable,
+  payoutRequestsTable, platformSettingsTable, lessonCompletionsTable, lessonsTable
 } from "@workspace/db";
 import { eq, count, sum, gte, and, ilike, or, sql, desc, ne } from "drizzle-orm";
 import { requireAdmin, type JwtPayload } from "../middlewares/auth";
@@ -321,6 +321,31 @@ router.get("/orders", requireAdmin, async (req, res): Promise<void> => {
       refundedOrders: refundedResult?.total ?? 0,
     }
   });
+});
+
+router.post("/orders/:orderId/refund", requireAdmin, async (req, res): Promise<void> => {
+  const orderId = parseInt(req.params.orderId);
+  const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.id, orderId)).limit(1);
+  if (!payment) { res.status(404).json({ error: "Order not found" }); return; }
+  if (payment.status === "refunded") { res.status(400).json({ error: "Order already refunded" }); return; }
+  if (payment.status !== "completed") { res.status(400).json({ error: "Only completed orders can be refunded" }); return; }
+
+  await db.update(paymentsTable).set({ status: "refunded" }).where(eq(paymentsTable.id, orderId));
+
+  // Lessons belong to modules, modules belong to courses — join through modules
+  const courseModules = await db.select({ id: modulesTable.id }).from(modulesTable).where(eq(modulesTable.courseId, payment.courseId));
+  if (courseModules.length > 0) {
+    for (const mod of courseModules) {
+      const modLessons = await db.select({ id: lessonsTable.id }).from(lessonsTable).where(eq(lessonsTable.moduleId, mod.id));
+      for (const lesson of modLessons) {
+        await db.delete(lessonCompletionsTable).where(and(eq(lessonCompletionsTable.userId, payment.userId), eq(lessonCompletionsTable.lessonId, lesson.id)));
+      }
+    }
+  }
+
+  await db.delete(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId)));
+
+  res.json({ message: "Refund processed. User has been unenrolled from the course." });
 });
 
 export default router;
