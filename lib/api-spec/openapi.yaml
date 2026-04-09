@@ -1417,7 +1417,7 @@ components:
           nullable: true
         type:
           type: string
-          enum: [video, text, pdf, quiz, link]
+          enum: [video, text, pdf, quiz, link, embed]
         videoUrl:
           type: string
           nullable: true
@@ -1448,7 +1448,7 @@ components:
           nullable: true
         type:
           type: string
-          enum: [video, text, pdf, quiz, link]
+          enum: [video, text, pdf, quiz, link, embed]
         videoUrl:
           type: string
           nullable: true
@@ -1477,7 +1477,7 @@ components:
           nullable: true
         type:
           type: string
-          enum: [video, text, pdf, quiz, link]
+          enum: [video, text, pdf, quiz, link, embed]
         videoUrl:
           type: string
           nullable: true

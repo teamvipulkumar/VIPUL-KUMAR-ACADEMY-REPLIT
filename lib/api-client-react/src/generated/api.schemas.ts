@@ -118,6 +118,7 @@ export const LessonType = {
   pdf: "pdf",
   quiz: "quiz",
   link: "link",
+  embed: "embed",
 } as const;
 
 export interface Lesson {
@@ -229,6 +230,7 @@ export const CreateLessonBodyType = {
   pdf: "pdf",
   quiz: "quiz",
   link: "link",
+  embed: "embed",
 } as const;
 
 export interface CreateLessonBody {
@@ -252,6 +254,7 @@ export const UpdateLessonBodyType = {
   pdf: "pdf",
   quiz: "quiz",
   link: "link",
+  embed: "embed",
 } as const;
 
 export interface UpdateLessonBody {

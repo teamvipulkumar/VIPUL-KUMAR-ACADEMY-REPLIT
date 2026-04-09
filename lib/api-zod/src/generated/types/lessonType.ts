@@ -14,4 +14,5 @@ export const LessonType = {
   pdf: "pdf",
   quiz: "quiz",
   link: "link",
+  embed: "embed",
 } as const;

@@ -15,4 +15,5 @@ export const UpdateLessonBodyType = {
   pdf: "pdf",
   quiz: "quiz",
   link: "link",
+  embed: "embed",
 } as const;

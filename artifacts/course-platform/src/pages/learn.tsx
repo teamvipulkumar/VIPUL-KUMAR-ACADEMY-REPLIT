@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle, Play, FileText, HelpCircle, ChevronRight, ChevronDown,
   ArrowLeft, Check, Clock, Link2, FileArchive, Lock, BookOpen,
-  ExternalLink, ChevronLeft, Menu, X,
+  ExternalLink, ChevronLeft, Menu, X, Code2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -61,6 +61,7 @@ function LessonIcon({ type, completed }: { type: string; completed: boolean }) {
   if (type === "pdf") return <FileArchive className="w-3.5 h-3.5 text-orange-400 flex-shrink-0" />;
   if (type === "link") return <Link2 className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />;
   if (type === "quiz") return <HelpCircle className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" />;
+  if (type === "embed") return <Code2 className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />;
   return <FileText className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />;
 }
 
@@ -453,6 +454,24 @@ export default function LearnPage() {
                     </div>
                   )}
 
+                  {/* Embed lesson */}
+                  {selectedLesson.type === "embed" && (
+                    <div className="mb-6">
+                      {selectedLesson.content ? (
+                        <div
+                          className="rounded-xl overflow-hidden"
+                          dangerouslySetInnerHTML={{ __html: selectedLesson.content }}
+                        />
+                      ) : (
+                        <div className="p-8 bg-card rounded-xl border border-border text-center">
+                          <Code2 className="w-12 h-12 text-cyan-400/50 mx-auto mb-3" />
+                          <p className="text-muted-foreground text-sm">No embed code configured for this lesson.</p>
+                          <p className="text-xs text-muted-foreground/60 mt-1">Add your HTML embed code in the admin editor.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Quiz placeholder */}
                   {selectedLesson.type === "quiz" && (
                     <div className="p-8 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-2xl text-center mb-6">
@@ -464,8 +483,8 @@ export default function LearnPage() {
                     </div>
                   )}
 
-                  {/* Text content / notes */}
-                  {selectedLesson.content && (
+                  {/* Text content / notes — skip for embed since content holds raw HTML */}
+                  {selectedLesson.content && selectedLesson.type !== "embed" && (
                     <div className={`${selectedLesson.type !== "text" ? "mt-6 pt-6 border-t border-border" : ""}`}>
                       {selectedLesson.type !== "text" && (
                         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">Lesson Notes</h3>

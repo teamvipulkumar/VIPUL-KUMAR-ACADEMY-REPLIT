@@ -17,10 +17,10 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Plus, Trash2, ChevronDown, ChevronRight, Save, ArrowLeft,
   Play, FileText, Link2, FileArchive, HelpCircle, Pencil,
-  ImageIcon, Clock, Eye, EyeOff, GripVertical, AlertCircle,
+  ImageIcon, Clock, Eye, EyeOff, GripVertical, AlertCircle, Code2,
 } from "lucide-react";
 
-type LessonType = "video" | "text" | "pdf" | "link" | "quiz";
+type LessonType = "video" | "text" | "pdf" | "link" | "quiz" | "embed";
 
 const LESSON_ICONS: Record<LessonType, React.ReactNode> = {
   video: <Play className="w-3.5 h-3.5 text-blue-400" />,
@@ -28,14 +28,16 @@ const LESSON_ICONS: Record<LessonType, React.ReactNode> = {
   pdf: <FileArchive className="w-3.5 h-3.5 text-orange-400" />,
   link: <Link2 className="w-3.5 h-3.5 text-purple-400" />,
   quiz: <HelpCircle className="w-3.5 h-3.5 text-yellow-400" />,
+  embed: <Code2 className="w-3.5 h-3.5 text-cyan-400" />,
 };
 
 const LESSON_TYPE_LABELS: Record<LessonType, string> = {
-  video: "Video",
+  video: "Video URL",
   text: "Text / Article",
   pdf: "PDF Document",
   link: "External Link",
   quiz: "Quiz",
+  embed: "Embed Code",
 };
 
 function getVideoPlatform(url: string): string {
@@ -419,6 +421,7 @@ export default function AdminCourseEditPage() {
                           <SelectItem value="text">Text</SelectItem>
                           <SelectItem value="pdf">PDF</SelectItem>
                           <SelectItem value="link">Link</SelectItem>
+                          <SelectItem value="embed">Embed</SelectItem>
                           <SelectItem value="quiz">Quiz</SelectItem>
                         </SelectContent>
                       </Select>
@@ -559,6 +562,42 @@ export default function AdminCourseEditPage() {
                       placeholder="Describe what this link contains..."
                     />
                   </div>
+                </div>
+              )}
+
+              {editingLesson.data.type === "embed" && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 flex items-center gap-1.5 block">
+                      <Code2 className="w-3.5 h-3.5 text-cyan-400" />
+                      Embed Code
+                    </label>
+                    <Textarea
+                      value={editingLesson.data.content ?? ""}
+                      onChange={e => setEditingLesson(l => l ? { ...l, data: { ...l.data, content: e.target.value } } : l)}
+                      className="bg-background min-h-[160px] resize-y font-mono text-xs leading-relaxed"
+                      placeholder={`Paste your full embed code here, for example:\n<div style="position:relative;padding-top:56.25%">\n  <iframe src="https://player.mediadelivery.net/embed/..." style="border:0;position:absolute;top:0;height:100%;width:100%" allowfullscreen="true"></iframe>\n</div>`}
+                      spellCheck={false}
+                    />
+                    <div className="mt-2 p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-lg flex items-start gap-2.5">
+                      <Code2 className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-medium text-cyan-400">Supports any embed code</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Paste the full HTML embed code from any platform — Bunny Stream, Vimeo, YouTube, Wistia, Vidyard, Loom, Teachable, or any custom iframe. The code will render exactly as-is in the player.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  {editingLesson.data.content && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Preview</p>
+                      <div
+                        className="rounded-xl overflow-hidden border border-border bg-black"
+                        dangerouslySetInnerHTML={{ __html: editingLesson.data.content }}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
