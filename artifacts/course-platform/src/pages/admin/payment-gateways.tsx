@@ -38,9 +38,9 @@ const GATEWAY_META: Record<string, { icon: string; logo?: string; imgClass?: str
   stripe: {
     icon: "S",
     logo: "stripe-logo.png",
-    imgClass: "w-full h-full object-contain p-0",
+    imgClass: "w-full h-full object-cover p-0",
     color: "text-[#635BFF]",
-    bg: "bg-white",
+    bg: "bg-transparent",
     border: "border-[#635BFF]/30",
     description: "Accept cards, wallets & 135+ currencies globally. Best for international students.",
     docsUrl: "https://dashboard.stripe.com/apikeys",
