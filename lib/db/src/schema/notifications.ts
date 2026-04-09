@@ -22,6 +22,9 @@ export const platformSettingsTable = pgTable("platform_settings", {
   stripeEnabled: boolean("stripe_enabled").notNull().default(true),
   razorpayEnabled: boolean("razorpay_enabled").notNull().default(false),
   emailNotificationsEnabled: boolean("email_notifications_enabled").notNull().default(true),
+  affiliateEnabled: boolean("affiliate_enabled").notNull().default(true),
+  affiliateCookieDays: integer("affiliate_cookie_days").notNull().default(30),
+  affiliateMinPayout: integer("affiliate_min_payout").notNull().default(500),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

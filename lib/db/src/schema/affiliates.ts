@@ -35,6 +35,8 @@ export const affiliateApplicationsTable = pgTable("affiliate_applications", {
   status: text("status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"),
   adminNote: text("admin_note"),
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  isBlocked: boolean("is_blocked").notNull().default(false),
+  commissionOverride: integer("commission_override"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

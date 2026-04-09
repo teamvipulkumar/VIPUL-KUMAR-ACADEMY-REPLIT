@@ -370,4 +370,148 @@ router.post("/admin/kyc/:userId/reject", requireAdmin, async (req, res): Promise
   res.json({ message: "KYC rejected" });
 });
 
+/* ── Admin: all affiliates list ── */
+router.get("/admin/all-affiliates", requireAdmin, async (req, res): Promise<void> => {
+  const apps = await db.select().from(affiliateApplicationsTable)
+    .where(eq(affiliateApplicationsTable.status, "approved"))
+    .orderBy(desc(affiliateApplicationsTable.createdAt));
+
+  const enriched = await Promise.all(apps.map(async (a) => {
+    const [user] = await db.select({ name: usersTable.name, email: usersTable.email, referralCode: usersTable.referralCode, role: usersTable.role })
+      .from(usersTable).where(eq(usersTable.id, a.userId)).limit(1);
+
+    const referrals = await db.select().from(referralsTable).where(eq(referralsTable.referrerId, a.userId));
+    const totalClicks = referrals.length;
+    const totalConversions = referrals.filter(r => r.status === "purchase").length;
+    const totalEarnings = referrals.reduce((acc, r) => acc + parseFloat(String(r.commission ?? 0)), 0);
+
+    const payouts = await db.select().from(payoutRequestsTable).where(eq(payoutRequestsTable.userId, a.userId));
+    const paidOut = payouts.filter(p => p.status === "approved").reduce((acc, p) => acc + parseFloat(String(p.amount)), 0);
+    const pendingPayout = payouts.filter(p => p.status === "pending").reduce((acc, p) => acc + parseFloat(String(p.amount)), 0);
+
+    const [kyc] = await db.select({ status: affiliateKycTable.status }).from(affiliateKycTable)
+      .where(eq(affiliateKycTable.userId, a.userId)).limit(1);
+
+    return {
+      applicationId: a.id,
+      userId: a.userId,
+      name: user?.name ?? a.fullName,
+      email: user?.email ?? a.email,
+      referralCode: user?.referralCode ?? null,
+      role: user?.role ?? "affiliate",
+      isBlocked: a.isBlocked,
+      commissionOverride: a.commissionOverride,
+      approvedAt: a.reviewedAt,
+      totalClicks,
+      totalConversions,
+      totalEarnings,
+      pendingPayout,
+      paidOut,
+      kycStatus: kyc?.status ?? "not_submitted",
+    };
+  }));
+  res.json(enriched);
+});
+
+/* ── Admin: block / unblock affiliate ── */
+router.post("/admin/affiliates/:appId/block", requireAdmin, async (req, res): Promise<void> => {
+  const appId = parseInt(req.params.appId);
+  await db.update(affiliateApplicationsTable).set({ isBlocked: true }).where(eq(affiliateApplicationsTable.id, appId));
+  res.json({ message: "Affiliate blocked" });
+});
+
+router.post("/admin/affiliates/:appId/unblock", requireAdmin, async (req, res): Promise<void> => {
+  const appId = parseInt(req.params.appId);
+  await db.update(affiliateApplicationsTable).set({ isBlocked: false }).where(eq(affiliateApplicationsTable.id, appId));
+  res.json({ message: "Affiliate unblocked" });
+});
+
+/* ── Admin: set per-affiliate commission ── */
+router.post("/admin/affiliates/:appId/commission", requireAdmin, async (req, res): Promise<void> => {
+  const appId = parseInt(req.params.appId);
+  const { commissionRate } = req.body;
+  const rate = commissionRate === null || commissionRate === "" ? null : parseInt(String(commissionRate));
+  await db.update(affiliateApplicationsTable)
+    .set({ commissionOverride: rate })
+    .where(eq(affiliateApplicationsTable.id, appId));
+  res.json({ message: "Commission updated" });
+});
+
+/* ── Admin: all payout requests ── */
+router.get("/admin/all-payouts", requireAdmin, async (req, res): Promise<void> => {
+  const payouts = await db.select().from(payoutRequestsTable).orderBy(desc(payoutRequestsTable.requestedAt));
+  const enriched = await Promise.all(payouts.map(async (p) => {
+    const [user] = await db.select({ name: usersTable.name, email: usersTable.email })
+      .from(usersTable).where(eq(usersTable.id, p.userId)).limit(1);
+    const [bank] = await db.select().from(affiliateBankDetailsTable)
+      .where(eq(affiliateBankDetailsTable.userId, p.userId)).limit(1);
+    return {
+      ...p,
+      amount: parseFloat(String(p.amount)),
+      userName: user?.name ?? "Unknown",
+      userEmail: user?.email ?? "",
+      bankName: bank?.bankName ?? null,
+      accountNumber: bank?.accountNumber ?? null,
+    };
+  }));
+  res.json(enriched);
+});
+
+router.post("/admin/payouts/:id/approve", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  await db.update(payoutRequestsTable)
+    .set({ status: "approved", processedAt: new Date() })
+    .where(eq(payoutRequestsTable.id, id));
+  res.json({ message: "Payout approved" });
+});
+
+router.post("/admin/payouts/:id/reject", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  const { rejectionReason } = req.body;
+  await db.update(payoutRequestsTable)
+    .set({ status: "rejected", rejectionReason: rejectionReason || "Rejected by admin", processedAt: new Date() })
+    .where(eq(payoutRequestsTable.id, id));
+  res.json({ message: "Payout rejected" });
+});
+
+/* ── Admin: all KYC submissions ── */
+router.get("/admin/all-kyc", requireAdmin, async (req, res): Promise<void> => {
+  const submissions = await db.select().from(affiliateKycTable).orderBy(desc(affiliateKycTable.submittedAt));
+  const enriched = await Promise.all(submissions.map(async (k) => {
+    const [user] = await db.select({ name: usersTable.name, email: usersTable.email })
+      .from(usersTable).where(eq(usersTable.id, k.userId)).limit(1);
+    return { ...k, userName: user?.name ?? "Unknown", userEmail: user?.email ?? "" };
+  }));
+  res.json(enriched);
+});
+
+/* ── Admin: affiliate program settings ── */
+router.get("/admin/settings", requireAdmin, async (req, res): Promise<void> => {
+  const [settings] = await db.select().from(platformSettingsTable).limit(1);
+  if (!settings) { res.json({ commissionRate: 20, affiliateEnabled: true, affiliateCookieDays: 30, affiliateMinPayout: 500 }); return; }
+  res.json({
+    commissionRate: settings.commissionRate,
+    affiliateEnabled: settings.affiliateEnabled,
+    affiliateCookieDays: settings.affiliateCookieDays,
+    affiliateMinPayout: settings.affiliateMinPayout,
+  });
+});
+
+router.post("/admin/settings", requireAdmin, async (req, res): Promise<void> => {
+  const { commissionRate, affiliateEnabled, affiliateCookieDays, affiliateMinPayout } = req.body;
+  const [existing] = await db.select().from(platformSettingsTable).limit(1);
+  const updates = {
+    ...(commissionRate !== undefined && { commissionRate: parseInt(String(commissionRate)) }),
+    ...(affiliateEnabled !== undefined && { affiliateEnabled: Boolean(affiliateEnabled) }),
+    ...(affiliateCookieDays !== undefined && { affiliateCookieDays: parseInt(String(affiliateCookieDays)) }),
+    ...(affiliateMinPayout !== undefined && { affiliateMinPayout: parseInt(String(affiliateMinPayout)) }),
+  };
+  if (existing) {
+    await db.update(platformSettingsTable).set(updates).where(eq(platformSettingsTable.id, existing.id));
+  } else {
+    await db.insert(platformSettingsTable).values({ siteName: "Vipul Kumar Academy", siteDescription: "", ...updates });
+  }
+  res.json({ message: "Settings saved" });
+});
+
 export default router;
