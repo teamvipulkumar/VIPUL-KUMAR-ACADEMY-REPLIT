@@ -463,10 +463,10 @@ export default function LearnPage() {
                           <iframe
                             key={selectedLesson.id}
                             className="absolute inset-0 w-full h-full border-0"
-                            sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-popups"
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                             allowFullScreen
-                            srcdoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;background:#000;overflow:hidden}body>*{width:100%!important;height:100%!important}</style></head><body>${selectedLesson.content}</body></html>`}
+                            referrerPolicy="no-referrer-when-downgrade"
+                            srcdoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;background:#000;overflow:hidden}body>*:first-child{position:absolute!important;top:0!important;left:0!important;width:100%!important;height:100%!important;padding-top:0!important}</style></head><body>${selectedLesson.content}</body></html>`}
                           />
                         </div>
                       ) : (
