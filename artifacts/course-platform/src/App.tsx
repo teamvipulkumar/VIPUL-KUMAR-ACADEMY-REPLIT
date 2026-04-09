@@ -30,6 +30,7 @@ import AdminCouponsPage from "@/pages/admin/coupons";
 import AdminOrdersPage from "@/pages/admin/orders";
 import AdminEnrollmentsPage from "@/pages/admin/enrollments";
 import AdminSettingsPage from "@/pages/admin/settings";
+import CheckoutPage from "@/pages/checkout";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import TermsOfServicePage from "@/pages/terms-of-service";
 import CookiePolicyPage from "@/pages/cookie-policy";
@@ -68,6 +69,7 @@ function Router() {
       <Route path="/admin/coupons" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminCouponsPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/orders" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminOrdersPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/enrollments" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminEnrollmentsPage /></AdminLayout></ProtectedRoute>} />
+      <Route path="/checkout/:id" component={() => <AppLayout><CheckoutPage /></AppLayout>} />
       <Route path="/admin/settings" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminSettingsPage /></AdminLayout></ProtectedRoute>} />
 
       <Route component={() => <AppLayout><NotFound /></AppLayout>} />

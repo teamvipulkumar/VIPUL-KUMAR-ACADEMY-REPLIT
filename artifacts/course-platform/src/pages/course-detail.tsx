@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useGetCourse, getGetCourseQueryKey, useCreateCheckout, useVerifyPayment, useValidateCoupon } from "@workspace/api-client-react";
-import { useAuth } from "@/lib/auth-context";
-import { useQueryClient } from "@tanstack/react-query";
+import { useGetCourse, getGetCourseQueryKey, useValidateCoupon } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -12,12 +10,9 @@ import { ChevronDown, ChevronRight, Play, Lock, FileText, HelpCircle, Tag, Check
 export default function CourseDetailPage() {
   const [, params] = useRoute("/courses/:id");
   const courseId = parseInt(params?.id ?? "0");
-  const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [expandedModules, setExpandedModules] = useState<number[]>([0]);
-  const [purchasing, setPurchasing] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number; type: string } | null>(null);
   const [gateway, setGateway] = useState<"stripe" | "razorpay">("stripe");
@@ -25,8 +20,6 @@ export default function CourseDetailPage() {
   const { data: course, isLoading } = useGetCourse(courseId, {
     query: { queryKey: getGetCourseQueryKey(courseId), enabled: courseId > 0 }
   });
-  const checkout = useCreateCheckout();
-  const verify = useVerifyPayment();
   const validateCoupon = useValidateCoupon();
 
   const price = parseFloat(String(course?.price ?? 0));
@@ -49,29 +42,12 @@ export default function CourseDetailPage() {
     });
   };
 
-  const handleEnroll = async () => {
-    if (!isAuthenticated) { navigate("/login"); return; }
-    setPurchasing(true);
-    const payload: Record<string, unknown> = { courseId, gateway };
-    if (appliedCoupon) payload.couponCode = appliedCoupon.code;
-
-    checkout.mutate({ data: payload as Parameters<typeof checkout.mutate>[0]["data"] }, {
-      onSuccess: (session) => {
-        verify.mutate({ data: { sessionId: session.sessionId } }, {
-          onSuccess: (result) => {
-            if (result.success) {
-              toast({ title: "Enrolled successfully!", description: "You can now access the course." });
-              queryClient.invalidateQueries({ queryKey: getGetCourseQueryKey(courseId) });
-              navigate(`/learn/${courseId}`);
-            }
-          },
-          onError: () => toast({ title: "Payment error", description: "Please try again.", variant: "destructive" }),
-          onSettled: () => setPurchasing(false),
-        });
-      },
-      onError: () => { toast({ title: "Checkout failed", description: "Please try again.", variant: "destructive" }); setPurchasing(false); },
-    });
+  const handleEnroll = () => {
+    const query = new URLSearchParams({ gateway });
+    if (appliedCoupon) query.set("coupon", appliedCoupon.code);
+    navigate(`/checkout/${courseId}?${query.toString()}`);
   };
+
 
   const toggleModule = (idx: number) =>
     setExpandedModules(p => p.includes(idx) ? p.filter(i => i !== idx) : [...p, idx]);
@@ -135,8 +111,8 @@ export default function CourseDetailPage() {
               <button onClick={() => { setAppliedCoupon(null); setCouponCode(""); }} className="text-xs text-muted-foreground hover:text-foreground">Remove</button>
             </div>
           )}
-          <Button className="w-full" size="lg" onClick={handleEnroll} disabled={purchasing}>
-            {purchasing ? "Processing..." : `Enroll Now · $${discountedPrice.toFixed(2)}`}
+          <Button className="w-full" size="lg" onClick={handleEnroll}>
+            Enroll Now · ${discountedPrice.toFixed(2)}
           </Button>
           <p className="text-xs text-muted-foreground text-center mt-2">30-day money-back guarantee</p>
         </>
