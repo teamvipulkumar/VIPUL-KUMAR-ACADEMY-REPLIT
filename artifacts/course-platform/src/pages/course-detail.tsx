@@ -73,14 +73,14 @@ export default function CourseDetailPage() {
     <div className="bg-card border border-border rounded-xl p-5 md:p-6 shadow-lg">
       {appliedCoupon ? (
         <div className="mb-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground line-through">${price.toFixed(2)}</div>
-          <div className="text-3xl font-bold text-green-400">${discountedPrice.toFixed(2)}</div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground line-through">₹{price.toFixed(2)}</div>
+          <div className="text-3xl font-bold text-green-400">₹{discountedPrice.toFixed(2)}</div>
           <div className="flex items-center gap-1.5 text-xs text-green-400 mt-1">
             <Tag className="w-3 h-3" /><span>{appliedCoupon.code} applied</span>
           </div>
         </div>
       ) : (
-        <div className="text-3xl font-bold mb-4">${price.toFixed(2)}</div>
+        <div className="text-3xl font-bold mb-4">₹{price.toFixed(2)}</div>
       )}
 
       {course.isEnrolled ? (
@@ -112,7 +112,7 @@ export default function CourseDetailPage() {
             </div>
           )}
           <Button className="w-full" size="lg" onClick={handleEnroll}>
-            Enroll Now · ${discountedPrice.toFixed(2)}
+            Enroll Now · ₹{discountedPrice.toFixed(2)}
           </Button>
           <p className="text-xs text-muted-foreground text-center mt-2">30-day money-back guarantee</p>
         </>

@@ -59,7 +59,7 @@ export default function AdminCouponsPage() {
               {(coupons ?? []).map(c => (
                 <tr key={c.id} className="hover:bg-card/50 transition-colors">
                   <td className="px-4 py-3 font-mono font-bold text-sm">{c.code}</td>
-                  <td className="px-4 py-3 text-sm">{c.discountValue}{c.discountType === "percentage" ? "%" : "$"} off</td>
+                  <td className="px-4 py-3 text-sm">{c.discountType === "percentage" ? `${c.discountValue}%` : `₹${c.discountValue}`} off</td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{c.usedCount}/{c.maxUses ?? "∞"}</td>
                   <td className="px-4 py-3"><Badge className={`text-xs ${c.isActive ? "text-green-400 border-green-400/30 bg-green-400/10" : "text-red-400 border-red-400/30 bg-red-400/10"}`}>{c.isActive ? "Active" : "Inactive"}</Badge></td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{c.expiresAt ? new Date(c.expiresAt).toLocaleDateString() : "Never"}</td>

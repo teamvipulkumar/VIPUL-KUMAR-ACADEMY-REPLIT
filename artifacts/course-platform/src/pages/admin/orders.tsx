@@ -61,9 +61,9 @@ function formatDate(dateStr: string) {
 
 function formatAmount(amount: string, currency: string) {
   const num = parseFloat(amount);
+  if (currency === "USD") return `₹${num.toFixed(2)}`;
   if (currency === "INR") return `₹${num.toFixed(2)}`;
-  if (currency === "USD") return `$${num.toFixed(2)}`;
-  return `${currency} ${num.toFixed(2)}`;
+  return `₹${num.toFixed(2)}`;
 }
 
 function AvatarInitial({ name }: { name: string }) {

@@ -39,7 +39,7 @@ export default function PaymentsPage() {
                 {payments.map(p => (
                   <tr key={p.id} className="hover:bg-card/50 transition-colors">
                     <td className="px-4 py-3 text-sm font-medium">{p.course?.title ?? `Course #${p.courseId}`}</td>
-                    <td className="px-4 py-3 text-sm font-bold">${p.amount.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-sm font-bold">₹{p.amount.toFixed(2)}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground capitalize">{p.gateway}</td>
                     <td className="px-4 py-3"><Badge className={`text-xs ${statusColors[p.status] ?? ""}`}>{p.status}</Badge></td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(p.createdAt).toLocaleDateString()}</td>

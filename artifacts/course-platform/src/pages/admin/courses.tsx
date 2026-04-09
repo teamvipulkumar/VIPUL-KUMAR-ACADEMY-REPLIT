@@ -97,7 +97,7 @@ export default function AdminCoursesPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">Price (USD)</label>
+                  <label className="text-sm font-medium mb-1.5 block">Price (INR ₹)</label>
                   <Input placeholder="0.00" type="number" min="0" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} className="bg-background" />
                 </div>
                 <div>
@@ -161,7 +161,7 @@ export default function AdminCoursesPage() {
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{c.category}</td>
                   <td className="px-4 py-3 text-sm text-muted-foreground capitalize">{c.level}</td>
-                  <td className="px-4 py-3 text-sm font-bold">${c.price}</td>
+                  <td className="px-4 py-3 text-sm font-bold">₹{c.price}</td>
                   <td className="px-4 py-3">
                     <Badge
                       className={`text-xs cursor-pointer select-none ${c.status === "published" ? "text-green-400 border-green-400/30 bg-green-400/10" : "text-yellow-400 border-yellow-400/30 bg-yellow-400/10"}`}

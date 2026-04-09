@@ -6,7 +6,7 @@ import { TrendingUp, Users, BookOpen, DollarSign, CheckCircle, ArrowRight, Star,
 
 const STATS = [
   { label: "Active Students", value: "2,400+", icon: Users },
-  { label: "Revenue Generated", value: "$4.2M+", icon: DollarSign },
+  { label: "Revenue Generated", value: "₹4.2Cr+", icon: DollarSign },
   { label: "Courses Available", value: "15+", icon: BookOpen },
   { label: "Avg. Student ROI", value: "640%", icon: TrendingUp },
 ];
@@ -19,8 +19,8 @@ const FEATURES = [
 ];
 
 const TESTIMONIALS = [
-  { name: "Marcus T.", role: "Affiliate Marketer", text: "Made my first $10k in 60 days after finishing the affiliate course. The step-by-step structure is unlike anything else out there.", stars: 5 },
-  { name: "Priya S.", role: "E-commerce Founder", text: "Went from $0 to $30k/month in 4 months using the e-commerce blueprint. Worth every penny.", stars: 5 },
+  { name: "Marcus T.", role: "Affiliate Marketer", text: "Made my first ₹10L in 60 days after finishing the affiliate course. The step-by-step structure is unlike anything else out there.", stars: 5 },
+  { name: "Priya S.", role: "E-commerce Founder", text: "Went from ₹0 to ₹2.5L/month in 4 months using the e-commerce blueprint. Worth every penny.", stars: 5 },
   { name: "James K.", role: "Dropshipper", text: "Finally found a course that doesn't hold back the real numbers. Applied the supplier strategy and landed a 60% margin product.", stars: 5 },
 ];
 
@@ -129,7 +129,7 @@ export default function Home() {
                       </div>
                     </CardContent>
                     <CardFooter className="pt-0 flex items-center justify-between">
-                      <span className="text-lg font-bold">${course.price}</span>
+                      <span className="text-lg font-bold">₹{course.price}</span>
                       <span className="text-xs text-primary group-hover:underline">Enroll now →</span>
                     </CardFooter>
                   </Card>

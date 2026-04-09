@@ -13,7 +13,7 @@ export default function AdminSettingsPage() {
   const updateSettings = useUpdateAdminSettings();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [form, setForm] = useState({ siteName: "", siteDescription: "", commissionRate: 20, currency: "USD", stripeEnabled: true, razorpayEnabled: false, emailNotificationsEnabled: true });
+  const [form, setForm] = useState({ siteName: "", siteDescription: "", commissionRate: 20, currency: "INR", stripeEnabled: true, razorpayEnabled: false, emailNotificationsEnabled: true });
 
   useEffect(() => {
     if (settings) setForm({ siteName: settings.siteName, siteDescription: settings.siteDescription, commissionRate: settings.commissionRate, currency: settings.currency, stripeEnabled: settings.stripeEnabled, razorpayEnabled: settings.razorpayEnabled, emailNotificationsEnabled: settings.emailNotificationsEnabled });

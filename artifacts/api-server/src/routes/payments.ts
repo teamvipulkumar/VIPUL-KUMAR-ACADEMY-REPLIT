@@ -37,14 +37,14 @@ router.post("/checkout", requireAuth, async (req, res): Promise<void> => {
     userId: authedReq.user.userId,
     courseId,
     amount: String(amount.toFixed(2)),
-    currency: "USD",
+    currency: "INR",
     status: "pending",
     gateway,
     sessionId,
     couponCode: couponCode || null,
   });
 
-  res.json({ sessionId, amount, currency: "USD", gateway, redirectUrl: null, razorpayOrderId: null, razorpayKey: null });
+  res.json({ sessionId, amount, currency: "INR", gateway, redirectUrl: null, razorpayOrderId: null, razorpayKey: null });
 });
 
 router.post("/verify", requireAuth, async (req, res): Promise<void> => {
@@ -151,7 +151,7 @@ router.post("/checkout/guest", async (req, res): Promise<void> => {
   const sessionId = nanoid(32);
   await db.insert(paymentsTable).values({
     userId, courseId: parseInt(courseId),
-    amount: String(amount.toFixed(2)), currency: "USD",
+    amount: String(amount.toFixed(2)), currency: "INR",
     status: "completed", gateway,
     sessionId, paymentId: `sim_${nanoid(12)}`,
     couponCode: couponCode || null,

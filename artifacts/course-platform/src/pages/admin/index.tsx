@@ -12,7 +12,7 @@ export default function AdminDashboard() {
   const stats = [
     { label: "Total Users", value: analytics?.totalUsers ?? 0, trend: `+${analytics?.newUsersThisMonth ?? 0} this month` },
     { label: "Total Enrollments", value: analytics?.totalEnrollments ?? 0, trend: `+${analytics?.newEnrollmentsThisMonth ?? 0} this month` },
-    { label: "Total Revenue", value: `$${(analytics?.totalRevenue ?? 0).toFixed(2)}`, trend: `$${(analytics?.revenueThisMonth ?? 0).toFixed(2)} this month` },
+    { label: "Total Revenue", value: `₹${(analytics?.totalRevenue ?? 0).toFixed(2)}`, trend: `₹${(analytics?.revenueThisMonth ?? 0).toFixed(2)} this month` },
     { label: "Total Courses", value: analytics?.totalCourses ?? 0, trend: "Published & Drafts" },
   ];
 
@@ -50,7 +50,7 @@ export default function AdminDashboard() {
             </Select>
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold mb-4">${(revenue?.totalRevenue ?? 0).toFixed(2)}</div>
+            <div className="text-xl font-bold mb-4">₹{(revenue?.totalRevenue ?? 0).toFixed(2)}</div>
             {revenue?.chartData && revenue.chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
                 <AreaChart data={revenue.chartData}>

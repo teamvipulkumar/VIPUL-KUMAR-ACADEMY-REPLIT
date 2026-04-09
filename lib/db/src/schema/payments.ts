@@ -9,7 +9,7 @@ export const paymentsTable = pgTable("payments", {
   userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   courseId: integer("course_id").notNull().references(() => coursesTable.id, { onDelete: "cascade" }),
   amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
-  currency: text("currency").notNull().default("USD"),
+  currency: text("currency").notNull().default("INR"),
   status: text("status", { enum: ["pending", "completed", "failed", "refunded"] }).notNull().default("pending"),
   gateway: text("gateway", { enum: ["stripe", "razorpay", "cashfree", "paytm", "payu"] }).notNull(),
   sessionId: text("session_id").notNull().unique(),

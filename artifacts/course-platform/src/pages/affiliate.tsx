@@ -64,7 +64,7 @@ export default function AffiliatePage() {
           <Card className="bg-card border-border">
             <CardContent className="p-4 md:p-6">
               <div className="flex items-center gap-3 mb-1"><DollarSign className="w-4 h-4 text-green-400" /><span className="text-sm text-muted-foreground">Total Earnings</span></div>
-              <div className="text-2xl md:text-3xl font-bold">${(dashboard?.totalEarnings ?? 0).toFixed(2)}</div>
+              <div className="text-2xl md:text-3xl font-bold">₹{(dashboard?.totalEarnings ?? 0).toFixed(2)}</div>
             </CardContent>
           </Card>
         </div>
@@ -82,8 +82,8 @@ export default function AffiliatePage() {
               </div>
               <p className="text-xs text-muted-foreground mt-2">Code: <span className="font-mono font-bold">{dashboard?.referralCode}</span></p>
               <div className="mt-4 p-3 rounded-lg bg-background border border-border space-y-1.5">
-                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Pending</span><span className="text-yellow-400 font-bold">${(dashboard?.pendingEarnings ?? 0).toFixed(2)}</span></div>
-                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Paid Out</span><span className="text-green-400 font-bold">${(dashboard?.paidEarnings ?? 0).toFixed(2)}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Pending</span><span className="text-yellow-400 font-bold">₹{(dashboard?.pendingEarnings ?? 0).toFixed(2)}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Paid Out</span><span className="text-green-400 font-bold">₹{(dashboard?.paidEarnings ?? 0).toFixed(2)}</span></div>
               </div>
             </CardContent>
           </Card>
@@ -92,7 +92,7 @@ export default function AffiliatePage() {
           <Card className="bg-card border-border">
             <CardHeader className="pb-3"><CardTitle className="text-sm md:text-base">Request Payout</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-              <Input placeholder="Amount (USD)" type="number" value={payoutAmount} onChange={e => setPayoutAmount(e.target.value)} className="bg-background" />
+              <Input placeholder="Amount (INR)" type="number" value={payoutAmount} onChange={e => setPayoutAmount(e.target.value)} className="bg-background" />
               <Input placeholder="Payment method (PayPal, Bank, etc.)" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="bg-background" />
               <Input placeholder="Payment details (email, account, etc.)" value={paymentDetails} onChange={e => setPaymentDetails(e.target.value)} className="bg-background" />
               <Button onClick={handlePayoutRequest} className="w-full" disabled={requestPayout.isPending}>Request Payout</Button>
@@ -116,7 +116,7 @@ export default function AffiliatePage() {
                     <tr key={r.id} className="hover:bg-card/50 transition-colors">
                       <td className="px-4 py-3 text-sm">{r.referredUserName}</td>
                       <td className="px-4 py-3"><Badge className={`text-xs ${statusColors[r.status] ?? ""}`}>{r.status}</Badge></td>
-                      <td className="px-4 py-3 text-sm font-medium">{r.commission ? `$${r.commission.toFixed(2)}` : "-"}</td>
+                      <td className="px-4 py-3 text-sm font-medium">{r.commission ? `₹${r.commission.toFixed(2)}` : "-"}</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(r.createdAt).toLocaleDateString()}</td>
                     </tr>
                   ))}
@@ -134,7 +134,7 @@ export default function AffiliatePage() {
                   </div>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>{new Date(r.createdAt).toLocaleDateString()}</span>
-                    <span className="font-semibold text-foreground">{r.commission ? `$${r.commission.toFixed(2)}` : "-"}</span>
+                    <span className="font-semibold text-foreground">{r.commission ? `₹${r.commission.toFixed(2)}` : "-"}</span>
                   </div>
                 </div>
               ))}

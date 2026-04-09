@@ -24,8 +24,8 @@ export default function AdminAffiliatesPage() {
                   <td className="px-4 py-3 text-sm font-mono">{a.referralCode}</td>
                   <td className="px-4 py-3 text-sm">{a.totalClicks}</td>
                   <td className="px-4 py-3 text-sm">{a.totalConversions}</td>
-                  <td className="px-4 py-3 text-sm font-bold text-green-400">${a.totalEarnings.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-sm text-yellow-400">${a.pendingEarnings.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-sm font-bold text-green-400">₹{a.totalEarnings.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-sm text-yellow-400">₹{a.pendingEarnings.toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>

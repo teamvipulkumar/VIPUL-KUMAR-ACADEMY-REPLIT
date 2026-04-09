@@ -262,7 +262,7 @@ export default function AdminCourseEditPage() {
 
           {/* Price */}
           <div>
-            <label className="text-sm font-medium mb-1.5 block">Price ($)</label>
+            <label className="text-sm font-medium mb-1.5 block">Price (₹ INR)</label>
             <Input type="number" min="0" step="0.01" value={courseForm.price} onChange={e => setCourseForm(f => ({ ...f, price: e.target.value }))} className="bg-background" placeholder="0.00" />
           </div>
 

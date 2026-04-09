@@ -693,7 +693,7 @@ export default function CheckoutPage() {
                       <Check className="w-4 h-4" />
                       <span className="font-mono font-bold">{appliedCoupon.code}</span>
                       <span className="text-xs">
-                        {appliedCoupon.type === "percentage" ? `${appliedCoupon.discount}% off` : `$${appliedCoupon.discount} off`}
+                        {appliedCoupon.type === "percentage" ? `${appliedCoupon.discount}% off` : `₹${appliedCoupon.discount} off`}
                       </span>
                     </div>
                     <button type="button" onClick={() => { setAppliedCoupon(null); setCouponCode(""); }} className="text-xs text-muted-foreground hover:text-foreground">Remove</button>
@@ -708,7 +708,7 @@ export default function CheckoutPage() {
                   ? (gateway === "cashfree" ? "Redirecting to Cashfree…" : "Processing payment...")
                   : gateway === "cashfree"
                     ? `Continue to Cashfree · ₹${discountedPrice.toFixed(2)}`
-                    : `Pay $${discountedPrice.toFixed(2)} · Enroll Now`
+                    : `Pay ₹${discountedPrice.toFixed(2)} · Enroll Now`
                 }
               </Button>
               <p className="text-xs text-muted-foreground text-center">
@@ -743,13 +743,13 @@ export default function CheckoutPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-muted-foreground">
                   <span>Original price</span>
-                  <span>${price.toFixed(2)}</span>
+                  <span>₹{price.toFixed(2)}</span>
                 </div>
                 {appliedCoupon && (
                   <div className="flex justify-between text-green-400">
                     <span className="flex items-center gap-1"><Tag className="w-3 h-3" />{appliedCoupon.code}</span>
                     <span>
-                      -${(appliedCoupon.type === "percentage"
+                      -₹{(appliedCoupon.type === "percentage"
                         ? price * appliedCoupon.discount / 100
                         : Math.min(price, appliedCoupon.discount)
                       ).toFixed(2)}
@@ -758,7 +758,7 @@ export default function CheckoutPage() {
                 )}
                 <div className="border-t border-border pt-2 flex justify-between font-bold text-foreground text-base">
                   <span>Total</span>
-                  <span>${discountedPrice.toFixed(2)}</span>
+                  <span>₹{discountedPrice.toFixed(2)}</span>
                 </div>
               </div>
             </div>

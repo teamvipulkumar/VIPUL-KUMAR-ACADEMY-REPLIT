@@ -18,8 +18,8 @@ export default function DashboardPage() {
   const stats = [
     { label: "Enrolled Courses", value: summary?.enrolledCourses ?? 0, icon: BookOpen, color: "text-blue-400" },
     { label: "Completed", value: summary?.completedCourses ?? 0, icon: TrendingUp, color: "text-green-400" },
-    { label: "Total Spent", value: `$${(summary?.totalSpent ?? 0).toFixed(2)}`, icon: DollarSign, color: "text-yellow-400" },
-    { label: "Affiliate Earnings", value: `$${(summary?.affiliateEarnings ?? 0).toFixed(2)}`, icon: Users, color: "text-purple-400" },
+    { label: "Total Spent", value: `₹${(summary?.totalSpent ?? 0).toFixed(2)}`, icon: DollarSign, color: "text-yellow-400" },
+    { label: "Affiliate Earnings", value: `₹${(summary?.affiliateEarnings ?? 0).toFixed(2)}`, icon: Users, color: "text-purple-400" },
   ];
 
   const copyCode = () => {
