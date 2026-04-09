@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { useLogout, useListNotifications, getListNotificationsQueryKey } from "@workspace/api-client-react";
-import { Bell, Menu, X, BookOpen, LayoutDashboard, Share2, GraduationCap, LogOut, ShieldCheck, ChevronRight } from "lucide-react";
+import { Bell, Menu, X, BookOpen, LayoutDashboard, Share2, GraduationCap, LogOut, ShieldCheck, ChevronRight, Mail, Youtube, Twitter, Linkedin, Instagram } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 function AcademyLogo({ size = 32 }: { size?: number }) {
@@ -216,25 +216,165 @@ export function Navbar() {
   );
 }
 
+function SiteFooter() {
+  const year = new Date().getFullYear();
+
+  const footerNav = {
+    platform: [
+      { label: "Browse Courses", href: "/courses" },
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "My Learning", href: "/my-courses" },
+      { label: "Affiliate Program", href: "/affiliate" },
+      { label: "Payment History", href: "/payments" },
+    ],
+    company: [
+      { label: "About Us", href: "#" },
+      { label: "Blog", href: "#" },
+      { label: "Careers", href: "#" },
+      { label: "Contact Us", href: "mailto:hello@vipulkumaracademy.com" },
+      { label: "Help Center", href: "#" },
+    ],
+    legal: [
+      { label: "Privacy Policy", href: "/privacy-policy" },
+      { label: "Terms of Service", href: "/terms-of-service" },
+      { label: "Cookie Policy", href: "/cookie-policy" },
+      { label: "Refund Policy", href: "/refund-policy" },
+    ],
+  };
+
+  const social = [
+    { icon: Youtube, label: "YouTube", href: "#", color: "hover:text-red-400" },
+    { icon: Twitter, label: "Twitter / X", href: "#", color: "hover:text-sky-400" },
+    { icon: Linkedin, label: "LinkedIn", href: "#", color: "hover:text-blue-400" },
+    { icon: Instagram, label: "Instagram", href: "#", color: "hover:text-pink-400" },
+    { icon: Mail, label: "Email", href: "mailto:hello@vipulkumaracademy.com", color: "hover:text-primary" },
+  ];
+
+  return (
+    <footer className="bg-[#040810] border-t border-white/[0.06]">
+      {/* ── Main grid ── */}
+      <div className="max-w-screen-xl mx-auto px-4 md:px-8 pt-14 pb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
+
+          {/* Brand column */}
+          <div className="sm:col-span-2 lg:col-span-1">
+            <Link href="/" className="inline-flex items-center gap-2.5 mb-4 group">
+              <AcademyLogo size={36} />
+              <div className="leading-none">
+                <p className="font-extrabold text-sm tracking-wide text-white">VIPUL KUMAR</p>
+                <p className="font-bold text-[11px] tracking-[0.2em] text-primary/90 uppercase">Academy</p>
+              </div>
+            </Link>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mb-5">
+              Premium online education platform for aspiring entrepreneurs. Master affiliate marketing, e-commerce, and dropshipping — built by operators.
+            </p>
+            {/* Social links */}
+            <div className="flex items-center gap-2">
+              {social.map(({ icon: Icon, label, href, color }) => (
+                <a
+                  key={label}
+                  href={href}
+                  target={href.startsWith("http") ? "_blank" : undefined}
+                  rel="noopener noreferrer"
+                  aria-label={label}
+                  className={`w-8 h-8 rounded-lg bg-white/5 border border-white/[0.07] flex items-center justify-center text-muted-foreground transition-all hover:bg-white/10 hover:border-white/15 ${color}`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Platform */}
+          <div>
+            <h4 className="text-xs font-semibold text-white uppercase tracking-widest mb-4">Platform</h4>
+            <ul className="space-y-2.5">
+              {footerNav.platform.map(item => (
+                <li key={item.href}>
+                  <Link href={item.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Company */}
+          <div>
+            <h4 className="text-xs font-semibold text-white uppercase tracking-widest mb-4">Company</h4>
+            <ul className="space-y-2.5">
+              {footerNav.company.map(item => (
+                <li key={item.label}>
+                  <a
+                    href={item.href}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
+                    {...(item.href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                  >
+                    {item.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Legal */}
+          <div>
+            <h4 className="text-xs font-semibold text-white uppercase tracking-widest mb-4">Legal</h4>
+            <ul className="space-y-2.5">
+              {footerNav.legal.map(item => (
+                <li key={item.href}>
+                  <Link href={item.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            {/* Trust badge */}
+            <div className="mt-6 flex items-center gap-1.5 text-xs text-muted-foreground/60">
+              <svg className="w-3.5 h-3.5 text-green-500/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+              </svg>
+              SSL Secured &amp; GDPR Compliant
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Divider ── */}
+      <div className="border-t border-white/[0.05]" />
+
+      {/* ── Bottom bar ── */}
+      <div className="max-w-screen-xl mx-auto px-4 md:px-8 py-5">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          {/* Copyright */}
+          <p className="text-xs text-muted-foreground/60 text-center sm:text-left">
+            &copy; {year} Vipul Kumar Academy. All rights reserved. Made with ♥ in India.
+          </p>
+
+          {/* Legal quick links */}
+          <div className="flex items-center gap-4 flex-wrap justify-center">
+            {footerNav.legal.map(item => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative flex min-h-screen flex-col">
       <Navbar />
       <main className="flex-1">{children}</main>
-      <footer className="border-t border-white/[0.06] py-6 md:py-0 bg-[#070c1a]">
-        <div className="max-w-screen-xl mx-auto flex flex-col items-center justify-between gap-3 md:h-14 md:flex-row px-4 md:px-8">
-          <div className="flex items-center gap-2">
-            <AcademyLogo size={20} />
-            <p className="text-xs text-muted-foreground">
-              &copy; {new Date().getFullYear()} Vipul Kumar Academy. All rights reserved.
-            </p>
-          </div>
-          <nav className="flex items-center gap-4 text-xs text-muted-foreground">
-            <Link href="/courses" className="hover:text-foreground transition-colors">Courses</Link>
-            <Link href="/affiliate" className="hover:text-foreground transition-colors">Affiliate</Link>
-          </nav>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

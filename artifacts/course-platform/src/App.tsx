@@ -28,6 +28,10 @@ import AdminAffiliatesPage from "@/pages/admin/affiliates";
 import AdminPayoutsPage from "@/pages/admin/payouts";
 import AdminCouponsPage from "@/pages/admin/coupons";
 import AdminSettingsPage from "@/pages/admin/settings";
+import PrivacyPolicyPage from "@/pages/privacy-policy";
+import TermsOfServicePage from "@/pages/terms-of-service";
+import CookiePolicyPage from "@/pages/cookie-policy";
+import RefundPolicyPage from "@/pages/refund-policy";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -47,6 +51,11 @@ function Router() {
       <Route path="/affiliate" component={() => <AppLayout><ProtectedRoute><AffiliatePage /></ProtectedRoute></AppLayout>} />
       <Route path="/payments" component={() => <AppLayout><ProtectedRoute><PaymentsPage /></ProtectedRoute></AppLayout>} />
       <Route path="/notifications" component={() => <AppLayout><ProtectedRoute><NotificationsPage /></ProtectedRoute></AppLayout>} />
+
+      <Route path="/privacy-policy" component={() => <AppLayout><PrivacyPolicyPage /></AppLayout>} />
+      <Route path="/terms-of-service" component={() => <AppLayout><TermsOfServicePage /></AppLayout>} />
+      <Route path="/cookie-policy" component={() => <AppLayout><CookiePolicyPage /></AppLayout>} />
+      <Route path="/refund-policy" component={() => <AppLayout><RefundPolicyPage /></AppLayout>} />
 
       <Route path="/admin" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminDashboard /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/courses" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminCoursesPage /></AdminLayout></ProtectedRoute>} />
