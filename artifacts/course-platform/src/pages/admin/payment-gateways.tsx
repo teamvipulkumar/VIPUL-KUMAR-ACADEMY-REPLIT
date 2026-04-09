@@ -36,9 +36,10 @@ type GatewayForm = {
 
 const GATEWAY_META: Record<string, { icon: string; logo?: string; color: string; bg: string; border: string; description: string; docsUrl: string; webhookNote: string }> = {
   stripe: {
-    icon: "💳",
+    icon: "S",
+    logo: "stripe-logo.png",
     color: "text-[#635BFF]",
-    bg: "bg-[#635BFF]/10",
+    bg: "bg-transparent",
     border: "border-[#635BFF]/30",
     description: "Accept cards, wallets & 135+ currencies globally. Best for international students.",
     docsUrl: "https://dashboard.stripe.com/apikeys",
