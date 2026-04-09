@@ -77,9 +77,10 @@ const GATEWAY_META: Record<string, { icon: string; logo?: string; imgClass?: str
     webhookNote: "Configure webhook at Paytm Business Dashboard",
   },
   payu: {
-    icon: "🟠",
+    icon: "U",
+    logo: "payu-logo.png",
     color: "text-orange-400",
-    bg: "bg-orange-400/10",
+    bg: "bg-white",
     border: "border-orange-400/30",
     description: "Reliable payment gateway with EMI options, UPI & all major cards.",
     docsUrl: "https://onboarding.payu.in/app/details",

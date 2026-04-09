@@ -42,7 +42,7 @@ const GATEWAY_META: Record<string, { icon: string; logo?: string; label: string;
   razorpay: { icon: "R", logo: "razorpay-logo.png", label: "Razorpay", tagline: "UPI · Cards · Wallets" },
   cashfree: { icon: "CF", logo: "cashfree-logo.png",  label: "Cashfree", tagline: "UPI · Cards · Instant" },
   paytm:    { icon: "P", logo: "paytm-logo.png", label: "Paytm", tagline: "Paytm Wallet · UPI · Cards" },
-  payu:     { icon: "🟠", label: "PayU",              tagline: "UPI · Cards · EMI" },
+  payu:     { icon: "U", logo: "payu-logo.png", label: "PayU", tagline: "UPI · Cards · EMI" },
 };
 
 type ActiveGateway = { id: number; name: string; displayName: string; apiKey: string; isTestMode: boolean };
