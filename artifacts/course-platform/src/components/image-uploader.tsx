@@ -1,0 +1,178 @@
+import { useRef, useState, useCallback } from "react";
+import { ImageIcon, Upload, X, Loader2, AlertCircle } from "lucide-react";
+
+interface ImageUploaderProps {
+  value: string;
+  onChange: (url: string) => void;
+  label?: string;
+  hint?: string;
+  aspectRatio?: "video" | "square" | "banner";
+  className?: string;
+}
+
+const ASPECT: Record<string, string> = {
+  video: "aspect-video",
+  square: "aspect-square",
+  banner: "aspect-[16/5]",
+};
+
+export function ImageUploader({
+  value,
+  onChange,
+  label = "Image",
+  hint = "Recommended: 1280×720px · JPG, PNG, WebP · Max 10MB",
+  aspectRatio = "video",
+  className = "",
+}: ImageUploaderProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const uploadFile = useCallback(async (file: File) => {
+    setError(null);
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const res = await fetch("/api/upload/image", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `Upload failed (${res.status})`);
+      }
+
+      const data = await res.json();
+      onChange(data.url);
+    } catch (err: any) {
+      setError(err.message ?? "Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  }, [onChange]);
+
+  const handleFile = useCallback((file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Please select an image file (JPEG, PNG, WebP, GIF).");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError("Image must be smaller than 10 MB.");
+      return;
+    }
+    uploadFile(file);
+  }, [uploadFile]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    handleFile(e.dataTransfer.files[0]);
+  }, [handleFile]);
+
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setDragOver(true); };
+  const handleDragLeave = () => setDragOver(false);
+
+  return (
+    <div className={`space-y-2 ${className}`}>
+      {label && <label className="text-sm font-medium block">{label}</label>}
+
+      {/* Drop zone / preview */}
+      <div
+        className={`relative rounded-xl border-2 transition-all duration-150 overflow-hidden cursor-pointer group ${ASPECT[aspectRatio]}
+          ${dragOver ? "border-primary bg-primary/10 scale-[1.01]" : "border-dashed border-border hover:border-primary/50 hover:bg-primary/5"}
+          ${value ? "border-solid border-border" : ""}
+        `}
+        onClick={() => !uploading && inputRef.current?.click()}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+      >
+        {value ? (
+          <>
+            <img
+              src={value}
+              alt="Thumbnail preview"
+              className="w-full h-full object-cover"
+              onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+            />
+            {/* Overlay on hover */}
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all duration-150 flex items-center justify-center">
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center gap-2">
+                <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 flex items-center gap-2 text-white text-sm font-medium">
+                  <Upload className="w-4 h-4" />Replace image
+                </div>
+              </div>
+            </div>
+            {/* Remove button */}
+            <button
+              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80 z-10"
+              onClick={e => { e.stopPropagation(); onChange(""); }}
+              title="Remove image"
+              type="button"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </>
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+            {uploading ? (
+              <>
+                <Loader2 className="w-9 h-9 animate-spin text-primary" />
+                <span className="text-sm font-medium text-primary">Uploading…</span>
+              </>
+            ) : (
+              <>
+                <div className={`rounded-2xl p-4 transition-colors ${dragOver ? "bg-primary/20" : "bg-background/60"}`}>
+                  <ImageIcon className={`w-8 h-8 transition-colors ${dragOver ? "text-primary" : "text-muted-foreground/50"}`} />
+                </div>
+                <div className="text-center px-4">
+                  <p className="text-sm font-medium text-foreground">
+                    {dragOver ? "Drop to upload" : "Click or drag & drop to upload"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">JPG, PNG, WebP, GIF</p>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Uploading overlay when already has image */}
+        {uploading && value && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="w-8 h-8 animate-spin text-white" />
+              <span className="text-sm text-white font-medium">Uploading…</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="flex items-start gap-2 text-red-400 text-xs">
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+          {error}
+        </div>
+      )}
+
+      {/* Hint */}
+      {hint && !error && (
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      )}
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+        className="hidden"
+        onChange={e => handleFile(e.target.files?.[0])}
+      />
+    </div>
+  );
+}

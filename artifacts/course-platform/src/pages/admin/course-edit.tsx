@@ -19,6 +19,7 @@ import {
   Play, FileText, Link2, FileArchive, HelpCircle, Pencil,
   ImageIcon, Clock, Eye, EyeOff, GripVertical, AlertCircle, Code2,
 } from "lucide-react";
+import { ImageUploader } from "@/components/image-uploader";
 
 type LessonType = "video" | "text" | "pdf" | "link" | "quiz" | "embed";
 
@@ -208,7 +209,7 @@ export default function AdminCourseEditPage() {
   );
   if (!course) return <div className="p-6 text-muted-foreground">Course not found.</div>;
 
-  const thumbnailPreview = courseForm.thumbnailUrl;
+
 
   return (
     <div className="p-6 max-w-4xl space-y-8">
@@ -238,25 +239,13 @@ export default function AdminCourseEditPage() {
         <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Thumbnail */}
           <div className="md:col-span-2">
-            <label className="text-sm font-medium mb-1.5 block">Course Thumbnail / Banner URL</label>
-            <div className="flex gap-3 items-start">
-              <div className="flex-1">
-                <Input
-                  placeholder="https://example.com/banner.jpg or leave blank for default"
-                  value={courseForm.thumbnailUrl}
-                  onChange={e => setCourseForm(f => ({ ...f, thumbnailUrl: e.target.value }))}
-                  className="bg-background"
-                />
-                <p className="text-xs text-muted-foreground mt-1">Paste a direct image URL (JPG, PNG, WebP). Recommended: 1280×720px.</p>
-              </div>
-              {thumbnailPreview ? (
-                <img src={thumbnailPreview} alt="Thumbnail preview" className="w-32 h-18 rounded-lg object-cover border border-border flex-shrink-0" onError={e => (e.currentTarget.style.display = "none")} />
-              ) : (
-                <div className="w-32 h-[4.5rem] rounded-lg border border-dashed border-border flex items-center justify-center flex-shrink-0 bg-background">
-                  <ImageIcon className="w-6 h-6 text-muted-foreground/40" />
-                </div>
-              )}
-            </div>
+            <ImageUploader
+              label="Course Thumbnail / Banner"
+              value={courseForm.thumbnailUrl}
+              onChange={url => setCourseForm(f => ({ ...f, thumbnailUrl: url }))}
+              aspectRatio="video"
+              hint="Recommended: 1280×720px · JPG, PNG, WebP · Max 10 MB · Click or drag & drop"
+            />
           </div>
 
           {/* Title */}

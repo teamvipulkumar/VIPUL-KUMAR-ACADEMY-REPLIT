@@ -10,6 +10,7 @@ import adminRouter from "./admin";
 import couponsRouter from "./coupons";
 import notificationsRouter from "./notifications";
 import analyticsRouter from "./analytics";
+import uploadRouter from "./upload";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use("/admin", adminRouter);
 router.use("/coupons", couponsRouter);
 router.use("/notifications", notificationsRouter);
 router.use("/analytics", analyticsRouter);
+router.use("/upload", uploadRouter);
 
 export default router;
