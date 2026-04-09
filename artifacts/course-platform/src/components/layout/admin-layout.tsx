@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Users, BookOpen, Share2, CreditCard, Tag, Settings, ArrowLeft, Menu, X } from "lucide-react";
+import { LayoutDashboard, Users, BookOpen, Share2, CreditCard, Tag, Settings, ArrowLeft, Menu, X, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 function AdminLogo() {
@@ -17,6 +17,7 @@ function AdminLogo() {
 
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/admin/orders", icon: ShoppingCart, label: "Orders" },
   { href: "/admin/courses", icon: BookOpen, label: "Courses" },
   { href: "/admin/users", icon: Users, label: "Users" },
   { href: "/admin/affiliates", icon: Share2, label: "Affiliates" },

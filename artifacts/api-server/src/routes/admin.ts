@@ -5,7 +5,7 @@ import {
   usersTable, coursesTable, enrollmentsTable, paymentsTable, referralsTable,
   payoutRequestsTable, platformSettingsTable
 } from "@workspace/db";
-import { eq, count, sum, gte, and, ilike, or, sql } from "drizzle-orm";
+import { eq, count, sum, gte, and, ilike, or, sql, desc, ne } from "drizzle-orm";
 import { requireAdmin, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 
@@ -265,6 +265,62 @@ router.put("/settings", requireAdmin, async (req, res): Promise<void> => {
   }
   const [updated] = await db.update(platformSettingsTable).set(updates).returning();
   res.json({ ...updated, commissionRate: updated.commissionRate / 100 });
+});
+
+router.get("/orders", requireAdmin, async (req, res): Promise<void> => {
+  const { search, status, gateway, limit = "50", offset = "0" } = req.query as Record<string, string>;
+
+  const conditions: ReturnType<typeof eq>[] = [];
+  if (status && status !== "all") conditions.push(eq(paymentsTable.status, status as "pending" | "completed" | "failed" | "refunded"));
+  if (gateway && gateway !== "all") conditions.push(eq(paymentsTable.gateway, gateway as "stripe" | "razorpay"));
+
+  const baseQuery = db
+    .select({
+      id: paymentsTable.id,
+      userId: paymentsTable.userId,
+      courseId: paymentsTable.courseId,
+      amount: paymentsTable.amount,
+      currency: paymentsTable.currency,
+      status: paymentsTable.status,
+      gateway: paymentsTable.gateway,
+      couponCode: paymentsTable.couponCode,
+      paymentId: paymentsTable.paymentId,
+      createdAt: paymentsTable.createdAt,
+      userName: usersTable.name,
+      userEmail: usersTable.email,
+      courseTitle: coursesTable.title,
+    })
+    .from(paymentsTable)
+    .innerJoin(usersTable, eq(paymentsTable.userId, usersTable.id))
+    .innerJoin(coursesTable, eq(paymentsTable.courseId, coursesTable.id));
+
+  let orders = await baseQuery.where(conditions.length > 0 ? and(...conditions) : undefined).orderBy(desc(paymentsTable.createdAt)).limit(parseInt(limit)).offset(parseInt(offset));
+
+  if (search) {
+    const s = search.toLowerCase();
+    orders = orders.filter(o =>
+      o.userName.toLowerCase().includes(s) ||
+      o.userEmail.toLowerCase().includes(s) ||
+      o.courseTitle.toLowerCase().includes(s) ||
+      String(o.id).includes(s)
+    );
+  }
+
+  const [totalResult] = await db.select({ total: count() }).from(paymentsTable).where(conditions.length > 0 ? and(...conditions) : undefined);
+  const [revenueResult] = await db.select({ total: sum(paymentsTable.amount) }).from(paymentsTable).where(eq(paymentsTable.status, "completed"));
+  const [pendingResult] = await db.select({ total: count() }).from(paymentsTable).where(eq(paymentsTable.status, "pending"));
+  const [refundedResult] = await db.select({ total: count() }).from(paymentsTable).where(eq(paymentsTable.status, "refunded"));
+
+  res.json({
+    orders,
+    total: totalResult?.total ?? 0,
+    stats: {
+      totalRevenue: parseFloat(String(revenueResult?.total ?? 0)),
+      totalOrders: totalResult?.total ?? 0,
+      pendingOrders: pendingResult?.total ?? 0,
+      refundedOrders: refundedResult?.total ?? 0,
+    }
+  });
 });
 
 export default router;
