@@ -581,10 +581,16 @@ export default function AdminCourseEditPage() {
                   {editingLesson.data.content && (
                     <div>
                       <p className="text-xs font-medium text-muted-foreground mb-2">Preview</p>
-                      <div
-                        className="rounded-xl overflow-hidden border border-border bg-black"
-                        dangerouslySetInnerHTML={{ __html: editingLesson.data.content }}
-                      />
+                      <div className="relative w-full rounded-xl overflow-hidden border border-border bg-black" style={{ aspectRatio: "16/9" }}>
+                        <iframe
+                          key={editingLesson.data.content.slice(0, 60)}
+                          className="absolute inset-0 w-full h-full border-0"
+                          sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-popups"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                          allowFullScreen
+                          srcdoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;background:#000;overflow:hidden}body>*{width:100%!important;height:100%!important}</style></head><body>${editingLesson.data.content}</body></html>`}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>

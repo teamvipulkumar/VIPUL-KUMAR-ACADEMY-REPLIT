@@ -454,14 +454,21 @@ export default function LearnPage() {
                     </div>
                   )}
 
-                  {/* Embed lesson */}
+                  {/* Embed lesson — rendered inside a sandboxed srcdoc iframe so scripts and
+                      platform-specific players (Bunny Stream, Vidalytics, etc.) run correctly */}
                   {selectedLesson.type === "embed" && (
                     <div className="mb-6">
                       {selectedLesson.content ? (
-                        <div
-                          className="rounded-xl overflow-hidden"
-                          dangerouslySetInnerHTML={{ __html: selectedLesson.content }}
-                        />
+                        <div className="relative w-full rounded-xl overflow-hidden bg-black" style={{ aspectRatio: "16/9" }}>
+                          <iframe
+                            key={selectedLesson.id}
+                            className="absolute inset-0 w-full h-full border-0"
+                            sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-popups"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                            allowFullScreen
+                            srcdoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;background:#000;overflow:hidden}body>*{width:100%!important;height:100%!important}</style></head><body>${selectedLesson.content}</body></html>`}
+                          />
+                        </div>
                       ) : (
                         <div className="p-8 bg-card rounded-xl border border-border text-center">
                           <Code2 className="w-12 h-12 text-cyan-400/50 mx-auto mb-3" />
