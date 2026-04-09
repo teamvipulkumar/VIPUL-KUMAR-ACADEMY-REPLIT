@@ -38,7 +38,7 @@ const GATEWAY_META: Record<string, { icon: string; logo?: string; imgClass?: str
   stripe: {
     icon: "S",
     logo: "stripe-logo.png",
-    imgClass: "w-full h-full object-contain p-1",
+    imgClass: "w-full h-full object-contain p-0",
     color: "text-[#635BFF]",
     bg: "bg-white",
     border: "border-[#635BFF]/30",
