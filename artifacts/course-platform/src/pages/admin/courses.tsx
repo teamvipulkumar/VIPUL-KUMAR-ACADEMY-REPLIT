@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 
-const INITIAL_FORM = { title: "", description: "", price: "", category: "Affiliate Marketing", level: "beginner" as const, status: "draft" as const };
+const INITIAL_FORM = { title: "", description: "", thumbnailUrl: "", price: "", category: "Affiliate Marketing", level: "beginner" as const, status: "draft" as const };
 
 export default function AdminCoursesPage() {
   const { data: courses, isLoading } = useAdminListCourses({ query: { queryKey: getAdminListCoursesQueryKey() } });
@@ -27,6 +27,7 @@ export default function AdminCoursesPage() {
     const body: CreateCourseBody = {
       title: form.title,
       description: form.description,
+      thumbnailUrl: form.thumbnailUrl || null,
       price: parseFloat(form.price) || 0,
       category: form.category,
       level: form.level,
@@ -81,6 +82,10 @@ export default function AdminCoursesPage() {
               <div>
                 <label className="text-sm font-medium mb-1.5 block">Title *</label>
                 <Input placeholder="Course title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="bg-background" />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Thumbnail / Banner URL</label>
+                <Input placeholder="https://example.com/banner.jpg (optional)" value={form.thumbnailUrl} onChange={e => setForm(f => ({ ...f, thumbnailUrl: e.target.value }))} className="bg-background" />
               </div>
               <div>
                 <label className="text-sm font-medium mb-1.5 block">Description</label>

@@ -117,6 +117,7 @@ export const LessonType = {
   text: "text",
   pdf: "pdf",
   quiz: "quiz",
+  link: "link",
 } as const;
 
 export interface Lesson {
@@ -227,6 +228,7 @@ export const CreateLessonBodyType = {
   text: "text",
   pdf: "pdf",
   quiz: "quiz",
+  link: "link",
 } as const;
 
 export interface CreateLessonBody {
@@ -249,6 +251,7 @@ export const UpdateLessonBodyType = {
   text: "text",
   pdf: "pdf",
   quiz: "quiz",
+  link: "link",
 } as const;
 
 export interface UpdateLessonBody {

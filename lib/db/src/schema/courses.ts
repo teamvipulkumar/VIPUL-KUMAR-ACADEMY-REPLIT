@@ -30,7 +30,7 @@ export const lessonsTable = pgTable("lessons", {
   moduleId: integer("module_id").notNull().references(() => modulesTable.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
-  type: text("type", { enum: ["video", "text", "pdf", "quiz"] }).notNull().default("video"),
+  type: text("type", { enum: ["video", "text", "pdf", "quiz", "link"] }).notNull().default("video"),
   videoUrl: text("video_url"),
   content: text("content"),
   resourceUrl: text("resource_url"),
