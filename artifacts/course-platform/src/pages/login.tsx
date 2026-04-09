@@ -55,7 +55,7 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold tracking-tight text-center">
-            Sign in to EduPro
+            Sign in to Vipul Kumar Academy
           </CardTitle>
           <CardDescription className="text-center">
             Enter your email and password to access your account

@@ -3,6 +3,18 @@ import { Link, useLocation } from "wouter";
 import { LayoutDashboard, Users, BookOpen, Share2, CreditCard, Tag, Settings, ArrowLeft, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+function AdminLogo() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="40" height="40" rx="10" fill="#2563eb" />
+      <path d="M20 8L32 14v2l-12 6L8 16v-2L20 8z" fill="white" opacity="0.95" />
+      <path d="M12 18.5v7c0 1.5 3.6 4.5 8 4.5s8-3 8-4.5v-7L20 22l-8-3.5z" fill="white" opacity="0.85" />
+      <rect x="31" y="14" width="2" height="10" rx="1" fill="white" opacity="0.7" />
+      <circle cx="32" cy="25" r="2" fill="#60a5fa" />
+    </svg>
+  );
+}
+
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/admin/courses", icon: BookOpen, label: "Courses" },
@@ -53,8 +65,11 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       <aside className="hidden md:flex w-56 border-r border-border bg-card flex-shrink-0 flex-col">
         <div className="p-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-primary text-lg">EduPro</span>
-            <span className="text-xs text-muted-foreground">Admin</span>
+            <AdminLogo />
+            <div className="leading-none">
+              <p className="font-bold text-xs text-foreground tracking-wide">VK ACADEMY</p>
+              <p className="text-[10px] text-primary/80 tracking-wider uppercase font-medium">Admin Panel</p>
+            </div>
           </div>
         </div>
         <NavContent location={location} />
@@ -65,8 +80,11 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         <Button variant="ghost" size="sm" className="px-2" onClick={() => setMobileOpen(o => !o)}>
           {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </Button>
-        <span className="font-bold text-primary">EduPro</span>
-        <span className="text-xs text-muted-foreground">Admin</span>
+        <AdminLogo />
+        <div className="leading-none">
+          <p className="font-bold text-xs text-foreground">VK ACADEMY</p>
+          <p className="text-[10px] text-primary/80 tracking-wide uppercase">Admin Panel</p>
+        </div>
       </div>
 
       {/* Mobile sidebar drawer */}
@@ -76,8 +94,11 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           <aside className="absolute top-14 left-0 bottom-0 w-64 bg-card border-r border-border flex flex-col shadow-2xl">
             <div className="p-4 border-b border-border">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-primary text-lg">EduPro</span>
-                <span className="text-xs text-muted-foreground">Admin</span>
+                <AdminLogo />
+                <div className="leading-none">
+                  <p className="font-bold text-xs text-foreground tracking-wide">VK ACADEMY</p>
+                  <p className="text-[10px] text-primary/80 tracking-wider uppercase">Admin Panel</p>
+                </div>
               </div>
             </div>
             <NavContent location={location} onNav={() => setMobileOpen(false)} />

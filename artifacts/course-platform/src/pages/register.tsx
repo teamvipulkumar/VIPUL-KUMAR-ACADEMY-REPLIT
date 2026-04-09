@@ -45,7 +45,7 @@ export default function Register() {
       onSuccess: () => {
         toast({
           title: "Account created",
-          description: "Welcome to EduPro!",
+          description: "Welcome to Vipul Kumar Academy!",
         });
         queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
         setLocation("/dashboard");
@@ -68,7 +68,7 @@ export default function Register() {
             Create an account
           </CardTitle>
           <CardDescription className="text-center">
-            Enter your details to get started with EduPro
+            Enter your details to get started with Vipul Kumar Academy
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -144,7 +144,7 @@ export default function Home() {
       <section className="py-20 px-6 bg-card/30 border-y border-border">
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-3">Why EduPro?</h2>
+            <h2 className="text-3xl font-bold mb-3">Why Vipul Kumar Academy?</h2>
             <p className="text-muted-foreground max-w-lg mx-auto">We built the platform we wished existed when we were starting out.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
