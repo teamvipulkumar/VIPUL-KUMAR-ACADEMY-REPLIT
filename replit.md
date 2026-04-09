@@ -1,27 +1,82 @@
-# Workspace
+# EduPro — Online Course Platform
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+A full-stack SaaS course-selling platform with dark/blue premium theme. Built on a pnpm monorepo.
 
 ## Stack
 
 - **Monorepo tool**: pnpm workspaces
 - **Node.js version**: 24
 - **Package manager**: pnpm
-- **TypeScript version**: 5.9
-- **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
+- **Frontend**: React + Vite (artifacts/course-platform) — Wouter router, TanStack Query, Tailwind CSS, shadcn/ui
+- **API**: Express 5 (artifacts/api-server) — JWT auth via httpOnly cookies, Pino logging
+- **Database**: PostgreSQL + Drizzle ORM (lib/db)
+- **API codegen**: Orval — generates React Query hooks from OpenAPI spec (lib/api-spec → lib/api-client-react)
+- **Validation**: Zod (zod/v4), drizzle-zod
 
 ## Key Commands
 
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `pnpm --filter @workspace/api-server run dev` — run API server locally
+- `pnpm --filter @workspace/api-server run dev` — run API server (port 8080)
+- `pnpm --filter @workspace/course-platform run dev` — run frontend (port auto via $PORT)
+- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks from OpenAPI spec
+- `pnpm --filter @workspace/db run push` — push DB schema changes
 
-See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+## Credentials (Dev/Seed)
+
+- Admin: admin@edupro.com / Admin@12345
+- Student: alice@edupro.com / Student@12345
+- Affiliate: bob@edupro.com / Student@12345
+
+## Frontend Pages
+
+| Route | Description | Auth |
+|---|---|---|
+| `/` | Landing page (hero, stats, courses, features, testimonials) | Public |
+| `/login` | Login form | Public |
+| `/register` | Register with referral code support | Public |
+| `/forgot-password` | Password reset request | Public |
+| `/courses` | Course catalog with search & category filter | Public |
+| `/courses/:id` | Course detail — curriculum, Stripe/Razorpay gateway, coupon codes | Public |
+| `/dashboard` | Student overview — stats, enrolled courses, referral code | Auth |
+| `/my-courses` | All enrolled courses with progress | Auth |
+| `/learn/:courseId` | Lesson player — sidebar navigation, mark complete, prev/next | Auth |
+| `/affiliate` | Affiliate dashboard — referral link, earnings, payout request | Auth |
+| `/payments` | Payment history | Auth |
+| `/notifications` | Notification center | Auth |
+| `/admin` | Admin analytics dashboard with revenue chart | Admin |
+| `/admin/courses` | Course CRUD | Admin |
+| `/admin/courses/:id/edit` | Module & lesson editor | Admin |
+| `/admin/users` | User management with ban/unban | Admin |
+| `/admin/affiliates` | Affiliate overview | Admin |
+| `/admin/payouts` | Payout request approval | Admin |
+| `/admin/coupons` | Coupon code management | Admin |
+| `/admin/settings` | Platform settings (commission rate, gateways, notifications) | Admin |
+
+## API Routes (api-server port 8080)
+
+- `/api/auth/*` — login, register, logout, me, forgot-password, reset-password
+- `/api/courses/*` — CRUD, modules, lessons, lesson completion
+- `/api/enrollments/*` — my enrollments, course progress
+- `/api/payments/*` — checkout, verify
+- `/api/affiliates/*` — dashboard, referrals, payout requests, tracking
+- `/api/admin/*` — users, analytics, revenue, affiliates, payouts, courses, settings
+- `/api/coupons/*` — list, create, validate, delete
+- `/api/notifications/*` — list, mark read, mark all read
+- `/api/analytics/*` — summary, recent activity
+
+## DB Schema (lib/db/src/schema/)
+
+Tables: users, courses, modules, lessons, enrollments, payments, affiliates (referrals + payouts), coupons, notifications, platform_settings
+
+## Features
+
+- JWT auth via httpOnly cookies
+- Simulated checkout (Stripe + Razorpay gateways — no real keys needed)
+- Coupon codes with percentage/fixed discount support
+- Affiliate program with referral tracking, click counting, commission calculation
+- Payout request → admin approval workflow
+- Progress tracking per lesson
+- Admin analytics with revenue chart (recharts)
+- Notification system
+- Platform settings (commission rate, enabled gateways)

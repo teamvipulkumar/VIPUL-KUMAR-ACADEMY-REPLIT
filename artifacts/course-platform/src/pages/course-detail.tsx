@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useGetCourse, getGetCourseQueryKey, useCreateCheckout, useVerifyPayment, getGetMeQueryKey } from "@workspace/api-client-react";
+import { useGetCourse, getGetCourseQueryKey, useCreateCheckout, useVerifyPayment, useValidateCoupon } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronRight, Play, Lock, FileText, HelpCircle } from "lucide-react";
+import { ChevronDown, ChevronRight, Play, Lock, FileText, HelpCircle, Tag, Check, Users, Clock, BookOpen, Award } from "lucide-react";
 
 export default function CourseDetailPage() {
   const [, params] = useRoute("/courses/:id");
@@ -17,31 +18,63 @@ export default function CourseDetailPage() {
   const queryClient = useQueryClient();
   const [expandedModules, setExpandedModules] = useState<number[]>([0]);
   const [purchasing, setPurchasing] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number; type: string } | null>(null);
+  const [gateway, setGateway] = useState<"stripe" | "razorpay">("stripe");
 
-  const { data: course, isLoading } = useGetCourse(courseId, { query: { queryKey: getGetCourseQueryKey(courseId), enabled: courseId > 0 } });
+  const { data: course, isLoading } = useGetCourse(courseId, {
+    query: { queryKey: getGetCourseQueryKey(courseId), enabled: courseId > 0 }
+  });
   const checkout = useCreateCheckout();
   const verify = useVerifyPayment();
+  const validateCoupon = useValidateCoupon();
+
+  const price = parseFloat(String(course?.price ?? 0));
+  const discountedPrice = appliedCoupon
+    ? appliedCoupon.type === "percentage"
+      ? price - (price * appliedCoupon.discount / 100)
+      : Math.max(0, price - appliedCoupon.discount)
+    : price;
+
+  const handleApplyCoupon = () => {
+    if (!couponCode.trim()) return;
+    const trimmedCode = couponCode.trim().toUpperCase();
+    validateCoupon.mutate({ data: { code: trimmedCode, courseId } }, {
+      onSuccess: (data) => {
+        if (!data.valid) { toast({ title: "Invalid coupon", description: data.message, variant: "destructive" }); return; }
+        setAppliedCoupon({ code: trimmedCode, discount: data.discountValue ?? 0, type: data.discountType ?? "percentage" });
+        toast({ title: "Coupon applied!", description: data.message });
+      },
+      onError: () => toast({ title: "Invalid coupon", description: "This code is invalid or expired.", variant: "destructive" }),
+    });
+  };
 
   const handleEnroll = async () => {
     if (!isAuthenticated) { navigate("/login"); return; }
     setPurchasing(true);
-    checkout.mutate({ data: { courseId, gateway: "stripe" } }, {
-      onSuccess: async (session) => {
+    const payload: Record<string, unknown> = { courseId, gateway };
+    if (appliedCoupon) payload.couponCode = appliedCoupon.code;
+
+    checkout.mutate({ data: payload as Parameters<typeof checkout.mutate>[0]["data"] }, {
+      onSuccess: (session) => {
         verify.mutate({ data: { sessionId: session.sessionId } }, {
           onSuccess: (result) => {
             if (result.success) {
-              toast({ title: "Enrolled!", description: "You can now access the course." });
+              toast({ title: "Enrolled successfully!", description: "You can now access the course." });
               queryClient.invalidateQueries({ queryKey: getGetCourseQueryKey(courseId) });
               navigate(`/learn/${courseId}`);
             }
           },
-          onError: () => toast({ title: "Error", description: "Payment failed.", variant: "destructive" }),
+          onError: () => toast({ title: "Payment error", description: "Please try again.", variant: "destructive" }),
           onSettled: () => setPurchasing(false),
         });
       },
-      onError: () => { toast({ title: "Error", description: "Could not start checkout.", variant: "destructive" }); setPurchasing(false); },
+      onError: () => { toast({ title: "Checkout failed", description: "Please try again.", variant: "destructive" }); setPurchasing(false); },
     });
   };
+
+  const toggleModule = (idx: number) =>
+    setExpandedModules(p => p.includes(idx) ? p.filter(i => i !== idx) : [...p, idx]);
 
   const lessonIcon = (type: string) => {
     if (type === "video") return <Play className="w-3.5 h-3.5" />;
@@ -50,79 +83,174 @@ export default function CourseDetailPage() {
     return <FileText className="w-3.5 h-3.5" />;
   };
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 rounded-full border-b-2 border-primary" /></div>;
-  if (!course) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Course not found.</div>;
+  if (isLoading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin h-8 w-8 rounded-full border-b-2 border-primary" />
+    </div>
+  );
+  if (!course) return (
+    <div className="min-h-screen flex items-center justify-center text-muted-foreground">Course not found.</div>
+  );
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="bg-gradient-to-b from-primary/10 to-background border-b border-border py-12 px-4">
+      {/* Hero */}
+      <div className="bg-gradient-to-b from-primary/10 via-primary/5 to-background border-b border-border py-12 px-4">
         <div className="container mx-auto max-w-5xl">
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
             <span>{course.category}</span>
-            <span>/</span>
+            <ChevronRight className="w-3 h-3" />
             <span className="capitalize">{course.level}</span>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-8 items-start">
             <div className="md:col-span-2">
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">{course.title}</h1>
               <p className="text-muted-foreground leading-relaxed mb-6">{course.description}</p>
-              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                <span>{course.enrollmentCount} students enrolled</span>
-                <span>{course.lessonCount} lessons</span>
-                <span>{Math.round(course.durationMinutes / 60)} hours</span>
-                <span>{course.moduleCount} modules</span>
+              <div className="flex flex-wrap gap-5 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1.5"><Users className="w-4 h-4 text-primary" /><span>{course.enrollmentCount} students</span></div>
+                <div className="flex items-center gap-1.5"><BookOpen className="w-4 h-4 text-primary" /><span>{course.lessonCount} lessons</span></div>
+                <div className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-primary" /><span>{Math.round(course.durationMinutes / 60)} hours</span></div>
+                <div className="flex items-center gap-1.5"><Award className="w-4 h-4 text-primary" /><span className="capitalize">{course.level}</span></div>
               </div>
             </div>
-            <div className="bg-card border border-border rounded-xl p-6 h-fit">
-              <div className="text-3xl font-bold mb-4">${course.price}</div>
+
+            {/* Purchase Card */}
+            <div className="bg-card border border-border rounded-xl p-6 shadow-lg">
+              {appliedCoupon ? (
+                <div className="mb-3">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground line-through">${price.toFixed(2)}</div>
+                  <div className="text-3xl font-bold text-green-400">${discountedPrice.toFixed(2)}</div>
+                  <div className="flex items-center gap-1.5 text-xs text-green-400 mt-1">
+                    <Tag className="w-3 h-3" />
+                    <span>{appliedCoupon.code} applied</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-3xl font-bold mb-4">${price.toFixed(2)}</div>
+              )}
+
               {course.isEnrolled ? (
-                <Button className="w-full" size="lg" onClick={() => navigate(`/learn/${courseId}`)}>
-                  Continue Learning
+                <Button className="w-full mb-3" size="lg" onClick={() => navigate(`/learn/${courseId}`)}>
+                  <Play className="w-4 h-4 mr-2" /> Continue Learning
                 </Button>
               ) : (
-                <Button className="w-full" size="lg" onClick={handleEnroll} disabled={purchasing}>
-                  {purchasing ? "Processing..." : "Enroll Now"}
-                </Button>
+                <>
+                  {/* Gateway selector */}
+                  <div className="flex gap-2 mb-4">
+                    {(["stripe", "razorpay"] as const).map(g => (
+                      <button key={g} onClick={() => setGateway(g)} className={`flex-1 py-2 text-xs rounded-lg border transition-colors font-medium capitalize ${gateway === g ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-border/80"}`}>
+                        {g === "stripe" ? "💳 Stripe" : "🇮🇳 Razorpay"}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Coupon code */}
+                  {!appliedCoupon ? (
+                    <div className="flex gap-2 mb-4">
+                      <Input
+                        placeholder="Coupon code"
+                        value={couponCode}
+                        onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                        onKeyDown={e => e.key === "Enter" && handleApplyCoupon()}
+                        className="bg-background text-sm h-9 font-mono"
+                      />
+                      <Button variant="outline" size="sm" onClick={handleApplyCoupon} disabled={validateCoupon.isPending} className="h-9 px-3">
+                        {validateCoupon.isPending ? "..." : <Tag className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between mb-4 p-2 rounded-lg bg-green-500/10 border border-green-500/20">
+                      <div className="flex items-center gap-2 text-sm text-green-400">
+                        <Check className="w-3.5 h-3.5" />
+                        <span className="font-mono font-bold">{appliedCoupon.code}</span>
+                      </div>
+                      <button onClick={() => { setAppliedCoupon(null); setCouponCode(""); }} className="text-xs text-muted-foreground hover:text-foreground">Remove</button>
+                    </div>
+                  )}
+
+                  <Button className="w-full" size="lg" onClick={handleEnroll} disabled={purchasing}>
+                    {purchasing ? "Processing..." : `Enroll Now · $${discountedPrice.toFixed(2)}`}
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center mt-2">30-day money-back guarantee</p>
+                </>
               )}
-              <p className="text-xs text-muted-foreground text-center mt-3">30-day money-back guarantee</p>
+
+              <div className="mt-4 pt-4 border-t border-border space-y-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Check className="w-3.5 h-3.5 text-green-400" />
+                  <span>Full lifetime access</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Check className="w-3.5 h-3.5 text-green-400" />
+                  <span>Access on all devices</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Check className="w-3.5 h-3.5 text-green-400" />
+                  <span>Certificate of completion</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Curriculum */}
       <div className="container mx-auto max-w-5xl px-4 py-12">
-        <h2 className="text-2xl font-bold mb-6">Course Curriculum</h2>
-        <div className="space-y-3">
-          {(course.modules ?? []).map((mod, idx) => (
-            <div key={mod.id} className="border border-border rounded-lg overflow-hidden">
-              <button
-                className="w-full flex items-center justify-between p-4 bg-card hover:bg-card/80 transition-colors text-left"
-                onClick={() => setExpandedModules(prev => prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx])}
-              >
-                <div className="flex items-center gap-3">
-                  {expandedModules.includes(idx) ? <ChevronDown className="w-4 h-4 text-primary" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                  <span className="font-medium">{mod.title}</span>
-                </div>
-                <span className="text-sm text-muted-foreground">{mod.lessons?.length ?? 0} lessons</span>
-              </button>
-              {expandedModules.includes(idx) && (
-                <div className="divide-y divide-border">
-                  {(mod.lessons ?? []).map(lesson => (
-                    <div key={lesson.id} className="flex items-center gap-3 px-6 py-3 bg-background/50">
-                      <span className="text-muted-foreground">{lessonIcon(lesson.type)}</span>
-                      <span className="flex-1 text-sm">{lesson.title}</span>
-                      {lesson.isFree ? (
-                        <Badge variant="outline" className="text-xs text-green-400 border-green-500/30">Free</Badge>
-                      ) : !course.isEnrolled ? (
-                        <Lock className="w-3.5 h-3.5 text-muted-foreground" />
-                      ) : null}
-                      {lesson.durationMinutes && <span className="text-xs text-muted-foreground">{lesson.durationMinutes}m</span>}
+        <div className="grid md:grid-cols-3 gap-8">
+          <div className="md:col-span-2">
+            <h2 className="text-2xl font-bold mb-6">Course Curriculum</h2>
+            <div className="space-y-3">
+              {(course.modules ?? []).map((mod, idx) => (
+                <div key={mod.id} className="border border-border rounded-xl overflow-hidden">
+                  <button
+                    className="w-full flex items-center justify-between p-4 bg-card hover:bg-card/80 transition-colors text-left"
+                    onClick={() => toggleModule(idx)}
+                  >
+                    <div className="flex items-center gap-3">
+                      {expandedModules.includes(idx)
+                        ? <ChevronDown className="w-4 h-4 text-primary flex-shrink-0" />
+                        : <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
+                      <span className="font-medium">{mod.title}</span>
                     </div>
-                  ))}
+                    <span className="text-xs text-muted-foreground flex-shrink-0">{mod.lessons?.length ?? 0} lessons</span>
+                  </button>
+                  {expandedModules.includes(idx) && (
+                    <div className="divide-y divide-border">
+                      {(mod.lessons ?? []).map(lesson => (
+                        <div key={lesson.id} className="flex items-center gap-3 px-6 py-3 bg-background/50 hover:bg-background/80 transition-colors">
+                          <span className="text-muted-foreground flex-shrink-0">{lessonIcon(lesson.type)}</span>
+                          <span className="flex-1 text-sm">{lesson.title}</span>
+                          {lesson.isFree ? (
+                            <Badge variant="outline" className="text-xs text-green-400 border-green-500/30 flex-shrink-0">Preview</Badge>
+                          ) : !course.isEnrolled ? (
+                            <Lock className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+                          )}
+                          {lesson.durationMinutes && (
+                            <span className="text-xs text-muted-foreground flex-shrink-0">{lesson.durationMinutes}m</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
             </div>
-          ))}
+          </div>
+
+          {/* Side info */}
+          <div className="space-y-4">
+            <div className="bg-card border border-border rounded-xl p-5">
+              <h3 className="font-semibold mb-3">This course includes</h3>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Play className="w-4 h-4 text-primary" /><span>{course.lessonCount} on-demand lessons</span></div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Clock className="w-4 h-4 text-primary" /><span>{course.durationMinutes} minutes of content</span></div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground"><BookOpen className="w-4 h-4 text-primary" /><span>{course.moduleCount} modules</span></div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Award className="w-4 h-4 text-primary" /><span>Certificate of completion</span></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2 } from "lucide-react";
@@ -39,7 +39,7 @@ export default function AdminCouponsPage() {
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-2" />New Coupon</Button></DialogTrigger>
           <DialogContent className="bg-card border-border max-w-sm">
-            <DialogHeader><DialogTitle>Create Coupon</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>Create Coupon</DialogTitle><DialogDescription>Create a discount code for students.</DialogDescription></DialogHeader>
             <div className="space-y-4 py-2">
               <Input placeholder="Coupon code (e.g. SAVE20)" value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} className="bg-background font-mono" />
               <Select value={form.discountType} onValueChange={v => setForm(f => ({ ...f, discountType: v }))}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="percentage">Percentage (%)</SelectItem><SelectItem value="fixed">Fixed amount ($)</SelectItem></SelectContent></Select>
