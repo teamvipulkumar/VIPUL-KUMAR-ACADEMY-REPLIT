@@ -1,147 +1,815 @@
-import { useState } from "react";
-import { useGetAffiliateDashboard, getGetAffiliateDashboardQueryKey, useListReferrals, getListReferralsQueryKey, useRequestPayout } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth-context";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
-import { Link2, BadgeIndianRupee, Users, MousePointerClick, Copy, Check } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from "recharts";
+import {
+  BadgeIndianRupee, Users, MousePointerClick, Copy, Check, TrendingUp,
+  Clock, CheckCircle2, XCircle, AlertCircle, Link2, Image, FileText,
+  ShieldCheck, Wallet, Zap, Building2, RefreshCw, Download, Plus,
+  Trash2, Eye, EyeOff, Send, ChevronRight, Activity, Target,
+  Calendar, Star, Lock, Loader2
+} from "lucide-react";
 
-export default function AffiliatePage() {
-  const { data: dashboard } = useGetAffiliateDashboard({ query: { queryKey: getGetAffiliateDashboardQueryKey() } });
-  const { data: referrals } = useListReferrals({ query: { queryKey: getListReferralsQueryKey() } });
-  const requestPayout = useRequestPayout();
+const API_BASE = import.meta.env.VITE_API_URL ?? "";
+
+async function apiFetch(path: string, opts?: RequestInit) {
+  const res = await fetch(`${API_BASE}${path}`, { credentials: "include", ...opts });
+  return res;
+}
+
+type Tab = "earnings" | "links" | "clicks" | "creatives" | "kyc" | "payouts" | "pixel" | "bank";
+
+const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  { id: "earnings",   label: "Earnings",   icon: <BadgeIndianRupee className="w-4 h-4" /> },
+  { id: "links",      label: "My Link",    icon: <Link2 className="w-4 h-4" /> },
+  { id: "clicks",     label: "Clicks",     icon: <MousePointerClick className="w-4 h-4" /> },
+  { id: "creatives",  label: "Creatives",  icon: <Image className="w-4 h-4" /> },
+  { id: "kyc",        label: "KYC",        icon: <ShieldCheck className="w-4 h-4" /> },
+  { id: "payouts",    label: "Payouts",    icon: <Wallet className="w-4 h-4" /> },
+  { id: "pixel",      label: "Pixel",      icon: <Zap className="w-4 h-4" /> },
+  { id: "bank",       label: "Bank",       icon: <Building2 className="w-4 h-4" /> },
+];
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    pending:  "text-amber-400 border-amber-400/30 bg-amber-400/10",
+    approved: "text-green-400 border-green-400/30 bg-green-400/10",
+    rejected: "text-red-400 border-red-400/30 bg-red-400/10",
+  };
+  const icons: Record<string, React.ReactNode> = {
+    pending: <Clock className="w-3 h-3" />,
+    approved: <CheckCircle2 className="w-3 h-3" />,
+    rejected: <XCircle className="w-3 h-3" />,
+  };
+  return (
+    <Badge className={`text-xs gap-1 capitalize ${map[status] ?? ""}`}>
+      {icons[status]}{status}
+    </Badge>
+  );
+}
+
+/* ─── Apply Form ─── */
+function ApplyForm({ user, onSubmitted }: { user: any; onSubmitted: () => void }) {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [payoutAmount, setPayoutAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("PayPal");
-  const [paymentDetails, setPaymentDetails] = useState("");
+  const [form, setForm] = useState({ fullName: user?.name ?? "", email: user?.email ?? "", promoteDescription: "" });
+  const [agreed, setAgreed] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!agreed) { toast({ title: "Please agree to the terms", variant: "destructive" }); return; }
+    if (!form.promoteDescription.trim()) { toast({ title: "Please describe how you'll promote", variant: "destructive" }); return; }
+    setLoading(true);
+    try {
+      const res = await apiFetch("/api/affiliate/apply", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+      toast({ title: "Application submitted!", description: "We'll review your application soon." });
+      onSubmitted();
+    } catch (e: any) {
+      toast({ title: "Failed to submit", description: e.message, variant: "destructive" });
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-lg">
+        {/* Hero */}
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Star className="w-8 h-8 text-primary" />
+          </div>
+          <h1 className="text-3xl font-extrabold text-foreground">Become an Affiliate</h1>
+          <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+            Earn commissions by promoting our courses. Fill in your details and our team will review your application.
+          </p>
+        </div>
+
+        {/* Perks */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          {[
+            { icon: <BadgeIndianRupee className="w-4 h-4 text-green-400" />, label: "Up to 30%", sub: "Commission" },
+            { icon: <Activity className="w-4 h-4 text-blue-400" />, label: "Real-time", sub: "Analytics" },
+            { icon: <Wallet className="w-4 h-4 text-amber-400" />, label: "Fast", sub: "Payouts" },
+          ].map(p => (
+            <div key={p.label} className="bg-card border border-border rounded-xl p-3 text-center">
+              <div className="flex justify-center mb-1">{p.icon}</div>
+              <p className="text-sm font-bold text-foreground">{p.label}</p>
+              <p className="text-[10px] text-muted-foreground">{p.sub}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Form */}
+        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Full Name</Label>
+              <Input value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} className="bg-background border-border" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Email</Label>
+              <Input value={form.email} readOnly className="bg-background border-border opacity-70" />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">How will you promote our courses?</Label>
+            <Textarea
+              placeholder="Describe your audience, channels (YouTube, blog, Instagram, etc.), and how you plan to promote..."
+              value={form.promoteDescription}
+              onChange={e => setForm(f => ({ ...f, promoteDescription: e.target.value }))}
+              rows={4}
+              className="bg-background border-border resize-none"
+            />
+          </div>
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={e => setAgreed(e.target.checked)}
+              className="mt-0.5 accent-primary w-4 h-4"
+            />
+            <span className="text-xs text-muted-foreground leading-relaxed">
+              I agree to the <span className="text-primary underline cursor-pointer">Affiliate Terms & Conditions</span>, including promoting ethically and not engaging in fraudulent activity.
+            </span>
+          </label>
+          <Button onClick={handleSubmit} disabled={loading} className="w-full bg-primary hover:bg-primary/90 gap-2">
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {loading ? "Submitting…" : "Submit Application"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Status Views ─── */
+function PendingView() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="text-center max-w-sm">
+        <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <Clock className="w-8 h-8 text-amber-400" />
+        </div>
+        <h2 className="text-2xl font-bold mb-2">Application Under Review</h2>
+        <p className="text-muted-foreground text-sm mb-4">
+          Your affiliate application has been submitted and is being reviewed by our team. We'll notify you via email once a decision is made.
+        </p>
+        <Badge className="text-sm gap-1 text-amber-400 border-amber-400/30 bg-amber-400/10 px-3 py-1">
+          <Clock className="w-3.5 h-3.5" />Pending Review
+        </Badge>
+      </div>
+    </div>
+  );
+}
+
+function RejectedView({ note }: { note?: string | null }) {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="text-center max-w-sm">
+        <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <XCircle className="w-8 h-8 text-red-400" />
+        </div>
+        <h2 className="text-2xl font-bold mb-2">Application Rejected</h2>
+        <p className="text-muted-foreground text-sm mb-4">
+          Unfortunately your application was not approved at this time.
+        </p>
+        {note && (
+          <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-3 text-left mb-4">
+            <p className="text-xs font-semibold text-red-400 mb-1">Reason from admin:</p>
+            <p className="text-sm text-muted-foreground">{note}</p>
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground">Contact support if you believe this is a mistake.</p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Full Dashboard ─── */
+function AffiliateDashboard({ user }: { user: any }) {
+  const [tab, setTab] = useState<Tab>("earnings");
+  const [dashboard, setDashboard] = useState<any>(null);
+  const [clicks, setClicks] = useState<any>(null);
+  const [payouts, setPayouts] = useState<any[]>([]);
+  const [creatives, setCreatives] = useState<any[]>([]);
+  const [kyc, setKyc] = useState<any>(null);
+  const [bank, setBank] = useState<any>(null);
+  const [pixel, setPixel] = useState<any>(null);
   const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => { loadDashboard(); }, []);
+
+  const loadDashboard = async () => {
+    const [d, c, p, cr, k, b, px] = await Promise.all([
+      apiFetch("/api/affiliate/dashboard").then(r => r.json()),
+      apiFetch("/api/affiliate/clicks").then(r => r.json()),
+      apiFetch("/api/affiliate/payouts").then(r => r.json()),
+      apiFetch("/api/affiliate/creatives").then(r => r.json()),
+      apiFetch("/api/affiliate/kyc").then(r => r.ok ? r.json() : null),
+      apiFetch("/api/affiliate/bank").then(r => r.ok ? r.json() : null),
+      apiFetch("/api/affiliate/pixel").then(r => r.ok ? r.json() : null),
+    ]);
+    setDashboard(d); setClicks(c); setPayouts(Array.isArray(p) ? p : []);
+    setCreatives(Array.isArray(cr) ? cr : []); setKyc(k); setBank(b); setPixel(px);
+  };
 
   const copyLink = () => {
     if (dashboard?.referralLink) {
       navigator.clipboard.writeText(dashboard.referralLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopied(true); setTimeout(() => setCopied(false), 2000);
     }
-  };
-
-  const handlePayoutRequest = () => {
-    if (!payoutAmount || !paymentDetails) { toast({ title: "Error", description: "Fill all payout fields", variant: "destructive" }); return; }
-    requestPayout.mutate({ data: { amount: parseFloat(payoutAmount), paymentMethod, paymentDetails } }, {
-      onSuccess: () => { toast({ title: "Payout requested!", description: "Admin will process it soon." }); setPayoutAmount(""); setPaymentDetails(""); },
-      onError: () => toast({ title: "Error", description: "Could not request payout", variant: "destructive" }),
-    });
-  };
-
-  const statusColors: Record<string, string> = {
-    click: "text-blue-400 border-blue-400/30 bg-blue-400/10",
-    signup: "text-yellow-400 border-yellow-400/30 bg-yellow-400/10",
-    purchase: "text-green-400 border-green-400/30 bg-green-400/10"
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 md:py-10 max-w-5xl">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-1">Affiliate Dashboard</h1>
-        <p className="text-muted-foreground text-sm md:text-base mb-6 md:mb-8">Earn {dashboard?.commissionRate ?? 20}% commission on every referral sale.</p>
-
-        {/* Stats — 3 cols on sm+, stacked on mobile */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
-          <Card className="bg-card border-border">
-            <CardContent className="p-4 md:p-6">
-              <div className="flex items-center gap-3 mb-1"><MousePointerClick className="w-4 h-4 text-blue-400" /><span className="text-sm text-muted-foreground">Total Clicks</span></div>
-              <div className="text-2xl md:text-3xl font-bold">{dashboard?.totalClicks ?? 0}</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-card border-border">
-            <CardContent className="p-4 md:p-6">
-              <div className="flex items-center gap-3 mb-1"><Users className="w-4 h-4 text-yellow-400" /><span className="text-sm text-muted-foreground">Conversions</span></div>
-              <div className="text-2xl md:text-3xl font-bold">{dashboard?.totalConversions ?? 0}</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-card border-border">
-            <CardContent className="p-4 md:p-6">
-              <div className="flex items-center gap-3 mb-1"><BadgeIndianRupee className="w-4 h-4 text-green-400" /><span className="text-sm text-muted-foreground">Total Earnings</span></div>
-              <div className="text-2xl md:text-3xl font-bold">₹{(dashboard?.totalEarnings ?? 0).toFixed(2)}</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 mb-6 md:mb-8">
-          {/* Referral link */}
-          <Card className="bg-card border-border">
-            <CardHeader className="pb-3"><CardTitle className="text-sm md:text-base">Your Referral Link</CardTitle></CardHeader>
-            <CardContent>
-              <div className="flex gap-2">
-                <Input value={dashboard?.referralLink ?? ""} readOnly className="bg-background text-xs md:text-sm font-mono min-w-0" />
-                <Button variant="outline" onClick={copyLink} className="flex-shrink-0 gap-1.5">
-                  {copied ? <><Check className="w-3.5 h-3.5" />Copied</> : <><Copy className="w-3.5 h-3.5" />Copy</>}
-                </Button>
+      {/* Header */}
+      <div className="border-b border-border bg-card/40">
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <h1 className="text-2xl font-extrabold text-foreground">Affiliate Dashboard</h1>
+                <Badge className="text-xs gap-1 text-green-400 border-green-400/30 bg-green-400/10">
+                  <CheckCircle2 className="w-3 h-3" />Approved
+                </Badge>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">Code: <span className="font-mono font-bold">{dashboard?.referralCode}</span></p>
-              <div className="mt-4 p-3 rounded-lg bg-background border border-border space-y-1.5">
-                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Pending</span><span className="text-yellow-400 font-bold">₹{(dashboard?.pendingEarnings ?? 0).toFixed(2)}</span></div>
-                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Paid Out</span><span className="text-green-400 font-bold">₹{(dashboard?.paidEarnings ?? 0).toFixed(2)}</span></div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Payout */}
-          <Card className="bg-card border-border">
-            <CardHeader className="pb-3"><CardTitle className="text-sm md:text-base">Request Payout</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <Input placeholder="Amount (INR)" type="number" value={payoutAmount} onChange={e => setPayoutAmount(e.target.value)} className="bg-background" />
-              <Input placeholder="Payment method (PayPal, Bank, etc.)" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="bg-background" />
-              <Input placeholder="Payment details (email, account, etc.)" value={paymentDetails} onChange={e => setPaymentDetails(e.target.value)} className="bg-background" />
-              <Button onClick={handlePayoutRequest} className="w-full" disabled={requestPayout.isPending}>Request Payout</Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Referral History</h2>
-        {!referrals || referrals.length === 0 ? (
-          <Card className="bg-card border-border"><CardContent className="py-12 text-center text-muted-foreground text-sm">No referrals yet. Share your link!</CardContent></Card>
-        ) : (
-          <>
-            {/* Desktop table */}
-            <div className="hidden sm:block border border-border rounded-xl overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-card border-b border-border">
-                  <tr>{["User", "Status", "Commission", "Date"].map(h => <th key={h} className="text-left text-xs font-medium text-muted-foreground px-4 py-3">{h}</th>)}</tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {referrals.map(r => (
-                    <tr key={r.id} className="hover:bg-card/50 transition-colors">
-                      <td className="px-4 py-3 text-sm">{r.referredUserName}</td>
-                      <td className="px-4 py-3"><Badge className={`text-xs ${statusColors[r.status] ?? ""}`}>{r.status}</Badge></td>
-                      <td className="px-4 py-3 text-sm font-medium">{r.commission ? `₹${r.commission.toFixed(2)}` : "-"}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(r.createdAt).toLocaleDateString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <p className="text-sm text-muted-foreground">
+                Earn <span className="text-primary font-bold">{dashboard?.commissionRate ?? "–"}%</span> commission per successful referral.
+                Code: <span className="font-mono font-bold text-foreground">{dashboard?.referralCode ?? "–"}</span>
+              </p>
             </div>
+            <Button variant="outline" size="sm" className="border-border gap-1.5" onClick={loadDashboard}>
+              <RefreshCw className="w-3.5 h-3.5" />Refresh
+            </Button>
+          </div>
 
-            {/* Mobile cards */}
-            <div className="sm:hidden space-y-3">
-              {referrals.map(r => (
-                <div key={r.id} className="bg-card border border-border rounded-xl p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <span className="font-medium text-sm">{r.referredUserName}</span>
-                    <Badge className={`text-xs ${statusColors[r.status] ?? ""}`}>{r.status}</Badge>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{new Date(r.createdAt).toLocaleDateString()}</span>
-                    <span className="font-semibold text-foreground">{r.commission ? `₹${r.commission.toFixed(2)}` : "-"}</span>
-                  </div>
+          {/* Quick stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+            {[
+              { label: "Total Clicks", value: dashboard?.totalClicks ?? 0, icon: <MousePointerClick className="w-4 h-4 text-blue-400" />, color: "text-blue-400" },
+              { label: "Conversions", value: dashboard?.totalConversions ?? 0, icon: <Target className="w-4 h-4 text-purple-400" />, color: "text-purple-400" },
+              { label: "Total Earned", value: `₹${(dashboard?.totalEarnings ?? 0).toLocaleString("en-IN")}`, icon: <BadgeIndianRupee className="w-4 h-4 text-green-400" />, color: "text-green-400" },
+              { label: "Withdrawable", value: `₹${(dashboard?.pendingEarnings ?? 0).toLocaleString("en-IN")}`, icon: <Wallet className="w-4 h-4 text-amber-400" />, color: "text-amber-400" },
+            ].map(s => (
+              <div key={s.label} className="bg-card border border-border rounded-xl p-3">
+                <div className="flex items-center gap-2 mb-1">{s.icon}<span className="text-xs text-muted-foreground">{s.label}</span></div>
+                <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        {/* Tab bar */}
+        <div className="flex items-center gap-1 mb-6 overflow-x-auto pb-1">
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all flex-shrink-0 ${
+                tab === t.id ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+              }`}
+            >
+              {t.icon}{t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Earnings Tab ── */}
+        {tab === "earnings" && (
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: "Today", value: dashboard?.todayEarnings ?? 0 },
+                { label: "Yesterday", value: dashboard?.yesterdayEarnings ?? 0 },
+                { label: "Last 7 Days", value: dashboard?.last7Earnings ?? 0 },
+                { label: "Last 30 Days", value: dashboard?.last30Earnings ?? 0 },
+              ].map(e => (
+                <div key={e.label} className="bg-card border border-border rounded-xl p-4">
+                  <p className="text-xs text-muted-foreground mb-1">{e.label}</p>
+                  <p className="text-xl font-bold text-green-400">₹{e.value.toLocaleString("en-IN")}</p>
                 </div>
               ))}
             </div>
-          </>
+
+            {/* Daily chart */}
+            <div className="bg-card border border-border rounded-2xl p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-4">Daily Earnings — Last 30 Days</h3>
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={dashboard?.dailyChart ?? []} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+                  <defs>
+                    <linearGradient id="earningsGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={v => v.substring(5)} interval="preserveStartEnd" />
+                  <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={v => `₹${v}`} />
+                  <Tooltip
+                    contentStyle={{ background: "#0d1424", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
+                    formatter={(v: any) => [`₹${Number(v).toFixed(2)}`, "Earnings"]}
+                  />
+                  <Area type="monotone" dataKey="amount" stroke="#2563eb" strokeWidth={2} fill="url(#earningsGrad)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Earnings summary */}
+            <div className="bg-card border border-border rounded-xl p-4 grid grid-cols-3 divide-x divide-border">
+              {[
+                { label: "Total Earned", value: `₹${(dashboard?.totalEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-foreground" },
+                { label: "Pending Payout", value: `₹${(dashboard?.pendingEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-amber-400" },
+                { label: "Total Paid", value: `₹${(dashboard?.paidEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-green-400" },
+              ].map(s => (
+                <div key={s.label} className="text-center px-4">
+                  <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
+
+        {/* ── Links Tab ── */}
+        {tab === "links" && (
+          <div className="space-y-4 max-w-2xl">
+            <div className="bg-card border border-border rounded-2xl p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-1">Your Unique Referral Link</h3>
+              <p className="text-xs text-muted-foreground mb-4">Share this link to earn commissions on every course purchased through it.</p>
+              <div className="flex gap-2 mb-3">
+                <Input value={dashboard?.referralLink ?? ""} readOnly className="bg-background font-mono text-xs" />
+                <Button variant="outline" onClick={copyLink} className="gap-1.5 flex-shrink-0">
+                  {copied ? <><Check className="w-3.5 h-3.5 text-green-400" />Copied!</> : <><Copy className="w-3.5 h-3.5" />Copy</>}
+                </Button>
+              </div>
+              <div className="p-3 bg-background rounded-xl border border-border">
+                <p className="text-xs text-muted-foreground mb-2">Your referral code</p>
+                <p className="font-mono font-bold text-primary text-lg tracking-widest">{dashboard?.referralCode}</p>
+              </div>
+            </div>
+
+            <div className="bg-card border border-border rounded-2xl p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Course-specific links</h3>
+              <p className="text-xs text-muted-foreground mb-3">Append your referral code to any course URL:</p>
+              <div className="space-y-2 text-xs font-mono text-muted-foreground">
+                <div className="bg-background rounded-lg p-2.5 border border-border">
+                  <span className="text-primary">{window.location.origin}/courses?ref=</span>
+                  <span className="text-foreground font-bold">{dashboard?.referralCode}</span>
+                </div>
+                <div className="bg-background rounded-lg p-2.5 border border-border">
+                  <span className="text-primary">{window.location.origin}/courses/[course-id]?ref=</span>
+                  <span className="text-foreground font-bold">{dashboard?.referralCode}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Clicks Tab ── */}
+        {tab === "clicks" && (
+          <div className="space-y-5">
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: "Total Clicks", value: clicks?.total ?? 0, icon: <MousePointerClick className="w-5 h-5 text-blue-400" />, color: "text-blue-400" },
+                { label: "Unique Visitors", value: clicks?.unique ?? 0, icon: <Users className="w-5 h-5 text-purple-400" />, color: "text-purple-400" },
+                { label: "Conversions", value: clicks?.conversions ?? 0, icon: <CheckCircle2 className="w-5 h-5 text-green-400" />, color: "text-green-400" },
+              ].map(s => (
+                <div key={s.label} className="bg-card border border-border rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">{s.icon}<span className="text-xs text-muted-foreground">{s.label}</span></div>
+                  <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-card border border-border rounded-2xl p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-4">Daily Click Analytics — Last 30 Days</h3>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={clicks?.dailyChart ?? []} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={v => v.substring(5)} interval="preserveStartEnd" />
+                  <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} />
+                  <Tooltip contentStyle={{ background: "#0d1424", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }} />
+                  <Bar dataKey="clicks" fill="#3b82f6" radius={[3, 3, 0, 0]} name="Clicks" />
+                  <Bar dataKey="unique" fill="#8b5cf6" radius={[3, 3, 0, 0]} name="Unique" />
+                  <Bar dataKey="conversions" fill="#22c55e" radius={[3, 3, 0, 0]} name="Conversions" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* ── Creatives Tab ── */}
+        {tab === "creatives" && <CreativesTab creatives={creatives} />}
+
+        {/* ── KYC Tab ── */}
+        {tab === "kyc" && <KycTab kyc={kyc} onSaved={k => setKyc(k)} />}
+
+        {/* ── Payouts Tab ── */}
+        {tab === "payouts" && <PayoutsTab dashboard={dashboard} payouts={payouts} onRequested={loadDashboard} />}
+
+        {/* ── Pixel Tab ── */}
+        {tab === "pixel" && <PixelTab pixel={pixel} onSaved={p => setPixel(p)} />}
+
+        {/* ── Bank Tab ── */}
+        {tab === "bank" && <BankTab bank={bank} onSaved={b => setBank(b)} />}
       </div>
     </div>
   );
+}
+
+/* ─── Creatives Tab ─── */
+function CreativesTab({ creatives }: { creatives: any[] }) {
+  const [copied, setCopied] = useState<number | null>(null);
+  const copy = (text: string, id: number) => {
+    navigator.clipboard.writeText(text);
+    setCopied(id); setTimeout(() => setCopied(null), 2000);
+  };
+  if (creatives.length === 0) {
+    return (
+      <div className="bg-card border border-border rounded-2xl py-20 text-center">
+        <Image className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+        <p className="font-semibold text-foreground mb-1">No creatives yet</p>
+        <p className="text-sm text-muted-foreground">The admin hasn't uploaded any promotional materials yet.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {creatives.map(c => (
+        <div key={c.id} className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Badge variant="outline" className="text-[10px] capitalize border-border text-muted-foreground">{c.type}</Badge>
+            <h4 className="font-medium text-sm text-foreground truncate flex-1">{c.title}</h4>
+          </div>
+          {c.url && (
+            <img src={c.url} alt={c.title} className="w-full h-28 object-contain rounded-lg bg-background border border-border mb-3" />
+          )}
+          {c.content && (
+            <p className="text-xs text-muted-foreground bg-background border border-border rounded-lg p-2.5 mb-3 line-clamp-3">{c.content}</p>
+          )}
+          {c.description && <p className="text-xs text-muted-foreground mb-3">{c.description}</p>}
+          <div className="flex gap-2">
+            {c.url && (
+              <a href={c.url} download className="flex-1">
+                <Button variant="outline" size="sm" className="w-full gap-1.5 border-border text-xs">
+                  <Download className="w-3 h-3" />Download
+                </Button>
+              </a>
+            )}
+            {c.content && (
+              <Button variant="outline" size="sm" className="flex-1 gap-1.5 border-border text-xs" onClick={() => copy(c.content, c.id)}>
+                {copied === c.id ? <><Check className="w-3 h-3 text-green-400" />Copied</> : <><Copy className="w-3 h-3" />Copy</>}
+              </Button>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─── KYC Tab ─── */
+function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
+  const { toast } = useToast();
+  const [idName, setIdName] = useState(kyc?.idProofName ?? "");
+  const [addrName, setAddrName] = useState(kyc?.addressProofName ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!idName || !addrName) { toast({ title: "Both fields required", variant: "destructive" }); return; }
+    setSaving(true);
+    try {
+      const res = await apiFetch("/api/affiliate/kyc", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idProofName: idName, addressProofName: addrName }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      onSaved(data);
+      toast({ title: "KYC submitted!", description: "Under review by admin." });
+    } catch { toast({ title: "Failed to submit KYC", variant: "destructive" }); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="max-w-lg space-y-4">
+      <div className="bg-card border border-border rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-foreground">KYC Verification</h3>
+          {kyc && <StatusBadge status={kyc.status} />}
+        </div>
+        {kyc?.adminNote && (
+          <div className="mb-4 p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
+            <p className="text-xs font-medium text-red-400 mb-1">Admin Note:</p>
+            <p className="text-sm text-muted-foreground">{kyc.adminNote}</p>
+          </div>
+        )}
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">ID Proof (Aadhar / PAN / Passport)</Label>
+            <Input value={idName} onChange={e => setIdName(e.target.value)} placeholder="e.g. Aadhar Card - XXXX XXXX XXXX 1234" className="bg-background border-border" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Address Proof</Label>
+            <Input value={addrName} onChange={e => setAddrName(e.target.value)} placeholder="e.g. Electricity bill - Jan 2025" className="bg-background border-border" />
+          </div>
+          <div className="p-3 bg-amber-400/5 border border-amber-400/20 rounded-lg">
+            <p className="text-xs text-amber-300 flex items-center gap-1.5"><Lock className="w-3 h-3" />Your documents are stored securely and only visible to admins.</p>
+          </div>
+          <Button onClick={save} disabled={saving} className="w-full bg-primary gap-2">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+            {saving ? "Submitting…" : kyc ? "Resubmit KYC" : "Submit KYC"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Payouts Tab ─── */
+function PayoutsTab({ dashboard, payouts, onRequested }: { dashboard: any; payouts: any[]; onRequested: () => void }) {
+  const { toast } = useToast();
+  const [amount, setAmount] = useState("");
+  const [method, setMethod] = useState("Bank Transfer");
+  const [details, setDetails] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const request = async () => {
+    if (!amount || !details) { toast({ title: "Fill all fields", variant: "destructive" }); return; }
+    if (parseFloat(amount) > (dashboard?.pendingEarnings ?? 0)) {
+      toast({ title: "Amount exceeds withdrawable balance", variant: "destructive" }); return;
+    }
+    setSaving(true);
+    try {
+      const res = await apiFetch("/api/affiliate/payout-request", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: parseFloat(amount), paymentMethod: method, paymentDetails: details }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      toast({ title: "Payout requested!", description: "Admin will process it soon." });
+      setAmount(""); setDetails("");
+      onRequested();
+    } catch { toast({ title: "Failed to request payout", variant: "destructive" }); }
+    finally { setSaving(false); }
+  };
+
+  const statusMap: Record<string, string> = {
+    pending: "text-amber-400 border-amber-400/30 bg-amber-400/10",
+    approved: "text-green-400 border-green-400/30 bg-green-400/10",
+    rejected: "text-red-400 border-red-400/30 bg-red-400/10",
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Balance cards */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: "Total Earned", value: dashboard?.totalEarnings ?? 0, color: "text-foreground" },
+          { label: "Withdrawable", value: dashboard?.pendingEarnings ?? 0, color: "text-amber-400" },
+          { label: "Paid Out", value: dashboard?.paidEarnings ?? 0, color: "text-green-400" },
+        ].map(s => (
+          <div key={s.label} className="bg-card border border-border rounded-xl p-4 text-center">
+            <p className={`text-xl font-bold ${s.color}`}>₹{Number(s.value).toLocaleString("en-IN")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-5">
+        {/* Request form */}
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">Request Withdrawal</h3>
+          <Input type="number" placeholder={`Amount (max ₹${(dashboard?.pendingEarnings ?? 0).toLocaleString("en-IN")})`}
+            value={amount} onChange={e => setAmount(e.target.value)} className="bg-background border-border" />
+          <Input placeholder="Payment method (Bank, UPI, etc.)" value={method}
+            onChange={e => setMethod(e.target.value)} className="bg-background border-border" />
+          <Input placeholder="Account / UPI details" value={details}
+            onChange={e => setDetails(e.target.value)} className="bg-background border-border" />
+          <Button onClick={request} disabled={saving} className="w-full bg-primary gap-2">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
+            {saving ? "Processing…" : "Request Payout"}
+          </Button>
+        </div>
+
+        {/* Payout history */}
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="px-5 py-3 border-b border-border">
+            <h3 className="text-sm font-semibold text-foreground">Payout History</h3>
+          </div>
+          {payouts.length === 0 ? (
+            <div className="py-12 text-center text-sm text-muted-foreground">No payouts yet.</div>
+          ) : (
+            <div className="divide-y divide-border max-h-72 overflow-y-auto">
+              {payouts.map(p => (
+                <div key={p.id} className="flex items-center gap-3 px-5 py-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground">₹{Number(p.amount).toLocaleString("en-IN")}</p>
+                    <p className="text-[11px] text-muted-foreground">{p.paymentMethod} · {new Date(p.requestedAt).toLocaleDateString("en-IN")}</p>
+                  </div>
+                  <Badge className={`text-[10px] capitalize ${statusMap[p.status] ?? ""}`}>{p.status}</Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Pixel Tab ─── */
+function PixelTab({ pixel, onSaved }: { pixel: any; onSaved: (p: any) => void }) {
+  const { toast } = useToast();
+  const [pixelId, setPixelId] = useState(pixel?.facebookPixelId ?? "");
+  const [trackPV, setTrackPV] = useState(pixel?.trackPageView ?? true);
+  const [trackP, setTrackP] = useState(pixel?.trackPurchase ?? true);
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const res = await apiFetch("/api/affiliate/pixel", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ facebookPixelId: pixelId || null, trackPageView: trackPV, trackPurchase: trackP }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      onSaved(await res.json());
+      toast({ title: "Pixel settings saved!" });
+    } catch { toast({ title: "Failed to save pixel", variant: "destructive" }); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="max-w-lg space-y-4">
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+        <h3 className="text-sm font-semibold text-foreground">Facebook Pixel Setup</h3>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Facebook Pixel ID</Label>
+          <Input value={pixelId} onChange={e => setPixelId(e.target.value)} placeholder="e.g. 123456789012345" className="bg-background border-border font-mono" />
+          <p className="text-[11px] text-muted-foreground">Find your Pixel ID in Facebook Events Manager.</p>
+        </div>
+        <div className="space-y-2">
+          <Label className="text-xs text-muted-foreground">Track Events</Label>
+          {[
+            { label: "Page View", checked: trackPV, onChange: setTrackPV },
+            { label: "Purchase", checked: trackP, onChange: setTrackP },
+          ].map(e => (
+            <label key={e.label} className="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={e.checked} onChange={ev => e.onChange(ev.target.checked)} className="accent-primary w-4 h-4" />
+              <span className="text-sm text-foreground">{e.label}</span>
+            </label>
+          ))}
+        </div>
+        <Button onClick={save} disabled={saving} className="w-full bg-primary gap-2">
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+          {saving ? "Saving…" : "Save Pixel Settings"}
+        </Button>
+      </div>
+
+      {pixelId && (
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-xs font-semibold text-foreground mb-2">Preview Code Snippet</p>
+          <pre className="text-[10px] text-muted-foreground bg-background rounded-lg p-3 overflow-x-auto border border-border whitespace-pre-wrap">{`<!-- Facebook Pixel -->
+<script>
+!function(f,b,e,v,n,t,s){...}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '${pixelId}');
+${trackPV ? "fbq('track', 'PageView');" : ""}
+${trackP ? "fbq('track', 'Purchase', {value: amount, currency: 'INR'});" : ""}
+</script>`}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Bank Tab ─── */
+function BankTab({ bank, onSaved }: { bank: any; onSaved: (b: any) => void }) {
+  const { toast } = useToast();
+  const [form, setForm] = useState({
+    accountHolderName: bank?.accountHolderName ?? "",
+    accountNumber: bank?.accountNumber ?? "",
+    ifscCode: bank?.ifscCode ?? "",
+    bankName: bank?.bankName ?? "",
+  });
+  const [showAcc, setShowAcc] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!form.accountHolderName || !form.accountNumber || !form.ifscCode || !form.bankName) {
+      toast({ title: "All fields are required", variant: "destructive" }); return;
+    }
+    setSaving(true);
+    try {
+      const res = await apiFetch("/api/affiliate/bank", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) throw new Error("Failed");
+      onSaved(await res.json());
+      toast({ title: "Bank details saved!" });
+    } catch { toast({ title: "Failed to save bank details", variant: "destructive" }); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="max-w-lg">
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground">Bank Account Details</h3>
+          {bank && <Badge className="text-[10px] text-green-400 border-green-400/30 bg-green-400/10 gap-1"><CheckCircle2 className="w-3 h-3" />Saved</Badge>}
+        </div>
+
+        <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <Lock className="w-3 h-3 text-primary" />Bank details are encrypted and only used for processing payouts.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Account Holder Name</Label>
+            <Input value={form.accountHolderName} onChange={e => setForm(f => ({ ...f, accountHolderName: e.target.value }))}
+              placeholder="As per bank records" className="bg-background border-border" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Account Number</Label>
+            <div className="relative">
+              <Input type={showAcc ? "text" : "password"} value={form.accountNumber}
+                onChange={e => setForm(f => ({ ...f, accountNumber: e.target.value }))}
+                placeholder="Enter account number" className="bg-background border-border pr-9 font-mono" />
+              <button className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowAcc(v => !v)}>
+                {showAcc ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">IFSC Code</Label>
+              <Input value={form.ifscCode} onChange={e => setForm(f => ({ ...f, ifscCode: e.target.value.toUpperCase() }))}
+                placeholder="e.g. HDFC0001234" className="bg-background border-border font-mono uppercase" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Bank Name</Label>
+              <Input value={form.bankName} onChange={e => setForm(f => ({ ...f, bankName: e.target.value }))}
+                placeholder="e.g. HDFC Bank" className="bg-background border-border" />
+            </div>
+          </div>
+        </div>
+
+        <Button onClick={save} disabled={saving} className="w-full bg-primary gap-2">
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Building2 className="w-4 h-4" />}
+          {saving ? "Saving…" : bank ? "Update Bank Details" : "Save Bank Details"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Main Page ─── */
+export default function AffiliatePage() {
+  const { user, isAuthenticated } = useAuth();
+  const [status, setStatus] = useState<"loading" | "no-app" | "pending" | "rejected" | "approved">("loading");
+  const [appNote, setAppNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if ((user as any)?.role === "affiliate" || (user as any)?.role === "admin") {
+      setStatus("approved"); return;
+    }
+    apiFetch("/api/affiliate/application")
+      .then(async r => {
+        if (r.status === 404) { setStatus("no-app"); return; }
+        const app = await r.json();
+        if (app.status === "approved") { setStatus("approved"); }
+        else if (app.status === "rejected") { setStatus("rejected"); setAppNote(app.adminNote ?? null); }
+        else { setStatus("pending"); }
+      })
+      .catch(() => setStatus("no-app"));
+  }, [isAuthenticated, user]);
+
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (status === "no-app") return <ApplyForm user={user} onSubmitted={() => setStatus("pending")} />;
+  if (status === "pending") return <PendingView />;
+  if (status === "rejected") return <RejectedView note={appNote} />;
+  return <AffiliateDashboard user={user} />;
 }

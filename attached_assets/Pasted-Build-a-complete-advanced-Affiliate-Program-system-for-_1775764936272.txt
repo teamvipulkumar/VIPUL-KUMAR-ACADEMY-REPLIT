@@ -1,0 +1,196 @@
+Build a complete advanced Affiliate Program system for my LMS website. The system should include both frontend UI and backend logic with proper database structure.
+
+### USER FLOW:
+
+1. After a student purchases/enrolls in any course and logs into the website:
+
+   * Show a new menu item in the header called "Affiliate"
+
+2. When user clicks on "Affiliate":
+
+   * Show a "Become an Affiliate" application form
+   * Fields required:
+
+     * Full Name
+     * Email (auto-filled)
+     * How will you promote our courses? (textarea)
+     * Agreement checkbox for Affiliate Terms & Conditions
+   * Submit button
+
+3. After submission:
+
+   * Store application in database with status: "Pending"
+   * Notify admin in admin panel
+
+---
+
+### ADMIN PANEL FEATURES:
+
+1. Add a section: "Affiliate Applications"
+
+   * Show list of all applications
+   * Each application should have:
+
+     * Approve button
+     * Reject button
+     * Admin note (mandatory if rejecting)
+
+2. If Approved:
+
+   * Change user role to "Affiliate"
+   * Grant access to Affiliate Dashboard
+
+3. If Rejected:
+
+   * Save admin note
+   * Show rejection reason to user
+
+---
+
+### AFFILIATE DASHBOARD FEATURES:
+
+Create a full dashboard with the following tabs:
+
+---
+
+#### 1. Earnings Dashboard
+
+* Show:
+
+  * Today's Earnings
+  * Yesterday's Earnings
+  * Last 7 Days Earnings
+  * Last 30 Days Earnings
+* Add a graph (chart) showing daily earnings trend
+
+---
+
+#### 2. Affiliate Links Tab
+
+* Generate unique affiliate tracking link per user
+* Allow custom link creation (append parameters)
+* Example:
+  website.com/course?ref=user123
+
+---
+
+#### 3. Clicks / Visitors Tab
+
+* Track:
+
+  * Total Clicks
+  * Unique Visitors
+  * Conversions (sales)
+* Show graph analytics (daily stats)
+
+---
+
+#### 4. Creatives Tab
+
+* Admin can upload:
+
+  * Images
+  * Ad banners
+  * Copy text
+* Affiliates can download or copy creatives
+
+---
+
+#### 5. KYC Verification Tab
+
+* Upload:
+
+  * ID proof
+  * Address proof
+* Store and show verification status (Pending / Approved / Rejected)
+
+---
+
+#### 6. Payouts Tab
+
+* Show:
+
+  * Total Earnings
+  * Withdrawable Balance
+  * Paid Amount
+* List all payout history
+* Add "Request Withdrawal" button
+
+---
+
+#### 7. Pixel Setup Tab
+
+* Allow user to add Facebook Pixel ID
+* Track events:
+
+  * Page View
+  * Purchase
+* Store pixel per affiliate
+
+---
+
+#### 8. Bank Account Tab
+
+* Allow adding:
+
+  * Account Holder Name
+  * Account Number
+  * IFSC Code
+  * Bank Name
+* Securely store details
+
+---
+
+### BACKEND LOGIC:
+
+* Track affiliate referrals using cookies or URL params (?ref=)
+* On successful payment:
+
+  * Assign commission to affiliate
+* Commission should be configurable (percentage based)
+
+---
+
+### DATABASE STRUCTURE:
+
+Create tables/collections for:
+
+* Users
+* AffiliateApplications
+* Affiliates
+* ClickTracking
+* Conversions
+* Earnings
+* Payouts
+* KYC
+* BankDetails
+* Creatives
+
+---
+
+### SECURITY:
+
+* Verify payments using backend (webhooks)
+* Prevent fraud clicks (basic duplicate filtering)
+* Protect sensitive data (bank/KYC)
+
+---
+
+### TECH STACK:
+
+* Backend: Node.js / Express
+* Database: MongoDB or PostgreSQL
+* Frontend: Clean modern UI (dashboard style)
+* Charts: Use Chart.js or similar
+
+---
+
+### BONUS:
+
+* Make system scalable
+* Clean UI like modern SaaS (Stripe / Gumroad style)
+* Mobile responsive
+
+---
+
+Build everything fully functional, production-ready, and modular.
