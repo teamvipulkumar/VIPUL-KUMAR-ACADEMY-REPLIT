@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Search, DollarSign, ShoppingCart, Clock, RefreshCw, Upload,
+  Search, BadgeIndianRupee, ShoppingCart, Clock, RefreshCw, Upload,
   User, BookOpen, Calendar, CreditCard, Tag, Hash, Mail, AlertTriangle, RotateCcw
 } from "lucide-react";
 import {
@@ -320,7 +320,7 @@ export default function AdminOrdersPage() {
   };
 
   const statCards = [
-    { label: "Total Revenue", value: `₹${stats.totalRevenue.toFixed(2)}`, icon: DollarSign, color: "text-green-400", bg: "bg-green-400/10" },
+    { label: "Total Revenue", value: `₹${stats.totalRevenue.toFixed(2)}`, icon: BadgeIndianRupee, color: "text-green-400", bg: "bg-green-400/10" },
     { label: "Total Orders", value: stats.totalOrders, icon: ShoppingCart, color: "text-blue-400", bg: "bg-blue-400/10" },
     { label: "Pending", value: stats.pendingOrders, icon: Clock, color: "text-yellow-400", bg: "bg-yellow-400/10" },
     { label: "Refunded", value: stats.refundedOrders, icon: RefreshCw, color: "text-purple-400", bg: "bg-purple-400/10" },

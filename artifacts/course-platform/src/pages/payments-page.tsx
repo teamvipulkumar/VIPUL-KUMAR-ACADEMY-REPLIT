@@ -1,7 +1,7 @@
 import { useGetPaymentHistory, getGetPaymentHistoryQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign } from "lucide-react";
+import { BadgeIndianRupee } from "lucide-react";
 
 export default function PaymentsPage() {
   const { data: payments, isLoading } = useGetPaymentHistory({ query: { queryKey: getGetPaymentHistoryQueryKey() } });
@@ -24,7 +24,7 @@ export default function PaymentsPage() {
         ) : !payments || payments.length === 0 ? (
           <Card className="bg-card border-border">
             <CardContent className="py-16 text-center">
-              <DollarSign className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <BadgeIndianRupee className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h2 className="text-xl font-semibold mb-2">No payments yet</h2>
               <p className="text-muted-foreground">Payments will appear here after you enroll in a course.</p>
             </CardContent>

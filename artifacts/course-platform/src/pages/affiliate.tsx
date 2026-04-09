@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link2, DollarSign, Users, MousePointerClick, Copy, Check } from "lucide-react";
+import { Link2, BadgeIndianRupee, Users, MousePointerClick, Copy, Check } from "lucide-react";
 
 export default function AffiliatePage() {
   const { data: dashboard } = useGetAffiliateDashboard({ query: { queryKey: getGetAffiliateDashboardQueryKey() } });
@@ -63,7 +63,7 @@ export default function AffiliatePage() {
           </Card>
           <Card className="bg-card border-border">
             <CardContent className="p-4 md:p-6">
-              <div className="flex items-center gap-3 mb-1"><DollarSign className="w-4 h-4 text-green-400" /><span className="text-sm text-muted-foreground">Total Earnings</span></div>
+              <div className="flex items-center gap-3 mb-1"><BadgeIndianRupee className="w-4 h-4 text-green-400" /><span className="text-sm text-muted-foreground">Total Earnings</span></div>
               <div className="text-2xl md:text-3xl font-bold">₹{(dashboard?.totalEarnings ?? 0).toFixed(2)}</div>
             </CardContent>
           </Card>

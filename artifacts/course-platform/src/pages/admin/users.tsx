@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   UserPlus, Search, Eye, Pencil, Trash2, ShieldCheck,
-  GraduationCap, Share2, Mail, Calendar, BookOpen, DollarSign,
+  GraduationCap, Share2, Mail, Calendar, BookOpen, BadgeIndianRupee,
   MoreHorizontal, CheckCircle, XCircle, Lock
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -231,7 +231,7 @@ function ViewProfileDialog({ userId, onClose }: { userId: number; onClose: () =>
             <div className="grid grid-cols-3 gap-3">
               {[
                 { label: "Courses", value: (user as { enrollmentCount?: number }).enrollmentCount ?? 0, icon: BookOpen, color: "text-blue-400" },
-                { label: "Total Spent", value: `₹${((user as { totalSpent?: number }).totalSpent ?? 0).toFixed(0)}`, icon: DollarSign, color: "text-green-400" },
+                { label: "Total Spent", value: `₹${((user as { totalSpent?: number }).totalSpent ?? 0).toFixed(0)}`, icon: BadgeIndianRupee, color: "text-green-400" },
                 { label: "Affiliate Earnings", value: `₹${((user as { affiliateEarnings?: number }).affiliateEarnings ?? 0).toFixed(0)}`, icon: Share2, color: "text-purple-400" },
               ].map(stat => (
                 <div key={stat.label} className="p-3 bg-card/50 rounded-xl border border-border text-center">

@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { BookOpen, DollarSign, Users, TrendingUp, Copy, Check } from "lucide-react";
+import { BookOpen, BadgeIndianRupee, Users, TrendingUp, Copy, Check } from "lucide-react";
 import { useState } from "react";
 
 export default function DashboardPage() {
@@ -18,7 +18,7 @@ export default function DashboardPage() {
   const stats = [
     { label: "Enrolled Courses", value: summary?.enrolledCourses ?? 0, icon: BookOpen, color: "text-blue-400" },
     { label: "Completed", value: summary?.completedCourses ?? 0, icon: TrendingUp, color: "text-green-400" },
-    { label: "Total Spent", value: `₹${(summary?.totalSpent ?? 0).toFixed(2)}`, icon: DollarSign, color: "text-yellow-400" },
+    { label: "Total Spent", value: `₹${(summary?.totalSpent ?? 0).toFixed(2)}`, icon: BadgeIndianRupee, color: "text-yellow-400" },
     { label: "Affiliate Earnings", value: `₹${(summary?.affiliateEarnings ?? 0).toFixed(2)}`, icon: Users, color: "text-purple-400" },
   ];
 

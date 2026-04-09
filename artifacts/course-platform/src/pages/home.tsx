@@ -2,11 +2,11 @@ import { useListCourses, getListCoursesQueryKey } from "@workspace/api-client-re
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "wouter";
-import { TrendingUp, Users, BookOpen, DollarSign, CheckCircle, ArrowRight, Star, Zap, Shield, Award } from "lucide-react";
+import { TrendingUp, Users, BookOpen, BadgeIndianRupee, CheckCircle, ArrowRight, Star, Zap, Shield, Award } from "lucide-react";
 
 const STATS = [
   { label: "Active Students", value: "2,400+", icon: Users },
-  { label: "Revenue Generated", value: "₹4.2Cr+", icon: DollarSign },
+  { label: "Revenue Generated", value: "₹4.2Cr+", icon: BadgeIndianRupee },
   { label: "Courses Available", value: "15+", icon: BookOpen },
   { label: "Avg. Student ROI", value: "640%", icon: TrendingUp },
 ];
