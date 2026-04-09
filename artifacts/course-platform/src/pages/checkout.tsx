@@ -41,7 +41,7 @@ const GATEWAY_META: Record<string, { icon: string; logo?: string; label: string;
   stripe:   { icon: "S", logo: "stripe-logo.png", label: "Stripe", tagline: "Cards · International" },
   razorpay: { icon: "R", logo: "razorpay-logo.png", label: "Razorpay", tagline: "UPI · Cards · Wallets" },
   cashfree: { icon: "CF", logo: "cashfree-logo.png",  label: "Cashfree", tagline: "UPI · Cards · Instant" },
-  paytm:    { icon: "🔵", label: "Paytm",             tagline: "Paytm Wallet · UPI · Cards" },
+  paytm:    { icon: "P", logo: "paytm-logo.png", label: "Paytm", tagline: "Paytm Wallet · UPI · Cards" },
   payu:     { icon: "🟠", label: "PayU",              tagline: "UPI · Cards · EMI" },
 };
 
