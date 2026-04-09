@@ -29,7 +29,12 @@ app.use(
 );
 app.use(cors({ origin: true, credentials: true }));
 app.use(cookieParser());
-app.use(express.json());
+app.use(express.json({
+  verify: (req, _res, buf) => {
+    // Capture raw body for webhook signature verification (Cashfree, Stripe, etc.)
+    (req as { rawBody?: string }).rawBody = buf.toString("utf8");
+  },
+}));
 app.use(express.urlencoded({ extended: true }));
 
 // Serve uploaded files via /api/files/* so they work through the Replit proxy

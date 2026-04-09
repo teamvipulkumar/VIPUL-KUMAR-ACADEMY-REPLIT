@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { nanoid } from "nanoid";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { db } from "@workspace/db";
 import { paymentsTable, coursesTable, enrollmentsTable, couponsTable, notificationsTable, usersTable, paymentGatewaysTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
@@ -340,22 +341,59 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
 
 // ── Cashfree: Webhook ─────────────────────────────────────────────────────────
 router.post("/cashfree/webhook", async (req, res): Promise<void> => {
-  // Cashfree sends webhook events; we verify and process payment completion
-  const event = req.body;
-  const orderId = event?.data?.order?.order_id;
-  const orderStatus = event?.data?.order?.order_status;
+  // 1. Verify Cashfree webhook signature
+  const timestamp = req.headers["x-webhook-timestamp"] as string | undefined;
+  const signature = req.headers["x-webhook-signature"] as string | undefined;
+  const rawBody = (req as { rawBody?: string }).rawBody ?? "";
 
-  if (!orderId || orderStatus !== "PAID") { res.json({ received: true }); return; }
+  if (timestamp && signature) {
+    const [gw] = await db.select().from(paymentGatewaysTable).where(eq(paymentGatewaysTable.name, "cashfree")).limit(1);
+    if (gw?.secretKey) {
+      const computed = crypto
+        .createHmac("sha256", gw.secretKey)
+        .update(timestamp + rawBody)
+        .digest("base64");
+      if (computed !== signature) {
+        res.status(401).json({ error: "Invalid webhook signature" });
+        return;
+      }
+    }
+  }
+
+  // 2. Process event
+  const event = req.body;
+
+  // Support both v2023-08-01 and v2025-01-01 formats
+  const orderId: string | undefined =
+    event?.data?.order?.order_id ??   // v2025-01-01
+    event?.data?.order?.orderId;       // fallback
+
+  const orderStatus: string | undefined =
+    event?.data?.order?.order_status ??
+    event?.data?.payment?.payment_status;
+
+  const isPaid = orderStatus === "PAID" || event?.type === "PAYMENT_SUCCESS_WEBHOOK";
+
+  if (!orderId || !isPaid) { res.json({ received: true }); return; }
 
   const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.gatewayOrderId, orderId)).limit(1);
   if (!payment || payment.status === "completed") { res.json({ received: true }); return; }
 
-  await db.update(paymentsTable).set({ status: "completed", paymentId: `cf_wh_${nanoid(10)}` }).where(eq(paymentsTable.id, payment.id));
+  const cfPaymentId: string = event?.data?.payment?.cf_payment_id
+    ? String(event.data.payment.cf_payment_id)
+    : `cf_wh_${nanoid(10)}`;
+
+  await db.update(paymentsTable).set({ status: "completed", paymentId: cfPaymentId }).where(eq(paymentsTable.id, payment.id));
+
   const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
   if (!existing) {
     await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId: payment.courseId });
     const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
     await db.insert(notificationsTable).values({ userId: payment.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success" });
+    if (payment.couponCode) {
+      const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
+      if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
+    }
   }
   res.json({ received: true });
 });
