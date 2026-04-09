@@ -37,10 +37,10 @@ function fmtCard(v: string) { return v.replace(/\D/g, "").slice(0, 16).replace(/
 function fmtExpiry(v: string) { const d = v.replace(/\D/g, "").slice(0, 4); return d.length > 2 ? `${d.slice(0,2)}/${d.slice(2)}` : d; }
 
 // ── Gateway display metadata ──────────────────────────────────────────────────
-const GATEWAY_META: Record<string, { icon: string; label: string; tagline: string }> = {
+const GATEWAY_META: Record<string, { icon: string; logo?: string; label: string; tagline: string }> = {
   stripe:   { icon: "💳", label: "Stripe",           tagline: "Cards · International" },
   razorpay: { icon: "🇮🇳", label: "Razorpay",         tagline: "UPI · Cards · Wallets" },
-  cashfree: { icon: "🟢", label: "Cashfree",          tagline: "UPI · Cards · Instant" },
+  cashfree: { icon: "CF", logo: "cashfree-logo.png",  label: "Cashfree", tagline: "UPI · Cards · Instant" },
   paytm:    { icon: "🔵", label: "Paytm",             tagline: "Paytm Wallet · UPI · Cards" },
   payu:     { icon: "🟠", label: "PayU",              tagline: "UPI · Cards · EMI" },
 };
@@ -110,7 +110,9 @@ function PaymentModal({ gateway, amount, courseName, onClose, onPay }: PaymentMo
         {/* Header */}
         <div className={`px-5 pt-5 pb-4 flex items-center justify-between ${isStripe ? "bg-[#635BFF]/10 border-b border-[#635BFF]/20" : "bg-blue-500/10 border-b border-blue-500/20"}`}>
           <div className="flex items-center gap-2.5">
-            <span className="text-2xl">{meta.icon}</span>
+            {meta.logo
+              ? <img src={`${import.meta.env.BASE_URL}${meta.logo}`} alt={meta.label} className="w-8 h-8 object-contain rounded" />
+              : <span className="text-2xl">{meta.icon}</span>}
             <div>
               <p className="font-bold text-sm text-foreground">{meta.label} Checkout</p>
               <p className="text-xs text-muted-foreground">{courseName}</p>
@@ -654,7 +656,9 @@ export default function CheckoutPage() {
                               : "border-border text-muted-foreground hover:border-border/80"
                           }`}
                         >
-                          <span className="text-xl">{m.icon}</span>
+                          {m.logo
+                            ? <img src={`${import.meta.env.BASE_URL}${m.logo}`} alt={m.label} className="w-8 h-8 object-contain rounded" />
+                            : <span className="text-xl">{m.icon}</span>}
                           <span>{m.label}</span>
                           <span className="text-[10px] font-normal text-muted-foreground text-center leading-tight">{m.tagline}</span>
                         </button>

@@ -34,7 +34,7 @@ type GatewayForm = {
   isTestMode: boolean;
 };
 
-const GATEWAY_META: Record<string, { icon: string; color: string; bg: string; border: string; description: string; docsUrl: string; webhookNote: string }> = {
+const GATEWAY_META: Record<string, { icon: string; logo?: string; color: string; bg: string; border: string; description: string; docsUrl: string; webhookNote: string }> = {
   stripe: {
     icon: "💳",
     color: "text-[#635BFF]",
@@ -54,9 +54,10 @@ const GATEWAY_META: Record<string, { icon: string; color: string; bg: string; bo
     webhookNote: "Get from Razorpay Dashboard → Settings → Webhooks",
   },
   cashfree: {
-    icon: "🟢",
+    icon: "CF",
+    logo: "cashfree-logo.png",
     color: "text-green-400",
-    bg: "bg-green-400/10",
+    bg: "bg-white",
     border: "border-green-400/30",
     description: "Instant settlements, UPI & Cards. Preferred by startups and growing businesses.",
     docsUrl: "https://merchant.cashfree.com/merchants/apikey",
@@ -134,8 +135,10 @@ function GatewayCard({ gw, onSave, onRemove, onTest }: {
       {/* Header */}
       <div className="p-5 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3.5 min-w-0">
-          <div className={`w-11 h-11 rounded-xl ${meta.bg} flex items-center justify-center text-xl flex-shrink-0`}>
-            {meta.icon}
+          <div className={`w-11 h-11 rounded-xl ${meta.bg} flex items-center justify-center text-xl flex-shrink-0 overflow-hidden`}>
+            {meta.logo
+              ? <img src={`${import.meta.env.BASE_URL}${meta.logo}`} alt={gw.displayName} className="w-full h-full object-contain p-1" />
+              : meta.icon}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
