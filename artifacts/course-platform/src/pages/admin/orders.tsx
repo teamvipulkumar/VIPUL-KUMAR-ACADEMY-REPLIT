@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Search, DollarSign, ShoppingCart, Clock, RefreshCw, Download,
+  Search, DollarSign, ShoppingCart, Clock, RefreshCw, Upload,
   User, BookOpen, Calendar, CreditCard, Tag, Hash, Mail, AlertTriangle, RotateCcw
 } from "lucide-react";
 import {
@@ -332,7 +332,7 @@ export default function AdminOrdersPage() {
           <p className="text-sm text-muted-foreground mt-0.5">{total} total orders</p>
         </div>
         <Button onClick={exportCsv} variant="outline" className="border-white/10 gap-2 self-start sm:self-auto hover:bg-white/5">
-          <Download className="w-4 h-4" />Export CSV
+          <Upload className="w-4 h-4" />Export CSV
         </Button>
       </div>
 
