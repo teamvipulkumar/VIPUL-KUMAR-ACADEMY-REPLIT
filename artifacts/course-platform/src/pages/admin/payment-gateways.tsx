@@ -70,7 +70,7 @@ const GATEWAY_META: Record<string, { icon: string; logo?: string; imgClass?: str
     icon: "P",
     logo: "paytm-logo.png",
     color: "text-sky-400",
-    bg: "bg-black",
+    bg: "bg-white",
     border: "border-sky-400/30",
     description: "India's largest payment network. Accept Paytm Wallet, UPI & Cards.",
     docsUrl: "https://business.paytm.com/account/settings",
