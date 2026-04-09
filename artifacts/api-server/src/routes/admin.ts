@@ -1,4 +1,5 @@
 import { Router } from "express";
+import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
 import {
   usersTable, coursesTable, enrollmentsTable, paymentsTable, referralsTable,
@@ -48,13 +49,30 @@ router.get("/users/:userId", requireAdmin, async (req, res): Promise<void> => {
   res.json({ ...user, enrollmentCount: enrollCount?.count ?? 0, totalSpent: parseFloat(String(spentResult?.total ?? 0)), affiliateEarnings });
 });
 
+router.post("/users", requireAdmin, async (req, res): Promise<void> => {
+  const { name, email, password, role = "student" } = req.body;
+  if (!name || !email || !password) { res.status(400).json({ error: "name, email, and password are required" }); return; }
+  const [existing] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, email.toLowerCase())).limit(1);
+  if (existing) { res.status(409).json({ error: "Email already registered" }); return; }
+  const hashed = await bcrypt.hash(password, 10);
+  const referralCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+  const [user] = await db.insert(usersTable).values({ name, email: email.toLowerCase(), password: hashed, role, referralCode }).returning({
+    id: usersTable.id, email: usersTable.email, name: usersTable.name,
+    role: usersTable.role, avatarUrl: usersTable.avatarUrl, referralCode: usersTable.referralCode,
+    isBanned: usersTable.isBanned, createdAt: usersTable.createdAt,
+  });
+  res.status(201).json(user);
+});
+
 router.put("/users/:userId", requireAdmin, async (req, res): Promise<void> => {
   const userId = parseInt(req.params.userId);
-  const { name, role, isBanned } = req.body;
+  const { name, email, role, isBanned, password } = req.body;
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.name = name;
+  if (email !== undefined) updates.email = email.toLowerCase();
   if (role !== undefined) updates.role = role;
   if (isBanned !== undefined) updates.isBanned = isBanned;
+  if (password !== undefined && password.length > 0) updates.password = await bcrypt.hash(password, 10);
   const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, userId)).returning({
     id: usersTable.id, email: usersTable.email, name: usersTable.name,
     role: usersTable.role, avatarUrl: usersTable.avatarUrl, referralCode: usersTable.referralCode,
@@ -62,6 +80,14 @@ router.put("/users/:userId", requireAdmin, async (req, res): Promise<void> => {
   });
   if (!updated) { res.status(404).json({ error: "User not found" }); return; }
   res.json(updated);
+});
+
+router.delete("/users/:userId", requireAdmin, async (req, res): Promise<void> => {
+  const userId = parseInt(req.params.userId);
+  const authedReq = req as AuthedRequest;
+  if (authedReq.user?.id === userId) { res.status(400).json({ error: "Cannot delete your own account" }); return; }
+  await db.delete(usersTable).where(eq(usersTable.id, userId));
+  res.json({ message: "User deleted" });
 });
 
 router.post("/users/:userId/ban", requireAdmin, async (req, res): Promise<void> => {
