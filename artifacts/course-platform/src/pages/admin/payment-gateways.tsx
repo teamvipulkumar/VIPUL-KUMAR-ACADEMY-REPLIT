@@ -34,10 +34,11 @@ type GatewayForm = {
   isTestMode: boolean;
 };
 
-const GATEWAY_META: Record<string, { icon: string; logo?: string; color: string; bg: string; border: string; description: string; docsUrl: string; webhookNote: string }> = {
+const GATEWAY_META: Record<string, { icon: string; logo?: string; imgClass?: string; color: string; bg: string; border: string; description: string; docsUrl: string; webhookNote: string }> = {
   stripe: {
     icon: "S",
     logo: "stripe-logo.png",
+    imgClass: "w-full h-full object-cover p-0",
     color: "text-[#635BFF]",
     bg: "bg-transparent",
     border: "border-[#635BFF]/30",
@@ -138,7 +139,7 @@ function GatewayCard({ gw, onSave, onRemove, onTest }: {
         <div className="flex items-center gap-3.5 min-w-0">
           <div className={`w-11 h-11 rounded-xl ${meta.bg} flex items-center justify-center text-xl flex-shrink-0 overflow-hidden`}>
             {meta.logo
-              ? <img src={`${import.meta.env.BASE_URL}${meta.logo}`} alt={gw.displayName} className="w-full h-full object-contain p-1" />
+              ? <img src={`${import.meta.env.BASE_URL}${meta.logo}`} alt={gw.displayName} className={meta.imgClass ?? "w-full h-full object-contain p-1"} />
               : meta.icon}
           </div>
           <div className="min-w-0">
