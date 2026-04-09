@@ -123,7 +123,9 @@ export default function LearnPage() {
   const courseId = parseInt(params?.courseId ?? "0");
   const [selectedLesson, setSelectedLesson] = useState<LessonEntry | null>(null);
   const [expandedModules, setExpandedModules] = useState<number[]>([0]);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(
+    typeof window !== "undefined" ? window.innerWidth >= 768 : true
+  );
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -213,10 +215,15 @@ export default function LearnPage() {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* ── Sidebar ── */}
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* ── Mobile sidebar backdrop ── */}
         {sidebarOpen && (
-          <aside className="w-72 border-r border-border bg-card flex-shrink-0 flex flex-col overflow-hidden">
+          <div className="md:hidden fixed inset-0 z-20 bg-black/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
+        )}
+
+        {/* ── Sidebar — overlay on mobile, push on desktop ── */}
+        {sidebarOpen && (
+          <aside className="fixed md:relative inset-y-0 left-0 z-30 md:z-auto w-80 md:w-72 border-r border-border bg-card flex-shrink-0 flex flex-col overflow-hidden shadow-2xl md:shadow-none mt-14 md:mt-0">
             {/* Sidebar header */}
             <div className="px-4 py-3 border-b border-border bg-card flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-primary flex-shrink-0" />
@@ -352,7 +359,7 @@ export default function LearnPage() {
                 )}
 
                 {/* Lesson info & body */}
-                <div className="max-w-3xl mx-auto px-6 py-6">
+                <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 md:py-6">
                   {/* Lesson header */}
                   <div className="flex items-start justify-between gap-4 mb-6">
                     <div className="flex-1 min-w-0">
@@ -466,7 +473,7 @@ export default function LearnPage() {
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                             allowFullScreen
                             referrerPolicy="no-referrer"
-                            srcdoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;background:#000;overflow:hidden}body>*:first-child{position:absolute!important;top:0!important;left:0!important;width:100%!important;height:100%!important;padding-top:0!important}</style></head><body>${selectedLesson.content}</body></html>`}
+                            srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;background:#000;overflow:hidden}body>*:first-child{position:absolute!important;top:0!important;left:0!important;width:100%!important;height:100%!important;padding-top:0!important}</style></head><body>${selectedLesson.content}</body></html>`}
                           />
                         </div>
                       ) : (
@@ -513,24 +520,25 @@ export default function LearnPage() {
               </div>
 
               {/* ── Bottom navigation bar ── */}
-              <div className="border-t border-border bg-card/80 backdrop-blur-sm px-6 py-3 flex items-center gap-4 flex-shrink-0">
+              <div className="border-t border-border bg-card/80 backdrop-blur-sm px-3 md:px-6 py-3 flex items-center gap-2 md:gap-4 flex-shrink-0">
                 <Button
                   variant="outline"
                   size="sm"
                   disabled={!prevLesson}
                   onClick={() => prevLesson && selectLesson(prevLesson as LessonEntry)}
-                  className="gap-1.5"
+                  className="gap-1 md:gap-1.5 px-2 md:px-3"
                 >
-                  <ChevronLeft className="w-4 h-4" />Previous
+                  <ChevronLeft className="w-4 h-4" />
+                  <span className="hidden sm:inline">Previous</span>
                 </Button>
 
-                <div className="flex-1 flex items-center justify-center gap-3">
-                  <span className="text-xs text-muted-foreground">
-                    Lesson {currentIndex + 1} of {allLessons.length}
+                <div className="flex-1 flex items-center justify-center gap-2 md:gap-3">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {currentIndex + 1} / {allLessons.length}
                   </span>
-                  {/* Dot indicators (max 8) */}
+                  {/* Dot indicators — hidden on mobile */}
                   {allLessons.length <= 12 && (
-                    <div className="flex items-center gap-1">
+                    <div className="hidden sm:flex items-center gap-1">
                       {allLessons.map((l, i) => (
                         <button
                           key={l.id}
@@ -552,21 +560,23 @@ export default function LearnPage() {
                 {!selectedLesson.isCompleted ? (
                   <Button
                     size="sm"
-                    className="gap-1.5 bg-green-600 hover:bg-green-500 text-white"
+                    className="gap-1 md:gap-1.5 bg-green-600 hover:bg-green-500 text-white px-2 md:px-3"
                     onClick={() => handleCompleteLesson(selectedLesson.id)}
                     disabled={completeLesson.isPending}
                   >
                     <Check className="w-3.5 h-3.5" />
-                    {nextLesson ? "Complete & Next" : "Complete"}
+                    <span className="hidden sm:inline">{nextLesson ? "Complete & Next" : "Complete"}</span>
+                    <span className="sm:hidden">Done</span>
                   </Button>
                 ) : (
                   <Button
                     size="sm"
                     disabled={!nextLesson}
                     onClick={() => nextLesson && selectLesson(nextLesson as LessonEntry)}
-                    className="gap-1.5"
+                    className="gap-1 md:gap-1.5 px-2 md:px-3"
                   >
-                    Next<ChevronRight className="w-4 h-4" />
+                    <span className="hidden sm:inline">Next</span>
+                    <ChevronRight className="w-4 h-4" />
                   </Button>
                 )}
               </div>

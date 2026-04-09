@@ -38,13 +38,13 @@ export default function Home() {
   return (
     <div className="flex flex-col">
       {/* Hero */}
-      <section className="relative py-24 px-6 md:px-12 flex flex-col items-center text-center overflow-hidden">
+      <section className="relative py-14 md:py-24 px-4 md:px-12 flex flex-col items-center text-center overflow-hidden">
         <div className="absolute inset-0 bg-gradient-radial from-primary/10 via-transparent to-transparent pointer-events-none" />
         <div className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary mb-8">
           <Star className="w-3.5 h-3.5 mr-2 fill-primary" />
           Premium Business Education
         </div>
-        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 max-w-4xl">
+        <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight mb-6 max-w-4xl">
           Master the Systems{" "}
           <span className="text-primary block">That Print Revenue.</span>
         </h1>

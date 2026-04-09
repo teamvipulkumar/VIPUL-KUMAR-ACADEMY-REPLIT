@@ -3,9 +3,9 @@ import { useListCourses, getListCoursesQueryKey } from "@workspace/api-client-re
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search } from "lucide-react";
 
 export default function CoursesPage() {
   const [search, setSearch] = useState("");
@@ -32,20 +32,25 @@ export default function CoursesPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-12">
-        <div className="mb-10">
-          <h1 className="text-4xl font-bold tracking-tight mb-2">Course Catalog</h1>
-          <p className="text-muted-foreground">Proven systems to build and scale your online income.</p>
+      <div className="container mx-auto px-4 py-8 md:py-12">
+        <div className="mb-6 md:mb-10">
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">Course Catalog</h1>
+          <p className="text-muted-foreground text-sm md:text-base">Proven systems to build and scale your online income.</p>
         </div>
-        <div className="flex gap-4 mb-8">
-          <Input
-            placeholder="Search courses..."
-            value={search}
-            onChange={e => handleSearch(e.target.value)}
-            className="max-w-sm bg-card border-border"
-          />
+
+        {/* Filters — stack on mobile */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-6 md:mb-8">
+          <div className="relative flex-1 sm:max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search courses..."
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+              className="pl-9 bg-card border-border w-full"
+            />
+          </div>
           <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="w-52 bg-card border-border">
+            <SelectTrigger className="w-full sm:w-52 bg-card border-border">
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
@@ -58,42 +63,44 @@ export default function CoursesPage() {
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {[1,2,3,4,5,6].map(i => <div key={i} className="h-72 bg-card rounded-xl animate-pulse" />)}
           </div>
         ) : courses.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">No courses found.</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {courses.map(course => (
               <Link href={`/courses/${course.id}`} key={course.id}>
                 <Card className="h-full bg-card border-border hover:border-primary/50 transition-all duration-200 cursor-pointer group">
-                  <div className="h-40 bg-gradient-to-br from-primary/20 to-blue-900/30 rounded-t-lg flex items-center justify-center">
-                    <div className="text-4xl font-black text-primary/30 select-none">
-                      {course.category.charAt(0)}
+                  {course.thumbnailUrl ? (
+                    <img src={course.thumbnailUrl} alt={course.title} className="w-full h-40 object-cover rounded-t-lg" />
+                  ) : (
+                    <div className="h-40 bg-gradient-to-br from-primary/20 to-blue-900/30 rounded-t-lg flex items-center justify-center">
+                      <div className="text-4xl font-black text-primary/30 select-none">{course.category.charAt(0)}</div>
                     </div>
-                  </div>
-                  <CardHeader className="pb-2">
+                  )}
+                  <CardHeader className="pb-2 px-4 pt-4">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${levelColors[course.level] ?? ""}`}>
-                        {course.level}
-                      </span>
-                      <span className="text-xs text-muted-foreground">{course.category}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${levelColors[course.level] ?? ""}`}>{course.level}</span>
+                      <span className="text-xs text-muted-foreground truncate">{course.category}</span>
                     </div>
-                    <h3 className="font-bold text-foreground group-hover:text-primary transition-colors line-clamp-2">{course.title}</h3>
+                    <h3 className="font-bold text-foreground group-hover:text-primary transition-colors line-clamp-2 text-sm md:text-base">{course.title}</h3>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-4 pb-2">
                     <p className="text-sm text-muted-foreground line-clamp-2">{course.description}</p>
-                    <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground flex-wrap">
                       <span>{course.lessonCount} lessons</span>
+                      <span>·</span>
                       <span>{course.enrollmentCount} students</span>
+                      <span>·</span>
                       <span>{Math.round(course.durationMinutes / 60)}h</span>
                     </div>
                   </CardContent>
-                  <CardFooter className="pt-0">
+                  <CardFooter className="pt-0 px-4 pb-4">
                     <div className="flex items-center justify-between w-full">
                       <span className="text-xl font-bold text-foreground">${course.price}</span>
-                      <span className="text-xs text-primary">View details &rarr;</span>
+                      <span className="text-xs text-primary group-hover:underline">View details →</span>
                     </div>
                   </CardFooter>
                 </Card>
