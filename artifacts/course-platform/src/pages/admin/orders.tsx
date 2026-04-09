@@ -21,7 +21,7 @@ type Order = {
   amount: string;
   currency: string;
   status: "pending" | "completed" | "failed" | "refunded";
-  gateway: "stripe" | "razorpay";
+  gateway: "stripe" | "razorpay" | "cashfree" | "paytm" | "payu";
   couponCode: string | null;
   paymentId: string | null;
   createdAt: string;
@@ -37,16 +37,19 @@ type Stats = {
   refundedOrders: number;
 };
 
-const statusConfig = {
+const statusConfig: Record<string, { label: string; className: string }> = {
   completed: { label: "Completed", className: "text-green-400 border-green-400/30 bg-green-400/10" },
-  pending: { label: "Pending", className: "text-yellow-400 border-yellow-400/30 bg-yellow-400/10" },
-  failed: { label: "Failed", className: "text-red-400 border-red-400/30 bg-red-400/10" },
-  refunded: { label: "Refunded", className: "text-purple-400 border-purple-400/30 bg-purple-400/10" },
+  pending:   { label: "Pending",   className: "text-yellow-400 border-yellow-400/30 bg-yellow-400/10" },
+  failed:    { label: "Failed",    className: "text-red-400 border-red-400/30 bg-red-400/10" },
+  refunded:  { label: "Refunded",  className: "text-purple-400 border-purple-400/30 bg-purple-400/10" },
 };
 
-const gatewayConfig = {
-  stripe: { label: "Stripe", className: "text-blue-400 border-blue-400/30 bg-blue-400/10" },
+const gatewayConfig: Record<string, { label: string; className: string }> = {
+  stripe:   { label: "Stripe",   className: "text-blue-400   border-blue-400/30   bg-blue-400/10" },
   razorpay: { label: "Razorpay", className: "text-indigo-400 border-indigo-400/30 bg-indigo-400/10" },
+  cashfree: { label: "Cashfree", className: "text-green-400  border-green-400/30  bg-green-400/10" },
+  paytm:    { label: "Paytm",    className: "text-sky-400    border-sky-400/30    bg-sky-400/10" },
+  payu:     { label: "PayU",     className: "text-orange-400 border-orange-400/30 bg-orange-400/10" },
 };
 
 function formatDate(dateStr: string) {
@@ -166,8 +169,8 @@ function OrderDetailDialog({
   order, onClose, onRefundInitiated,
 }: { order: Order; onClose: () => void; onRefundInitiated: (orderId: number) => void }) {
   const [refundOpen, setRefundOpen] = useState(false);
-  const cfg = statusConfig[order.status];
-  const gtw = gatewayConfig[order.gateway];
+  const cfg = statusConfig[order.status] ?? { label: order.status, className: "text-muted-foreground border-border bg-muted/30" };
+  const gtw = gatewayConfig[order.gateway] ?? { label: order.gateway, className: "text-muted-foreground border-border bg-muted/30" };
 
   return (
     <>
@@ -403,8 +406,8 @@ export default function AdminOrdersPage() {
             </thead>
             <tbody className="divide-y divide-border">
               {orders.map(order => {
-                const cfg = statusConfig[order.status];
-                const gtw = gatewayConfig[order.gateway];
+                const cfg = statusConfig[order.status] ?? { label: order.status, className: "text-muted-foreground border-border bg-muted/30" };
+                const gtw = gatewayConfig[order.gateway] ?? { label: order.gateway, className: "text-muted-foreground border-border bg-muted/30" };
                 return (
                   <tr key={order.id} className="hover:bg-card/40 transition-colors cursor-pointer" onClick={() => setSelectedOrder(order)}>
                     {/* Order # */}
