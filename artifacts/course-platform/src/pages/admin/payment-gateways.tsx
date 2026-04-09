@@ -47,9 +47,10 @@ const GATEWAY_META: Record<string, { icon: string; logo?: string; imgClass?: str
     webhookNote: "Get from Stripe Dashboard → Developers → Webhooks",
   },
   razorpay: {
-    icon: "🇮🇳",
+    icon: "R",
+    logo: "razorpay-logo.png",
     color: "text-blue-400",
-    bg: "bg-blue-400/10",
+    bg: "bg-white",
     border: "border-blue-400/30",
     description: "UPI, NetBanking, Cards & Wallets. Most popular for Indian customers.",
     docsUrl: "https://dashboard.razorpay.com/app/keys",

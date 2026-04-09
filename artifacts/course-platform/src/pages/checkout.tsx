@@ -39,7 +39,7 @@ function fmtExpiry(v: string) { const d = v.replace(/\D/g, "").slice(0, 4); retu
 // ── Gateway display metadata ──────────────────────────────────────────────────
 const GATEWAY_META: Record<string, { icon: string; logo?: string; label: string; tagline: string }> = {
   stripe:   { icon: "S", logo: "stripe-logo.png", label: "Stripe", tagline: "Cards · International" },
-  razorpay: { icon: "🇮🇳", label: "Razorpay",         tagline: "UPI · Cards · Wallets" },
+  razorpay: { icon: "R", logo: "razorpay-logo.png", label: "Razorpay", tagline: "UPI · Cards · Wallets" },
   cashfree: { icon: "CF", logo: "cashfree-logo.png",  label: "Cashfree", tagline: "UPI · Cards · Instant" },
   paytm:    { icon: "🔵", label: "Paytm",             tagline: "Paytm Wallet · UPI · Cards" },
   payu:     { icon: "🟠", label: "PayU",              tagline: "UPI · Cards · EMI" },
