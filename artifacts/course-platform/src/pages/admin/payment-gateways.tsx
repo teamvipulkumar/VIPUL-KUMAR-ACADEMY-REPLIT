@@ -233,12 +233,17 @@ function GatewayCard({ gw, onSave, onRemove, onTest }: {
                   value={form.secretKey}
                   onChange={e => setForm(f => ({ ...f, secretKey: e.target.value }))}
                   onFocus={e => { if (isMasked(e.target.value)) setForm(f => ({ ...f, secretKey: "" })); }}
-                  className="bg-card border-border pr-9 font-mono text-xs"
+                  className={`bg-card pr-9 font-mono text-xs ${!isMasked(form.secretKey) && form.secretKey && form.apiKey && form.secretKey === form.apiKey ? "border-red-500 focus-visible:ring-red-500" : "border-border"}`}
                 />
                 <button type="button" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowSecret(v => !v)}>
                   {showSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
               </div>
+              {!isMasked(form.secretKey) && form.secretKey && form.apiKey && form.secretKey === form.apiKey && (
+                <p className="text-[10px] text-red-400 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> {gw.secretLabel} must be different from {gw.keyLabel}
+                </p>
+              )}
             </div>
           </div>
 
@@ -265,7 +270,7 @@ function GatewayCard({ gw, onSave, onRemove, onTest }: {
 
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            <Button onClick={handleSave} disabled={saving} size="sm" className="bg-primary gap-1.5">
+            <Button onClick={handleSave} disabled={saving || (!isMasked(form.secretKey) && !!form.secretKey && !!form.apiKey && form.secretKey === form.apiKey)} size="sm" className="bg-primary gap-1.5">
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
               {saving ? "Saving..." : "Save Configuration"}
             </Button>
