@@ -142,7 +142,7 @@ function GatewayCard({ gw, onSave, onRemove, onTest }: {
         <div className="flex items-center gap-3.5 min-w-0">
           <div className={`w-11 h-11 rounded-xl ${meta.bg} flex items-center justify-center text-xl flex-shrink-0 overflow-hidden`}>
             {meta.logo
-              ? <img src={`${import.meta.env.BASE_URL}${meta.logo}`} alt={gw.displayName} className={meta.imgClass ?? "w-full h-full object-contain p-1"} />
+              ? <img src={`${import.meta.env.BASE_URL}${meta.logo}`} alt={gw.displayName} className="w-full h-full object-contain p-1 rounded-tl-[50px] rounded-tr-[50px] rounded-br-[50px] rounded-bl-[50px]" />
               : meta.icon}
           </div>
           <div className="min-w-0">
@@ -186,7 +186,6 @@ function GatewayCard({ gw, onSave, onRemove, onTest }: {
           </Button>
         </div>
       </div>
-
       {/* Expanded form */}
       {expanded && (
         <div className="border-t border-border p-5 bg-background/30 space-y-4">
