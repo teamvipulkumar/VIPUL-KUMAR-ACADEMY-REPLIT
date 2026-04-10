@@ -305,15 +305,15 @@ function AffiliateDashboard({ user }: { user: any }) {
   );
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-[calc(100vh-4rem)] bg-background">
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed top-16 inset-x-0 bottom-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
       {/* Sidebar — fixed on desktop, slide-over on mobile */}
       <aside className={`
-        fixed lg:sticky top-0 h-screen z-50 lg:z-auto
+        fixed lg:sticky top-16 h-[calc(100vh-4rem)] z-50 lg:z-auto
         w-56 flex-shrink-0 bg-card border-r border-border flex flex-col overflow-hidden
         transition-transform duration-200
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
@@ -323,18 +323,16 @@ function AffiliateDashboard({ user }: { user: any }) {
 
       {/* Main content */}
       <main className="flex-1 min-w-0 overflow-y-auto">
-        {/* Mobile top bar */}
-        <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-border bg-card sticky top-0 z-30 backdrop-blur-sm shadow-sm">
-          <button onClick={() => setSidebarOpen(true)} className="text-muted-foreground hover:text-foreground p-1">
-            <Menu className="w-5 h-5" />
-          </button>
-          <div>
-            <p className="text-xs font-extrabold text-primary uppercase tracking-widest">VK ACADEMY</p>
-            <p className="text-[10px] text-muted-foreground capitalize">{TABS.find(t => t.id === tab)?.label}</p>
-          </div>
-        </div>
-
         <div className="px-4 sm:px-6 py-6">
+          {/* Mobile: inline breadcrumb row (no second header) */}
+          <div className="lg:hidden flex items-center gap-2 mb-5">
+            <button onClick={() => setSidebarOpen(true)} className="text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0">
+              <Menu className="w-4 h-4" />
+            </button>
+            <span className="text-xs text-muted-foreground">Affiliate</span>
+            <span className="text-xs text-muted-foreground">/</span>
+            <span className="text-xs font-medium text-foreground capitalize">{TABS.find(t => t.id === tab)?.label}</span>
+          </div>
 
           {/* ── Earnings Tab ── */}
           {tab === "earnings" && (
