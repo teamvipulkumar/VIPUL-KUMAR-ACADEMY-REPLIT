@@ -98,7 +98,7 @@ export default function CoursesPage() {
                   <CardFooter className="pt-0 px-4 pb-4">
                     <div className="flex items-center justify-between w-full">
                       <span className="text-xl font-bold text-foreground">₹{course.price}</span>
-                      <span className="text-xs text-primary group-hover:underline">View details →</span>
+                      <Button size="sm" className="text-xs h-8 px-4">View details</Button>
                     </div>
                   </CardFooter>
                 </Card>
