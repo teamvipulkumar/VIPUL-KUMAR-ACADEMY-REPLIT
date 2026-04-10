@@ -29,7 +29,7 @@ async function apiFetch(path: string, opts?: RequestInit) {
 type Tab = "earnings" | "links" | "clicks" | "creatives" | "kyc" | "payouts" | "pixel" | "bank";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: "earnings",   label: "Earnings",   icon: <BadgeIndianRupee className="w-4 h-4" /> },
+  { id: "earnings",   label: "Dashboard",  icon: <BadgeIndianRupee className="w-4 h-4" /> },
   { id: "links",      label: "Affiliate Links", icon: <Link2 className="w-4 h-4" /> },
   { id: "clicks",     label: "Clicks",     icon: <MousePointerClick className="w-4 h-4" /> },
   { id: "creatives",  label: "Creatives",  icon: <Image className="w-4 h-4" /> },
