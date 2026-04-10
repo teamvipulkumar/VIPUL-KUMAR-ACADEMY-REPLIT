@@ -25,9 +25,9 @@ const TESTIMONIALS = [
 ];
 
 const levelColors: Record<string, string> = {
-  beginner: "text-green-400",
-  intermediate: "text-yellow-400",
-  advanced: "text-red-400",
+  beginner: "bg-green-500/10 text-green-400 border-green-500/20",
+  intermediate: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+  advanced: "bg-red-500/10 text-red-400 border-red-500/20",
 };
 
 export default function Home() {
