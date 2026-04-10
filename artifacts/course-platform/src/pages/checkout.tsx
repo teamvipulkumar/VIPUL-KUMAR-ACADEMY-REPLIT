@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Shield, Lock, Check, Tag, CreditCard, ChevronLeft,
+  Shield, Lock, Check, Tag, CreditCard, ChevronLeft, ChevronDown, ChevronUp,
   BookOpen, Users, Clock, Award, Eye, EyeOff, PartyPopper, Copy,
   X, Smartphone, Wallet, AlertCircle, Loader2,
 } from "lucide-react";
@@ -348,6 +348,7 @@ export default function CheckoutPage() {
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState<SuccessResult | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [orderSummaryOpen, setOrderSummaryOpen] = useState(false);
 
   const [form, setForm] = useState({
     email: "",
@@ -552,6 +553,72 @@ export default function CheckoutPage() {
           </div>
         </div>
 
+        {/* ── Mobile/Tablet: Collapsible Order Summary ── */}
+        <div className="lg:hidden mb-6">
+          <button
+            type="button"
+            onClick={() => setOrderSummaryOpen(o => !o)}
+            className="w-full flex items-center justify-between p-4 bg-card border border-border rounded-xl text-sm font-semibold"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              {course.thumbnailUrl && (
+                <img src={course.thumbnailUrl} alt={course.title} className="w-12 h-8 object-cover rounded-md flex-shrink-0" />
+              )}
+              <span className="truncate text-foreground">{course.title}</span>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+              <span className="text-primary font-bold">₹{discountedPrice.toFixed(2)}</span>
+              {orderSummaryOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+            </div>
+          </button>
+          {orderSummaryOpen && (
+            <div className="mt-3 space-y-3">
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                {course.thumbnailUrl && (
+                  <div className="w-full aspect-video overflow-hidden">
+                    <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div className="p-4">
+                  <Badge className="mb-2 text-xs bg-primary/10 text-primary border-primary/20">{course.category}</Badge>
+                  <h3 className="font-bold text-foreground leading-snug mb-3">{course.title}</h3>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5 text-primary" />{course.lessonCount} lessons</span>
+                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-primary" />{Math.round(course.durationMinutes / 60)}h content</span>
+                    <span className="flex items-center gap-1"><Award className="w-3.5 h-3.5 text-primary capitalize" />{course.level}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-card border border-border rounded-xl p-4">
+                <h3 className="font-semibold text-sm text-foreground mb-3">Order Summary</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Original price</span><span>₹{price.toFixed(2)}</span>
+                  </div>
+                  {appliedCoupon && (
+                    <div className="flex justify-between text-green-400">
+                      <span className="flex items-center gap-1"><Tag className="w-3 h-3" />{appliedCoupon.code}</span>
+                      <span>-₹{(appliedCoupon.type === "percentage" ? price * appliedCoupon.discount / 100 : Math.min(price, appliedCoupon.discount)).toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="border-t border-border pt-2 flex justify-between font-bold text-foreground text-base">
+                    <span>Total</span><span>₹{discountedPrice.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-card border border-border rounded-xl p-4">
+                <div className="space-y-2">
+                  {["Full lifetime access","Access on all devices","Certificate of completion","30-day money-back guarantee"].map(t => (
+                    <div key={t} className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Check className="w-3.5 h-3.5 text-green-400 flex-shrink-0" /><span>{t}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="grid lg:grid-cols-5 gap-6 lg:gap-10 items-start">
           {/* ── Left: Form ── */}
           <div className="lg:col-span-3">
@@ -722,8 +789,8 @@ export default function CheckoutPage() {
             </form>
           </div>
 
-          {/* ── Right: Order Summary ── */}
-          <div className="lg:col-span-2 space-y-4">
+          {/* ── Right: Order Summary (desktop only) ── */}
+          <div className="hidden lg:block lg:col-span-2 space-y-4">
             {/* Course card */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
               {course.thumbnailUrl && (
