@@ -6,6 +6,7 @@ import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { signToken, requireAuth, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
+import { triggerAutomation } from "./crm";
 
 const router = Router();
 
@@ -33,6 +34,7 @@ router.post("/register", async (req, res): Promise<void> => {
   res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
   const { password: _, ...safeUser } = user;
   res.status(201).json({ user: safeUser, message: "Registered successfully" });
+  triggerAutomation("welcome", user.id, user.email, { name: user.name, email: user.email }).catch(() => {});
 });
 
 router.post("/login", async (req, res): Promise<void> => {
@@ -83,6 +85,9 @@ router.post("/forgot-password", async (req, res): Promise<void> => {
     const token = nanoid(32);
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
     await db.update(usersTable).set({ resetToken: token, resetTokenExpiresAt: expiresAt }).where(eq(usersTable.id, user.id));
+    const origin = (req.headers.origin as string) || process.env.SITE_URL || "";
+    const resetLink = `${origin}/reset-password?token=${token}`;
+    triggerAutomation("forgot_password", user.id, user.email, { name: user.name, email: user.email, reset_link: resetLink }).catch(() => {});
   }
   res.json({ message: "If that email exists, a reset link has been sent" });
 });

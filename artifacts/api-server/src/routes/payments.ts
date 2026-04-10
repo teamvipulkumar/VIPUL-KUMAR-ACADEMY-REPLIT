@@ -7,6 +7,7 @@ import { paymentsTable, coursesTable, enrollmentsTable, couponsTable, notificati
 import { eq, and } from "drizzle-orm";
 import { requireAuth, signToken, verifyToken, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
+import { triggerAutomation } from "./crm";
 
 const router = Router();
 type AuthedRequest = Request & { user: JwtPayload };
@@ -64,6 +65,8 @@ router.post("/verify", requireAuth, async (req, res): Promise<void> => {
     enrollmentId = enrollment.id;
     const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
     await db.insert(notificationsTable).values({ userId: authedReq.user.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success" });
+    const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, authedReq.user.userId)).limit(1);
+    if (buyer) triggerAutomation("purchase", buyer.id, buyer.email, { name: buyer.name, email: buyer.email, course_name: course?.title ?? "", amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
   } else {
     enrollmentId = existing[0].id;
   }
@@ -165,6 +168,10 @@ router.post("/checkout/guest", async (req, res): Promise<void> => {
 
   // Auto-login: set JWT cookie
   const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (freshUser) {
+    if (isNewUser) triggerAutomation("welcome", freshUser.id, freshUser.email, { name: freshUser.name, email: freshUser.email }).catch(() => {});
+    if (!existing) triggerAutomation("purchase", freshUser.id, freshUser.email, { name: freshUser.name, email: freshUser.email, course_name: course.title, amount: String(amount.toFixed(2)) }).catch(() => {});
+  }
   const token = signToken({ userId: freshUser!.id, email: freshUser!.email, role: freshUser!.role });
   res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
 
@@ -325,6 +332,8 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
           const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
           if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
         }
+        const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+        if (buyer && course) triggerAutomation("purchase", buyer.id, buyer.email, { name: buyer.name, email: buyer.email, course_name: course.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
       }
 
       const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
