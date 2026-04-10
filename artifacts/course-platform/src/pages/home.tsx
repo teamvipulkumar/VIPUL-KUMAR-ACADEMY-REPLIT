@@ -107,30 +107,30 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {(coursesData?.courses ?? []).map(course => (
                 <Link href={`/courses/${course.id}`} key={course.id}>
-                  <Card className="h-full bg-card border-border hover:border-primary/50 transition-all duration-200 cursor-pointer group overflow-hidden">
+                  <Card className="h-full flex flex-col bg-card border-border hover:border-primary/50 transition-all duration-200 cursor-pointer group overflow-hidden">
                     {course.thumbnailUrl ? (
-                      <div className="w-full aspect-video overflow-hidden rounded-t-xl">
+                      <div className="w-full aspect-video overflow-hidden rounded-t-xl flex-shrink-0">
                         <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
                       </div>
                     ) : (
-                      <div className="w-full aspect-video bg-gradient-to-br from-primary/20 to-blue-900/30 flex items-center justify-center rounded-t-xl">
+                      <div className="w-full aspect-video bg-gradient-to-br from-primary/20 to-blue-900/30 flex items-center justify-center rounded-t-xl flex-shrink-0">
                         <span className="text-5xl font-black text-primary/20 select-none">{course.category.charAt(0)}</span>
                       </div>
                     )}
                     <CardHeader className="pb-2">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs text-primary font-medium uppercase tracking-wider truncate">{course.category}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize ${levelColors[course.level] ?? ""}`}>{course.level}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize flex-shrink-0 ${levelColors[course.level] ?? ""}`}>{course.level}</span>
                       </div>
-                      <CardTitle className="text-base leading-snug group-hover:text-primary transition-colors line-clamp-2">{course.title}</CardTitle>
+                      <CardTitle className="text-base leading-snug group-hover:text-primary transition-colors line-clamp-2 min-h-[2.5rem]">{course.title}</CardTitle>
                     </CardHeader>
-                    <CardContent className="pb-2">
-                      <p className="text-sm text-muted-foreground line-clamp-2">{course.description}</p>
+                    <CardContent className="pb-2 flex-1">
+                      <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">{course.description}</p>
                       <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
                         <span>{Math.round(course.durationMinutes / 60)}h of content</span>
                       </div>
                     </CardContent>
-                    <CardFooter className="pt-0 flex items-center justify-between">
+                    <CardFooter className="pt-0 flex items-center justify-between mt-auto">
                       <span className="text-lg font-bold">₹{course.price}</span>
                       <Button size="sm" className="text-xs h-8 px-4">Enroll now</Button>
                     </CardFooter>
