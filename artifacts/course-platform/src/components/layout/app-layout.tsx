@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,13 @@ export function Navbar() {
   const { data: notifications } = useListNotifications({ query: { queryKey: getListNotificationsQueryKey(), enabled: isAuthenticated } });
   const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const handleLogout = () => {
     logout.mutate(undefined, { onSuccess: () => { setLocation("/"); setMobileOpen(false); } });
@@ -49,16 +56,22 @@ export function Navbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b border-white/[0.06] bg-[#070c1a]/95 backdrop-blur supports-[backdrop-filter]:bg-[#070c1a]/80 shadow-[0_1px_0_0_rgba(255,255,255,0.05)]">
-        <div className="max-w-screen-xl mx-auto flex h-16 items-center px-4 md:px-8 gap-4">
+      <header className={`sticky top-0 z-50 w-full border-b border-white/[0.06] backdrop-blur supports-[backdrop-filter]:bg-[#070c1a]/80 transition-all duration-300 ${
+        scrolled
+          ? "bg-[#070c1a]/98 shadow-[0_2px_20px_0_rgba(0,0,0,0.4)]"
+          : "bg-[#070c1a]/95 shadow-[0_1px_0_0_rgba(255,255,255,0.05)]"
+      }`}>
+        <div className={`max-w-screen-xl mx-auto flex items-center px-4 md:px-8 gap-4 transition-all duration-300 ${scrolled ? "h-12" : "h-16"}`}>
 
           {/* ── Logo (left) ── */}
-          <Link href="/" className="flex items-center gap-2.5 flex-shrink-0 group" onClick={() => setMobileOpen(false)}>
-            <AcademyLogo size={34} />
-            <div className="leading-none">
-              <span className="font-extrabold text-sm tracking-wide text-white">VIPUL KUMAR</span>
+          <Link href="/" className="flex items-center gap-2 flex-shrink-0 group" onClick={() => setMobileOpen(false)}>
+            <div className={`transition-all duration-300 ${scrolled ? "scale-[0.8] origin-left" : "scale-100"}`}>
+              <AcademyLogo size={34} />
+            </div>
+            <div className={`leading-none overflow-hidden transition-all duration-300 ${scrolled ? "max-w-0 opacity-0" : "max-w-[120px] opacity-100"}`}>
+              <span className="font-extrabold text-sm tracking-wide text-white whitespace-nowrap">VIPUL KUMAR</span>
               <br />
-              <span className="font-bold text-[11px] tracking-[0.18em] text-primary/90 uppercase">Academy</span>
+              <span className="font-bold text-[11px] tracking-[0.18em] text-primary/90 uppercase whitespace-nowrap">Academy</span>
             </div>
           </Link>
 
