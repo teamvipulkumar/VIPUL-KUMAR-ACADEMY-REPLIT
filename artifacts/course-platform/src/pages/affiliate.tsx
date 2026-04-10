@@ -30,7 +30,7 @@ type Tab = "earnings" | "links" | "clicks" | "creatives" | "kyc" | "payouts" | "
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "earnings",   label: "Earnings",   icon: <BadgeIndianRupee className="w-4 h-4" /> },
-  { id: "links",      label: "My Link",    icon: <Link2 className="w-4 h-4" /> },
+  { id: "links",      label: "Affiliate Links", icon: <Link2 className="w-4 h-4" /> },
   { id: "clicks",     label: "Clicks",     icon: <MousePointerClick className="w-4 h-4" /> },
   { id: "creatives",  label: "Creatives",  icon: <Image className="w-4 h-4" /> },
   { id: "kyc",        label: "KYC",        icon: <ShieldCheck className="w-4 h-4" /> },
@@ -399,11 +399,11 @@ function AffiliateDashboard({ user }: { user: any }) {
           {/* ── Links Tab ── */}
           {tab === "links" && (
             <div className="space-y-4 max-w-2xl">
-              <TabHeader title="My Referral Link" subtitle="Share your unique link to earn commissions on every sale." />
+              <TabHeader title="My Affiliate Links" subtitle="Share your unique link to earn commissions on every sale." />
 
               <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
                 <div>
-                  <Label className="text-xs text-muted-foreground mb-2 block">Your referral code</Label>
+                  <Label className="text-xs text-muted-foreground mb-2 block">Your affiliate code</Label>
                   <div className="flex items-center gap-3 p-3 bg-primary/5 border border-primary/20 rounded-xl">
                     <p className="font-mono font-extrabold text-primary text-2xl tracking-widest flex-1">{dashboard?.referralCode ?? "–"}</p>
                     <Badge className="text-[10px] text-green-400 border-green-400/30 bg-green-400/10 gap-1"><CheckCircle2 className="w-3 h-3" />Active</Badge>
@@ -411,7 +411,7 @@ function AffiliateDashboard({ user }: { user: any }) {
                 </div>
 
                 <div>
-                  <Label className="text-xs text-muted-foreground mb-2 block">Referral link</Label>
+                  <Label className="text-xs text-muted-foreground mb-2 block">Affiliate link</Label>
                   <div className="flex gap-2">
                     <Input value={dashboard?.referralLink ?? ""} readOnly className="bg-background font-mono text-xs min-w-0" />
                     <Button variant="outline" onClick={copyLink} className={`gap-1.5 flex-shrink-0 ${copied ? "border-green-500/30 text-green-400" : ""}`}>
