@@ -277,6 +277,7 @@ function SmtpTab() {
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
 
   const PRESETS: { label: string; host: string; port: string; secure: boolean }[] = [
+    { label: "Brevo", host: "smtp-relay.brevo.com", port: "587", secure: false },
     { label: "Gmail", host: "smtp.gmail.com", port: "587", secure: false },
     { label: "Outlook", host: "smtp.office365.com", port: "587", secure: false },
     { label: "SendGrid", host: "smtp.sendgrid.net", port: "587", secure: false },
