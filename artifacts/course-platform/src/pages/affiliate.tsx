@@ -272,48 +272,16 @@ function AffiliateDashboard({ user }: { user: any }) {
       {/* ── Main content ── */}
       <main className="flex-1 min-w-0 overflow-y-auto">
 
-        {/* Top bar */}
-        <div className="border-b border-border bg-card/40 px-6 py-5">
-          <div className="flex items-center justify-between gap-4 mb-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h1 className="text-2xl font-extrabold text-foreground">Affiliate Dashboard</h1>
-                <Badge className="text-xs gap-1 text-green-400 border-green-400/30 bg-green-400/10">
-                  <CheckCircle2 className="w-3 h-3" />Approved
-                </Badge>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Earn <span className="text-primary font-bold">{dashboard?.commissionRate ?? "–"}%</span> commission per successful referral.
-                Code: <span className="font-mono font-bold text-foreground">{dashboard?.referralCode ?? "–"}</span>
-              </p>
-            </div>
-            <Button variant="outline" size="sm" className="border-border gap-1.5" onClick={loadDashboard}>
-              <RefreshCw className="w-3.5 h-3.5" />Refresh
-            </Button>
-          </div>
-
-          {/* Quick stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { label: "Total Clicks", value: dashboard?.totalClicks ?? 0, icon: <MousePointerClick className="w-4 h-4 text-blue-400" />, color: "text-blue-400" },
-              { label: "Conversions", value: dashboard?.totalConversions ?? 0, icon: <Target className="w-4 h-4 text-purple-400" />, color: "text-purple-400" },
-              { label: "Total Earned", value: `₹${(dashboard?.totalEarnings ?? 0).toLocaleString("en-IN")}`, icon: <BadgeIndianRupee className="w-4 h-4 text-green-400" />, color: "text-green-400" },
-              { label: "Withdrawable", value: `₹${(dashboard?.pendingEarnings ?? 0).toLocaleString("en-IN")}`, icon: <Wallet className="w-4 h-4 text-amber-400" />, color: "text-amber-400" },
-            ].map(s => (
-              <div key={s.label} className="bg-card border border-border rounded-xl p-3">
-                <div className="flex items-center gap-2 mb-1">{s.icon}<span className="text-xs text-muted-foreground">{s.label}</span></div>
-                <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Tab content */}
         <div className="px-6 py-6">
 
         {/* ── Earnings Tab ── */}
         {tab === "earnings" && (
           <div className="space-y-5">
+            <div>
+              <h2 className="text-2xl font-extrabold text-foreground">Hello, {user?.name ?? "there"} 👋</h2>
+              <p className="text-sm text-muted-foreground mt-1">Welcome back to your affiliate dashboard.</p>
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
                 { label: "Today", value: dashboard?.todayEarnings ?? 0 },
