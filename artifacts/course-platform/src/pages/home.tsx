@@ -128,7 +128,7 @@ export default function Home() {
                     </CardContent>
                     <CardFooter className="pt-0 flex items-center justify-between">
                       <span className="text-lg font-bold">₹{course.price}</span>
-                      <span className="text-xs text-primary group-hover:underline">Enroll now →</span>
+                      <Button size="sm" className="text-xs h-8 px-4">Enroll now</Button>
                     </CardFooter>
                   </Card>
                 </Link>
