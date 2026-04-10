@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronRight, Play, Lock, FileText, HelpCircle, Tag, Check, Users, Clock, BookOpen, Award } from "lucide-react";
+import { ChevronDown, ChevronRight, Play, Lock, FileText, HelpCircle, Tag, Check, Clock, BookOpen, Award } from "lucide-react";
 
 export default function CourseDetailPage() {
   const [, params] = useRoute("/courses/:id");
@@ -15,7 +15,6 @@ export default function CourseDetailPage() {
   const [expandedModules, setExpandedModules] = useState<number[]>([0]);
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number; type: string } | null>(null);
-  const [gateway, setGateway] = useState<"stripe" | "razorpay">("stripe");
 
   const { data: course, isLoading } = useGetCourse(courseId, {
     query: { queryKey: getGetCourseQueryKey(courseId), enabled: courseId > 0 }
@@ -43,7 +42,7 @@ export default function CourseDetailPage() {
   };
 
   const handleEnroll = () => {
-    const query = new URLSearchParams({ gateway });
+    const query = new URLSearchParams();
     if (appliedCoupon) query.set("coupon", appliedCoupon.code);
     navigate(`/checkout/${courseId}?${query.toString()}`);
   };
@@ -89,13 +88,6 @@ export default function CourseDetailPage() {
         </Button>
       ) : (
         <>
-          <div className="flex gap-2 mb-4">
-            {(["stripe", "razorpay"] as const).map(g => (
-              <button key={g} onClick={() => setGateway(g)} className={`flex-1 py-2 text-xs rounded-lg border transition-colors font-medium capitalize ${gateway === g ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>
-                {g === "stripe" ? "💳 Stripe" : "🇮🇳 Razorpay"}
-              </button>
-            ))}
-          </div>
           {!appliedCoupon ? (
             <div className="flex gap-2 mb-4">
               <Input placeholder="Coupon code" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} onKeyDown={e => e.key === "Enter" && handleApplyCoupon()} className="bg-background text-sm h-9 font-mono" />
@@ -142,14 +134,18 @@ export default function CourseDetailPage() {
           {/* Mobile: stacked layout */}
           <div className="block md:hidden">
             {/* Thumbnail */}
-            {course.thumbnailUrl && (
-              <img src={course.thumbnailUrl} alt={course.title} className="w-full rounded-xl mb-5 object-cover max-h-52" />
+            {course.thumbnailUrl ? (
+              <div className="w-full aspect-video overflow-hidden rounded-xl mb-5">
+                <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="w-full aspect-video bg-gradient-to-br from-primary/20 to-blue-900/30 rounded-xl mb-5 flex items-center justify-center">
+                <span className="text-6xl font-black text-primary/20 select-none">{course.category?.charAt(0)}</span>
+              </div>
             )}
             <h1 className="text-2xl font-bold tracking-tight mb-3">{course.title}</h1>
             <p className="text-muted-foreground text-sm leading-relaxed mb-4">{course.description}</p>
             <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-6">
-              <div className="flex items-center gap-1"><Users className="w-3.5 h-3.5 text-primary" /><span>{course.enrollmentCount} students</span></div>
-              <div className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5 text-primary" /><span>{course.lessonCount} lessons</span></div>
               <div className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-primary" /><span>{Math.round(course.durationMinutes / 60)}h</span></div>
               <div className="flex items-center gap-1"><Award className="w-3.5 h-3.5 text-primary" /><span className="capitalize">{course.level}</span></div>
             </div>
@@ -163,8 +159,6 @@ export default function CourseDetailPage() {
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">{course.title}</h1>
               <p className="text-muted-foreground leading-relaxed mb-6">{course.description}</p>
               <div className="flex flex-wrap gap-5 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1.5"><Users className="w-4 h-4 text-primary" /><span>{course.enrollmentCount} students</span></div>
-                <div className="flex items-center gap-1.5"><BookOpen className="w-4 h-4 text-primary" /><span>{course.lessonCount} lessons</span></div>
                 <div className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-primary" /><span>{Math.round(course.durationMinutes / 60)} hours</span></div>
                 <div className="flex items-center gap-1.5"><Award className="w-4 h-4 text-primary" /><span className="capitalize">{course.level}</span></div>
               </div>
@@ -224,7 +218,6 @@ export default function CourseDetailPage() {
             <div className="bg-card border border-border rounded-xl p-4 md:p-5">
               <h3 className="font-semibold mb-3 text-sm md:text-base">This course includes</h3>
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground"><Play className="w-4 h-4 text-primary flex-shrink-0" /><span>{course.lessonCount} on-demand lessons</span></div>
                 <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground"><Clock className="w-4 h-4 text-primary flex-shrink-0" /><span>{course.durationMinutes} minutes of content</span></div>
                 <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground"><BookOpen className="w-4 h-4 text-primary flex-shrink-0" /><span>{course.moduleCount} modules</span></div>
                 <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground"><Award className="w-4 h-4 text-primary flex-shrink-0" /><span>Certificate of completion</span></div>

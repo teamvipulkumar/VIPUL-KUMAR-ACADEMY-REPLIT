@@ -74,9 +74,11 @@ export default function CoursesPage() {
               <Link href={`/courses/${course.id}`} key={course.id}>
                 <Card className="h-full bg-card border-border hover:border-primary/50 transition-all duration-200 cursor-pointer group">
                   {course.thumbnailUrl ? (
-                    <img src={course.thumbnailUrl} alt={course.title} className="w-full h-40 object-cover rounded-t-lg" />
+                    <div className="w-full aspect-video overflow-hidden rounded-t-lg">
+                      <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
+                    </div>
                   ) : (
-                    <div className="h-40 bg-gradient-to-br from-primary/20 to-blue-900/30 rounded-t-lg flex items-center justify-center">
+                    <div className="w-full aspect-video bg-gradient-to-br from-primary/20 to-blue-900/30 rounded-t-lg flex items-center justify-center">
                       <div className="text-4xl font-black text-primary/30 select-none">{course.category.charAt(0)}</div>
                     </div>
                   )}
@@ -89,12 +91,8 @@ export default function CoursesPage() {
                   </CardHeader>
                   <CardContent className="px-4 pb-2">
                     <p className="text-sm text-muted-foreground line-clamp-2">{course.description}</p>
-                    <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground flex-wrap">
-                      <span>{course.lessonCount} lessons</span>
-                      <span>·</span>
-                      <span>{course.enrollmentCount} students</span>
-                      <span>·</span>
-                      <span>{Math.round(course.durationMinutes / 60)}h</span>
+                    <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
+                      <span>{Math.round(course.durationMinutes / 60)}h of content</span>
                     </div>
                   </CardContent>
                   <CardFooter className="pt-0 px-4 pb-4">

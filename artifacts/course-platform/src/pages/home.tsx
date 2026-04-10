@@ -108,7 +108,7 @@ export default function Home() {
               {(coursesData?.courses ?? []).map(course => (
                 <Link href={`/courses/${course.id}`} key={course.id}>
                   <Card className="h-full bg-card border-border hover:border-primary/50 transition-all duration-200 cursor-pointer group overflow-hidden">
-                    <div className="h-36 bg-gradient-to-br from-primary/20 to-blue-900/30 flex items-center justify-center relative">
+                    <div className="w-full aspect-video bg-gradient-to-br from-primary/20 to-blue-900/30 flex items-center justify-center relative rounded-t-xl">
                       <span className="text-5xl font-black text-primary/20 select-none">{course.category.charAt(0)}</span>
                       <div className="absolute top-3 left-3">
                         <span className={`text-xs font-bold capitalize ${levelColors[course.level] ?? "text-muted-foreground"}`}>
@@ -123,9 +123,7 @@ export default function Home() {
                     <CardContent className="pb-2">
                       <p className="text-sm text-muted-foreground line-clamp-2">{course.description}</p>
                       <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
-                        <span>{course.lessonCount} lessons</span>
-                        <span>·</span>
-                        <span>{course.enrollmentCount} students</span>
+                        <span>{Math.round(course.durationMinutes / 60)}h of content</span>
                       </div>
                     </CardContent>
                     <CardFooter className="pt-0 flex items-center justify-between">
