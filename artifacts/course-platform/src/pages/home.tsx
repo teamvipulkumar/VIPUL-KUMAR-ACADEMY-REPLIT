@@ -119,8 +119,8 @@ export default function Home() {
                     )}
                     <CardHeader className="pb-2">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize ${levelColors[course.level] ?? ""}`}>{course.level}</span>
                         <span className="text-xs text-primary font-medium uppercase tracking-wider truncate">{course.category}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize ${levelColors[course.level] ?? ""}`}>{course.level}</span>
                       </div>
                       <CardTitle className="text-base leading-snug group-hover:text-primary transition-colors line-clamp-2">{course.title}</CardTitle>
                     </CardHeader>
