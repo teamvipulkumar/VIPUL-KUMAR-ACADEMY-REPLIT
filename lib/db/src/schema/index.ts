@@ -6,3 +6,4 @@ export * from "./affiliates";
 export * from "./coupons";
 export * from "./notifications";
 export * from "./payment-gateways";
+export * from "./crm";

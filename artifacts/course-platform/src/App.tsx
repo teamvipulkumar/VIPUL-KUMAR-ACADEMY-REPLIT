@@ -30,6 +30,7 @@ import AdminOrdersPage from "@/pages/admin/orders";
 import AdminEnrollmentsPage from "@/pages/admin/enrollments";
 import AdminPaymentGatewaysPage from "@/pages/admin/payment-gateways";
 import AdminSettingsPage from "@/pages/admin/settings";
+import AdminCrmPage from "@/pages/admin/crm";
 import PaymentVerifyPage from "@/pages/payment-verify";
 import CheckoutPage from "@/pages/checkout";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
@@ -73,6 +74,7 @@ function Router() {
       <Route path="/checkout/:id" component={() => <AppLayout><CheckoutPage /></AppLayout>} />
       <Route path="/payment/verify" component={() => <PaymentVerifyPage />} />
       <Route path="/admin/settings" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminSettingsPage /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/crm" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminCrmPage /></AdminLayout></ProtectedRoute>} />
 
       <Route component={() => <AppLayout><NotFound /></AppLayout>} />
     </Switch>
