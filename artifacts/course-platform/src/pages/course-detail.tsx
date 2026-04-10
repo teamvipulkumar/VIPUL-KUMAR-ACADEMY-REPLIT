@@ -133,32 +133,38 @@ export default function CourseDetailPage() {
             <span className="capitalize">{course.level}</span>
           </div>
 
-          {/* Banner — shown on all screen sizes */}
-          {course.thumbnailUrl ? (
-            <div className="w-full aspect-video overflow-hidden rounded-xl mb-6">
-              <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
-            </div>
-          ) : (
-            <div className="w-full aspect-video bg-gradient-to-br from-primary/20 to-blue-900/30 rounded-xl mb-6 flex items-center justify-center">
-              <span className="text-6xl font-black text-primary/20 select-none">{course.category?.charAt(0)}</span>
-            </div>
-          )}
-
           {/* Mobile: stacked layout */}
           <div className="block md:hidden">
+            {course.thumbnailUrl ? (
+              <div className="w-full aspect-video overflow-hidden rounded-xl mb-5">
+                <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="w-full aspect-video bg-gradient-to-br from-primary/20 to-blue-900/30 rounded-xl mb-5 flex items-center justify-center">
+                <span className="text-6xl font-black text-primary/20 select-none">{course.category?.charAt(0)}</span>
+              </div>
+            )}
             <h1 className="text-2xl font-bold tracking-tight mb-3">{course.title}</h1>
             <p className="text-muted-foreground text-sm leading-relaxed mb-4">{course.description}</p>
             <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-6">
               <div className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-primary" /><span>{Math.round(course.durationMinutes / 60)}h</span></div>
               <div className="flex items-center gap-1"><Award className="w-3.5 h-3.5 text-primary" /><span className="capitalize">{course.level}</span></div>
             </div>
-            {/* Purchase card inline on mobile */}
             <PurchaseCard />
           </div>
 
           {/* Desktop: side-by-side */}
           <div className="hidden md:grid md:grid-cols-3 gap-8 items-start">
             <div className="md:col-span-2">
+              {course.thumbnailUrl ? (
+                <div className="w-full aspect-video overflow-hidden rounded-xl mb-5">
+                  <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <div className="w-full aspect-video bg-gradient-to-br from-primary/20 to-blue-900/30 rounded-xl mb-5 flex items-center justify-center">
+                  <span className="text-6xl font-black text-primary/20 select-none">{course.category?.charAt(0)}</span>
+                </div>
+              )}
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">{course.title}</h1>
               <p className="text-muted-foreground leading-relaxed mb-6">{course.description}</p>
               <div className="flex flex-wrap gap-5 text-sm text-muted-foreground">
