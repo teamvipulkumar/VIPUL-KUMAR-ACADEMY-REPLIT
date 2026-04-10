@@ -727,13 +727,14 @@ export default function CheckoutPage() {
             {/* Course card */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
               {course.thumbnailUrl && (
-                <img src={course.thumbnailUrl} alt={course.title} className="w-full h-36 object-cover" />
+                <div className="w-full aspect-video overflow-hidden">
+                  <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
+                </div>
               )}
               <div className="p-4">
                 <Badge className="mb-2 text-xs bg-primary/10 text-primary border-primary/20">{course.category}</Badge>
                 <h3 className="font-bold text-foreground leading-snug mb-3">{course.title}</h3>
                 <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5 text-primary" />{course.enrollmentCount} students</span>
                   <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5 text-primary" />{course.lessonCount} lessons</span>
                   <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-primary" />{Math.round(course.durationMinutes / 60)}h content</span>
                   <span className="flex items-center gap-1"><Award className="w-3.5 h-3.5 text-primary capitalize" />{course.level}</span>
