@@ -271,20 +271,29 @@ function AffiliateDashboard({ user }: { user: any }) {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* Tab bar */}
-        <div className="flex items-center gap-1 mb-6 overflow-x-auto pb-1">
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all flex-shrink-0 ${
-                tab === t.id ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-              }`}
-            >
-              {t.icon}{t.label}
-            </button>
-          ))}
-        </div>
+        <div className="flex gap-6 items-start">
+
+          {/* ── Vertical Sidebar ── */}
+          <aside className="w-52 flex-shrink-0 sticky top-6">
+            <nav className="bg-card border border-border rounded-2xl overflow-hidden">
+              {TABS.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all text-left border-b border-border last:border-0 ${
+                    tab === t.id
+                      ? "bg-primary/10 text-primary border-l-2 border-l-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                  }`}
+                >
+                  {t.icon}{t.label}
+                </button>
+              ))}
+            </nav>
+          </aside>
+
+          {/* ── Content Area ── */}
+          <div className="flex-1 min-w-0">
 
         {/* ── Earnings Tab ── */}
         {tab === "earnings" && (
@@ -424,6 +433,9 @@ function AffiliateDashboard({ user }: { user: any }) {
 
         {/* ── Bank Tab ── */}
         {tab === "bank" && <BankTab bank={bank} onSaved={b => setBank(b)} />}
+
+          </div>
+        </div>
       </div>
     </div>
   );
