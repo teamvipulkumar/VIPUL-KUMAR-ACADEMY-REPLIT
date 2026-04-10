@@ -352,7 +352,7 @@ function AffiliateDashboard({ user }: { user: any }) {
               </div>
 
               {/* Overview stats */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
                 {[
                   { label: "Today", value: `₹${(dashboard?.todayEarnings ?? 0).toLocaleString("en-IN")}`, icon: <BadgeIndianRupee className="w-4 h-4 text-green-400" />, color: "text-green-400" },
                   { label: "Yesterday", value: `₹${(dashboard?.yesterdayEarnings ?? 0).toLocaleString("en-IN")}`, icon: <Calendar className="w-4 h-4 text-blue-400" />, color: "text-blue-400" },
