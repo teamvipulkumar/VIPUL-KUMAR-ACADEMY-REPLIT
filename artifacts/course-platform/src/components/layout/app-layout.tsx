@@ -56,7 +56,7 @@ export function Navbar() {
 
   return (
     <>
-      <header className={`sticky top-0 z-50 w-full border-b border-white/[0.06] backdrop-blur supports-[backdrop-filter]:bg-[#070c1a]/80 transition-all duration-300 ${
+      <header className={`fixed top-0 left-0 right-0 z-50 w-full border-b border-white/[0.06] backdrop-blur supports-[backdrop-filter]:bg-[#070c1a]/80 transition-all duration-300 ${
         scrolled
           ? "bg-[#070c1a]/98 shadow-[0_2px_20px_0_rgba(0,0,0,0.4)]"
           : "bg-[#070c1a]/95 shadow-[0_1px_0_0_rgba(255,255,255,0.05)]"
@@ -381,7 +381,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative flex min-h-screen flex-col">
       <Navbar />
-      <main className="flex-1 min-w-0">{children}</main>
+      <main className="flex-1 min-w-0 pt-16">{children}</main>
       <SiteFooter />
     </div>
   );
