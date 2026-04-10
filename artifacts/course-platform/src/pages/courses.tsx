@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useListCourses, getListCoursesQueryKey } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ export default function CoursesPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, []);
 
   const { data, isLoading } = useListCourses(
     { search: debouncedSearch || undefined, category: category === "all" ? undefined : category, limit: 20, offset: 0 },
