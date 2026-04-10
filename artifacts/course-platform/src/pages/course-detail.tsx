@@ -92,7 +92,7 @@ export default function CourseDetailPage() {
         <>
           {!appliedCoupon ? (
             <div className="flex gap-2 mb-4">
-              <Input placeholder="Coupon code" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} onKeyDown={e => e.key === "Enter" && handleApplyCoupon()} className="bg-background text-sm h-9 font-mono" />
+              <Input placeholder="Coupon code" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} onKeyDown={e => e.key === "Enter" && handleApplyCoupon()} className="bg-background text-sm h-9 font-mono min-w-0" />
               <Button variant="outline" size="sm" onClick={handleApplyCoupon} disabled={validateCoupon.isPending} className="h-9 px-3">
                 {validateCoupon.isPending ? "..." : <Tag className="w-4 h-4" />}
               </Button>
