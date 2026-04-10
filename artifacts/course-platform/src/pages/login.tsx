@@ -38,7 +38,7 @@ export default function Login() {
           description: "Logged in successfully.",
         });
         queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-        setLocation("/dashboard");
+        setLocation("/my-courses");
       },
       onError: (error: any) => {
         toast({

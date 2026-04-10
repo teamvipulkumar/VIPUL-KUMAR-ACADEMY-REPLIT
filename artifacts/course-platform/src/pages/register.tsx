@@ -48,7 +48,7 @@ export default function Register() {
           description: "Welcome to Vipul Kumar Academy!",
         });
         queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-        setLocation("/dashboard");
+        setLocation("/my-courses");
       },
       onError: (error: any) => {
         toast({

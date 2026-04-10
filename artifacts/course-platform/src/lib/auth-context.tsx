@@ -42,7 +42,7 @@ export function ProtectedRoute({ children, adminOnly = false }: { children: Reac
       if (!isAuthenticated) {
         setLocation("/login");
       } else if (adminOnly && !isAdmin) {
-        setLocation("/dashboard");
+        setLocation("/my-courses");
       }
     }
   }, [isLoading, isAuthenticated, isAdmin, adminOnly, setLocation]);

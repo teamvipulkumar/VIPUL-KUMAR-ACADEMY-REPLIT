@@ -13,7 +13,6 @@ import Register from "@/pages/register";
 import ForgotPassword from "@/pages/forgot-password";
 import CoursesPage from "@/pages/courses";
 import CourseDetailPage from "@/pages/course-detail";
-import DashboardPage from "@/pages/dashboard";
 import MyCoursesPage from "@/pages/my-courses";
 import LearnPage from "@/pages/learn";
 import AffiliatePage from "@/pages/affiliate";
@@ -50,7 +49,6 @@ function Router() {
       <Route path="/courses" component={() => <AppLayout><CoursesPage /></AppLayout>} />
       <Route path="/courses/:id" component={() => <AppLayout><CourseDetailPage /></AppLayout>} />
 
-      <Route path="/dashboard" component={() => <AppLayout><ProtectedRoute><DashboardPage /></ProtectedRoute></AppLayout>} />
       <Route path="/my-courses" component={() => <AppLayout><ProtectedRoute><MyCoursesPage /></ProtectedRoute></AppLayout>} />
       <Route path="/learn/:courseId" component={() => <ProtectedRoute><LearnPage /></ProtectedRoute>} />
       <Route path="/affiliate" component={() => <AppLayout><ProtectedRoute><AffiliatePage /></ProtectedRoute></AppLayout>} />
