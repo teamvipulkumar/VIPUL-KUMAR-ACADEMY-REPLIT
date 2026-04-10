@@ -342,9 +342,7 @@ function AffiliateDashboard({ user }: { user: any }) {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h2 className="text-2xl font-extrabold text-foreground">Hello, {user?.name?.split(" ")[0] ?? "there"} 👋</h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Your referral code is <span className="font-mono font-bold text-primary">{dashboard?.commissionRate ?? "–"}%</span> commission · Code: <span className="font-mono font-bold text-foreground">{dashboard?.referralCode ?? "–"}</span>
-                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">Welcome back to your affiliate dashboard.</p>
                 </div>
                 <Button variant="outline" size="sm" className="gap-1.5 flex-shrink-0" onClick={loadDashboard}>
                   <RefreshCw className="w-3.5 h-3.5" /><span className="hidden sm:inline">Refresh</span>
