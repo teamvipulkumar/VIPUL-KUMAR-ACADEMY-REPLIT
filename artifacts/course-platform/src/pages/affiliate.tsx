@@ -310,7 +310,6 @@ function AffiliateDashboard({ user }: { user: any }) {
       {sidebarOpen && (
         <div className="fixed top-16 inset-x-0 bottom-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
-
       {/* Sidebar — fixed on desktop, slide-over on mobile */}
       <aside className={`
         fixed lg:sticky top-16 h-[calc(100vh-4rem)] z-50 lg:z-auto
@@ -320,7 +319,6 @@ function AffiliateDashboard({ user }: { user: any }) {
       `}>
         <SidebarContent />
       </aside>
-
       {/* Main content */}
       <main className="flex-1 min-w-0 overflow-y-auto">
         <div className="px-4 sm:px-6 py-6">
@@ -403,7 +401,7 @@ function AffiliateDashboard({ user }: { user: any }) {
 
               <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
                 <div>
-                  <Label className="text-xs text-muted-foreground mb-2 block">Your affiliate code</Label>
+                  <Label className="text-xs text-muted-foreground mb-2 block">Your affiliate ID</Label>
                   <div className="flex items-center gap-3 p-3 bg-primary/5 border border-primary/20 rounded-xl">
                     <p className="font-mono font-extrabold text-primary text-2xl tracking-widest flex-1">{dashboard?.referralCode ?? "–"}</p>
                     <Badge className="text-[10px] text-green-400 border-green-400/30 bg-green-400/10 gap-1"><CheckCircle2 className="w-3 h-3" />Active</Badge>
