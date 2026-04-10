@@ -324,7 +324,7 @@ function AffiliateDashboard({ user }: { user: any }) {
       {/* Main content */}
       <main className="flex-1 min-w-0 overflow-y-auto">
         {/* Mobile top bar */}
-        <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-border bg-card/60 sticky top-0 z-30">
+        <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-border bg-card sticky top-0 z-30 backdrop-blur-sm shadow-sm">
           <button onClick={() => setSidebarOpen(true)} className="text-muted-foreground hover:text-foreground p-1">
             <Menu className="w-5 h-5" />
           </button>
@@ -359,23 +359,6 @@ function AffiliateDashboard({ user }: { user: any }) {
                 ].map(s => <StatCard2 key={s.label} {...s} />)}
               </div>
 
-              {/* Summary strip */}
-              <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="grid grid-cols-3 divide-x divide-border">
-                  {[
-                    { label: "Total Earned", value: `₹${(dashboard?.totalEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-foreground", icon: <Banknote className="w-3.5 h-3.5" /> },
-                    { label: "Pending Payout", value: `₹${(dashboard?.pendingEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-amber-400", icon: <Clock className="w-3.5 h-3.5" /> },
-                    { label: "Total Paid", value: `₹${(dashboard?.paidEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-green-400", icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-                  ].map(s => (
-                    <div key={s.label} className="text-center px-3 py-4">
-                      <div className={`flex items-center justify-center gap-1 ${s.color} mb-1`}>{s.icon}</div>
-                      <p className={`text-base sm:text-lg font-bold ${s.color}`}>{s.value}</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{s.label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {/* Daily chart */}
               <div className="bg-card border border-border rounded-2xl p-4 sm:p-5">
                 <h3 className="text-sm font-semibold text-foreground mb-4">Daily Earnings — Last 30 Days</h3>
@@ -394,6 +377,23 @@ function AffiliateDashboard({ user }: { user: any }) {
                     <Area type="monotone" dataKey="amount" stroke="#2563eb" strokeWidth={2} fill="url(#earningsGrad)" />
                   </AreaChart>
                 </ResponsiveContainer>
+              </div>
+
+              {/* Summary strip */}
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="grid grid-cols-3 divide-x divide-border">
+                  {[
+                    { label: "Total Earned", value: `₹${(dashboard?.totalEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-foreground", icon: <Banknote className="w-3.5 h-3.5" /> },
+                    { label: "Pending Payout", value: `₹${(dashboard?.pendingEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-amber-400", icon: <Clock className="w-3.5 h-3.5" /> },
+                    { label: "Total Paid", value: `₹${(dashboard?.paidEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-green-400", icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+                  ].map(s => (
+                    <div key={s.label} className="text-center px-3 py-4">
+                      <div className={`flex items-center justify-center gap-1 ${s.color} mb-1`}>{s.icon}</div>
+                      <p className={`text-base sm:text-lg font-bold ${s.color}`}>{s.value}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
