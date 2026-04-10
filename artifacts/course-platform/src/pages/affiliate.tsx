@@ -515,7 +515,6 @@ function AffiliateDashboard({ user }: { user: any }) {
 function CustomLinkGenerator({ referralCode }: { referralCode: string }) {
   const [inputUrl, setInputUrl] = useState("");
   const [copiedGenerated, setCopiedGenerated] = useState(false);
-  const [copiedQuick, setCopiedQuick] = useState<string | null>(null);
   const siteOrigin = window.location.origin;
 
   const isValidSiteUrl = (url: string) => {
@@ -547,18 +546,6 @@ function CustomLinkGenerator({ referralCode }: { referralCode: string }) {
     setCopiedGenerated(true);
     setTimeout(() => setCopiedGenerated(false), 2000);
   };
-
-  const copyQuick = (url: string, key: string) => {
-    navigator.clipboard.writeText(url);
-    setCopiedQuick(key);
-    setTimeout(() => setCopiedQuick(null), 2000);
-  };
-
-  const quickLinks = [
-    { label: "Home", path: "/" },
-    { label: "All Courses", path: "/courses" },
-    { label: "Register", path: "/register" },
-  ];
 
   return (
     <div className="bg-card border border-border rounded-2xl p-5 space-y-5">
@@ -609,32 +596,6 @@ function CustomLinkGenerator({ referralCode }: { referralCode: string }) {
         </div>
       )}
 
-      {/* Divider */}
-      <div className="border-t border-border" />
-
-      {/* Quick-generate shortcuts */}
-      <div>
-        <p className="text-xs text-muted-foreground mb-2.5">Quick links — click to copy</p>
-        <div className="space-y-2">
-          {quickLinks.map(({ label, path }) => {
-            const url = `${siteOrigin}${path}?ref=${referralCode || "CODE"}`;
-            return (
-              <div key={label} className="flex items-center gap-2 bg-background rounded-lg px-3 py-2.5 border border-border group">
-                <span className="text-[11px] text-muted-foreground uppercase tracking-wide w-20 flex-shrink-0">{label}</span>
-                <span className="text-xs font-mono text-foreground/60 truncate flex-1">{url}</span>
-                <button
-                  onClick={() => copyQuick(url, label)}
-                  className="flex-shrink-0 text-muted-foreground hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
-                >
-                  {copiedQuick === label
-                    ? <Check className="w-3.5 h-3.5 text-green-400" />
-                    : <Copy className="w-3.5 h-3.5" />}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 }
