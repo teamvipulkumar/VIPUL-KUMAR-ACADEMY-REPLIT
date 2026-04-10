@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -392,6 +392,7 @@ function TemplatesTab() {
   const [form, setForm] = useState({ name: "", type: "custom", subject: "", htmlBody: "", isActive: true });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [seeding, setSeeding] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -412,6 +413,23 @@ function TemplatesTab() {
   const applyDefault = (type: string) => {
     const d = DEFAULT_TEMPLATES[type];
     if (d) setForm(f => ({ ...f, subject: d.subject, htmlBody: d.html }));
+  };
+
+  const seedDefaults = async () => {
+    setSeeding(true);
+    const res = await apiFetch("/api/admin/crm/templates/seed-defaults", { method: "POST" });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.created === 0) {
+        toast({ title: "Already up to date", description: "All default templates already exist." });
+      } else {
+        toast({ title: `${data.created} template${data.created > 1 ? "s" : ""} created!`, description: "Default templates for all events are ready." });
+        load();
+      }
+    } else {
+      toast({ title: "Failed to seed templates", variant: "destructive" });
+    }
+    setSeeding(false);
   };
 
   const save = async () => {
@@ -515,9 +533,15 @@ function TemplatesTab() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div><h2 className="text-xl font-bold text-foreground">Email Templates</h2><p className="text-sm text-muted-foreground mt-0.5">Reusable HTML email templates for campaigns and automation.</p></div>
-        <Button onClick={openNew} size="sm" className="bg-primary gap-1.5"><Plus className="w-4 h-4" />New Template</Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={seedDefaults} disabled={seeding} variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10">
+            {seeding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+            Seed Defaults
+          </Button>
+          <Button onClick={openNew} size="sm" className="bg-primary gap-1.5"><Plus className="w-4 h-4" />New Template</Button>
+        </div>
       </div>
 
       {loading ? <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
@@ -525,8 +549,14 @@ function TemplatesTab() {
           <div className="bg-card border border-border rounded-2xl py-20 text-center">
             <FileText className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
             <p className="font-semibold text-foreground mb-1">No templates yet</p>
-            <p className="text-sm text-muted-foreground mb-4">Create your first email template to get started.</p>
-            <Button onClick={openNew} size="sm" className="bg-primary gap-1.5"><Plus className="w-4 h-4" />Create Template</Button>
+            <p className="text-sm text-muted-foreground mb-4">Seed all 6 default event templates in one click, or create your own.</p>
+            <div className="flex items-center justify-center gap-3">
+              <Button onClick={seedDefaults} disabled={seeding} size="sm" className="bg-primary gap-1.5">
+                {seeding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                {seeding ? "Creating…" : "Seed Default Templates"}
+              </Button>
+              <Button onClick={openNew} variant="outline" size="sm" className="gap-1.5"><Plus className="w-4 h-4" />Create Manually</Button>
+            </div>
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
