@@ -71,53 +71,65 @@ export default function CourseDetailPage() {
 
   /* Shared purchase card */
   const PurchaseCard = () => (
-    <div className="bg-card border border-border rounded-xl p-5 md:p-6 shadow-lg">
-      {appliedCoupon ? (
-        <div className="mb-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground line-through">₹{price.toFixed(2)}</div>
-          <div className="text-3xl font-bold text-green-400">₹{discountedPrice.toFixed(2)}</div>
-          <div className="flex items-center gap-1.5 text-xs text-green-400 mt-1">
-            <Tag className="w-3 h-3" /><span>{appliedCoupon.code} applied</span>
+    <div className="space-y-3">
+      <div className="bg-card border border-border rounded-xl p-5 md:p-6 shadow-lg">
+        {appliedCoupon ? (
+          <div className="mb-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground line-through">₹{price.toFixed(2)}</div>
+            <div className="text-3xl font-bold text-green-400">₹{discountedPrice.toFixed(2)}</div>
+            <div className="flex items-center gap-1.5 text-xs text-green-400 mt-1">
+              <Tag className="w-3 h-3" /><span>{appliedCoupon.code} applied</span>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="text-3xl font-bold mb-4">₹{price.toFixed(2)}</div>
-      )}
+        ) : (
+          <div className="text-3xl font-bold mb-4">₹{price.toFixed(2)}</div>
+        )}
 
-      {course.isEnrolled ? (
-        <Button className="w-full mb-3" size="lg" onClick={() => navigate(`/learn/${courseId}`)}>
-          <Play className="w-4 h-4 mr-2" /> Continue Learning
-        </Button>
-      ) : (
-        <>
-          {!appliedCoupon ? (
-            <div className="flex gap-2 mb-4">
-              <Input placeholder="Coupon code" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} onKeyDown={e => e.key === "Enter" && handleApplyCoupon()} className="bg-background text-sm h-9 font-mono min-w-0" />
-              <Button variant="outline" size="sm" onClick={handleApplyCoupon} disabled={validateCoupon.isPending} className="h-9 px-3">
-                {validateCoupon.isPending ? "..." : <Tag className="w-4 h-4" />}
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between mb-4 p-2 rounded-lg bg-green-500/10 border border-green-500/20">
-              <div className="flex items-center gap-2 text-sm text-green-400">
-                <Check className="w-3.5 h-3.5" /><span className="font-mono font-bold">{appliedCoupon.code}</span>
-              </div>
-              <button onClick={() => { setAppliedCoupon(null); setCouponCode(""); }} className="text-xs text-muted-foreground hover:text-foreground">Remove</button>
-            </div>
-          )}
-          <Button className="w-full" size="lg" onClick={handleEnroll}>
-            Enroll Now · ₹{discountedPrice.toFixed(2)}
+        {course.isEnrolled ? (
+          <Button className="w-full mb-3" size="lg" onClick={() => navigate(`/learn/${courseId}`)}>
+            <Play className="w-4 h-4 mr-2" /> Continue Learning
           </Button>
-          <p className="text-xs text-muted-foreground text-center mt-2">30-day money-back guarantee</p>
-        </>
-      )}
+        ) : (
+          <>
+            {!appliedCoupon ? (
+              <div className="flex gap-2 mb-4">
+                <Input placeholder="Coupon code" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} onKeyDown={e => e.key === "Enter" && handleApplyCoupon()} className="bg-background text-sm h-9 font-mono min-w-0" />
+                <Button variant="outline" size="sm" onClick={handleApplyCoupon} disabled={validateCoupon.isPending} className="h-9 px-3">
+                  {validateCoupon.isPending ? "..." : <Tag className="w-4 h-4" />}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between mb-4 p-2 rounded-lg bg-green-500/10 border border-green-500/20">
+                <div className="flex items-center gap-2 text-sm text-green-400">
+                  <Check className="w-3.5 h-3.5" /><span className="font-mono font-bold">{appliedCoupon.code}</span>
+                </div>
+                <button onClick={() => { setAppliedCoupon(null); setCouponCode(""); }} className="text-xs text-muted-foreground hover:text-foreground">Remove</button>
+              </div>
+            )}
+            <Button className="w-full" size="lg" onClick={handleEnroll}>
+              Enroll Now · ₹{discountedPrice.toFixed(2)}
+            </Button>
+            <p className="text-xs text-muted-foreground text-center mt-2">30-day money-back guarantee</p>
+          </>
+        )}
 
-      <div className="mt-4 pt-4 border-t border-border space-y-2">
-        {["Full lifetime access", "Access on all devices", "Certificate of completion"].map(t => (
-          <div key={t} className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Check className="w-3.5 h-3.5 text-green-400 flex-shrink-0" /><span>{t}</span>
-          </div>
-        ))}
+        <div className="mt-4 pt-4 border-t border-border space-y-2">
+          {["Full lifetime access", "Access on all devices", "Certificate of completion"].map(t => (
+            <div key={t} className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Check className="w-3.5 h-3.5 text-green-400 flex-shrink-0" /><span>{t}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* This course includes — sits directly below the pricing card */}
+      <div className="bg-card border border-border rounded-xl p-4">
+        <h3 className="font-semibold mb-3 text-sm">This course includes</h3>
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Clock className="w-3.5 h-3.5 text-primary flex-shrink-0" /><span>{course.durationMinutes} minutes of content</span></div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground"><BookOpen className="w-3.5 h-3.5 text-primary flex-shrink-0" /><span>{course.moduleCount} modules</span></div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Award className="w-3.5 h-3.5 text-primary flex-shrink-0" /><span>Certificate of completion</span></div>
+        </div>
       </div>
     </div>
   );
@@ -179,8 +191,8 @@ export default function CourseDetailPage() {
 
       {/* Curriculum */}
       <div className="w-full max-w-5xl mx-auto px-4 py-8 md:py-12">
-        <div className="grid md:grid-cols-3 gap-6 md:gap-8">
-          <div className="md:col-span-2 min-w-0">
+        <div>
+          <div className="min-w-0">
             <div className="flex items-center justify-between mb-4 md:mb-6">
               <h2 className="text-xl md:text-2xl font-bold">Course Curriculum</h2>
               {course.isEnrolled && (
@@ -253,17 +265,6 @@ export default function CourseDetailPage() {
             )}
           </div>
 
-          {/* Side info */}
-          <div className="space-y-4">
-            <div className="bg-card border border-border rounded-xl p-4 md:p-5">
-              <h3 className="font-semibold mb-3 text-sm md:text-base">This course includes</h3>
-              <div className="space-y-2.5">
-                <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground"><Clock className="w-4 h-4 text-primary flex-shrink-0" /><span>{course.durationMinutes} minutes of content</span></div>
-                <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground"><BookOpen className="w-4 h-4 text-primary flex-shrink-0" /><span>{course.moduleCount} modules</span></div>
-                <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground"><Award className="w-4 h-4 text-primary flex-shrink-0" /><span>Certificate of completion</span></div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
