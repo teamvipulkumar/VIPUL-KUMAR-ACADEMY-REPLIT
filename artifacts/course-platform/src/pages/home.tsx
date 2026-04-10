@@ -112,7 +112,7 @@ export default function Home() {
                       <div className="w-full aspect-video overflow-hidden rounded-t-xl relative">
                         <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
                         <div className="absolute top-3 left-3">
-                          <span className={`text-xs font-bold capitalize px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-sm ${levelColors[course.level] ?? "text-muted-foreground"}`}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize ${levelColors[course.level] ?? ""}`}>
                             {course.level}
                           </span>
                         </div>
@@ -121,7 +121,7 @@ export default function Home() {
                       <div className="w-full aspect-video bg-gradient-to-br from-primary/20 to-blue-900/30 flex items-center justify-center relative rounded-t-xl">
                         <span className="text-5xl font-black text-primary/20 select-none">{course.category.charAt(0)}</span>
                         <div className="absolute top-3 left-3">
-                          <span className={`text-xs font-bold capitalize ${levelColors[course.level] ?? "text-muted-foreground"}`}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize ${levelColors[course.level] ?? ""}`}>
                             {course.level}
                           </span>
                         </div>
