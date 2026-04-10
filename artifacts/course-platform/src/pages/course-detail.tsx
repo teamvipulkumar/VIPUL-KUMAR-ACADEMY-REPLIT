@@ -123,10 +123,10 @@ export default function CourseDetailPage() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background w-full overflow-x-hidden">
       {/* Hero */}
       <div className="bg-gradient-to-b from-primary/10 via-primary/5 to-background border-b border-border py-8 md:py-12 px-4">
-        <div className="container mx-auto max-w-5xl">
+        <div className="w-full max-w-5xl mx-auto">
           <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground mb-3 md:mb-4">
             <span>{course.category}</span>
             <ChevronRight className="w-3 h-3" />
@@ -178,19 +178,18 @@ export default function CourseDetailPage() {
       </div>
 
       {/* Curriculum */}
-      <div className="container mx-auto max-w-5xl px-4 py-8 md:py-12">
+      <div className="w-full max-w-5xl mx-auto px-4 py-8 md:py-12">
         <div className="grid md:grid-cols-3 gap-6 md:gap-8">
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 min-w-0">
             <div className="flex items-center justify-between mb-4 md:mb-6">
               <h2 className="text-xl md:text-2xl font-bold">Course Curriculum</h2>
               {course.isEnrolled && (
                 <button
                   onClick={() => navigate(`/learn/${courseId}`)}
-                  className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                  className="flex-shrink-0 ml-3 flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
                 >
                   <Play className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Continue Learning</span>
-                  <span className="sm:hidden">Continue</span>
+                  <span>Continue</span>
                 </button>
               )}
             </div>
@@ -199,18 +198,16 @@ export default function CourseDetailPage() {
                 <div key={mod.id} className="border border-border rounded-xl overflow-hidden">
                   {/* Module header */}
                   <button
-                    className="w-full flex items-center justify-between gap-2 p-3.5 md:p-4 bg-card hover:bg-card/80 transition-colors text-left"
+                    className="w-full flex items-center gap-2.5 p-3.5 md:p-4 bg-card hover:bg-card/80 transition-colors text-left"
                     onClick={() => toggleModule(idx)}
                   >
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      {expandedModules.includes(idx)
-                        ? <ChevronDown className="w-4 h-4 text-primary flex-shrink-0" />
-                        : <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
-                      <span className="font-medium text-sm md:text-base truncate">{mod.title}</span>
+                    {expandedModules.includes(idx)
+                      ? <ChevronDown className="w-4 h-4 text-primary flex-shrink-0" />
+                      : <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate leading-snug">{mod.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{mod.lessons?.length ?? 0} lessons</p>
                     </div>
-                    <span className="text-xs text-muted-foreground flex-shrink-0 whitespace-nowrap">
-                      {mod.lessons?.length ?? 0} lessons
-                    </span>
                   </button>
 
                   {/* Lessons list */}
