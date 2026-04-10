@@ -52,8 +52,18 @@ function CourseCard({ e }: { e: any }) {
     <div className="bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/40 transition-all group">
       {/* Thumbnail area */}
       <div className="relative h-36 bg-gradient-to-br from-primary/20 via-primary/10 to-transparent flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_#2563eb22_0%,_transparent_60%)]" />
-        <GraduationCap className="w-14 h-14 text-primary/30" />
+        {e.course?.thumbnailUrl ? (
+          <img
+            src={e.course.thumbnailUrl}
+            alt={e.course.title}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : (
+          <>
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_#2563eb22_0%,_transparent_60%)]" />
+            <GraduationCap className="w-14 h-14 text-primary/30" />
+          </>
+        )}
         {isDone && (
           <div className="absolute top-3 right-3 bg-green-500/20 border border-green-500/30 text-green-400 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
             <CheckCheck className="w-3 h-3" />Completed
