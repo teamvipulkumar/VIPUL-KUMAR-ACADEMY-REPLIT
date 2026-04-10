@@ -210,17 +210,12 @@ function TabHeader({ title, subtitle, action }: { title: string; subtitle?: stri
 }
 
 /* ─── Stat card ─── */
-function StatCard2({ icon, label, value, color, sub }: { icon: React.ReactNode; label: string; value: string | number; color: string; sub?: string }) {
+function StatCard2({ label, value, color, sub }: { icon?: React.ReactNode; label: string; value: string | number; color: string; sub?: string }) {
   return (
-    <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3.5">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${color.replace("text-", "bg-").replace("400", "400/10")}`}>
-        {icon}
-      </div>
-      <div className="min-w-0">
-        <p className={`text-xl font-bold leading-none ${color}`}>{value}</p>
-        <p className="text-xs text-muted-foreground mt-1 truncate">{label}</p>
-        {sub && <p className="text-[10px] text-muted-foreground/60 mt-0.5">{sub}</p>}
-      </div>
+    <div className="bg-card border border-border rounded-xl p-4 flex flex-col items-center justify-center text-center gap-1">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={`text-xl font-bold leading-none ${color}`}>{value}</p>
+      {sub && <p className="text-[10px] text-muted-foreground/60">{sub}</p>}
     </div>
   );
 }
