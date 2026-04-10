@@ -425,24 +425,7 @@ function AffiliateDashboard({ user }: { user: any }) {
                 </div>
               </div>
 
-              <div className="bg-card border border-border rounded-2xl p-5">
-                <h3 className="text-sm font-semibold text-foreground mb-1">Course-specific links</h3>
-                <p className="text-xs text-muted-foreground mb-3">Use these URL patterns to link to specific course pages:</p>
-                <div className="space-y-2">
-                  {[
-                    { label: "All Courses", url: `${window.location.origin}/courses?ref=${dashboard?.referralCode ?? "CODE"}` },
-                    { label: "Specific Course", url: `${window.location.origin}/courses/[id]?ref=${dashboard?.referralCode ?? "CODE"}` },
-                  ].map(item => (
-                    <div key={item.label} className="flex items-center gap-2 bg-background rounded-lg p-2.5 border border-border">
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-wide w-20 flex-shrink-0">{item.label}</span>
-                      <span className="text-xs font-mono text-foreground/70 truncate flex-1">{item.url}</span>
-                      <button onClick={() => navigator.clipboard.writeText(item.url)} className="text-muted-foreground hover:text-primary transition-colors flex-shrink-0">
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <CustomLinkGenerator referralCode={dashboard?.referralCode ?? ""} />
             </div>
           )}
 
@@ -524,6 +507,134 @@ function AffiliateDashboard({ user }: { user: any }) {
 
         </div>
       </main>
+    </div>
+  );
+}
+
+/* ─── Custom Link Generator ─── */
+function CustomLinkGenerator({ referralCode }: { referralCode: string }) {
+  const [inputUrl, setInputUrl] = useState("");
+  const [copiedGenerated, setCopiedGenerated] = useState(false);
+  const [copiedQuick, setCopiedQuick] = useState<string | null>(null);
+  const siteOrigin = window.location.origin;
+
+  const isValidSiteUrl = (url: string) => {
+    try {
+      const parsed = new URL(url);
+      return parsed.origin === siteOrigin;
+    } catch {
+      return false;
+    }
+  };
+
+  const buildAffiliateUrl = (url: string) => {
+    if (!url.trim() || !referralCode) return "";
+    try {
+      const parsed = new URL(url.trim());
+      parsed.searchParams.set("ref", referralCode);
+      return parsed.toString();
+    } catch {
+      return "";
+    }
+  };
+
+  const generatedUrl = buildAffiliateUrl(inputUrl);
+  const isValid = inputUrl.trim() === "" || isValidSiteUrl(inputUrl.trim());
+
+  const copyGenerated = () => {
+    if (!generatedUrl) return;
+    navigator.clipboard.writeText(generatedUrl);
+    setCopiedGenerated(true);
+    setTimeout(() => setCopiedGenerated(false), 2000);
+  };
+
+  const copyQuick = (url: string, key: string) => {
+    navigator.clipboard.writeText(url);
+    setCopiedQuick(key);
+    setTimeout(() => setCopiedQuick(null), 2000);
+  };
+
+  const quickLinks = [
+    { label: "Home", path: "/" },
+    { label: "All Courses", path: "/courses" },
+    { label: "Register", path: "/register" },
+  ];
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-5 space-y-5">
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-0.5">Custom Affiliate Link Generator</h3>
+        <p className="text-xs text-muted-foreground">Paste any page URL from this site — get your personalised affiliate link instantly.</p>
+      </div>
+
+      {/* Input */}
+      <div className="space-y-2">
+        <Label className="text-xs text-muted-foreground">Paste a site URL</Label>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              value={inputUrl}
+              onChange={e => setInputUrl(e.target.value)}
+              placeholder={`${siteOrigin}/courses/1`}
+              className={`bg-background border-border pl-9 font-mono text-xs ${!isValid ? "border-red-500/50 focus-visible:ring-red-500/30" : ""}`}
+            />
+          </div>
+        </div>
+        {!isValid && (
+          <p className="text-[11px] text-red-400 flex items-center gap-1">
+            <AlertCircle className="w-3 h-3" />URL must be from this site ({siteOrigin})
+          </p>
+        )}
+      </div>
+
+      {/* Generated link output */}
+      {generatedUrl && isValid && (
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Your affiliate link</Label>
+          <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-xl p-3">
+            <ExternalLink className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+            <span className="text-xs font-mono text-primary flex-1 truncate">{generatedUrl}</span>
+            <button
+              onClick={copyGenerated}
+              className={`flex-shrink-0 flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg font-medium transition-all ${
+                copiedGenerated
+                  ? "bg-green-500/15 text-green-400 border border-green-500/20"
+                  : "bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
+              }`}
+            >
+              {copiedGenerated ? <><Check className="w-3 h-3" />Copied!</> : <><Copy className="w-3 h-3" />Copy</>}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Divider */}
+      <div className="border-t border-border" />
+
+      {/* Quick-generate shortcuts */}
+      <div>
+        <p className="text-xs text-muted-foreground mb-2.5">Quick links — click to copy</p>
+        <div className="space-y-2">
+          {quickLinks.map(({ label, path }) => {
+            const url = `${siteOrigin}${path}?ref=${referralCode || "CODE"}`;
+            return (
+              <div key={label} className="flex items-center gap-2 bg-background rounded-lg px-3 py-2.5 border border-border group">
+                <span className="text-[11px] text-muted-foreground uppercase tracking-wide w-20 flex-shrink-0">{label}</span>
+                <span className="text-xs font-mono text-foreground/60 truncate flex-1">{url}</span>
+                <button
+                  onClick={() => copyQuick(url, label)}
+                  className="flex-shrink-0 text-muted-foreground hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  {copiedQuick === label
+                    ? <Check className="w-3.5 h-3.5 text-green-400" />
+                    : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
