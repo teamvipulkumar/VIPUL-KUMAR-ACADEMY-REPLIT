@@ -51,7 +51,7 @@ function CourseCard({ e }: { e: any }) {
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/40 transition-all group">
       {/* Thumbnail area */}
-      <div className="relative h-36 bg-gradient-to-br from-primary/20 via-primary/10 to-transparent flex items-center justify-center overflow-hidden">
+      <div className="relative aspect-video bg-gradient-to-br from-primary/20 via-primary/10 to-transparent flex items-center justify-center overflow-hidden">
         {e.course?.thumbnailUrl ? (
           <img
             src={e.course.thumbnailUrl}
