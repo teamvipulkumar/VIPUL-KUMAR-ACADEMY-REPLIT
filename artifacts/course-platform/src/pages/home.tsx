@@ -108,14 +108,25 @@ export default function Home() {
               {(coursesData?.courses ?? []).map(course => (
                 <Link href={`/courses/${course.id}`} key={course.id}>
                   <Card className="h-full bg-card border-border hover:border-primary/50 transition-all duration-200 cursor-pointer group overflow-hidden">
-                    <div className="w-full aspect-video bg-gradient-to-br from-primary/20 to-blue-900/30 flex items-center justify-center relative rounded-t-xl">
-                      <span className="text-5xl font-black text-primary/20 select-none">{course.category.charAt(0)}</span>
-                      <div className="absolute top-3 left-3">
-                        <span className={`text-xs font-bold capitalize ${levelColors[course.level] ?? "text-muted-foreground"}`}>
-                          {course.level}
-                        </span>
+                    {course.thumbnailUrl ? (
+                      <div className="w-full aspect-video overflow-hidden rounded-t-xl relative">
+                        <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
+                        <div className="absolute top-3 left-3">
+                          <span className={`text-xs font-bold capitalize ${levelColors[course.level] ?? "text-muted-foreground"}`}>
+                            {course.level}
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="w-full aspect-video bg-gradient-to-br from-primary/20 to-blue-900/30 flex items-center justify-center relative rounded-t-xl">
+                        <span className="text-5xl font-black text-primary/20 select-none">{course.category.charAt(0)}</span>
+                        <div className="absolute top-3 left-3">
+                          <span className={`text-xs font-bold capitalize ${levelColors[course.level] ?? "text-muted-foreground"}`}>
+                            {course.level}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                     <CardHeader className="pb-2">
                       <div className="text-xs text-primary font-medium uppercase tracking-wider mb-1">{course.category}</div>
                       <CardTitle className="text-base leading-snug group-hover:text-primary transition-colors line-clamp-2">{course.title}</CardTitle>
