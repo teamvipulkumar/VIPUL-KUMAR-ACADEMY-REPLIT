@@ -112,7 +112,7 @@ export default function Home() {
                       <div className="w-full aspect-video overflow-hidden rounded-t-xl relative">
                         <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
                         <div className="absolute top-3 left-3">
-                          <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize ${levelColors[course.level] ?? ""}`}>
+                          <span className={`text-xs px-2 py-1 rounded-full font-semibold capitalize bg-black/70 backdrop-blur-sm border border-white/10 ${levelColors[course.level] ?? "text-white"}`}>
                             {course.level}
                           </span>
                         </div>
