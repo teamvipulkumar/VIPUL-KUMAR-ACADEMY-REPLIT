@@ -15,7 +15,8 @@ import {
   Clock, CheckCircle2, XCircle, AlertCircle, Link2, Image, FileText,
   ShieldCheck, Wallet, Zap, Building2, RefreshCw, Download, Plus,
   Trash2, Eye, EyeOff, Send, ChevronRight, Activity, Target,
-  Calendar, Star, Lock, Loader2
+  Calendar, Star, Lock, Loader2, Menu, X, ExternalLink, Share2,
+  ArrowUpRight, TrendingDown, Banknote, Info
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
@@ -195,9 +196,39 @@ function RejectedView({ note }: { note?: string | null }) {
   );
 }
 
+/* ─── Reusable page section header ─── */
+function TabHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-4 mb-6">
+      <div>
+        <h2 className="text-lg font-bold text-foreground">{title}</h2>
+        {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+/* ─── Stat card ─── */
+function StatCard2({ icon, label, value, color, sub }: { icon: React.ReactNode; label: string; value: string | number; color: string; sub?: string }) {
+  return (
+    <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3.5">
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${color.replace("text-", "bg-").replace("400", "400/10")}`}>
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className={`text-xl font-bold leading-none ${color}`}>{value}</p>
+        <p className="text-xs text-muted-foreground mt-1 truncate">{label}</p>
+        {sub && <p className="text-[10px] text-muted-foreground/60 mt-0.5">{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Full Dashboard ─── */
 function AffiliateDashboard({ user }: { user: any }) {
   const [tab, setTab] = useState<Tab>("earnings");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dashboard, setDashboard] = useState<any>(null);
   const [clicks, setClicks] = useState<any>(null);
   const [payouts, setPayouts] = useState<any[]>([]);
@@ -231,192 +262,274 @@ function AffiliateDashboard({ user }: { user: any }) {
     }
   };
 
-  return (
-    <div className="flex min-h-screen bg-background">
+  const navClick = (id: Tab) => { setTab(id); setSidebarOpen(false); };
 
-      {/* ── Full-height Left Sidebar ── */}
-      <aside className="w-56 flex-shrink-0 bg-card border-r border-border flex flex-col sticky top-0 h-screen overflow-hidden">
-        {/* Brand */}
-        <div className="px-5 py-5 border-b border-border">
+  const SidebarContent = () => (
+    <>
+      <div className="px-5 py-5 border-b border-border flex items-center justify-between">
+        <div>
           <p className="text-xs font-extrabold text-primary uppercase tracking-widest">VK ACADEMY</p>
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">Affiliate Panel</p>
         </div>
-
-        {/* Nav items */}
-        <nav className="flex-1 py-2 overflow-y-auto">
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`w-full flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-all text-left ${
-                tab === t.id
-                  ? "bg-primary/10 text-primary border-r-2 border-r-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-              }`}
-            >
-              {t.icon}{t.label}
-            </button>
-          ))}
-        </nav>
-
-        {/* Back to site */}
-        <div className="p-4 border-t border-border">
-          <Link href="/">
-            <button className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full">
-              <ChevronRight className="w-3.5 h-3.5 rotate-180" />Back to Site
-            </button>
-          </Link>
+        <button className="lg:hidden text-muted-foreground hover:text-foreground" onClick={() => setSidebarOpen(false)}>
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      <nav className="flex-1 py-3 overflow-y-auto">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => navClick(t.id)}
+            className={`w-full flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-all text-left ${
+              tab === t.id
+                ? "bg-primary/10 text-primary border-r-2 border-r-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+            }`}
+          >
+            {t.icon}{t.label}
+          </button>
+        ))}
+      </nav>
+      <div className="p-4 border-t border-border space-y-2">
+        <div className="flex items-center gap-2 px-1 mb-2">
+          <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold flex-shrink-0">
+            {user?.name?.charAt(0)?.toUpperCase() ?? "U"}
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-foreground truncate">{user?.name}</p>
+            <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
+          </div>
         </div>
+        <Link href="/">
+          <button className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full px-1 py-1">
+            <ChevronRight className="w-3.5 h-3.5 rotate-180" />Back to Site
+          </button>
+        </Link>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="flex min-h-screen bg-background">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {/* Sidebar — fixed on desktop, slide-over on mobile */}
+      <aside className={`
+        fixed lg:sticky top-0 h-screen z-50 lg:z-auto
+        w-56 flex-shrink-0 bg-card border-r border-border flex flex-col overflow-hidden
+        transition-transform duration-200
+        ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+      `}>
+        <SidebarContent />
       </aside>
 
-      {/* ── Main content ── */}
+      {/* Main content */}
       <main className="flex-1 min-w-0 overflow-y-auto">
-
-        {/* Tab content */}
-        <div className="px-6 py-6">
-
-        {/* ── Earnings Tab ── */}
-        {tab === "earnings" && (
-          <div className="space-y-5">
-            <div>
-              <h2 className="text-2xl font-extrabold text-foreground">Hello, {user?.name ?? "there"} 👋</h2>
-              <p className="text-sm text-muted-foreground mt-1">Welcome back to your affiliate dashboard.</p>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { label: "Today", value: dashboard?.todayEarnings ?? 0 },
-                { label: "Yesterday", value: dashboard?.yesterdayEarnings ?? 0 },
-                { label: "Last 7 Days", value: dashboard?.last7Earnings ?? 0 },
-                { label: "Last 30 Days", value: dashboard?.last30Earnings ?? 0 },
-              ].map(e => (
-                <div key={e.label} className="bg-card border border-border rounded-xl p-4">
-                  <p className="text-xs text-muted-foreground mb-1">{e.label}</p>
-                  <p className="text-xl font-bold text-green-400">₹{e.value.toLocaleString("en-IN")}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Daily chart */}
-            <div className="bg-card border border-border rounded-2xl p-5">
-              <h3 className="text-sm font-semibold text-foreground mb-4">Daily Earnings — Last 30 Days</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={dashboard?.dailyChart ?? []} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
-                  <defs>
-                    <linearGradient id="earningsGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={v => v.substring(5)} interval="preserveStartEnd" />
-                  <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={v => `₹${v}`} />
-                  <Tooltip
-                    contentStyle={{ background: "#0d1424", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
-                    formatter={(v: any) => [`₹${Number(v).toFixed(2)}`, "Earnings"]}
-                  />
-                  <Area type="monotone" dataKey="amount" stroke="#2563eb" strokeWidth={2} fill="url(#earningsGrad)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Earnings summary */}
-            <div className="bg-card border border-border rounded-xl p-4 grid grid-cols-3 divide-x divide-border">
-              {[
-                { label: "Total Earned", value: `₹${(dashboard?.totalEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-foreground" },
-                { label: "Pending Payout", value: `₹${(dashboard?.pendingEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-amber-400" },
-                { label: "Total Paid", value: `₹${(dashboard?.paidEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-green-400" },
-              ].map(s => (
-                <div key={s.label} className="text-center px-4">
-                  <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
-                </div>
-              ))}
-            </div>
+        {/* Mobile top bar */}
+        <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-border bg-card/60 sticky top-0 z-30">
+          <button onClick={() => setSidebarOpen(true)} className="text-muted-foreground hover:text-foreground p-1">
+            <Menu className="w-5 h-5" />
+          </button>
+          <div>
+            <p className="text-xs font-extrabold text-primary uppercase tracking-widest">VK ACADEMY</p>
+            <p className="text-[10px] text-muted-foreground capitalize">{TABS.find(t => t.id === tab)?.label}</p>
           </div>
-        )}
+        </div>
 
-        {/* ── Links Tab ── */}
-        {tab === "links" && (
-          <div className="space-y-4 max-w-2xl">
-            <div className="bg-card border border-border rounded-2xl p-5">
-              <h3 className="text-sm font-semibold text-foreground mb-1">Your Unique Referral Link</h3>
-              <p className="text-xs text-muted-foreground mb-4">Share this link to earn commissions on every course purchased through it.</p>
-              <div className="flex gap-2 mb-3">
-                <Input value={dashboard?.referralLink ?? ""} readOnly className="bg-background font-mono text-xs" />
-                <Button variant="outline" onClick={copyLink} className="gap-1.5 flex-shrink-0">
-                  {copied ? <><Check className="w-3.5 h-3.5 text-green-400" />Copied!</> : <><Copy className="w-3.5 h-3.5" />Copy</>}
+        <div className="px-4 sm:px-6 py-6">
+
+          {/* ── Earnings Tab ── */}
+          {tab === "earnings" && (
+            <div className="space-y-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-extrabold text-foreground">Hello, {user?.name?.split(" ")[0] ?? "there"} 👋</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Your referral code is <span className="font-mono font-bold text-primary">{dashboard?.commissionRate ?? "–"}%</span> commission · Code: <span className="font-mono font-bold text-foreground">{dashboard?.referralCode ?? "–"}</span>
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" className="gap-1.5 flex-shrink-0" onClick={loadDashboard}>
+                  <RefreshCw className="w-3.5 h-3.5" /><span className="hidden sm:inline">Refresh</span>
                 </Button>
               </div>
-              <div className="p-3 bg-background rounded-xl border border-border">
-                <p className="text-xs text-muted-foreground mb-2">Your referral code</p>
-                <p className="font-mono font-bold text-primary text-lg tracking-widest">{dashboard?.referralCode}</p>
+
+              {/* Overview stats */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { label: "Today", value: `₹${(dashboard?.todayEarnings ?? 0).toLocaleString("en-IN")}`, icon: <BadgeIndianRupee className="w-4 h-4 text-green-400" />, color: "text-green-400" },
+                  { label: "Yesterday", value: `₹${(dashboard?.yesterdayEarnings ?? 0).toLocaleString("en-IN")}`, icon: <Calendar className="w-4 h-4 text-blue-400" />, color: "text-blue-400" },
+                  { label: "Last 7 Days", value: `₹${(dashboard?.last7Earnings ?? 0).toLocaleString("en-IN")}`, icon: <TrendingUp className="w-4 h-4 text-purple-400" />, color: "text-purple-400" },
+                  { label: "Last 30 Days", value: `₹${(dashboard?.last30Earnings ?? 0).toLocaleString("en-IN")}`, icon: <Activity className="w-4 h-4 text-amber-400" />, color: "text-amber-400" },
+                ].map(s => <StatCard2 key={s.label} {...s} />)}
+              </div>
+
+              {/* Summary strip */}
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="grid grid-cols-3 divide-x divide-border">
+                  {[
+                    { label: "Total Earned", value: `₹${(dashboard?.totalEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-foreground", icon: <Banknote className="w-3.5 h-3.5" /> },
+                    { label: "Pending Payout", value: `₹${(dashboard?.pendingEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-amber-400", icon: <Clock className="w-3.5 h-3.5" /> },
+                    { label: "Total Paid", value: `₹${(dashboard?.paidEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-green-400", icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+                  ].map(s => (
+                    <div key={s.label} className="text-center px-3 py-4">
+                      <div className={`flex items-center justify-center gap-1 ${s.color} mb-1`}>{s.icon}</div>
+                      <p className={`text-base sm:text-lg font-bold ${s.color}`}>{s.value}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Daily chart */}
+              <div className="bg-card border border-border rounded-2xl p-4 sm:p-5">
+                <h3 className="text-sm font-semibold text-foreground mb-4">Daily Earnings — Last 30 Days</h3>
+                <ResponsiveContainer width="100%" height={200}>
+                  <AreaChart data={dashboard?.dailyChart ?? []} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+                    <defs>
+                      <linearGradient id="earningsGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={v => v.substring(5)} interval="preserveStartEnd" />
+                    <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={v => `₹${v}`} width={50} />
+                    <Tooltip contentStyle={{ background: "#0d1424", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }} formatter={(v: any) => [`₹${Number(v).toFixed(2)}`, "Earnings"]} />
+                    <Area type="monotone" dataKey="amount" stroke="#2563eb" strokeWidth={2} fill="url(#earningsGrad)" />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </div>
+          )}
 
-            <div className="bg-card border border-border rounded-2xl p-5">
-              <h3 className="text-sm font-semibold text-foreground mb-3">Course-specific links</h3>
-              <p className="text-xs text-muted-foreground mb-3">Append your referral code to any course URL:</p>
-              <div className="space-y-2 text-xs font-mono text-muted-foreground">
-                <div className="bg-background rounded-lg p-2.5 border border-border">
-                  <span className="text-primary">{window.location.origin}/courses?ref=</span>
-                  <span className="text-foreground font-bold">{dashboard?.referralCode}</span>
+          {/* ── Links Tab ── */}
+          {tab === "links" && (
+            <div className="space-y-4 max-w-2xl">
+              <TabHeader title="My Referral Link" subtitle="Share your unique link to earn commissions on every sale." />
+
+              <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-2 block">Your referral code</Label>
+                  <div className="flex items-center gap-3 p-3 bg-primary/5 border border-primary/20 rounded-xl">
+                    <p className="font-mono font-extrabold text-primary text-2xl tracking-widest flex-1">{dashboard?.referralCode ?? "–"}</p>
+                    <Badge className="text-[10px] text-green-400 border-green-400/30 bg-green-400/10 gap-1"><CheckCircle2 className="w-3 h-3" />Active</Badge>
+                  </div>
                 </div>
-                <div className="bg-background rounded-lg p-2.5 border border-border">
-                  <span className="text-primary">{window.location.origin}/courses/[course-id]?ref=</span>
-                  <span className="text-foreground font-bold">{dashboard?.referralCode}</span>
+
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-2 block">Referral link</Label>
+                  <div className="flex gap-2">
+                    <Input value={dashboard?.referralLink ?? ""} readOnly className="bg-background font-mono text-xs min-w-0" />
+                    <Button variant="outline" onClick={copyLink} className={`gap-1.5 flex-shrink-0 ${copied ? "border-green-500/30 text-green-400" : ""}`}>
+                      {copied ? <><Check className="w-3.5 h-3.5" />Copied</> : <><Copy className="w-3.5 h-3.5" />Copy</>}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/15">
+                  <p className="text-xs text-blue-400 flex items-center gap-1.5"><Info className="w-3 h-3 flex-shrink-0" />You earn <span className="font-bold">{dashboard?.commissionRate ?? "–"}%</span> commission on every successful purchase through your link.</p>
+                </div>
+              </div>
+
+              <div className="bg-card border border-border rounded-2xl p-5">
+                <h3 className="text-sm font-semibold text-foreground mb-1">Course-specific links</h3>
+                <p className="text-xs text-muted-foreground mb-3">Use these URL patterns to link to specific course pages:</p>
+                <div className="space-y-2">
+                  {[
+                    { label: "All Courses", url: `${window.location.origin}/courses?ref=${dashboard?.referralCode ?? "CODE"}` },
+                    { label: "Specific Course", url: `${window.location.origin}/courses/[id]?ref=${dashboard?.referralCode ?? "CODE"}` },
+                  ].map(item => (
+                    <div key={item.label} className="flex items-center gap-2 bg-background rounded-lg p-2.5 border border-border">
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-wide w-20 flex-shrink-0">{item.label}</span>
+                      <span className="text-xs font-mono text-foreground/70 truncate flex-1">{item.url}</span>
+                      <button onClick={() => navigator.clipboard.writeText(item.url)} className="text-muted-foreground hover:text-primary transition-colors flex-shrink-0">
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ── Clicks Tab ── */}
-        {tab === "clicks" && (
-          <div className="space-y-5">
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: "Total Clicks", value: clicks?.total ?? 0, icon: <MousePointerClick className="w-5 h-5 text-blue-400" />, color: "text-blue-400" },
-                { label: "Unique Visitors", value: clicks?.unique ?? 0, icon: <Users className="w-5 h-5 text-purple-400" />, color: "text-purple-400" },
-                { label: "Conversions", value: clicks?.conversions ?? 0, icon: <CheckCircle2 className="w-5 h-5 text-green-400" />, color: "text-green-400" },
-              ].map(s => (
-                <div key={s.label} className="bg-card border border-border rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2">{s.icon}<span className="text-xs text-muted-foreground">{s.label}</span></div>
-                  <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+          {/* ── Clicks Tab ── */}
+          {tab === "clicks" && (
+            <div className="space-y-6">
+              <TabHeader title="Click Analytics" subtitle="Track traffic and conversions from your referral links." />
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <StatCard2 icon={<MousePointerClick className="w-4 h-4 text-blue-400" />} label="Total Clicks" value={clicks?.total ?? 0} color="text-blue-400" />
+                <StatCard2 icon={<Users className="w-4 h-4 text-purple-400" />} label="Unique Visitors" value={clicks?.unique ?? 0} color="text-purple-400" />
+                <StatCard2 icon={<CheckCircle2 className="w-4 h-4 text-green-400" />} label="Conversions" value={clicks?.conversions ?? 0} color="text-green-400"
+                  sub={clicks?.total > 0 ? `${((clicks.conversions / clicks.total) * 100).toFixed(1)}% conversion rate` : undefined} />
+              </div>
+
+              <div className="bg-card border border-border rounded-2xl p-4 sm:p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-foreground">Daily Analytics — Last 30 Days</h3>
+                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />Clicks</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500 inline-block" />Unique</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" />Conv.</span>
+                  </div>
                 </div>
-              ))}
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={clicks?.dailyChart ?? []} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={v => v.substring(5)} interval="preserveStartEnd" />
+                    <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} />
+                    <Tooltip contentStyle={{ background: "#0d1424", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }} />
+                    <Bar dataKey="clicks" fill="#3b82f6" radius={[3, 3, 0, 0]} name="Clicks" />
+                    <Bar dataKey="unique" fill="#8b5cf6" radius={[3, 3, 0, 0]} name="Unique" />
+                    <Bar dataKey="conversions" fill="#22c55e" radius={[3, 3, 0, 0]} name="Conv." />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
+          )}
 
-            <div className="bg-card border border-border rounded-2xl p-5">
-              <h3 className="text-sm font-semibold text-foreground mb-4">Daily Click Analytics — Last 30 Days</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={clicks?.dailyChart ?? []} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={v => v.substring(5)} interval="preserveStartEnd" />
-                  <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} />
-                  <Tooltip contentStyle={{ background: "#0d1424", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }} />
-                  <Bar dataKey="clicks" fill="#3b82f6" radius={[3, 3, 0, 0]} name="Clicks" />
-                  <Bar dataKey="unique" fill="#8b5cf6" radius={[3, 3, 0, 0]} name="Unique" />
-                  <Bar dataKey="conversions" fill="#22c55e" radius={[3, 3, 0, 0]} name="Conversions" />
-                </BarChart>
-              </ResponsiveContainer>
+          {/* ── Creatives Tab ── */}
+          {tab === "creatives" && (
+            <div>
+              <TabHeader title="Marketing Creatives" subtitle="Download banners, copy, and assets to promote your affiliate link." />
+              <CreativesTab creatives={creatives} />
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ── Creatives Tab ── */}
-        {tab === "creatives" && <CreativesTab creatives={creatives} />}
+          {/* ── KYC Tab ── */}
+          {tab === "kyc" && (
+            <div>
+              <TabHeader title="KYC Verification" subtitle="Submit identity documents to enable payouts." />
+              <KycTab kyc={kyc} onSaved={k => setKyc(k)} />
+            </div>
+          )}
 
-        {/* ── KYC Tab ── */}
-        {tab === "kyc" && <KycTab kyc={kyc} onSaved={k => setKyc(k)} />}
+          {/* ── Payouts Tab ── */}
+          {tab === "payouts" && (
+            <div>
+              <TabHeader title="Payouts" subtitle="Request withdrawals and view your payout history." />
+              <PayoutsTab dashboard={dashboard} payouts={payouts} onRequested={loadDashboard} />
+            </div>
+          )}
 
-        {/* ── Payouts Tab ── */}
-        {tab === "payouts" && <PayoutsTab dashboard={dashboard} payouts={payouts} onRequested={loadDashboard} />}
+          {/* ── Pixel Tab ── */}
+          {tab === "pixel" && (
+            <div>
+              <TabHeader title="Tracking Pixel" subtitle="Connect your Facebook Pixel to track conversions from your referrals." />
+              <PixelTab pixel={pixel} onSaved={p => setPixel(p)} />
+            </div>
+          )}
 
-        {/* ── Pixel Tab ── */}
-        {tab === "pixel" && <PixelTab pixel={pixel} onSaved={p => setPixel(p)} />}
-
-        {/* ── Bank Tab ── */}
-        {tab === "bank" && <BankTab bank={bank} onSaved={b => setBank(b)} />}
+          {/* ── Bank Tab ── */}
+          {tab === "bank" && (
+            <div>
+              <TabHeader title="Bank Account" subtitle="Add your bank details to receive payout transfers." />
+              <BankTab bank={bank} onSaved={b => setBank(b)} />
+            </div>
+          )}
 
         </div>
       </main>
