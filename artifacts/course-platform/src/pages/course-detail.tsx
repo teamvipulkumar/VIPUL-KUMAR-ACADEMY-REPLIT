@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useGetCourse, getGetCourseQueryKey, useValidateCoupon } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,8 @@ export default function CourseDetailPage() {
   const [expandedModules, setExpandedModules] = useState<number[]>([0]);
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number; type: string } | null>(null);
+
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, [courseId]);
 
   const { data: course, isLoading } = useGetCourse(courseId, {
     query: { queryKey: getGetCourseQueryKey(courseId), enabled: courseId > 0 }
