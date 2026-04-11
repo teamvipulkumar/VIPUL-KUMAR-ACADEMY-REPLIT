@@ -25,24 +25,41 @@ async function recordAffiliateCommission(
 ): Promise<void> {
   if (!affiliateRef) return;
   try {
-    // Find referrer
-    const [referrer] = await db.select({ id: usersTable.id })
+    // Find referrer (include role for eligibility check)
+    const [referrer] = await db.select({ id: usersTable.id, role: usersTable.role })
       .from(usersTable).where(eq(usersTable.referralCode, affiliateRef)).limit(1);
     if (!referrer) return;
 
     // Prevent self-referral
     if (referrer.id === buyerId) return;
 
-    // Ensure affiliate is approved and not blocked
-    const [app] = await db.select({ commissionOverride: affiliateApplicationsTable.commissionOverride, isBlocked: affiliateApplicationsTable.isBlocked })
-      .from(affiliateApplicationsTable)
-      .where(and(eq(affiliateApplicationsTable.userId, referrer.id), eq(affiliateApplicationsTable.status, "approved")))
-      .limit(1);
-    if (!app || app.isBlocked) return;
-
-    // Get commission rate (affiliate override > platform default)
+    // Get commission rate: check application for commission override; admins/affiliates both eligible
     const [settings] = await db.select({ commissionRate: platformSettingsTable.commissionRate }).from(platformSettingsTable).limit(1);
-    const rate = app.commissionOverride ?? settings?.commissionRate ?? 20;
+    const defaultRate = settings?.commissionRate ?? 20;
+
+    let rate = defaultRate;
+
+    if (referrer.role === "affiliate") {
+      // Affiliates must have an approved, non-blocked application
+      const [app] = await db.select({ commissionOverride: affiliateApplicationsTable.commissionOverride, isBlocked: affiliateApplicationsTable.isBlocked })
+        .from(affiliateApplicationsTable)
+        .where(and(eq(affiliateApplicationsTable.userId, referrer.id), eq(affiliateApplicationsTable.status, "approved")))
+        .limit(1);
+      if (!app) return; // No approved application
+      if (app.isBlocked) return; // Blocked
+      if (app.commissionOverride != null) rate = app.commissionOverride;
+    } else if (referrer.role === "admin") {
+      // Admins can always earn commission — use platform default (no block check)
+      const [app] = await db.select({ commissionOverride: affiliateApplicationsTable.commissionOverride })
+        .from(affiliateApplicationsTable)
+        .where(eq(affiliateApplicationsTable.userId, referrer.id))
+        .limit(1);
+      if (app?.commissionOverride != null) rate = app.commissionOverride;
+    } else {
+      // Students and other roles cannot earn commission without an application
+      return;
+    }
+
     const commission = parseFloat(((saleAmount * rate) / 100).toFixed(2));
 
     // Find the most recent click referral for this referrer+course that isn't yet a purchase
@@ -82,7 +99,7 @@ async function recordAffiliateCommission(
       message: `You earned ₹${commission.toFixed(2)} commission from a course purchase.`,
       type: "success",
     });
-  } catch { /* swallow — commission recording is non-critical */ }
+  } catch (err) { console.error("[affiliate commission]", err); }
 }
 
 router.post("/checkout", requireAuth, async (req, res): Promise<void> => {
