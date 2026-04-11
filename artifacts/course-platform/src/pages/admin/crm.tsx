@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { EmailEditor } from "@/components/email-editor";
+import { EmailBlockBuilder } from "@/components/email-block-builder";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 async function apiFetch(path: string, opts?: RequestInit) {
@@ -458,13 +458,15 @@ function TemplatesTab() {
 
   if (editing !== null) {
     return (
-      <div className="max-w-3xl space-y-5">
+      <div className="space-y-5">
         <div className="flex items-center gap-3">
           <button onClick={() => setEditing(null)} className="text-muted-foreground hover:text-foreground transition-colors"><X className="w-4 h-4" /></button>
           <h2 className="text-xl font-bold text-foreground">{editing === "new" ? "New Template" : "Edit Template"}</h2>
         </div>
-        <div className="bg-card border border-border rounded-xl p-5 space-y-4">
-          <div className="grid sm:grid-cols-2 gap-4">
+
+        {/* Meta fields */}
+        <div className="bg-card border border-border rounded-xl p-4 space-y-4">
+          <div className="grid sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Template Name</Label>
               <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Welcome Email" className="bg-background border-border" />
@@ -482,55 +484,39 @@ function TemplatesTab() {
                 <option value="affiliate_commission">Affiliate Commission</option>
               </select>
             </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Subject Line</Label>
-            <Input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="e.g. Welcome to VK Academy, {{name}}!" className="bg-background border-border" />
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between mb-1">
-              <Label className="text-xs text-muted-foreground">Email Body</Label>
-              <div className="flex gap-2">
-                {DEFAULT_TEMPLATES[form.type] && (
-                  <button onClick={() => applyDefault(form.type)} className="text-[11px] text-primary hover:underline">Load default</button>
-                )}
-                <button onClick={() => setPreviewing(form.htmlBody)} className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1"><Eye className="w-3 h-3" />Preview</button>
-              </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Subject Line</Label>
+              <Input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="e.g. Welcome to VK Academy, {{name}}!" className="bg-background border-border" />
             </div>
-            <EmailEditor
-              value={form.htmlBody}
-              onChange={html => setForm(f => ({ ...f, htmlBody: html }))}
-              minHeight={340}
-            />
           </div>
           <div className="p-3 bg-blue-500/5 border border-blue-500/15 rounded-lg">
-            <p className="text-xs text-blue-400 flex items-center gap-1.5"><Info className="w-3 h-3 flex-shrink-0" />Use <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{name}}"}</code>, <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{email}}"}</code>, <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{amount}}"}</code>, <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{course_name}}"}</code>, <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{reset_link}}"}</code> as variables. Switch to HTML view for advanced edits.</p>
+            <p className="text-xs text-blue-400 flex items-center gap-1.5 flex-wrap"><Info className="w-3 h-3 flex-shrink-0" />Variables: <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{name}}"}</code> <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{email}}"}</code> <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{amount}}"}</code> <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{course_name}}"}</code> <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{reset_link}}"}</code></p>
           </div>
-          <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
+        </div>
+
+        {/* Block email builder */}
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Email Body</Label>
+          <EmailBlockBuilder
+            value={form.htmlBody}
+            onChange={html => setForm(f => ({ ...f, htmlBody: html }))}
+          />
+        </div>
+
+        {/* Footer actions */}
+        <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
             <p className="text-sm font-medium text-foreground">Active</p>
             <Switch checked={form.isActive} onCheckedChange={v => setForm(f => ({ ...f, isActive: v }))} />
           </div>
-          <div className="flex gap-2 pt-1">
-            <Button onClick={save} disabled={saving} className="flex-1 bg-primary gap-2">
+          <div className="flex gap-2">
+            <Button onClick={save} disabled={saving} className="bg-primary gap-2">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               {saving ? "Saving…" : "Save Template"}
             </Button>
             <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
           </div>
         </div>
-        {previewing && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-            <div className="bg-card border border-border rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                <h3 className="text-sm font-semibold text-foreground">Email Preview</h3>
-                <button onClick={() => setPreviewing(null)}><X className="w-4 h-4 text-muted-foreground hover:text-foreground" /></button>
-              </div>
-              <div className="overflow-y-auto flex-1 p-4">
-                <iframe srcDoc={previewing} className="w-full min-h-[480px] rounded-lg border border-border bg-white" title="preview" />
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
