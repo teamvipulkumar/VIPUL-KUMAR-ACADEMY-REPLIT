@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -10,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -21,43 +22,35 @@ export default function Login() {
   const { toast } = useToast();
   const loginMutation = useLogin();
   const queryClient = useQueryClient();
+  const [showPw, setShowPw] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+    defaultValues: { email: "", password: "" },
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     loginMutation.mutate({ data: values }, {
-      onSuccess: () => {
-        toast({
-          title: "Success",
-          description: "Logged in successfully.",
-        });
-        queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+      onSuccess: (data) => {
+        // Instantly update auth state — no async refetch needed
+        queryClient.setQueryData(getGetMeQueryKey(), data);
         setLocation("/my-courses");
       },
       onError: (error: any) => {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: error?.message || "Failed to log in.",
-        });
-      }
+        const msg = error?.response?.data?.error ?? error?.message ?? "Invalid email or password.";
+        toast({ variant: "destructive", title: "Sign in failed", description: msg });
+      },
     });
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-background">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold tracking-tight text-center">
+    <div className="min-h-screen flex items-center justify-center py-12 px-4 bg-background">
+      <Card className="w-full max-w-md bg-card border-border">
+        <CardHeader className="space-y-1 text-center">
+          <CardTitle className="text-2xl font-bold tracking-tight">
             Sign in to Vipul Kumar Academy
           </CardTitle>
-          <CardDescription className="text-center">
+          <CardDescription>
             Enter your email and password to access your account
           </CardDescription>
         </CardHeader>
@@ -71,7 +64,12 @@ export default function Login() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="name@example.com" {...field} />
+                      <Input
+                        placeholder="name@example.com"
+                        autoComplete="email"
+                        {...field}
+                        className="bg-background"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -89,14 +87,33 @@ export default function Login() {
                       </Link>
                     </div>
                     <FormControl>
-                      <Input type="password" {...field} />
+                      <div className="relative">
+                        <Input
+                          type={showPw ? "text" : "password"}
+                          autoComplete="current-password"
+                          {...field}
+                          className="bg-background pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPw(v => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          tabIndex={-1}
+                        >
+                          {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full mt-6" disabled={loginMutation.isPending}>
-                {loginMutation.isPending ? "Signing in..." : "Sign in"}
+              <Button
+                type="submit"
+                className="w-full mt-4 bg-primary"
+                disabled={loginMutation.isPending}
+              >
+                {loginMutation.isPending ? "Signing in…" : "Sign in"}
               </Button>
             </form>
           </Form>

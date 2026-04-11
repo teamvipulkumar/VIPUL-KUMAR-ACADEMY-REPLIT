@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
-import { useLogout, useListNotifications, getListNotificationsQueryKey } from "@workspace/api-client-react";
+import { useLogout, useListNotifications, getListNotificationsQueryKey, getGetMeQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Bell, Menu, X, BookOpen, Share2, GraduationCap, LogOut, ShieldCheck, ChevronRight, Mail, Youtube, Twitter, Linkedin, Instagram } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EmailVerificationBanner } from "@/components/email-verification-banner";
@@ -24,6 +25,7 @@ export function Navbar() {
   const [, setLocation] = useLocation();
   const [location] = useLocation();
   const logout = useLogout();
+  const queryClient = useQueryClient();
   const { data: notifications } = useListNotifications({ query: { queryKey: getListNotificationsQueryKey(), enabled: isAuthenticated } });
   const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -36,7 +38,22 @@ export function Navbar() {
   }, []);
 
   const handleLogout = () => {
-    logout.mutate(undefined, { onSuccess: () => { setLocation("/"); setMobileOpen(false); } });
+    logout.mutate(undefined, {
+      onSuccess: () => {
+        // Instantly clear auth state so UI updates immediately without a refresh
+        queryClient.setQueryData(getGetMeQueryKey(), null);
+        queryClient.removeQueries({ queryKey: getGetMeQueryKey() });
+        setMobileOpen(false);
+        setLocation("/");
+      },
+      onError: () => {
+        // Even on error, clear client-side auth state and redirect
+        queryClient.setQueryData(getGetMeQueryKey(), null);
+        queryClient.removeQueries({ queryKey: getGetMeQueryKey() });
+        setMobileOpen(false);
+        setLocation("/");
+      },
+    });
   };
 
   const navLinks = [

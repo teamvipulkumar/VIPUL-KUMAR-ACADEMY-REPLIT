@@ -42,21 +42,16 @@ export default function Register() {
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     registerMutation.mutate({ data: values }, {
-      onSuccess: () => {
-        toast({
-          title: "Account created",
-          description: "Welcome to Vipul Kumar Academy!",
-        });
-        queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+      onSuccess: (data) => {
+        // Instantly update auth state — no async refetch needed
+        queryClient.setQueryData(getGetMeQueryKey(), data);
+        toast({ title: "Account created", description: "Welcome to Vipul Kumar Academy!" });
         setLocation("/my-courses");
       },
       onError: (error: any) => {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: error?.message || "Failed to create account.",
-        });
-      }
+        const msg = error?.response?.data?.error ?? error?.message ?? "Failed to create account.";
+        toast({ variant: "destructive", title: "Registration failed", description: msg });
+      },
     });
   }
 
