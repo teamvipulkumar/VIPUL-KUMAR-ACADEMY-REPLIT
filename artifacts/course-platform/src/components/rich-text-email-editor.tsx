@@ -1,24 +1,134 @@
 /**
  * RichTextEmailEditor — Word-like WYSIWYG email editor powered by TipTap v3.
- * Paste a paragraph and format it like Microsoft Word.
+ * Features a left Elements Panel with drag-and-drop insertion of email elements.
  */
 import { useCallback, useState, useRef, useEffect } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { Underline } from "@tiptap/extension-underline";
 import { Link } from "@tiptap/extension-link";
 import { TextAlign } from "@tiptap/extension-text-align";
 import { TextStyle, Color, FontFamily, FontSize } from "@tiptap/extension-text-style";
 import { Highlight } from "@tiptap/extension-highlight";
+import { Image as TipTapImage } from "@tiptap/extension-image";
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   List, ListOrdered, AlignLeft, AlignCenter, AlignRight,
   Link2, Link2Off, Heading1, Heading2, Heading3, Heading4,
-  Pilcrow, Palette, Highlighter, Undo2, Redo2, Type,
+  Pilcrow, Highlighter, Undo2, Redo2, Type,
+  Minus, MoveVertical, MousePointerClick, ImageIcon,
+  Share2, MailMinus, FileText, GripVertical,
 } from "lucide-react";
 
+/* ─── HTML snippets for each insertable element ─── */
+const ELEMENT_HTML: Record<string, string> = {
+  button: `<p style="text-align:center;margin:20px 0;"><a href="https://example.com" style="display:inline-block;background-color:#2563eb;color:#ffffff;font-weight:600;font-size:15px;padding:13px 34px;border-radius:8px;text-decoration:none;letter-spacing:0.3px;">Click Here</a></p>`,
+  divider: `<hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;">`,
+  spacer: `<p style="margin:0;line-height:1;font-size:1px;padding:20px 0;">&nbsp;</p>`,
+  image: `<p style="text-align:center;margin:16px 0;"><img src="https://placehold.co/480x200/f1f5f9/94a3b8?text=Image+Placeholder" alt="Image" style="display:block;max-width:100%;height:auto;border-radius:8px;margin:0 auto;" /></p>`,
+  social: `<p style="text-align:center;margin:20px 0 8px;"><a href="#" style="display:inline-block;margin:0 5px;color:#6b7280;text-decoration:none;border:1px solid #e5e7eb;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:500;">Facebook</a><a href="#" style="display:inline-block;margin:0 5px;color:#6b7280;text-decoration:none;border:1px solid #e5e7eb;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:500;">Twitter</a><a href="#" style="display:inline-block;margin:0 5px;color:#6b7280;text-decoration:none;border:1px solid #e5e7eb;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:500;">Instagram</a><a href="#" style="display:inline-block;margin:0 5px;color:#6b7280;text-decoration:none;border:1px solid #e5e7eb;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:500;">YouTube</a></p>`,
+  unsubscribe: `<p style="text-align:center;font-size:12px;color:#9ca3af;margin:16px 0 4px;">Don't want these emails?&nbsp;<a href="{{unsubscribe_url}}" style="color:#6b7280;text-decoration:underline;">Unsubscribe here</a></p>`,
+  footer: `<p style="font-size:12px;color:#9ca3af;text-align:center;border-top:1px solid #e5e7eb;padding-top:16px;margin:20px 0 0;">© 2025 Vipul Kumar Academy · All rights reserved<br><a href="#" style="color:#9ca3af;">Privacy Policy</a>&nbsp;·&nbsp;<a href="#" style="color:#9ca3af;">Terms of Service</a></p>`,
+};
+
+/* ─── Elements panel definition ─── */
+const ELEMENT_GROUPS = [
+  {
+    group: "Layout",
+    items: [
+      { key: "divider", label: "Divider", icon: Minus, desc: "Horizontal rule" },
+      { key: "spacer", label: "Spacer", icon: MoveVertical, desc: "Vertical gap" },
+    ],
+  },
+  {
+    group: "Content",
+    items: [
+      { key: "button", label: "Button", icon: MousePointerClick, desc: "CTA button" },
+      { key: "image", label: "Image", icon: ImageIcon, desc: "Image block" },
+    ],
+  },
+  {
+    group: "Footer",
+    items: [
+      { key: "social", label: "Social Icons", icon: Share2, desc: "Social links" },
+      { key: "unsubscribe", label: "Unsubscribe", icon: MailMinus, desc: "Opt-out link" },
+      { key: "footer", label: "Footer", icon: FileText, desc: "Footer block" },
+    ],
+  },
+];
+
+/* Insert element HTML into the editor at a given position (or cursor) */
+function insertElement(editor: Editor, key: string, pos?: number) {
+  const html = ELEMENT_HTML[key];
+  if (!html) return;
+  if (key === "divider") {
+    if (pos !== undefined) {
+      editor.chain().focus().insertContentAt(pos, { type: "horizontalRule" }).run();
+    } else {
+      editor.chain().focus().setHorizontalRule().run();
+    }
+    return;
+  }
+  if (pos !== undefined) {
+    editor.chain().focus().insertContentAt(pos, html).run();
+  } else {
+    editor.chain().focus().insertContent(html).run();
+  }
+}
+
+/* ─── Elements Panel ─── */
+function ElementsPanel({ editor, isDragOver }: { editor: Editor; isDragOver: boolean }) {
+  const handleDragStart = (e: React.DragEvent, key: string) => {
+    e.dataTransfer.setData("text/element-key", key);
+    e.dataTransfer.effectAllowed = "copy";
+  };
+
+  return (
+    <div className="w-[148px] flex-shrink-0 border-r border-slate-200 bg-slate-50 overflow-y-auto">
+      <div className="p-2 pb-1">
+        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 mb-1">Elements</p>
+        <p className="text-[9px] text-slate-400 px-1 mb-2 leading-tight">Click or drag onto the canvas</p>
+      </div>
+
+      {ELEMENT_GROUPS.map(group => (
+        <div key={group.group} className="px-2 mb-3">
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 mb-1.5">{group.group}</p>
+          <div className="space-y-1">
+            {group.items.map(item => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  draggable
+                  onDragStart={e => handleDragStart(e, item.key)}
+                  onClick={() => { editor.chain().focus().run(); insertElement(editor, item.key); }}
+                  className="w-full flex items-center gap-2 px-2 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 transition-all cursor-grab active:cursor-grabbing group select-none"
+                  title={`${item.desc} — click to insert at cursor, or drag onto the email`}
+                >
+                  <GripVertical className="w-2.5 h-2.5 text-slate-300 group-hover:text-blue-300 flex-shrink-0" />
+                  <Icon className="w-3 h-3 flex-shrink-0" />
+                  <span className="text-[11px] font-medium truncate">{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {isDragOver && (
+        <div className="mx-2 mt-1 px-2 py-2 rounded-lg bg-blue-50 border border-dashed border-blue-300">
+          <p className="text-[10px] text-blue-600 text-center">Drop on the email canvas →</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Email wrapper ─── */
-function wrapRichTextInEmail(bodyHtml: string, settings: { bgColor: string; cardBgColor: string; cardPadding: number; fontFamily: string; companyName: string }): string {
+function wrapRichTextInEmail(bodyHtml: string, settings: {
+  bgColor: string; cardBgColor: string; cardPadding: number; fontFamily: string; companyName: string;
+}): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Email</title></head>
 <body style="margin:0;padding:0;background-color:${settings.bgColor};font-family:${settings.fontFamily};">
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${settings.bgColor};padding:32px 16px;">
@@ -52,7 +162,7 @@ function TB({ onClick, active, title, children, disabled }: {
   );
 }
 
-function Divider() {
+function TBDivider() {
   return <div className="w-px h-5 bg-slate-200 mx-0.5 flex-shrink-0" />;
 }
 
@@ -81,7 +191,7 @@ function LinkDialog({ onConfirm, onClose, current }: { onConfirm: (url: string) 
   );
 }
 
-/* ─── Main Component ─── */
+/* ─── Exported Types ─── */
 export interface RichTextEmailEditorProps {
   value: string;
   onChange: (html: string) => void;
@@ -98,24 +208,25 @@ const FONT_FAMILIES = [
   { label: "Tahoma", value: "Tahoma, Geneva, sans-serif" },
 ];
 
-/* Extract the inner body HTML from a full email wrapper (for TipTap init) */
+/* Extract inner body HTML from a full email wrapper (for TipTap init) */
 function extractBodyContent(html: string): string {
   if (!html || html.trim().length < 10) return "";
-  // If it's a full HTML doc, try to extract body div content
   const divMatch = html.match(/<div style="font-family[^"]*"[^>]*>([\s\S]*?)<\/div>\s*<\/td>/);
   if (divMatch) return divMatch[1].trim();
-  // If it's already just fragment HTML (no <!DOCTYPE>)
   if (!html.includes("<!DOCTYPE")) return html;
   return "";
 }
 
+/* ─── Main Export ─── */
 export function RichTextEmailEditor({ value, onChange, settings }: RichTextEmailEditorProps) {
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [selectedColor, setSelectedColor] = useState("#374151");
   const [selectedHighlight, setSelectedHighlight] = useState("#fef08a");
+  const [isDragOver, setIsDragOver] = useState(false);
   const linkBtnRef = useRef<HTMLDivElement>(null);
+  const editorWrapRef = useRef<HTMLDivElement>(null);
 
-  const initialContent = extractBodyContent(value) || "<p>Start typing or paste your email content here. Select text to format it.</p>";
+  const initialContent = extractBodyContent(value) || "<p>Start typing or paste your email content here. Select any text to format it.</p>";
 
   const editor = useEditor({
     extensions: [
@@ -128,6 +239,7 @@ export function RichTextEmailEditor({ value, onChange, settings }: RichTextEmail
       FontFamily,
       FontSize,
       Highlight.configure({ multicolor: true }),
+      TipTapImage.configure({ inline: false, allowBase64: false, HTMLAttributes: { style: "max-width:100%;height:auto;display:block;margin:0 auto;border-radius:8px;" } }),
     ],
     content: initialContent,
     onUpdate({ editor }) {
@@ -149,12 +261,32 @@ export function RichTextEmailEditor({ value, onChange, settings }: RichTextEmail
   const insertLink = useCallback((url: string) => {
     if (!editor) return;
     setShowLinkDialog(false);
-    if (!url || url === "https://") {
-      editor.chain().focus().unsetLink().run();
-      return;
-    }
+    if (!url || url === "https://") { editor.chain().focus().unsetLink().run(); return; }
     editor.chain().focus().setLink({ href: url }).run();
   }, [editor]);
+
+  /* ── Drag & drop handlers on the canvas ── */
+  const handleDragOver = (e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes("text/element-key")) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+      setIsDragOver(true);
+    }
+  };
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!editorWrapRef.current?.contains(e.relatedTarget as Node)) setIsDragOver(false);
+  };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const key = e.dataTransfer.getData("text/element-key");
+    if (!key || !editor) return;
+
+    // Try to find the exact TipTap position at the drop coordinates
+    const coords = { left: e.clientX, top: e.clientY };
+    const pos = editor.view.posAtCoords(coords);
+    insertElement(editor, key, pos?.pos);
+  };
 
   if (!editor) return null;
 
@@ -163,10 +295,9 @@ export function RichTextEmailEditor({ value, onChange, settings }: RichTextEmail
 
   return (
     <div className="flex flex-col h-full text-gray-900">
-      {/* ── Toolbar ── */}
+      {/* ── Formatting Toolbar ── */}
       <div className="bg-slate-50 border-b border-slate-200 px-2 py-1.5 flex items-center gap-0.5 flex-wrap flex-shrink-0">
 
-        {/* Block type */}
         <TB onClick={() => editor.chain().focus().setParagraph().run()} active={editor.isActive("paragraph")} title="Paragraph">
           <Pilcrow className="w-3.5 h-3.5" />
         </TB>
@@ -183,9 +314,8 @@ export function RichTextEmailEditor({ value, onChange, settings }: RichTextEmail
           <Heading4 className="w-3.5 h-3.5" />
         </TB>
 
-        <Divider />
+        <TBDivider />
 
-        {/* Inline marks */}
         <TB onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive("bold")} title="Bold (Ctrl+B)">
           <Bold className="w-3.5 h-3.5" />
         </TB>
@@ -199,39 +329,28 @@ export function RichTextEmailEditor({ value, onChange, settings }: RichTextEmail
           <Strikethrough className="w-3.5 h-3.5" />
         </TB>
 
-        <Divider />
+        <TBDivider />
 
         {/* Text color */}
-        <div className="relative flex items-center" title="Text Color">
-          <label className="h-7 min-w-[28px] px-1 flex flex-col items-center justify-center rounded cursor-pointer hover:bg-slate-100 gap-0.5">
-            <Type className="w-3 h-3 text-slate-600" />
-            <div className="w-4 h-1 rounded-sm" style={{ backgroundColor: selectedColor }} />
-            <input type="color" className="sr-only" value={selectedColor}
-              onChange={e => {
-                setSelectedColor(e.target.value);
-                editor.chain().focus().setColor(e.target.value).run();
-              }}
-            />
-          </label>
-        </div>
+        <label className="h-7 min-w-[28px] px-1 flex flex-col items-center justify-center rounded cursor-pointer hover:bg-slate-100 gap-0.5" title="Text Color">
+          <Type className="w-3 h-3 text-slate-600" />
+          <div className="w-4 h-1 rounded-sm" style={{ backgroundColor: selectedColor }} />
+          <input type="color" className="sr-only" value={selectedColor}
+            onChange={e => { setSelectedColor(e.target.value); editor.chain().focus().setColor(e.target.value).run(); }}
+          />
+        </label>
 
-        {/* Highlight */}
-        <div className="relative flex items-center" title="Highlight Color">
-          <label className="h-7 min-w-[28px] px-1 flex flex-col items-center justify-center rounded cursor-pointer hover:bg-slate-100 gap-0.5">
-            <Highlighter className="w-3 h-3 text-slate-600" />
-            <div className="w-4 h-1 rounded-sm" style={{ backgroundColor: selectedHighlight }} />
-            <input type="color" className="sr-only" value={selectedHighlight}
-              onChange={e => {
-                setSelectedHighlight(e.target.value);
-                editor.chain().focus().setHighlight({ color: e.target.value }).run();
-              }}
-            />
-          </label>
-        </div>
+        {/* Highlight color */}
+        <label className="h-7 min-w-[28px] px-1 flex flex-col items-center justify-center rounded cursor-pointer hover:bg-slate-100 gap-0.5" title="Highlight Color">
+          <Highlighter className="w-3 h-3 text-slate-600" />
+          <div className="w-4 h-1 rounded-sm" style={{ backgroundColor: selectedHighlight }} />
+          <input type="color" className="sr-only" value={selectedHighlight}
+            onChange={e => { setSelectedHighlight(e.target.value); editor.chain().focus().setHighlight({ color: e.target.value }).run(); }}
+          />
+        </label>
 
-        <Divider />
+        <TBDivider />
 
-        {/* Lists */}
         <TB onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive("bulletList")} title="Bullet List">
           <List className="w-3.5 h-3.5" />
         </TB>
@@ -239,9 +358,8 @@ export function RichTextEmailEditor({ value, onChange, settings }: RichTextEmail
           <ListOrdered className="w-3.5 h-3.5" />
         </TB>
 
-        <Divider />
+        <TBDivider />
 
-        {/* Alignment */}
         <TB onClick={() => editor.chain().focus().setTextAlign("left").run()} active={editor.isActive({ textAlign: "left" })} title="Align Left">
           <AlignLeft className="w-3.5 h-3.5" />
         </TB>
@@ -252,56 +370,38 @@ export function RichTextEmailEditor({ value, onChange, settings }: RichTextEmail
           <AlignRight className="w-3.5 h-3.5" />
         </TB>
 
-        <Divider />
+        <TBDivider />
 
         {/* Link */}
         <div className="relative" ref={linkBtnRef}>
           <TB onClick={() => {
-            if (editor.isActive("link")) {
-              editor.chain().focus().unsetLink().run();
-            } else {
-              setShowLinkDialog(v => !v);
-            }
+            if (editor.isActive("link")) { editor.chain().focus().unsetLink().run(); }
+            else { setShowLinkDialog(v => !v); }
           }} active={editor.isActive("link")} title={editor.isActive("link") ? "Remove Link" : "Insert Link"}>
             {editor.isActive("link") ? <Link2Off className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
           </TB>
           {showLinkDialog && (
-            <LinkDialog
-              current={editor.getAttributes("link").href ?? ""}
-              onConfirm={insertLink}
-              onClose={() => setShowLinkDialog(false)}
-            />
+            <LinkDialog current={editor.getAttributes("link").href ?? ""} onConfirm={insertLink} onClose={() => setShowLinkDialog(false)} />
           )}
         </div>
 
-        <Divider />
+        <TBDivider />
 
-        {/* Font Family */}
-        <select
-          value={currentFontFamily}
-          onChange={e => editor.chain().focus().setFontFamily(e.target.value).run()}
-          onMouseDown={e => e.stopPropagation()}
-          title="Font Family"
+        <select value={currentFontFamily} onChange={e => editor.chain().focus().setFontFamily(e.target.value).run()}
+          onMouseDown={e => e.stopPropagation()} title="Font Family"
           className="h-7 px-1.5 text-[11px] border border-slate-200 rounded bg-white text-slate-700 outline-none cursor-pointer hover:border-slate-300"
-          style={{ maxWidth: 90 }}
-        >
+          style={{ maxWidth: 88 }}>
           {FONT_FAMILIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
         </select>
 
-        {/* Font Size */}
-        <select
-          value={currentFontSize}
-          onChange={e => editor.chain().focus().setFontSize(e.target.value + "px").run()}
-          onMouseDown={e => e.stopPropagation()}
-          title="Font Size"
-          className="h-7 px-1 text-[11px] border border-slate-200 rounded bg-white text-slate-700 outline-none cursor-pointer hover:border-slate-300 w-14"
-        >
+        <select value={currentFontSize} onChange={e => editor.chain().focus().setFontSize(e.target.value + "px").run()}
+          onMouseDown={e => e.stopPropagation()} title="Font Size"
+          className="h-7 px-1 text-[11px] border border-slate-200 rounded bg-white text-slate-700 outline-none cursor-pointer hover:border-slate-300 w-14">
           {FONT_SIZES.map(s => <option key={s} value={s}>{s}px</option>)}
         </select>
 
-        <Divider />
+        <TBDivider />
 
-        {/* Undo / Redo */}
         <TB onClick={() => editor.chain().focus().undo().run()} title="Undo" disabled={!editor.can().undo()}>
           <Undo2 className="w-3.5 h-3.5" />
         </TB>
@@ -310,20 +410,39 @@ export function RichTextEmailEditor({ value, onChange, settings }: RichTextEmail
         </TB>
       </div>
 
-      {/* ── Editing Canvas ── */}
-      <div className="flex-1 overflow-y-auto p-4" style={{ background: settings.bgColor }}>
+      {/* ── Body: Elements Panel + Canvas ── */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left: Elements Panel */}
+        <ElementsPanel editor={editor} isDragOver={isDragOver} />
+
+        {/* Right: Email Canvas */}
         <div
-          className="mx-auto rounded-xl shadow-sm"
-          style={{ maxWidth: 560, background: settings.cardBgColor, padding: settings.cardPadding }}
+          ref={editorWrapRef}
+          className="flex-1 overflow-y-auto p-4 transition-colors relative"
+          style={{ background: isDragOver ? "#eff6ff" : settings.bgColor }}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
         >
-          <EditorContent
-            editor={editor}
-            className="rich-email-editor outline-none"
-          />
+          {isDragOver && (
+            <div className="absolute inset-0 border-2 border-dashed border-blue-400 rounded pointer-events-none z-20 flex items-center justify-center bg-blue-50/30">
+              <span className="text-blue-600 text-sm font-semibold bg-white px-5 py-2.5 rounded-xl shadow-lg border border-blue-200">
+                Drop element here
+              </span>
+            </div>
+          )}
+
+          <div
+            className="mx-auto rounded-xl shadow-sm relative"
+            style={{ maxWidth: 560, background: settings.cardBgColor, padding: settings.cardPadding }}
+          >
+            <EditorContent editor={editor} className="rich-email-editor outline-none" />
+          </div>
+
+          <p className="text-center text-[10px] text-slate-400 mt-3">
+            Click any element in the panel to insert at cursor · Drag elements onto the email canvas
+          </p>
         </div>
-        <p className="text-center text-[10px] text-slate-400 mt-3">
-          Select any text to format it · Use toolbar for headings, lists, colors, and links
-        </p>
       </div>
 
       <style>{`
@@ -349,6 +468,8 @@ export function RichTextEmailEditor({ value, onChange, settings }: RichTextEmail
         .rich-email-editor .tiptap s { text-decoration: line-through; }
         .rich-email-editor .tiptap u { text-decoration: underline; }
         .rich-email-editor .tiptap mark { border-radius: 2px; padding: 0 2px; }
+        .rich-email-editor .tiptap hr { border: none; border-top: 1px solid #e5e7eb; margin: 20px 0; }
+        .rich-email-editor .tiptap img { max-width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 8px; }
         .rich-email-editor .tiptap p.is-editor-empty:first-child::before {
           color: #94a3b8;
           content: attr(data-placeholder);
