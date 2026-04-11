@@ -141,13 +141,19 @@ router.get("/referrals", requireAuth, async (req, res): Promise<void> => {
 /* ── Click analytics ── */
 router.get("/clicks", requireAuth, async (req, res): Promise<void> => {
   const authedReq = req as AuthedRequest;
-  const clicks = await db.select().from(affiliateClicksTable)
-    .where(eq(affiliateClicksTable.affiliateId, authedReq.user.userId))
-    .orderBy(desc(affiliateClicksTable.createdAt));
+  const userId = authedReq.user.userId;
+
+  const [clicks, purchases] = await Promise.all([
+    db.select().from(affiliateClicksTable)
+      .where(eq(affiliateClicksTable.affiliateId, userId))
+      .orderBy(desc(affiliateClicksTable.createdAt)),
+    db.select().from(referralsTable)
+      .where(and(eq(referralsTable.referrerId, userId), eq(referralsTable.status, "purchase"))),
+  ]);
 
   const total = clicks.length;
   const unique = clicks.filter(c => c.isUnique).length;
-  const conversions = clicks.filter(c => c.convertedAt !== null).length;
+  const conversions = purchases.length; // ground truth: actual purchases, not click.convertedAt
 
   const day30Start = dayStart(30);
   const daily: Record<string, { clicks: number; unique: number; conversions: number }> = {};
@@ -160,9 +166,14 @@ router.get("/clicks", requireAuth, async (req, res): Promise<void> => {
     if (key in daily) {
       daily[key].clicks++;
       if (c.isUnique) daily[key].unique++;
-      if (c.convertedAt) daily[key].conversions++;
     }
   });
+  // Map purchases to the chart by their creation date
+  purchases.filter(p => new Date(p.createdAt) >= day30Start).forEach(p => {
+    const key = new Date(p.createdAt).toISOString().substring(0, 10);
+    if (key in daily) daily[key].conversions++;
+  });
+
   const dailyChart = Object.entries(daily).map(([date, v]) => ({ date, ...v }));
   res.json({ total, unique, conversions, dailyChart });
 });
