@@ -7,8 +7,9 @@ import {
   Plus, Trash2, ChevronUp, ChevronDown, Settings2, X, Type,
   Image as ImageIcon, Minus, AlignCenter, MousePointer, List,
   Users, FileText, MoveVertical, Layers, Eye, Code2, Check,
-  LogIn, Globe,
+  LogIn, Globe, PenLine,
 } from "lucide-react";
+import { RichTextEmailEditor } from "./rich-text-email-editor";
 
 /* ─────────────────────── Types ─────────────────────── */
 type BlockType =
@@ -554,7 +555,7 @@ export function EmailBlockBuilder({ value, onChange }: EmailBlockBuilderProps) {
   const [settings, setSettings] = useState<EmailSettings>(DEFAULT_SETTINGS);
   const [selected, setSelected] = useState<string | null>(null);
   const [addingAfter, setAddingAfter] = useState<string | null>(null);
-  const [mode, setMode] = useState<"blocks" | "html" | "settings">("blocks");
+  const [mode, setMode] = useState<"blocks" | "html" | "settings" | "rich">("blocks");
   const [htmlDraft, setHtmlDraft] = useState(value);
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState("");
@@ -631,9 +632,14 @@ export function EmailBlockBuilder({ value, onChange }: EmailBlockBuilderProps) {
       {/* Toolbar */}
       <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 flex items-center gap-2 flex-wrap">
         <div className="flex rounded-lg overflow-hidden border border-slate-200 flex-shrink-0">
-          {[{ id: "blocks", icon: <Layers className="w-3.5 h-3.5" />, label: "Blocks" }, { id: "settings", icon: <Settings2 className="w-3.5 h-3.5" />, label: "Settings" }, { id: "html", icon: <Code2 className="w-3.5 h-3.5" />, label: "HTML" }].map(m => (
+          {[
+            { id: "rich", icon: <PenLine className="w-3.5 h-3.5" />, label: "Rich Text" },
+            { id: "blocks", icon: <Layers className="w-3.5 h-3.5" />, label: "Blocks" },
+            { id: "settings", icon: <Settings2 className="w-3.5 h-3.5" />, label: "Settings" },
+            { id: "html", icon: <Code2 className="w-3.5 h-3.5" />, label: "HTML" },
+          ].map(m => (
             <button key={m.id} type="button" onClick={() => setMode(m.id as any)}
-              className={`h-7 px-3 text-[11px] font-semibold flex items-center gap-1.5 transition-colors ${mode === m.id ? "bg-slate-800 text-white" : "bg-white text-slate-600 hover:bg-slate-100"}`}>
+              className={`h-7 px-3 text-[11px] font-semibold flex items-center gap-1.5 transition-colors ${mode === m.id ? "bg-blue-600 text-white" : "bg-white text-slate-600 hover:bg-slate-100"}`}>
               {m.icon}{m.label}
             </button>
           ))}
@@ -649,7 +655,15 @@ export function EmailBlockBuilder({ value, onChange }: EmailBlockBuilderProps) {
 
       <div className="flex h-[540px]">
         {/* Left: Editor canvas */}
-        <div className="flex-1 min-w-0 overflow-y-auto">
+        <div className="flex-1 min-w-0 overflow-y-auto flex flex-col">
+          {mode === "rich" && (
+            <RichTextEmailEditor
+              value={htmlDraft}
+              onChange={html => { setHtmlDraft(html); onChange(html); }}
+              settings={settings}
+            />
+          )}
+
           {mode === "blocks" && (
             <div>
               {/* Email canvas */}
