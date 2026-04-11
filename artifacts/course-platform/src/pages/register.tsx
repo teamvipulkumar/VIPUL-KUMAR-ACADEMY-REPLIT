@@ -40,11 +40,11 @@ export default function Register() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     registerMutation.mutate({ data: values }, {
-      onSuccess: (data) => {
-        // Instantly update auth state — no async refetch needed
+      onSuccess: async (data) => {
         queryClient.setQueryData(getGetMeQueryKey(), data);
+        await queryClient.refetchQueries({ queryKey: getGetMeQueryKey() });
         toast({ title: "Account created", description: "Welcome to Vipul Kumar Academy!" });
         setLocation("/my-courses");
       },

@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -22,21 +23,34 @@ export default function Login() {
   const { toast } = useToast();
   const loginMutation = useLogin();
   const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuth();
   const [showPw, setShowPw] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  // If user is already authenticated (e.g. navigated to /login while logged in), redirect them
+  useEffect(() => {
+    if (isAuthenticated) setLocation("/my-courses");
+  }, [isAuthenticated, setLocation]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { email: "", password: "" },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     loginMutation.mutate({ data: values }, {
-      onSuccess: (data) => {
-        // Instantly update auth state — no async refetch needed
+      onSuccess: async (data) => {
+        setIsRedirecting(true);
+        // 1. Immediately set auth state so ProtectedRoute sees isAuthenticated = true
         queryClient.setQueryData(getGetMeQueryKey(), data);
+        // 2. Wait for a fresh server refetch — this gets accurate emailVerified status
+        //    and eliminates any timing race with ProtectedRoute
+        await queryClient.refetchQueries({ queryKey: getGetMeQueryKey() });
+        // 3. Navigate only after auth data is fully confirmed from server
         setLocation("/my-courses");
       },
       onError: (error: any) => {
+        setIsRedirecting(false);
         const msg = error?.response?.data?.error ?? error?.message ?? "Invalid email or password.";
         toast({ variant: "destructive", title: "Sign in failed", description: msg });
       },
@@ -110,10 +124,11 @@ export default function Login() {
               />
               <Button
                 type="submit"
-                className="w-full mt-4 bg-primary"
-                disabled={loginMutation.isPending}
+                className="w-full mt-4 bg-primary gap-2"
+                disabled={loginMutation.isPending || isRedirecting}
               >
-                {loginMutation.isPending ? "Signing in…" : "Sign in"}
+                {(loginMutation.isPending || isRedirecting) && <Loader2 className="w-4 h-4 animate-spin" />}
+                {loginMutation.isPending ? "Signing in…" : isRedirecting ? "Loading…" : "Sign in"}
               </Button>
             </form>
           </Form>
