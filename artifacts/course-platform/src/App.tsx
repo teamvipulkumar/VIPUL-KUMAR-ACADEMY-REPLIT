@@ -32,6 +32,7 @@ import AdminEnrollmentsPage from "@/pages/admin/enrollments";
 import AdminPaymentGatewaysPage from "@/pages/admin/payment-gateways";
 import AdminSettingsPage from "@/pages/admin/settings";
 import AdminCrmPage from "@/pages/admin/crm";
+import AdminPagesPage from "@/pages/admin/pages";
 import PaymentVerifyPage from "@/pages/payment-verify";
 import VerifyEmailPage from "@/pages/verify-email";
 import CheckoutPage from "@/pages/checkout";
@@ -79,6 +80,7 @@ function Router() {
       <Route path="/verify-email" component={() => <VerifyEmailPage />} />
       <Route path="/admin/settings" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminSettingsPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/crm" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminCrmPage /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/pages" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminPagesPage /></AdminLayout></ProtectedRoute>} />
 
       <Route component={() => <AppLayout><NotFound /></AppLayout>} />
     </Switch>
