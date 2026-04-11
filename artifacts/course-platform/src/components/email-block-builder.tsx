@@ -647,7 +647,7 @@ export function EmailBlockBuilder({ value, onChange }: EmailBlockBuilderProps) {
         </div>
       </div>
 
-      <div className="flex min-h-[500px]">
+      <div className="flex h-[540px]">
         {/* Left: Editor canvas */}
         <div className="flex-1 min-w-0 overflow-y-auto">
           {mode === "blocks" && (
