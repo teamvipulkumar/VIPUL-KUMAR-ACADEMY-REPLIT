@@ -127,6 +127,17 @@ router.post("/smtp/test", requireAdmin, async (req, res): Promise<void> => {
 });
 
 /* ── Template test-send ── */
+const SAMPLE_VARIABLES: Record<string, string> = {
+  name: "Rahul Sharma",
+  email: "rahul.sharma@example.com",
+  course_name: "Advanced React Masterclass",
+  amount: "4,999.00",
+  reset_link: "https://vkacademy.com/reset-password?token=sample_abc123",
+  commission_amount: "999.80",
+  payout_amount: "4,998.00",
+  site_name: "VK Academy",
+};
+
 router.post("/templates/test-send", requireAdmin, async (req, res): Promise<void> => {
   const smtp = await getSmtp();
   if (!smtp || !smtp.host) { res.status(400).json({ error: "SMTP not configured. Go to the SMTP tab and save your settings first." }); return; }
@@ -136,14 +147,21 @@ router.post("/templates/test-send", requireAdmin, async (req, res): Promise<void
   if (!subject) { res.status(400).json({ error: "Subject required" }); return; }
   if (!htmlBody) { res.status(400).json({ error: "Email body required" }); return; }
   try {
+    // Replace all variables with sample values so preview looks realistic
+    let processedHtml = htmlBody;
+    let processedSubject = subject;
+    for (const [key, val] of Object.entries(SAMPLE_VARIABLES)) {
+      processedHtml = processedHtml.replaceAll(`{{${key}}}`, val);
+      processedSubject = processedSubject.replaceAll(`{{${key}}}`, val);
+    }
     const transporter = await createTransporter(smtp);
     await transporter.sendMail({
       from: buildFrom(smtp),
       to,
-      subject: `[TEST] ${subject}`,
-      html: htmlBody,
+      subject: `[TEST] ${processedSubject}`,
+      html: processedHtml,
     });
-    await db.insert(emailSendsTable).values({ type: "test", email: to, subject: `[TEST] ${subject}`, status: "sent" });
+    await db.insert(emailSendsTable).values({ type: "test", email: to, subject: `[TEST] ${processedSubject}`, status: "sent" });
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: `Failed to send: ${err?.message ?? "Unknown error"}` });

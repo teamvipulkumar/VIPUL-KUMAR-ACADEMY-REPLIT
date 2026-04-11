@@ -83,15 +83,54 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
 </div>`,
   },
   affiliate_commission: {
-    subject: "💰 Commission Earned — ₹{{amount}}",
+    subject: "💰 Payout Approved — ₹{{payout_amount}}",
     html: `<div style="font-family:sans-serif;max-width:560px;margin:auto;background:#0a0f1e;color:#e2e8f0;padding:32px;border-radius:12px;">
-  <h1 style="color:#22c55e;">💰 Commission Credited!</h1>
-  <p>Hi <strong>{{name}}</strong>, you've earned a commission of <strong>₹{{amount}}</strong>.</p>
+  <h1 style="color:#22c55e;">💰 Payout Approved!</h1>
+  <p>Hi <strong>{{name}}</strong>, your affiliate payout of <strong>₹{{payout_amount}}</strong> has been approved.</p>
+  <p style="color:#94a3b8;">The amount will be transferred to your registered bank account within 2–3 business days.</p>
   <a href="{{site_url}}/affiliate" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#22c55e;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">View Dashboard</a>
   <p style="color:#475569;font-size:12px;margin-top:24px;">© VK Academy</p>
 </div>`,
   },
 };
+
+/* ── Variables reference panel ── */
+const VARIABLES_BY_TYPE: Record<string, { var: string; desc: string }[]> = {
+  welcome:              [{ var: "{{name}}", desc: "Student's full name" }, { var: "{{email}}", desc: "Student's email" }],
+  purchase:             [{ var: "{{name}}", desc: "Student's full name" }, { var: "{{email}}", desc: "Student's email" }, { var: "{{course_name}}", desc: "Course title" }, { var: "{{amount}}", desc: "Payment amount (₹)" }],
+  refund:               [{ var: "{{name}}", desc: "Student's full name" }, { var: "{{email}}", desc: "Student's email" }, { var: "{{course_name}}", desc: "Course title" }, { var: "{{amount}}", desc: "Refunded amount (₹)" }],
+  forgot_password:      [{ var: "{{name}}", desc: "User's full name" }, { var: "{{email}}", desc: "User's email" }, { var: "{{reset_link}}", desc: "Password reset URL" }],
+  completion:           [{ var: "{{name}}", desc: "Student's full name" }, { var: "{{email}}", desc: "Student's email" }, { var: "{{course_name}}", desc: "Completed course title" }],
+  affiliate_commission: [{ var: "{{name}}", desc: "Affiliate's full name" }, { var: "{{email}}", desc: "Affiliate's email" }, { var: "{{payout_amount}}", desc: "Payout amount (₹)" }, { var: "{{commission_amount}}", desc: "Commission amount (₹)" }],
+  campaign:             [{ var: "{{name}}", desc: "Subscriber's full name" }, { var: "{{email}}", desc: "Subscriber's email" }],
+  custom:               [{ var: "{{name}}", desc: "User's full name" }, { var: "{{email}}", desc: "User's email" }, { var: "{{course_name}}", desc: "Course title" }, { var: "{{amount}}", desc: "Amount (₹)" }, { var: "{{reset_link}}", desc: "Reset link URL" }, { var: "{{payout_amount}}", desc: "Payout amount (₹)" }, { var: "{{commission_amount}}", desc: "Commission amount (₹)" }],
+};
+
+function TemplateVariablesPanel({ type, onInsert }: { type: string; onInsert?: (v: string) => void }) {
+  const vars = VARIABLES_BY_TYPE[type] ?? VARIABLES_BY_TYPE.custom;
+  const [copied, setCopied] = useState<string | null>(null);
+  function copyVar(v: string) {
+    navigator.clipboard.writeText(v).catch(() => {});
+    setCopied(v);
+    setTimeout(() => setCopied(null), 1500);
+    onInsert?.(v);
+  }
+  return (
+    <div className="p-3 bg-blue-500/5 border border-blue-500/15 rounded-lg space-y-2">
+      <p className="text-[11px] font-medium text-blue-400 flex items-center gap-1.5"><Info className="w-3 h-3 flex-shrink-0" />Available variables — click to insert into subject line</p>
+      <div className="flex flex-wrap gap-1.5">
+        {vars.map(({ var: v, desc }) => (
+          <button key={v} onClick={() => copyVar(v)} title={desc}
+            className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono bg-blue-500/10 border border-blue-500/20 text-blue-300 hover:bg-blue-500/20 hover:text-blue-200 transition-colors">
+            {copied === v ? <Check className="w-3 h-3 text-green-400" /> : null}
+            {v}
+          </button>
+        ))}
+      </div>
+      <p className="text-[10px] text-muted-foreground">Variables are replaced with real data when emails are sent. Test emails use sample values.</p>
+    </div>
+  );
+}
 
 /* ── Stat card ── */
 function Stat({ label, value, sub, icon, color = "text-foreground" }: { label: string; value: any; sub?: string; icon: React.ReactNode; color?: string }) {
@@ -506,9 +545,7 @@ function TemplatesTab() {
               <Input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="e.g. Welcome to VK Academy, {{name}}!" className="bg-background border-border" />
             </div>
           </div>
-          <div className="p-3 bg-blue-500/5 border border-blue-500/15 rounded-lg">
-            <p className="text-xs text-blue-400 flex items-center gap-1.5 flex-wrap"><Info className="w-3 h-3 flex-shrink-0" />Variables: <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{name}}"}</code> <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{email}}"}</code> <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{amount}}"}</code> <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{course_name}}"}</code> <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{reset_link}}"}</code></p>
-          </div>
+          <TemplateVariablesPanel type={form.type} onInsert={v => setForm(f => ({ ...f, subject: f.subject + v }))} />
         </div>
 
         {/* Block email builder */}
@@ -835,9 +872,7 @@ function CampaignsTab() {
             <Textarea value={form.htmlBody} onChange={e => setForm(f => ({ ...f, htmlBody: e.target.value }))}
               className="bg-background border-border font-mono text-xs min-h-[240px] resize-y" placeholder="<div>Your email HTML here…</div>" />
           </div>
-          <div className="p-3 bg-blue-500/5 border border-blue-500/15 rounded-lg">
-            <p className="text-xs text-blue-400 flex items-center gap-1.5"><Info className="w-3 h-3 flex-shrink-0" />Use <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{name}}"}</code> and <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{email}}"}</code> as variables in the body.</p>
-          </div>
+          <TemplateVariablesPanel type="campaign" />
           <div className="flex gap-2 pt-1">
             <Button onClick={create} disabled={saving} className="flex-1 bg-primary gap-2">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}

@@ -9,6 +9,7 @@ import {
 import { eq, count, sum, gte, and, ilike, or, sql, desc, ne } from "drizzle-orm";
 import { requireAdmin, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
+import { triggerAutomation } from "./crm";
 
 const router = Router();
 type AuthedRequest = Request & { user: JwtPayload };
@@ -201,7 +202,19 @@ router.get("/payouts", requireAdmin, async (req, res): Promise<void> => {
 
 router.post("/payouts/:payoutId/approve", requireAdmin, async (req, res): Promise<void> => {
   const payoutId = parseInt(req.params.payoutId);
+  const [payout] = await db.select().from(payoutRequestsTable).where(eq(payoutRequestsTable.id, payoutId)).limit(1);
   await db.update(payoutRequestsTable).set({ status: "approved", processedAt: new Date() }).where(eq(payoutRequestsTable.id, payoutId));
+  if (payout) {
+    const [affiliateUser] = await db.select().from(usersTable).where(eq(usersTable.id, payout.userId)).limit(1);
+    if (affiliateUser) {
+      triggerAutomation("affiliate_commission", affiliateUser.id, affiliateUser.email, {
+        name: affiliateUser.name,
+        email: affiliateUser.email,
+        payout_amount: String(parseFloat(String(payout.amount)).toFixed(2)),
+        commission_amount: String(parseFloat(String(payout.amount)).toFixed(2)),
+      }).catch(() => {});
+    }
+  }
   res.json({ message: "Payout approved" });
 });
 
@@ -395,6 +408,18 @@ router.post("/orders/:orderId/refund", requireAdmin, async (req, res): Promise<v
   if (payment.status !== "completed") { res.status(400).json({ error: "Only completed orders can be refunded" }); return; }
 
   await db.update(paymentsTable).set({ status: "refunded" }).where(eq(paymentsTable.id, orderId));
+
+  // Fire refund automation
+  const [refundUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+  const [refundCourse] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+  if (refundUser && refundCourse) {
+    triggerAutomation("refund", refundUser.id, refundUser.email, {
+      name: refundUser.name,
+      email: refundUser.email,
+      course_name: refundCourse.title,
+      amount: String(parseFloat(String(payment.amount)).toFixed(2)),
+    }).catch(() => {});
+  }
 
   // Lessons belong to modules, modules belong to courses — join through modules
   const courseModules = await db.select({ id: modulesTable.id }).from(modulesTable).where(eq(modulesTable.courseId, payment.courseId));
