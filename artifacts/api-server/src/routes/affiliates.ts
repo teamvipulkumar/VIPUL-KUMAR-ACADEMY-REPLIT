@@ -4,6 +4,7 @@ import {
   referralsTable, payoutRequestsTable, usersTable, platformSettingsTable,
   affiliateApplicationsTable, affiliateClicksTable, affiliateKycTable,
   affiliateBankDetailsTable, affiliateCreativesTable, affiliatePixelTable,
+  coursesTable, paymentsTable,
 } from "@workspace/db";
 import { eq, and, sum, count, sql, desc, gte, lt, ne } from "drizzle-orm";
 import { requireAuth, requireAdmin, type JwtPayload } from "../middlewares/auth";
@@ -176,6 +177,42 @@ router.get("/clicks", requireAuth, async (req, res): Promise<void> => {
 
   const dailyChart = Object.entries(daily).map(([date, v]) => ({ date, ...v }));
   res.json({ total, unique, conversions, dailyChart });
+});
+
+/* ── Sales list ── */
+router.get("/sales", requireAuth, async (req, res): Promise<void> => {
+  const authedReq = req as AuthedRequest;
+  const userId = authedReq.user.userId;
+
+  const rows = await db
+    .select({
+      id: referralsTable.id,
+      commission: referralsTable.commission,
+      createdAt: referralsTable.createdAt,
+      courseId: referralsTable.courseId,
+      courseTitle: coursesTable.title,
+      saleAmount: paymentsTable.amount,
+    })
+    .from(referralsTable)
+    .leftJoin(coursesTable, eq(coursesTable.id, referralsTable.courseId))
+    .leftJoin(
+      paymentsTable,
+      and(
+        eq(paymentsTable.userId, referralsTable.referredUserId),
+        eq(paymentsTable.courseId, referralsTable.courseId),
+        eq(paymentsTable.status, "completed"),
+      ),
+    )
+    .where(and(eq(referralsTable.referrerId, userId), eq(referralsTable.status, "purchase")))
+    .orderBy(desc(referralsTable.createdAt));
+
+  res.json(rows.map(r => ({
+    id: r.id,
+    courseTitle: r.courseTitle ?? "Unknown Course",
+    saleAmount: r.saleAmount != null ? parseFloat(String(r.saleAmount)) : null,
+    commission: parseFloat(String(r.commission ?? 0)),
+    createdAt: r.createdAt,
+  })));
 });
 
 /* ── Payout ── */

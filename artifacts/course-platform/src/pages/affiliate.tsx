@@ -26,17 +26,18 @@ async function apiFetch(path: string, opts?: RequestInit) {
   return res;
 }
 
-type Tab = "earnings" | "links" | "clicks" | "creatives" | "kyc" | "payouts" | "pixel" | "bank";
+type Tab = "earnings" | "sales" | "links" | "clicks" | "creatives" | "kyc" | "payouts" | "pixel" | "bank";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: "earnings",   label: "Dashboard",  icon: <BadgeIndianRupee className="w-4 h-4" /> },
+  { id: "earnings",   label: "Dashboard",      icon: <BadgeIndianRupee className="w-4 h-4" /> },
+  { id: "sales",      label: "Sales",          icon: <FileText className="w-4 h-4" /> },
   { id: "links",      label: "Affiliate Links", icon: <Link2 className="w-4 h-4" /> },
-  { id: "clicks",     label: "Clicks",     icon: <MousePointerClick className="w-4 h-4" /> },
-  { id: "creatives",  label: "Creatives",  icon: <Image className="w-4 h-4" /> },
-  { id: "kyc",        label: "KYC",        icon: <ShieldCheck className="w-4 h-4" /> },
-  { id: "payouts",    label: "Payouts",    icon: <Wallet className="w-4 h-4" /> },
-  { id: "pixel",      label: "Pixel",      icon: <Zap className="w-4 h-4" /> },
-  { id: "bank",       label: "Bank",       icon: <Building2 className="w-4 h-4" /> },
+  { id: "clicks",     label: "Clicks",         icon: <MousePointerClick className="w-4 h-4" /> },
+  { id: "creatives",  label: "Creatives",      icon: <Image className="w-4 h-4" /> },
+  { id: "kyc",        label: "KYC",            icon: <ShieldCheck className="w-4 h-4" /> },
+  { id: "payouts",    label: "Payouts",        icon: <Wallet className="w-4 h-4" /> },
+  { id: "pixel",      label: "Pixel",          icon: <Zap className="w-4 h-4" /> },
+  { id: "bank",       label: "Bank",           icon: <Building2 className="w-4 h-4" /> },
 ];
 
 function StatusBadge({ status }: { status: string }) {
@@ -226,6 +227,7 @@ function AffiliateDashboard({ user }: { user: any }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dashboard, setDashboard] = useState<any>(null);
   const [clicks, setClicks] = useState<any>(null);
+  const [sales, setSales] = useState<any[]>([]);
   const [payouts, setPayouts] = useState<any[]>([]);
   const [creatives, setCreatives] = useState<any[]>([]);
   const [kyc, setKyc] = useState<any>(null);
@@ -237,16 +239,18 @@ function AffiliateDashboard({ user }: { user: any }) {
   useEffect(() => { loadDashboard(); }, []);
 
   const loadDashboard = async () => {
-    const [d, c, p, cr, k, b, px] = await Promise.all([
+    const [d, c, s, p, cr, k, b, px] = await Promise.all([
       apiFetch("/api/affiliate/dashboard").then(r => r.json()),
       apiFetch("/api/affiliate/clicks").then(r => r.json()),
+      apiFetch("/api/affiliate/sales").then(r => r.json()),
       apiFetch("/api/affiliate/payouts").then(r => r.json()),
       apiFetch("/api/affiliate/creatives").then(r => r.json()),
       apiFetch("/api/affiliate/kyc").then(r => r.ok ? r.json() : null),
       apiFetch("/api/affiliate/bank").then(r => r.ok ? r.json() : null),
       apiFetch("/api/affiliate/pixel").then(r => r.ok ? r.json() : null),
     ]);
-    setDashboard(d); setClicks(c); setPayouts(Array.isArray(p) ? p : []);
+    setDashboard(d); setClicks(c); setSales(Array.isArray(s) ? s : []);
+    setPayouts(Array.isArray(p) ? p : []);
     setCreatives(Array.isArray(cr) ? cr : []); setKyc(k); setBank(b); setPixel(px);
   };
 
@@ -390,6 +394,80 @@ function AffiliateDashboard({ user }: { user: any }) {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Sales Tab ── */}
+          {tab === "sales" && (
+            <div className="space-y-5">
+              <TabHeader title="My Sales" subtitle="All successful purchases made through your referral link." />
+
+              {/* Summary row */}
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "Total Sales", value: sales.length, color: "text-foreground" },
+                  { label: "Total Revenue", value: `₹${sales.reduce((s, r) => s + (r.saleAmount ?? 0), 0).toLocaleString("en-IN")}`, color: "text-blue-400" },
+                  { label: "Total Commission", value: `₹${sales.reduce((s, r) => s + r.commission, 0).toLocaleString("en-IN")}`, color: "text-green-400" },
+                ].map(s => (
+                  <div key={s.label} className="bg-card border border-border rounded-xl p-4 text-center">
+                    <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Sales table */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                {sales.length === 0 ? (
+                  <div className="py-20 text-center">
+                    <FileText className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                    <p className="font-semibold text-foreground mb-1">No sales yet</p>
+                    <p className="text-sm text-muted-foreground">Share your affiliate link to start earning commissions.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border bg-background/50">
+                          <th className="text-left text-xs font-semibold text-muted-foreground px-5 py-3">#</th>
+                          <th className="text-left text-xs font-semibold text-muted-foreground px-5 py-3">Course</th>
+                          <th className="text-right text-xs font-semibold text-muted-foreground px-5 py-3">Sale Amount</th>
+                          <th className="text-right text-xs font-semibold text-muted-foreground px-5 py-3">Commission</th>
+                          <th className="text-left text-xs font-semibold text-muted-foreground px-5 py-3">Date & Time</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {sales.map((sale, i) => {
+                          const dt = new Date(sale.createdAt);
+                          return (
+                            <tr key={sale.id} className="hover:bg-white/[0.02] transition-colors">
+                              <td className="px-5 py-3.5 text-xs text-muted-foreground">{i + 1}</td>
+                              <td className="px-5 py-3.5">
+                                <span className="font-medium text-foreground text-sm">{sale.courseTitle}</span>
+                              </td>
+                              <td className="px-5 py-3.5 text-right">
+                                {sale.saleAmount != null
+                                  ? <span className="font-semibold text-foreground">₹{Number(sale.saleAmount).toLocaleString("en-IN")}</span>
+                                  : <span className="text-muted-foreground text-xs">—</span>
+                                }
+                              </td>
+                              <td className="px-5 py-3.5 text-right">
+                                <span className="font-bold text-green-400">₹{sale.commission.toLocaleString("en-IN")}</span>
+                              </td>
+                              <td className="px-5 py-3.5">
+                                <div>
+                                  <p className="text-sm text-foreground">{dt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p>
+                                  <p className="text-[11px] text-muted-foreground">{dt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}</p>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           )}
