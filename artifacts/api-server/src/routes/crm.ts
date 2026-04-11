@@ -182,169 +182,256 @@ router.get("/templates", requireAdmin, async (_req, res): Promise<void> => {
   res.json(templates);
 });
 
+/* ── Shared email wrapper ── */
+function emailWrap(body: string): string {
+  const footer = `
+  <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:28px 0 8px;font-family:Arial,Helvetica,sans-serif;">
+    <table cellpadding="0" cellspacing="0" style="margin-bottom:14px;"><tr>
+      <td style="padding:0 5px;"><a href="#" style="text-decoration:none;display:inline-block;width:30px;height:30px;background:#e2e8f0;border-radius:5px;text-align:center;line-height:30px;font-size:13px;color:#475569;">𝕏</a></td>
+      <td style="padding:0 5px;"><a href="#" style="text-decoration:none;display:inline-block;width:30px;height:30px;background:#e2e8f0;border-radius:5px;text-align:center;line-height:30px;font-size:12px;color:#475569;font-weight:700;">in</a></td>
+      <td style="padding:0 5px;"><a href="#" style="text-decoration:none;display:inline-block;width:30px;height:30px;background:#e2e8f0;border-radius:5px;text-align:center;line-height:30px;font-size:13px;color:#475569;">▶</a></td>
+      <td style="padding:0 5px;"><a href="#" style="text-decoration:none;display:inline-block;width:30px;height:30px;background:#e2e8f0;border-radius:5px;text-align:center;line-height:30px;font-size:13px;color:#475569;">◎</a></td>
+    </tr></table>
+    <p style="margin:0 0 3px;font-size:12px;color:#94a3b8;font-family:Arial,Helvetica,sans-serif;">Sent by <strong>Vipul Kumar Academy</strong></p>
+    <p style="margin:0 0 10px;font-size:11px;color:#94a3b8;font-family:Arial,Helvetica,sans-serif;">
+      <a href="mailto:support@vipulkumaracademy.com" style="color:#94a3b8;text-decoration:none;">support@vipulkumaracademy.com</a>
+      &nbsp;·&nbsp; WhatsApp: <a href="https://wa.me/15557485582" style="color:#94a3b8;text-decoration:none;">+15557485582</a>
+    </p>
+    <a href="#" style="font-size:11px;color:#ef4444;text-decoration:none;">Unsubscribe</a>
+  </td></tr></table>`;
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:40px 16px;">
+<tr><td align="center">
+<table cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
+  <tr><td align="center" style="padding-bottom:22px;">
+    <a href="{{site_url}}" style="text-decoration:none;display:inline-block;background:#2563eb;border-radius:9px;padding:10px 24px;">
+      <span style="color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;letter-spacing:1.5px;">VIPUL KUMAR ACADEMY</span>
+    </a>
+  </td></tr>
+  <tr><td style="background:#ffffff;border-radius:16px;padding:36px 40px;font-family:Arial,Helvetica,sans-serif;box-sizing:border-box;">
+    ${body}
+  </td></tr>
+  <tr><td>${footer}</td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>`;
+}
+
 const DEFAULT_TEMPLATES = [
   {
     name: "Welcome Email",
     type: "welcome" as const,
-    subject: "Welcome to VK Academy, {{name}}! 🎉",
-    htmlBody: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;background:#0a0f1e;color:#e2e8f0;padding:40px 32px;border-radius:16px;">
-  <div style="text-align:center;margin-bottom:32px;">
-    <div style="display:inline-block;background:#2563eb;color:#fff;font-size:22px;font-weight:700;padding:10px 24px;border-radius:10px;letter-spacing:1px;">VK ACADEMY</div>
-  </div>
-  <h1 style="color:#ffffff;font-size:26px;margin:0 0 8px 0;">Welcome, {{name}}! 👋</h1>
-  <p style="color:#94a3b8;font-size:15px;line-height:1.7;">You've successfully joined <strong style="color:#e2e8f0;">VK Academy</strong> — India's premium learning platform. Your journey to excellence starts today.</p>
-  <div style="background:#111827;border:1px solid #1e3a5f;border-radius:12px;padding:20px;margin:24px 0;">
-    <p style="color:#60a5fa;font-size:13px;font-weight:600;margin:0 0 8px 0;">🚀 What to do next</p>
-    <ul style="color:#94a3b8;font-size:14px;line-height:2;margin:0;padding-left:20px;">
-      <li>Explore our curated courses</li>
-      <li>Pick a course that matches your goals</li>
-      <li>Start learning at your own pace</li>
-    </ul>
-  </div>
-  <div style="text-align:center;margin:32px 0;">
-    <a href="{{site_url}}/courses" style="display:inline-block;padding:14px 32px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Browse Courses →</a>
-  </div>
-  <hr style="border:none;border-top:1px solid #1e293b;margin:32px 0;" />
-  <p style="color:#475569;font-size:12px;text-align:center;">© VK Academy · <a href="{{site_url}}" style="color:#2563eb;text-decoration:none;">vkacademy.com</a></p>
-</div>`,
+    subject: "Welcome to Vipul Kumar Academy, {{name}}! 🎉",
+    htmlBody: emailWrap(`
+      <p style="margin:0 0 6px;font-size:15px;color:#111827;line-height:1.5;">Hi <strong>{{name}}</strong>,</p>
+      <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.7;">Welcome to <strong>Vipul Kumar Academy</strong>! 🎉 We're thrilled to have you join India's premier business education platform.</p>
+      <p style="margin:0 0 14px;font-size:15px;color:#374151;line-height:1.7;">Here's what you now have access to:</p>
+      <ul style="margin:0 0 22px;padding-left:20px;color:#374151;font-size:14px;line-height:2.1;">
+        <li>In-depth courses on <strong>Affiliate Marketing, E-commerce &amp; Dropshipping</strong></li>
+        <li>Real-world case studies and step-by-step lessons</li>
+        <li>Earn extra income by joining our <strong>Affiliate Program</strong></li>
+        <li>Community support and mentorship resources</li>
+      </ul>
+      <p style="margin:0 0 10px;font-size:14px;color:#374151;">First, please verify your email to activate your account:</p>
+      <table cellpadding="0" cellspacing="0" style="margin:16px 0 24px;">
+        <tr><td style="background:#2563eb;border-radius:8px;padding:13px 30px;">
+          <a href="{{verify_link}}" style="color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;font-family:Arial,Helvetica,sans-serif;">Verify My Email &rarr;</a>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 8px;font-size:14px;color:#374151;line-height:1.7;">Once verified, browse our course catalog and take your first step toward financial independence.</p>
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0 16px;" />
+      <p style="margin:0;font-size:14px;color:#6b7280;">Happy learning,<br><strong style="color:#374151;">The VKA Team</strong></p>
+    `),
   },
   {
     name: "Purchase Confirmation",
     type: "purchase" as const,
-    subject: "✅ Payment Confirmed — {{course_name}}",
-    htmlBody: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;background:#0a0f1e;color:#e2e8f0;padding:40px 32px;border-radius:16px;">
-  <div style="text-align:center;margin-bottom:32px;">
-    <div style="display:inline-block;background:#2563eb;color:#fff;font-size:22px;font-weight:700;padding:10px 24px;border-radius:10px;letter-spacing:1px;">VK ACADEMY</div>
-  </div>
-  <div style="text-align:center;margin-bottom:24px;">
-    <div style="display:inline-block;background:#052e16;border:1px solid #166534;border-radius:50%;width:64px;height:64px;line-height:64px;font-size:32px;">✅</div>
-  </div>
-  <h1 style="color:#22c55e;font-size:24px;text-align:center;margin:0 0 8px 0;">Payment Confirmed!</h1>
-  <p style="color:#94a3b8;font-size:15px;text-align:center;">Hi <strong style="color:#e2e8f0;">{{name}}</strong>, your payment was successful.</p>
-  <div style="background:#111827;border:1px solid #1e3a5f;border-radius:12px;padding:20px;margin:24px 0;">
-    <table style="width:100%;font-size:14px;">
-      <tr><td style="color:#64748b;padding:6px 0;">Course</td><td style="color:#e2e8f0;font-weight:600;text-align:right;">{{course_name}}</td></tr>
-      <tr><td style="color:#64748b;padding:6px 0;">Amount Paid</td><td style="color:#22c55e;font-weight:700;text-align:right;">₹{{amount}}</td></tr>
-      <tr><td style="color:#64748b;padding:6px 0;">Email</td><td style="color:#e2e8f0;text-align:right;">{{email}}</td></tr>
-    </table>
-  </div>
-  <div style="text-align:center;margin:32px 0;">
-    <a href="{{site_url}}/my-courses" style="display:inline-block;padding:14px 32px;background:#22c55e;color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Start Learning →</a>
-  </div>
-  <hr style="border:none;border-top:1px solid #1e293b;margin:32px 0;" />
-  <p style="color:#475569;font-size:12px;text-align:center;">© VK Academy · <a href="{{site_url}}" style="color:#2563eb;text-decoration:none;">vkacademy.com</a></p>
-</div>`,
+    subject: "Payment Confirmed — {{course_name}} ✅",
+    htmlBody: emailWrap(`
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:24px;">
+        <tr><td align="center" style="background:#f0fdf4;border-radius:12px;padding:20px;">
+          <p style="margin:0 0 6px;font-size:36px;line-height:1;">✅</p>
+          <h1 style="margin:0;font-size:22px;font-weight:700;color:#15803d;font-family:Arial,Helvetica,sans-serif;">Payment Confirmed!</h1>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.7;">Hi <strong>{{name}}</strong>, your payment was successful and your course access is now active.</p>
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:24px;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;font-size:14px;font-family:Arial,Helvetica,sans-serif;">
+        <tr style="background:#f9fafb;">
+          <td style="padding:11px 16px;color:#6b7280;border-bottom:1px solid #e5e7eb;">Course</td>
+          <td style="padding:11px 16px;color:#111827;font-weight:600;text-align:right;border-bottom:1px solid #e5e7eb;">{{course_name}}</td>
+        </tr>
+        <tr>
+          <td style="padding:11px 16px;color:#6b7280;">Amount Paid</td>
+          <td style="padding:11px 16px;color:#15803d;font-weight:700;text-align:right;">&#8377;{{amount}}</td>
+        </tr>
+        <tr style="background:#f9fafb;">
+          <td style="padding:11px 16px;color:#6b7280;border-top:1px solid #e5e7eb;">Account Email</td>
+          <td style="padding:11px 16px;color:#374151;text-align:right;border-top:1px solid #e5e7eb;">{{email}}</td>
+        </tr>
+      </table>
+      <p style="margin:0 0 18px;font-size:14px;color:#374151;line-height:1.7;">Your course is now available in your dashboard. Start learning immediately!</p>
+      <table cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+        <tr><td style="background:#16a34a;border-radius:8px;padding:13px 30px;">
+          <a href="{{site_url}}/my-courses" style="color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;font-family:Arial,Helvetica,sans-serif;">Start Learning &rarr;</a>
+        </td></tr>
+      </table>
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0 16px;" />
+      <p style="margin:0;font-size:13px;color:#6b7280;">Need help? Email us at <a href="mailto:support@vipulkumaracademy.com" style="color:#2563eb;text-decoration:none;">support@vipulkumaracademy.com</a> or WhatsApp us at <a href="https://wa.me/15557485582" style="color:#2563eb;text-decoration:none;">+15557485582</a></p>
+    `),
   },
   {
     name: "Refund Notification",
     type: "refund" as const,
     subject: "Refund Processed — {{course_name}}",
-    htmlBody: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;background:#0a0f1e;color:#e2e8f0;padding:40px 32px;border-radius:16px;">
-  <div style="text-align:center;margin-bottom:32px;">
-    <div style="display:inline-block;background:#2563eb;color:#fff;font-size:22px;font-weight:700;padding:10px 24px;border-radius:10px;letter-spacing:1px;">VK ACADEMY</div>
-  </div>
-  <h1 style="color:#f59e0b;font-size:24px;margin:0 0 8px 0;">Refund Processed</h1>
-  <p style="color:#94a3b8;font-size:15px;">Hi <strong style="color:#e2e8f0;">{{name}}</strong>, we've processed your refund request.</p>
-  <div style="background:#111827;border:1px solid #1e3a5f;border-radius:12px;padding:20px;margin:24px 0;">
-    <table style="width:100%;font-size:14px;">
-      <tr><td style="color:#64748b;padding:6px 0;">Course</td><td style="color:#e2e8f0;font-weight:600;text-align:right;">{{course_name}}</td></tr>
-      <tr><td style="color:#64748b;padding:6px 0;">Refund Amount</td><td style="color:#f59e0b;font-weight:700;text-align:right;">₹{{amount}}</td></tr>
-    </table>
-  </div>
-  <div style="background:#1c1000;border:1px solid #78350f;border-radius:10px;padding:14px 16px;margin:16px 0;">
-    <p style="color:#fbbf24;font-size:13px;margin:0;">⏳ Please allow <strong>5–7 business days</strong> for the amount to reflect in your original payment method.</p>
-  </div>
-  <p style="color:#94a3b8;font-size:14px;">We're sorry to see you go. If you faced any issues, feel free to reach us — we'd love to help.</p>
-  <hr style="border:none;border-top:1px solid #1e293b;margin:32px 0;" />
-  <p style="color:#475569;font-size:12px;text-align:center;">© VK Academy · <a href="{{site_url}}" style="color:#2563eb;text-decoration:none;">vkacademy.com</a></p>
-</div>`,
+    htmlBody: emailWrap(`
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:24px;">
+        <tr><td align="center" style="background:#fffbeb;border-radius:12px;padding:20px;">
+          <p style="margin:0 0 6px;font-size:36px;line-height:1;">↩️</p>
+          <h1 style="margin:0;font-size:22px;font-weight:700;color:#92400e;font-family:Arial,Helvetica,sans-serif;">Refund Processed</h1>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.7;">Hi <strong>{{name}}</strong>, we've successfully processed your refund request. Here are the details:</p>
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:22px;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;font-size:14px;font-family:Arial,Helvetica,sans-serif;">
+        <tr style="background:#f9fafb;">
+          <td style="padding:11px 16px;color:#6b7280;border-bottom:1px solid #e5e7eb;">Course</td>
+          <td style="padding:11px 16px;color:#111827;font-weight:600;text-align:right;border-bottom:1px solid #e5e7eb;">{{course_name}}</td>
+        </tr>
+        <tr>
+          <td style="padding:11px 16px;color:#6b7280;">Refund Amount</td>
+          <td style="padding:11px 16px;color:#b45309;font-weight:700;text-align:right;">&#8377;{{amount}}</td>
+        </tr>
+      </table>
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:22px;">
+        <tr><td style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 16px;">
+          <p style="margin:0;font-size:13px;color:#92400e;font-family:Arial,Helvetica,sans-serif;">&#8987; Please allow <strong>5–7 business days</strong> for the refund to reflect in your original payment method.</p>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 16px;font-size:14px;color:#374151;line-height:1.7;">We're sorry to see you go. If you faced any issue with the course or have feedback, we'd truly love to hear from you — our team is here to help.</p>
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0 16px;" />
+      <p style="margin:0;font-size:13px;color:#6b7280;">Questions? Reach us at <a href="mailto:support@vipulkumaracademy.com" style="color:#2563eb;text-decoration:none;">support@vipulkumaracademy.com</a> or WhatsApp: <a href="https://wa.me/15557485582" style="color:#2563eb;text-decoration:none;">+15557485582</a></p>
+    `),
   },
   {
     name: "Password Reset",
     type: "forgot_password" as const,
-    subject: "Reset Your VK Academy Password 🔐",
-    htmlBody: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;background:#0a0f1e;color:#e2e8f0;padding:40px 32px;border-radius:16px;">
-  <div style="text-align:center;margin-bottom:32px;">
-    <div style="display:inline-block;background:#2563eb;color:#fff;font-size:22px;font-weight:700;padding:10px 24px;border-radius:10px;letter-spacing:1px;">VK ACADEMY</div>
-  </div>
-  <div style="text-align:center;margin-bottom:24px;">
-    <div style="display:inline-block;background:#0f1724;border:1px solid #1e40af;border-radius:50%;width:64px;height:64px;line-height:64px;font-size:32px;">🔐</div>
-  </div>
-  <h1 style="color:#ffffff;font-size:24px;text-align:center;margin:0 0 8px 0;">Reset Your Password</h1>
-  <p style="color:#94a3b8;font-size:15px;text-align:center;">Hi <strong style="color:#e2e8f0;">{{name}}</strong>, we received a request to reset your password.</p>
-  <div style="text-align:center;margin:32px 0;">
-    <a href="{{reset_link}}" style="display:inline-block;padding:14px 32px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Reset Password →</a>
-  </div>
-  <div style="background:#1a0a00;border:1px solid #7c2d12;border-radius:10px;padding:14px 16px;margin:16px 0;">
-    <p style="color:#fb923c;font-size:13px;margin:0;">⚠️ This link expires in <strong>1 hour</strong>. If you didn't request a reset, you can safely ignore this email.</p>
-  </div>
-  <hr style="border:none;border-top:1px solid #1e293b;margin:32px 0;" />
-  <p style="color:#475569;font-size:12px;text-align:center;">© VK Academy · <a href="{{site_url}}" style="color:#2563eb;text-decoration:none;">vkacademy.com</a></p>
-</div>`,
+    subject: "Reset Your Vipul Kumar Academy Password 🔐",
+    htmlBody: emailWrap(`
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:24px;">
+        <tr><td align="center" style="background:#eff6ff;border-radius:12px;padding:20px;">
+          <p style="margin:0 0 6px;font-size:36px;line-height:1;">🔐</p>
+          <h1 style="margin:0;font-size:22px;font-weight:700;color:#1d4ed8;font-family:Arial,Helvetica,sans-serif;">Reset Your Password</h1>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.7;">Hi <strong>{{name}}</strong>,</p>
+      <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.7;">We received a request to reset the password for your Vipul Kumar Academy account associated with <strong>{{email}}</strong>.</p>
+      <p style="margin:0 0 18px;font-size:14px;color:#374151;">Click the button below to set a new password:</p>
+      <table cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+        <tr><td style="background:#2563eb;border-radius:8px;padding:13px 30px;">
+          <a href="{{reset_link}}" style="color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;font-family:Arial,Helvetica,sans-serif;">Reset Password &rarr;</a>
+        </td></tr>
+      </table>
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:20px;">
+        <tr><td style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:14px 16px;">
+          <p style="margin:0;font-size:13px;color:#9a3412;font-family:Arial,Helvetica,sans-serif;">&#9888;&#65039; This link expires in <strong>1 hour</strong>. If you did not request a password reset, please ignore this email — your account is safe.</p>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 4px;font-size:13px;color:#6b7280;">Or copy and paste this URL into your browser:</p>
+      <p style="margin:0 0 20px;font-size:12px;color:#2563eb;word-break:break-all;">{{reset_link}}</p>
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0 16px;" />
+      <p style="margin:0;font-size:13px;color:#6b7280;">Need help? Contact us at <a href="mailto:support@vipulkumaracademy.com" style="color:#2563eb;text-decoration:none;">support@vipulkumaracademy.com</a></p>
+    `),
   },
   {
     name: "Course Completion",
     type: "completion" as const,
     subject: "🎓 Congratulations! You completed {{course_name}}",
-    htmlBody: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;background:#0a0f1e;color:#e2e8f0;padding:40px 32px;border-radius:16px;">
-  <div style="text-align:center;margin-bottom:32px;">
-    <div style="display:inline-block;background:#2563eb;color:#fff;font-size:22px;font-weight:700;padding:10px 24px;border-radius:10px;letter-spacing:1px;">VK ACADEMY</div>
-  </div>
-  <div style="text-align:center;margin-bottom:24px;">
-    <div style="font-size:56px;line-height:1;">🎓</div>
-  </div>
-  <h1 style="color:#a855f7;font-size:26px;text-align:center;margin:0 0 8px 0;">Course Complete!</h1>
-  <p style="color:#94a3b8;font-size:15px;text-align:center;">Congratulations <strong style="color:#e2e8f0;">{{name}}</strong>! You've successfully completed</p>
-  <p style="color:#e2e8f0;font-size:18px;font-weight:700;text-align:center;margin:8px 0 24px 0;">{{course_name}}</p>
-  <div style="background:#130a1f;border:1px solid #6b21a8;border-radius:12px;padding:20px;text-align:center;margin:24px 0;">
-    <p style="color:#c084fc;font-size:14px;margin:0 0 8px 0;">🏆 Achievement Unlocked</p>
-    <p style="color:#e2e8f0;font-size:13px;margin:0;">You're now part of an elite group of learners who completed this course. Keep going!</p>
-  </div>
-  <div style="text-align:center;margin:32px 0;">
-    <a href="{{site_url}}/courses" style="display:inline-block;padding:14px 32px;background:#a855f7;color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Explore More Courses →</a>
-  </div>
-  <hr style="border:none;border-top:1px solid #1e293b;margin:32px 0;" />
-  <p style="color:#475569;font-size:12px;text-align:center;">© VK Academy · <a href="{{site_url}}" style="color:#2563eb;text-decoration:none;">vkacademy.com</a></p>
-</div>`,
+    htmlBody: emailWrap(`
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:24px;">
+        <tr><td align="center" style="background:#faf5ff;border-radius:12px;padding:24px 20px;">
+          <p style="margin:0 0 6px;font-size:48px;line-height:1;">🎓</p>
+          <h1 style="margin:8px 0 4px;font-size:22px;font-weight:700;color:#7c3aed;font-family:Arial,Helvetica,sans-serif;">Course Complete!</h1>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 10px;font-size:15px;color:#374151;line-height:1.7;">Hi <strong>{{name}}</strong>,</p>
+      <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.7;">Congratulations! 🎉 You've successfully completed:</p>
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:22px;">
+        <tr><td align="center" style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:16px 20px;">
+          <p style="margin:0;font-size:17px;font-weight:700;color:#4c1d95;font-family:Arial,Helvetica,sans-serif;">{{course_name}}</p>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 16px;font-size:14px;color:#374151;line-height:1.7;">You're now part of an elite group of learners who have mastered this curriculum. This is a huge achievement — be proud of yourself!</p>
+      <p style="margin:0 0 16px;font-size:14px;color:#374151;line-height:1.7;">Here's what you can do next:</p>
+      <ul style="margin:0 0 22px;padding-left:20px;color:#374151;font-size:14px;line-height:2.1;">
+        <li>Explore our other advanced courses</li>
+        <li>Share your achievement on social media</li>
+        <li>Join our Affiliate Program and earn commissions</li>
+      </ul>
+      <table cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+        <tr><td style="background:#7c3aed;border-radius:8px;padding:13px 30px;">
+          <a href="{{site_url}}/courses" style="color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;font-family:Arial,Helvetica,sans-serif;">Explore More Courses &rarr;</a>
+        </td></tr>
+      </table>
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0 16px;" />
+      <p style="margin:0;font-size:13px;color:#6b7280;">Questions? Reach us at <a href="mailto:support@vipulkumaracademy.com" style="color:#2563eb;text-decoration:none;">support@vipulkumaracademy.com</a> or WhatsApp: <a href="https://wa.me/15557485582" style="color:#2563eb;text-decoration:none;">+15557485582</a></p>
+    `),
   },
   {
     name: "Affiliate Commission",
     type: "affiliate_commission" as const,
-    subject: "💰 Commission Credited — ₹{{amount}}",
-    htmlBody: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;background:#0a0f1e;color:#e2e8f0;padding:40px 32px;border-radius:16px;">
-  <div style="text-align:center;margin-bottom:32px;">
-    <div style="display:inline-block;background:#2563eb;color:#fff;font-size:22px;font-weight:700;padding:10px 24px;border-radius:10px;letter-spacing:1px;">VK ACADEMY</div>
-  </div>
-  <div style="text-align:center;margin-bottom:24px;">
-    <div style="font-size:56px;line-height:1;">💰</div>
-  </div>
-  <h1 style="color:#22c55e;font-size:26px;text-align:center;margin:0 0 8px 0;">Commission Credited!</h1>
-  <p style="color:#94a3b8;font-size:15px;text-align:center;">Great news, <strong style="color:#e2e8f0;">{{name}}</strong>! You've earned a new commission.</p>
-  <div style="background:#031a0a;border:1px solid #166534;border-radius:12px;padding:20px;text-align:center;margin:24px 0;">
-    <p style="color:#86efac;font-size:13px;margin:0 0 6px 0;">Commission Amount</p>
-    <p style="color:#22c55e;font-size:36px;font-weight:800;margin:0;">₹{{amount}}</p>
-    <p style="color:#64748b;font-size:12px;margin:8px 0 0 0;">From course: <strong style="color:#94a3b8;">{{course_name}}</strong></p>
-  </div>
-  <p style="color:#94a3b8;font-size:14px;text-align:center;">Keep sharing your affiliate link to earn more commissions. Every referral counts!</p>
-  <div style="text-align:center;margin:32px 0;">
-    <a href="{{site_url}}/affiliate" style="display:inline-block;padding:14px 32px;background:#22c55e;color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">View Affiliate Dashboard →</a>
-  </div>
-  <hr style="border:none;border-top:1px solid #1e293b;margin:32px 0;" />
-  <p style="color:#475569;font-size:12px;text-align:center;">© VK Academy · <a href="{{site_url}}" style="color:#2563eb;text-decoration:none;">vkacademy.com</a></p>
-</div>`,
+    subject: "💰 Commission Earned — ₹{{payout_amount}}",
+    htmlBody: emailWrap(`
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:24px;">
+        <tr><td align="center" style="background:#f0fdf4;border-radius:12px;padding:24px 20px;">
+          <p style="margin:0 0 6px;font-size:48px;line-height:1;">💰</p>
+          <h1 style="margin:8px 0 4px;font-size:22px;font-weight:700;color:#15803d;font-family:Arial,Helvetica,sans-serif;">Commission Credited!</h1>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.7;">Hi <strong>{{name}}</strong>,</p>
+      <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.7;">Great news! You've earned a new affiliate commission. Here's a summary:</p>
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:22px;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;font-size:14px;font-family:Arial,Helvetica,sans-serif;">
+        <tr style="background:#f9fafb;">
+          <td style="padding:11px 16px;color:#6b7280;border-bottom:1px solid #e5e7eb;">Commission Amount</td>
+          <td style="padding:11px 16px;color:#15803d;font-weight:700;text-align:right;font-size:16px;border-bottom:1px solid #e5e7eb;">&#8377;{{commission_amount}}</td>
+        </tr>
+        <tr>
+          <td style="padding:11px 16px;color:#6b7280;">Payout Amount</td>
+          <td style="padding:11px 16px;color:#15803d;font-weight:700;text-align:right;">&#8377;{{payout_amount}}</td>
+        </tr>
+      </table>
+      <p style="margin:0 0 16px;font-size:14px;color:#374151;line-height:1.7;">The amount will be transferred to your registered bank account within <strong>2–3 business days</strong>. Keep sharing your affiliate link to earn more!</p>
+      <table cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+        <tr><td style="background:#16a34a;border-radius:8px;padding:13px 30px;">
+          <a href="{{site_url}}/affiliate" style="color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;font-family:Arial,Helvetica,sans-serif;">View Affiliate Dashboard &rarr;</a>
+        </td></tr>
+      </table>
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0 16px;" />
+      <p style="margin:0;font-size:13px;color:#6b7280;">Questions? Email <a href="mailto:support@vipulkumaracademy.com" style="color:#2563eb;text-decoration:none;">support@vipulkumaracademy.com</a> or WhatsApp: <a href="https://wa.me/15557485582" style="color:#2563eb;text-decoration:none;">+15557485582</a></p>
+    `),
   },
 ];
 
 router.post("/templates/seed-defaults", requireAdmin, async (_req, res): Promise<void> => {
-  const existing = await db.select({ type: emailTemplatesTable.type }).from(emailTemplatesTable);
-  const existingTypes = new Set(existing.map(e => e.type));
-  const toCreate = DEFAULT_TEMPLATES.filter(t => !existingTypes.has(t.type));
-  if (toCreate.length === 0) {
-    res.json({ created: 0, message: "All default templates already exist" });
-    return;
+  const existing = await db.select({ id: emailTemplatesTable.id, type: emailTemplatesTable.type }).from(emailTemplatesTable);
+  const existingByType = new Map(existing.map(e => [e.type, e.id]));
+
+  let created = 0;
+  let updated = 0;
+
+  for (const t of DEFAULT_TEMPLATES) {
+    const existingId = existingByType.get(t.type);
+    if (existingId) {
+      await db.update(emailTemplatesTable).set({ name: t.name, subject: t.subject, htmlBody: t.htmlBody, isActive: true }).where(eq(emailTemplatesTable.id, existingId));
+      updated++;
+    } else {
+      await db.insert(emailTemplatesTable).values({ ...t, isActive: true });
+      created++;
+    }
   }
-  const created = await db.insert(emailTemplatesTable).values(toCreate.map(t => ({ ...t, isActive: true }))).returning();
-  res.status(201).json({ created: created.length, templates: created });
+
+  res.json({ created, updated, message: `${created} created, ${updated} updated` });
 });
 
 router.post("/templates", requireAdmin, async (req, res): Promise<void> => {
