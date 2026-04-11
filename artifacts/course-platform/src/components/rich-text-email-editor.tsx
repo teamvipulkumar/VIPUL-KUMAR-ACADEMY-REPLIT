@@ -225,6 +225,8 @@ export function RichTextEmailEditor({ value, onChange, settings }: RichTextEmail
   const [isDragOver, setIsDragOver] = useState(false);
   const linkBtnRef = useRef<HTMLDivElement>(null);
   const editorWrapRef = useRef<HTMLDivElement>(null);
+  // Saved selection — captures the active selection before toolbar controls steal focus
+  const savedSel = useRef<{ from: number; to: number } | null>(null);
 
   const initialContent = extractBodyContent(value) || "<p>Start typing or paste your email content here. Select any text to format it.</p>";
 
@@ -263,6 +265,32 @@ export function RichTextEmailEditor({ value, onChange, settings }: RichTextEmail
     setShowLinkDialog(false);
     if (!url || url === "https://") { editor.chain().focus().unsetLink().run(); return; }
     editor.chain().focus().setLink({ href: url }).run();
+  }, [editor]);
+
+  /* ── Selection save/restore for toolbar controls that steal focus ──
+     Call saveSelection() in onMouseDown of any <select> or <label>/<input>
+     that will blur the editor. Then call applyWithSel() in onChange to
+     restore the selection before running the command.                   */
+  const saveSelection = useCallback(() => {
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    savedSel.current = { from, to };
+  }, [editor]);
+
+  const applyWithSel = useCallback((fn: (e: Editor) => void) => {
+    if (!editor) return;
+    const sel = savedSel.current;
+    savedSel.current = null;
+    if (sel) {
+      // Restore saved selection, then run the formatting command
+      editor.chain()
+        .focus()
+        .setTextSelection({ from: sel.from, to: sel.to })
+        .run();
+    } else {
+      editor.commands.focus();
+    }
+    fn(editor);
   }, [editor]);
 
   /* ── Drag & drop handlers on the canvas ── */
@@ -332,20 +360,36 @@ export function RichTextEmailEditor({ value, onChange, settings }: RichTextEmail
         <TBDivider />
 
         {/* Text color */}
-        <label className="h-7 min-w-[28px] px-1 flex flex-col items-center justify-center rounded cursor-pointer hover:bg-slate-100 gap-0.5" title="Text Color">
+        <label
+          onMouseDown={saveSelection}
+          className="h-7 min-w-[28px] px-1 flex flex-col items-center justify-center rounded cursor-pointer hover:bg-slate-100 gap-0.5"
+          title="Text Color"
+        >
           <Type className="w-3 h-3 text-slate-600" />
           <div className="w-4 h-1 rounded-sm" style={{ backgroundColor: selectedColor }} />
           <input type="color" className="sr-only" value={selectedColor}
-            onChange={e => { setSelectedColor(e.target.value); editor.chain().focus().setColor(e.target.value).run(); }}
+            onChange={e => {
+              const v = e.target.value;
+              setSelectedColor(v);
+              applyWithSel(ed => ed.chain().setColor(v).run());
+            }}
           />
         </label>
 
         {/* Highlight color */}
-        <label className="h-7 min-w-[28px] px-1 flex flex-col items-center justify-center rounded cursor-pointer hover:bg-slate-100 gap-0.5" title="Highlight Color">
+        <label
+          onMouseDown={saveSelection}
+          className="h-7 min-w-[28px] px-1 flex flex-col items-center justify-center rounded cursor-pointer hover:bg-slate-100 gap-0.5"
+          title="Highlight Color"
+        >
           <Highlighter className="w-3 h-3 text-slate-600" />
           <div className="w-4 h-1 rounded-sm" style={{ backgroundColor: selectedHighlight }} />
           <input type="color" className="sr-only" value={selectedHighlight}
-            onChange={e => { setSelectedHighlight(e.target.value); editor.chain().focus().setHighlight({ color: e.target.value }).run(); }}
+            onChange={e => {
+              const v = e.target.value;
+              setSelectedHighlight(v);
+              applyWithSel(ed => ed.chain().setHighlight({ color: v }).run());
+            }}
           />
         </label>
 
@@ -387,15 +431,21 @@ export function RichTextEmailEditor({ value, onChange, settings }: RichTextEmail
 
         <TBDivider />
 
-        <select value={currentFontFamily} onChange={e => editor.chain().focus().setFontFamily(e.target.value).run()}
-          onMouseDown={e => e.stopPropagation()} title="Font Family"
+        <select
+          value={currentFontFamily}
+          onMouseDown={saveSelection}
+          onChange={e => { const v = e.target.value; applyWithSel(ed => ed.chain().setFontFamily(v).run()); }}
+          title="Font Family"
           className="h-7 px-1.5 text-[11px] border border-slate-200 rounded bg-white text-slate-700 outline-none cursor-pointer hover:border-slate-300"
           style={{ maxWidth: 88 }}>
           {FONT_FAMILIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
         </select>
 
-        <select value={currentFontSize} onChange={e => editor.chain().focus().setFontSize(e.target.value + "px").run()}
-          onMouseDown={e => e.stopPropagation()} title="Font Size"
+        <select
+          value={currentFontSize}
+          onMouseDown={saveSelection}
+          onChange={e => { const v = e.target.value + "px"; applyWithSel(ed => ed.chain().setFontSize(v).run()); }}
+          title="Font Size"
           className="h-7 px-1 text-[11px] border border-slate-200 rounded bg-white text-slate-700 outline-none cursor-pointer hover:border-slate-300 w-14">
           {FONT_SIZES.map(s => <option key={s} value={s}>{s}px</option>)}
         </select>
