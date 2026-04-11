@@ -394,6 +394,8 @@ function TemplatesTab() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [seeding, setSeeding] = useState(false);
+  const [testEmail, setTestEmail] = useState("");
+  const [testSending, setTestSending] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -456,6 +458,21 @@ function TemplatesTab() {
     load(); setDeleting(null);
   };
 
+  const sendTest = async () => {
+    if (!testEmail) { toast({ title: "Enter a recipient email", variant: "destructive" }); return; }
+    if (!form.subject) { toast({ title: "Add a subject line first", variant: "destructive" }); return; }
+    if (!form.htmlBody) { toast({ title: "Email body is empty", variant: "destructive" }); return; }
+    setTestSending(true);
+    const res = await apiFetch("/api/admin/crm/templates/test-send", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to: testEmail, subject: form.subject, htmlBody: form.htmlBody }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) toast({ title: "Test email sent!", description: `Check ${testEmail} — subject: [TEST] ${form.subject}` });
+    else toast({ title: data.error ?? "Failed to send", variant: "destructive" });
+    setTestSending(false);
+  };
+
   if (editing !== null) {
     return (
       <div className="space-y-5">
@@ -501,6 +518,33 @@ function TemplatesTab() {
             value={form.htmlBody}
             onChange={html => setForm(f => ({ ...f, htmlBody: html }))}
           />
+        </div>
+
+        {/* Send Test Email */}
+        <div className="bg-card border border-amber-500/20 rounded-xl p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <TestTube className="w-4 h-4 text-amber-400" />
+            Send Test Email
+            <span className="text-[10px] font-normal text-muted-foreground ml-1">— sends the current template as-is (before saving)</span>
+          </h3>
+          <div className="flex gap-2">
+            <Input
+              value={testEmail}
+              onChange={e => setTestEmail(e.target.value)}
+              placeholder="your@email.com"
+              type="email"
+              className="bg-background border-border flex-1"
+              onKeyDown={e => { if (e.key === "Enter") sendTest(); }}
+            />
+            <Button onClick={sendTest} disabled={testSending} variant="outline" className="gap-1.5 flex-shrink-0 border-amber-500/30 text-amber-400 hover:bg-amber-500/10 hover:text-amber-400">
+              {testSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              {testSending ? "Sending…" : "Send Test"}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <Info className="w-3 h-3 flex-shrink-0" />
+            The test email is sent with subject prefixed <code className="font-mono bg-muted px-1 rounded">[TEST]</code> — you don't need to save first
+          </p>
         </div>
 
         {/* Footer actions */}

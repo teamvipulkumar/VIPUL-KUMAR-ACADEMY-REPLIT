@@ -126,6 +126,30 @@ router.post("/smtp/test", requireAdmin, async (req, res): Promise<void> => {
   }
 });
 
+/* ── Template test-send ── */
+router.post("/templates/test-send", requireAdmin, async (req, res): Promise<void> => {
+  const smtp = await getSmtp();
+  if (!smtp || !smtp.host) { res.status(400).json({ error: "SMTP not configured. Go to the SMTP tab and save your settings first." }); return; }
+  if (!smtp.isActive) { res.status(400).json({ error: "SMTP is not active. Enable it in the SMTP tab before sending." }); return; }
+  const { to, subject, htmlBody } = req.body;
+  if (!to) { res.status(400).json({ error: "Recipient email required" }); return; }
+  if (!subject) { res.status(400).json({ error: "Subject required" }); return; }
+  if (!htmlBody) { res.status(400).json({ error: "Email body required" }); return; }
+  try {
+    const transporter = await createTransporter(smtp);
+    await transporter.sendMail({
+      from: buildFrom(smtp),
+      to,
+      subject: `[TEST] ${subject}`,
+      html: htmlBody,
+    });
+    await db.insert(emailSendsTable).values({ type: "test", email: to, subject: `[TEST] ${subject}`, status: "sent" });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: `Failed to send: ${err?.message ?? "Unknown error"}` });
+  }
+});
+
 /* ── Templates ── */
 router.get("/templates", requireAdmin, async (_req, res): Promise<void> => {
   const templates = await db.select().from(emailTemplatesTable).orderBy(emailTemplatesTable.createdAt);
