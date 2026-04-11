@@ -96,14 +96,14 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
 
 /* ── Variables reference panel ── */
 const VARIABLES_BY_TYPE: Record<string, { var: string; desc: string }[]> = {
-  welcome:              [{ var: "{{name}}", desc: "Student's full name" }, { var: "{{email}}", desc: "Student's email" }],
+  welcome:              [{ var: "{{name}}", desc: "Student's full name" }, { var: "{{email}}", desc: "Student's email" }, { var: "{{verify_link}}", desc: "Email verification URL" }],
   purchase:             [{ var: "{{name}}", desc: "Student's full name" }, { var: "{{email}}", desc: "Student's email" }, { var: "{{course_name}}", desc: "Course title" }, { var: "{{amount}}", desc: "Payment amount (₹)" }],
   refund:               [{ var: "{{name}}", desc: "Student's full name" }, { var: "{{email}}", desc: "Student's email" }, { var: "{{course_name}}", desc: "Course title" }, { var: "{{amount}}", desc: "Refunded amount (₹)" }],
   forgot_password:      [{ var: "{{name}}", desc: "User's full name" }, { var: "{{email}}", desc: "User's email" }, { var: "{{reset_link}}", desc: "Password reset URL" }],
   completion:           [{ var: "{{name}}", desc: "Student's full name" }, { var: "{{email}}", desc: "Student's email" }, { var: "{{course_name}}", desc: "Completed course title" }],
   affiliate_commission: [{ var: "{{name}}", desc: "Affiliate's full name" }, { var: "{{email}}", desc: "Affiliate's email" }, { var: "{{payout_amount}}", desc: "Payout amount (₹)" }, { var: "{{commission_amount}}", desc: "Commission amount (₹)" }],
   campaign:             [{ var: "{{name}}", desc: "Subscriber's full name" }, { var: "{{email}}", desc: "Subscriber's email" }],
-  custom:               [{ var: "{{name}}", desc: "User's full name" }, { var: "{{email}}", desc: "User's email" }, { var: "{{course_name}}", desc: "Course title" }, { var: "{{amount}}", desc: "Amount (₹)" }, { var: "{{reset_link}}", desc: "Reset link URL" }, { var: "{{payout_amount}}", desc: "Payout amount (₹)" }, { var: "{{commission_amount}}", desc: "Commission amount (₹)" }],
+  custom:               [{ var: "{{name}}", desc: "User's full name" }, { var: "{{email}}", desc: "User's email" }, { var: "{{course_name}}", desc: "Course title" }, { var: "{{amount}}", desc: "Amount (₹)" }, { var: "{{reset_link}}", desc: "Password reset URL" }, { var: "{{verify_link}}", desc: "Email verification URL" }, { var: "{{payout_amount}}", desc: "Payout amount (₹)" }, { var: "{{commission_amount}}", desc: "Commission amount (₹)" }],
 };
 
 function TemplateVariablesPanel({ type, onInsert }: { type: string; onInsert?: (v: string) => void }) {
