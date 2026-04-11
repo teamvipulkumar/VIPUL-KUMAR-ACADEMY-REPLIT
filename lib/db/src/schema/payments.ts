@@ -16,6 +16,7 @@ export const paymentsTable = pgTable("payments", {
   paymentId: text("payment_id"),
   gatewayOrderId: text("gateway_order_id"),
   couponCode: text("coupon_code"),
+  affiliateRef: text("affiliate_ref"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

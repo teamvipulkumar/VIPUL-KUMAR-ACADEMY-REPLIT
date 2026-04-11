@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -6,6 +7,28 @@ import { AuthProvider, ProtectedRoute } from "@/lib/auth-context";
 import { AppLayout } from "@/components/layout/app-layout";
 import { AdminLayout } from "@/components/layout/admin-layout";
 import NotFound from "@/pages/not-found";
+
+const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+/* ── Referral link tracker ─────────────────────────────────────────────────── */
+function RefTracker() {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (!ref) return;
+
+    // Persist so checkout can send it even after navigation
+    sessionStorage.setItem("vka_ref", ref);
+
+    // Fire-and-forget click track
+    fetch(`${API_BASE}/api/affiliate/track`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ referralCode: ref }),
+    }).catch(() => {});
+  }, []);
+  return null;
+}
 
 import Home from "@/pages/home";
 import Login from "@/pages/login";
@@ -92,6 +115,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
+          <RefTracker />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Router />
           </WouterRouter>

@@ -60,7 +60,9 @@ router.get("/dashboard", requireAuth, async (req, res): Promise<void> => {
   const commissionRate = settings[0]?.commissionRate ?? 20;
 
   const referrals = await db.select().from(referralsTable).where(eq(referralsTable.referrerId, authedReq.user.userId));
-  const clicks = referrals.length;
+  const allClicks = await db.select().from(affiliateClicksTable).where(eq(affiliateClicksTable.affiliateId, authedReq.user.userId));
+  const clicks = allClicks.length;
+  const uniqueClicks = allClicks.filter(c => c.isUnique).length;
   const conversions = referrals.filter(r => r.status === "purchase").length;
   const totalEarnings = referrals.reduce((acc, r) => acc + parseFloat(String(r.commission ?? 0)), 0);
 
@@ -106,6 +108,7 @@ router.get("/dashboard", requireAuth, async (req, res): Promise<void> => {
     referralCode: user.referralCode,
     referralLink: `https://${domain}?ref=${user.referralCode}`,
     totalClicks: clicks,
+    uniqueClicks,
     totalConversions: conversions,
     totalEarnings,
     pendingEarnings: Math.max(0, totalEarnings - paidEarnings),

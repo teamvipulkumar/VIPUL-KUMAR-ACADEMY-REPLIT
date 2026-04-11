@@ -412,6 +412,7 @@ export default function CheckoutPage() {
 
   const executePayment = async () => {
     setProcessing(true);
+    const affiliateRef = sessionStorage.getItem("vka_ref") || undefined;
     try {
       const res = await fetch(`${API_BASE}/api/payments/checkout/guest`, {
         method: "POST",
@@ -425,6 +426,7 @@ export default function CheckoutPage() {
           mobile: form.mobile.trim(),
           gateway,
           couponCode: appliedCoupon?.code || undefined,
+          affiliateRef,
         }),
       });
       const data = await res.json();
@@ -446,6 +448,7 @@ export default function CheckoutPage() {
   // ── Real Cashfree Payment ──────────────────────────────────────────────────
   const handleCashfreePayment = async () => {
     setProcessing(true);
+    const affiliateRef = sessionStorage.getItem("vka_ref") || undefined;
     try {
       // Step 1: Create order on backend (creates user if needed)
       const res = await fetch(`${API_BASE}/api/payments/cashfree/create-order`, {
@@ -459,6 +462,7 @@ export default function CheckoutPage() {
           state: form.state,
           mobile: form.mobile.trim(),
           couponCode: appliedCoupon?.code || undefined,
+          affiliateRef,
         }),
       });
       const data = await res.json();

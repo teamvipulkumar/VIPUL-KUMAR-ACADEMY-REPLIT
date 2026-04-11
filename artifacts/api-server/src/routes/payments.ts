@@ -3,8 +3,12 @@ import { nanoid } from "nanoid";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { db } from "@workspace/db";
-import { paymentsTable, coursesTable, enrollmentsTable, couponsTable, notificationsTable, usersTable, paymentGatewaysTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import {
+  paymentsTable, coursesTable, enrollmentsTable, couponsTable, notificationsTable,
+  usersTable, paymentGatewaysTable, referralsTable, affiliateClicksTable,
+  affiliateApplicationsTable, platformSettingsTable,
+} from "@workspace/db";
+import { eq, and, desc, isNull, or } from "drizzle-orm";
 import { requireAuth, signToken, verifyToken, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import { triggerAutomation } from "./crm";
@@ -12,9 +16,78 @@ import { triggerAutomation } from "./crm";
 const router = Router();
 type AuthedRequest = Request & { user: JwtPayload };
 
+/* ── Affiliate Commission Helper ─────────────────────────────────────────── */
+async function recordAffiliateCommission(
+  affiliateRef: string | null | undefined,
+  buyerId: number,
+  courseId: number,
+  saleAmount: number,
+): Promise<void> {
+  if (!affiliateRef) return;
+  try {
+    // Find referrer
+    const [referrer] = await db.select({ id: usersTable.id })
+      .from(usersTable).where(eq(usersTable.referralCode, affiliateRef)).limit(1);
+    if (!referrer) return;
+
+    // Prevent self-referral
+    if (referrer.id === buyerId) return;
+
+    // Ensure affiliate is approved and not blocked
+    const [app] = await db.select({ commissionOverride: affiliateApplicationsTable.commissionOverride, isBlocked: affiliateApplicationsTable.isBlocked })
+      .from(affiliateApplicationsTable)
+      .where(and(eq(affiliateApplicationsTable.userId, referrer.id), eq(affiliateApplicationsTable.status, "approved")))
+      .limit(1);
+    if (!app || app.isBlocked) return;
+
+    // Get commission rate (affiliate override > platform default)
+    const [settings] = await db.select({ commissionRate: platformSettingsTable.commissionRate }).from(platformSettingsTable).limit(1);
+    const rate = app.commissionOverride ?? settings?.commissionRate ?? 20;
+    const commission = parseFloat(((saleAmount * rate) / 100).toFixed(2));
+
+    // Find the most recent click referral for this referrer+course that isn't yet a purchase
+    const [clickRef] = await db.select()
+      .from(referralsTable)
+      .where(and(
+        eq(referralsTable.referrerId, referrer.id),
+        eq(referralsTable.courseId, courseId),
+        eq(referralsTable.status, "click"),
+      ))
+      .orderBy(desc(referralsTable.createdAt))
+      .limit(1);
+
+    if (clickRef) {
+      await db.update(referralsTable)
+        .set({ status: "purchase", referredUserId: buyerId, commission: String(commission) })
+        .where(eq(referralsTable.id, clickRef.id));
+    } else {
+      await db.insert(referralsTable).values({
+        referrerId: referrer.id, referredUserId: buyerId, courseId, status: "purchase", commission: String(commission),
+      });
+    }
+
+    // Mark click as converted
+    await db.update(affiliateClicksTable)
+      .set({ convertedAt: new Date() })
+      .where(and(
+        eq(affiliateClicksTable.affiliateId, referrer.id),
+        or(eq(affiliateClicksTable.courseId, courseId), isNull(affiliateClicksTable.courseId)),
+        isNull(affiliateClicksTable.convertedAt),
+      ));
+
+    // Notify the affiliate
+    await db.insert(notificationsTable).values({
+      userId: referrer.id,
+      title: "Commission Earned! 🎉",
+      message: `You earned ₹${commission.toFixed(2)} commission from a course purchase.`,
+      type: "success",
+    });
+  } catch { /* swallow — commission recording is non-critical */ }
+}
+
 router.post("/checkout", requireAuth, async (req, res): Promise<void> => {
   const authedReq = req as AuthedRequest;
-  const { courseId, couponCode, gateway } = req.body;
+  const { courseId, couponCode, gateway, affiliateRef } = req.body;
   if (!courseId || !gateway) { res.status(400).json({ error: "courseId and gateway are required" }); return; }
 
   const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, courseId)).limit(1);
@@ -43,6 +116,7 @@ router.post("/checkout", requireAuth, async (req, res): Promise<void> => {
     gateway,
     sessionId,
     couponCode: couponCode || null,
+    affiliateRef: affiliateRef || null,
   });
 
   res.json({ sessionId, amount, currency: "INR", gateway, redirectUrl: null, razorpayOrderId: null, razorpayKey: null });
@@ -67,6 +141,7 @@ router.post("/verify", requireAuth, async (req, res): Promise<void> => {
     await db.insert(notificationsTable).values({ userId: authedReq.user.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success" });
     const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, authedReq.user.userId)).limit(1);
     if (buyer) triggerAutomation("purchase", buyer.id, buyer.email, { name: buyer.name, email: buyer.email, course_name: course?.title ?? "", amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
+    await recordAffiliateCommission(payment.affiliateRef, authedReq.user.userId, payment.courseId, parseFloat(String(payment.amount)));
   } else {
     enrollmentId = existing[0].id;
   }
@@ -91,7 +166,7 @@ router.get("/history", requireAuth, async (req, res): Promise<void> => {
 
 // ── Guest / Auto-register Checkout ───────────────────────────────────────────
 router.post("/checkout/guest", async (req, res): Promise<void> => {
-  const { courseId, email, fullName, state, mobile, gateway, couponCode } = req.body;
+  const { courseId, email, fullName, state, mobile, gateway, couponCode, affiliateRef } = req.body;
   if (!courseId || !email || !fullName || !gateway) {
     res.status(400).json({ error: "courseId, email, fullName, and gateway are required" }); return;
   }
@@ -158,12 +233,14 @@ router.post("/checkout/guest", async (req, res): Promise<void> => {
     status: "completed", gateway,
     sessionId, paymentId: `sim_${nanoid(12)}`,
     couponCode: couponCode || null,
+    affiliateRef: affiliateRef || null,
   });
 
   const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, userId), eq(enrollmentsTable.courseId, parseInt(courseId)))).limit(1);
   if (!existing) {
     await db.insert(enrollmentsTable).values({ userId, courseId: parseInt(courseId) });
     await db.insert(notificationsTable).values({ userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course.title}`, type: "success" });
+    await recordAffiliateCommission(affiliateRef, userId, parseInt(courseId), amount);
   }
 
   // Auto-login: set JWT cookie
@@ -181,7 +258,7 @@ router.post("/checkout/guest", async (req, res): Promise<void> => {
 
 // ── Cashfree: Create Order + Pre-register User ───────────────────────────────
 router.post("/cashfree/create-order", async (req, res): Promise<void> => {
-  const { courseId, email, fullName, state, mobile, couponCode } = req.body;
+  const { courseId, email, fullName, state, mobile, couponCode, affiliateRef } = req.body;
   if (!courseId || !email || !fullName) {
     res.status(400).json({ error: "courseId, email, and fullName are required" }); return;
   }
@@ -272,6 +349,7 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
     status: "pending", gateway: "cashfree",
     sessionId, gatewayOrderId: cfOrderId,
     couponCode: couponCode || null,
+    affiliateRef: affiliateRef || null,
   });
 
   // Auto-login
@@ -334,6 +412,7 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
         }
         const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
         if (buyer && course) triggerAutomation("purchase", buyer.id, buyer.email, { name: buyer.name, email: buyer.email, course_name: course.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
+        await recordAffiliateCommission(payment.affiliateRef, payment.userId, payment.courseId, parseFloat(String(payment.amount)));
       }
 
       const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
@@ -404,6 +483,7 @@ router.post("/cashfree/webhook", async (req, res): Promise<void> => {
       const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
       if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
     }
+    await recordAffiliateCommission(payment.affiliateRef, payment.userId, payment.courseId, parseFloat(String(payment.amount)));
   }
   res.json({ received: true });
 });
