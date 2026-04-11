@@ -362,10 +362,10 @@ function BlockEditor({ block, onChange }: { block: Block; onChange: (data: Recor
                 </div>
                 <input type="text" value={item.boldLabel} placeholder="Bold label (optional)"
                   onChange={e => { const next = [...items]; next[idx] = { ...item, boldLabel: e.target.value }; upd({ items: next }); }}
-                  className="w-full h-7 px-2 text-xs border border-slate-300 rounded bg-white outline-none focus:border-blue-400" />
+                  className="w-full h-7 px-2 text-xs border border-slate-300 rounded bg-white text-slate-800 outline-none focus:border-blue-400" />
                 <input type="text" value={item.text} placeholder="Item text…"
                   onChange={e => { const next = [...items]; next[idx] = { ...item, text: e.target.value }; upd({ items: next }); }}
-                  className="w-full h-7 px-2 text-xs border border-slate-300 rounded bg-white outline-none focus:border-blue-400" />
+                  className="w-full h-7 px-2 text-xs border border-slate-300 rounded bg-white text-slate-800 outline-none focus:border-blue-400" />
               </div>
             ))}
             <button type="button" onClick={() => upd({ items: [...items, { boldLabel: "", text: "" }] })}
@@ -404,12 +404,12 @@ function BlockEditor({ block, onChange }: { block: Block; onChange: (data: Recor
               <div key={idx} className="flex items-center gap-2">
                 <select value={link.platform} onChange={e => {
                   const next = [...links]; next[idx] = { ...link, platform: e.target.value as any }; upd({ links: next });
-                }} className="h-7 px-2 text-xs border border-slate-300 rounded bg-white outline-none flex-shrink-0" style={{ width: 100 }}>
+                }} className="h-7 px-2 text-xs border border-slate-300 rounded bg-white text-slate-800 outline-none flex-shrink-0" style={{ width: 100 }}>
                   {platforms.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
                 <input type="url" value={link.url} placeholder="https://"
                   onChange={e => { const next = [...links]; next[idx] = { ...link, url: e.target.value }; upd({ links: next }); }}
-                  className="flex-1 h-7 px-2 text-xs border border-slate-300 rounded bg-white outline-none focus:border-blue-400" />
+                  className="flex-1 h-7 px-2 text-xs border border-slate-300 rounded bg-white text-slate-800 outline-none focus:border-blue-400" />
                 <button type="button" onClick={() => upd({ links: links.filter((_, i) => i !== idx) })}
                   className="text-red-400 hover:text-red-600 flex-shrink-0"><X className="w-3 h-3" /></button>
               </div>
@@ -627,7 +627,7 @@ export function EmailBlockBuilder({ value, onChange }: EmailBlockBuilderProps) {
   const BLOCK_TYPES: BlockType[] = ["heading", "text", "button", "image", "bulletList", "logo", "divider", "spacer", "columns", "social", "footer"];
 
   return (
-    <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+    <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm text-gray-900">
       {/* Toolbar */}
       <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 flex items-center gap-2 flex-wrap">
         <div className="flex rounded-lg overflow-hidden border border-slate-200 flex-shrink-0">
@@ -729,7 +729,7 @@ export function EmailBlockBuilder({ value, onChange }: EmailBlockBuilderProps) {
               <div>
                 <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block mb-1">Font Family</label>
                 <select value={settings.fontFamily} onChange={e => updateSettings({ fontFamily: e.target.value })}
-                  className="w-full h-9 px-3 text-sm border border-slate-300 rounded-lg bg-white outline-none">
+                  className="w-full h-9 px-3 text-sm border border-slate-300 rounded-lg bg-white text-slate-800 outline-none">
                   <option value="Arial, Helvetica, sans-serif">Arial (Default)</option>
                   <option value="Georgia, serif">Georgia</option>
                   <option value="'Times New Roman', Times, serif">Times New Roman</option>
