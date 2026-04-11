@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { EmailEditor } from "@/components/email-editor";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 async function apiFetch(path: string, opts?: RequestInit) {
@@ -488,7 +489,7 @@ function TemplatesTab() {
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center justify-between mb-1">
-              <Label className="text-xs text-muted-foreground">HTML Body</Label>
+              <Label className="text-xs text-muted-foreground">Email Body</Label>
               <div className="flex gap-2">
                 {DEFAULT_TEMPLATES[form.type] && (
                   <button onClick={() => applyDefault(form.type)} className="text-[11px] text-primary hover:underline">Load default</button>
@@ -496,11 +497,14 @@ function TemplatesTab() {
                 <button onClick={() => setPreviewing(form.htmlBody)} className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1"><Eye className="w-3 h-3" />Preview</button>
               </div>
             </div>
-            <Textarea value={form.htmlBody} onChange={e => setForm(f => ({ ...f, htmlBody: e.target.value }))}
-              className="bg-background border-border font-mono text-xs min-h-[280px] resize-y" placeholder="<div>Your HTML email here…</div>" />
+            <EmailEditor
+              value={form.htmlBody}
+              onChange={html => setForm(f => ({ ...f, htmlBody: html }))}
+              minHeight={340}
+            />
           </div>
           <div className="p-3 bg-blue-500/5 border border-blue-500/15 rounded-lg">
-            <p className="text-xs text-blue-400 flex items-center gap-1.5"><Info className="w-3 h-3 flex-shrink-0" />Use <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{name}}"}</code>, <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{email}}"}</code>, <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{amount}}"}</code>, <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{course_name}}"}</code>, <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{reset_link}}"}</code> as variables.</p>
+            <p className="text-xs text-blue-400 flex items-center gap-1.5"><Info className="w-3 h-3 flex-shrink-0" />Use <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{name}}"}</code>, <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{email}}"}</code>, <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{amount}}"}</code>, <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{course_name}}"}</code>, <code className="font-mono bg-blue-500/10 px-1 rounded">{"{{reset_link}}"}</code> as variables. Switch to HTML view for advanced edits.</p>
           </div>
           <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
             <p className="text-sm font-medium text-foreground">Active</p>
