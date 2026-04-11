@@ -475,7 +475,7 @@ function TemplatesTab() {
 
   if (editing !== null) {
     return (
-      <div className="space-y-5">
+      <div className="space-y-5 max-w-3xl">
         <div className="flex items-center gap-3">
           <button onClick={() => setEditing(null)} className="text-muted-foreground hover:text-foreground transition-colors"><X className="w-4 h-4" /></button>
           <h2 className="text-xl font-bold text-foreground">{editing === "new" ? "New Template" : "Edit Template"}</h2>
