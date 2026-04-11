@@ -35,8 +35,8 @@ interface EmailSettings {
 
 /* ─────────────────────── Defaults ─────────────────────── */
 const DEFAULT_SETTINGS: EmailSettings = {
-  bgColor: "#f4f4f5",
-  cardBgColor: "#ffffff",
+  bgColor: "#ebeced",
+  cardBgColor: "#fcfcfc",
   cardPadding: 40,
   logoUrl: "",
   companyName: "Vipul Kumar Academy",
