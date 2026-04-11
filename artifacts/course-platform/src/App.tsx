@@ -74,7 +74,7 @@ function Router() {
       <Route path="/admin/orders" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminOrdersPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/enrollments" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminEnrollmentsPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/payment-gateways" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminPaymentGatewaysPage /></AdminLayout></ProtectedRoute>} />
-      <Route path="/checkout/:id" component={() => <AppLayout><CheckoutPage /></AppLayout>} />
+      <Route path="/checkout/:id" component={() => <CheckoutPage />} />
       <Route path="/payment/verify" component={() => <PaymentVerifyPage />} />
       <Route path="/verify-email" component={() => <VerifyEmailPage />} />
       <Route path="/admin/settings" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminSettingsPage /></AdminLayout></ProtectedRoute>} />
