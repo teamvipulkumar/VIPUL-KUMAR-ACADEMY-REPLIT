@@ -3,6 +3,7 @@ import { useRoute, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { useGetCourse, useValidateCoupon } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { SiteFooter } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -540,7 +541,8 @@ export default function CheckoutPage() {
 
   return (
     <>
-    <div className="min-h-screen bg-background py-8 px-4">
+    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex-1 py-8 px-4">
       <div className="max-w-5xl mx-auto">
         {/* Top bar */}
         <div className="flex items-center justify-between mb-8">
@@ -861,6 +863,8 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+    </div>
+    <SiteFooter />
     </div>
 
     {showPaymentModal && (

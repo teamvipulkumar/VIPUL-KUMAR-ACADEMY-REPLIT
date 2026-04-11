@@ -244,7 +244,7 @@ export function Navbar() {
   );
 }
 
-function SiteFooter() {
+export function SiteFooter() {
   const year = new Date().getFullYear();
 
   const footerNav = {
