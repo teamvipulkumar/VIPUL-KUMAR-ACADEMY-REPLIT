@@ -72,7 +72,7 @@ router.post("/register", async (req, res): Promise<void> => {
   // Fire off both welcome automation and verification email (don't block response)
   const origin = (req.headers.origin as string) || process.env.SITE_URL || "";
   const verifyLink = `${origin}/verify-email?token=${verifyToken}`;
-  triggerAutomation("welcome", user.id, user.email, { name: user.name, email: user.email }).catch(() => {});
+  triggerAutomation("welcome", user.id, user.email, { name: user.name, email: user.email, verify_link: verifyLink }).catch(() => {});
   sendTransactionalEmail(
     user.email,
     "Please verify your email — Vipul Kumar Academy",
