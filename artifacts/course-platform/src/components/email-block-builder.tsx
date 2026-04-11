@@ -519,6 +519,33 @@ function BlockPreview({ block }: { block: Block }) {
   }
 }
 
+/* ─────────────────────── Empty State ─────────────────────── */
+const BLOCK_PALETTE: BlockType[] = ["heading", "text", "button", "image", "bulletList", "logo", "divider", "spacer", "columns", "social", "footer"];
+
+function EmptyState({ onAdd }: { onAdd: (type: BlockType) => void }) {
+  return (
+    <div className="bg-white rounded-2xl p-6 border-2 border-dashed border-slate-200">
+      <div className="text-center mb-5">
+        <Layers className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+        <p className="text-sm font-semibold text-slate-600">Start building your email</p>
+        <p className="text-xs text-slate-400 mt-0.5">Pick a block type to add to the canvas</p>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {BLOCK_PALETTE.map(type => {
+          const meta = BLOCK_META[type];
+          return (
+            <button key={type} type="button" onClick={() => onAdd(type)}
+              className="flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all group text-center">
+              <span className="text-slate-400 group-hover:text-blue-500 transition-colors">{meta.icon}</span>
+              <span className="text-[10px] font-semibold text-slate-600 group-hover:text-blue-700 leading-tight">{meta.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────────────── Main Component ─────────────────────── */
 export interface EmailBlockBuilderProps { value: string; onChange: (html: string) => void; }
 
@@ -680,10 +707,7 @@ export function EmailBlockBuilder({ value, onChange }: EmailBlockBuilderProps) {
                   })}
 
                   {blocks.length === 0 && (
-                    <div className="bg-white rounded-2xl p-10 text-center text-slate-400">
-                      <Layers className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                      <p className="text-sm">Click "+" to add your first block</p>
-                    </div>
+                    <EmptyState onAdd={(t) => addBlock(t, null)} />
                   )}
                 </div>
               </div>
