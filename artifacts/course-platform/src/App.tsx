@@ -11,6 +11,7 @@ import Home from "@/pages/home";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
 import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
 import CoursesPage from "@/pages/courses";
 import CourseDetailPage from "@/pages/course-detail";
 import MyCoursesPage from "@/pages/my-courses";
@@ -48,6 +49,7 @@ function Router() {
       <Route path="/login" component={() => <Login />} />
       <Route path="/register" component={() => <Register />} />
       <Route path="/forgot-password" component={() => <ForgotPassword />} />
+      <Route path="/reset-password" component={() => <ResetPassword />} />
       <Route path="/courses" component={() => <AppLayout><CoursesPage /></AppLayout>} />
       <Route path="/courses/:id" component={() => <AppLayout><CourseDetailPage /></AppLayout>} />
 
