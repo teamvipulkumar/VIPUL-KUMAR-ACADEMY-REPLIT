@@ -32,6 +32,7 @@ import AdminPaymentGatewaysPage from "@/pages/admin/payment-gateways";
 import AdminSettingsPage from "@/pages/admin/settings";
 import AdminCrmPage from "@/pages/admin/crm";
 import PaymentVerifyPage from "@/pages/payment-verify";
+import VerifyEmailPage from "@/pages/verify-email";
 import CheckoutPage from "@/pages/checkout";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import TermsOfServicePage from "@/pages/terms-of-service";
@@ -73,6 +74,7 @@ function Router() {
       <Route path="/admin/payment-gateways" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminPaymentGatewaysPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/checkout/:id" component={() => <AppLayout><CheckoutPage /></AppLayout>} />
       <Route path="/payment/verify" component={() => <PaymentVerifyPage />} />
+      <Route path="/verify-email" component={() => <VerifyEmailPage />} />
       <Route path="/admin/settings" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminSettingsPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/crm" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminCrmPage /></AdminLayout></ProtectedRoute>} />
 

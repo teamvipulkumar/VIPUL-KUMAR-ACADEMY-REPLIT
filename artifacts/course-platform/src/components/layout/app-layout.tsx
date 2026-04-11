@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useLogout, useListNotifications, getListNotificationsQueryKey } from "@workspace/api-client-react";
 import { Bell, Menu, X, BookOpen, Share2, GraduationCap, LogOut, ShieldCheck, ChevronRight, Mail, Youtube, Twitter, Linkedin, Instagram } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { EmailVerificationBanner } from "@/components/email-verification-banner";
 
 function AcademyLogo({ size = 32 }: { size?: number }) {
   return (
@@ -381,7 +382,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative flex min-h-screen flex-col">
       <Navbar />
-      <main className="flex-1 min-w-0 pt-16">{children}</main>
+      <div className="pt-16">
+        <EmailVerificationBanner />
+        <main className="flex-1 min-w-0">{children}</main>
+      </div>
       <SiteFooter />
     </div>
   );

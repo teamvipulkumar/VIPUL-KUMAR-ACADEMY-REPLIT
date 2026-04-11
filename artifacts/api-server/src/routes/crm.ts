@@ -11,7 +11,7 @@ import { requireAdmin } from "../middlewares/auth";
 const router = Router();
 
 /* ── helpers ── */
-async function getSmtp() {
+export async function getSmtp() {
   const [row] = await db.select().from(smtpSettingsTable).limit(1);
   return row ?? null;
 }
@@ -25,8 +25,16 @@ export async function createTransporter(smtp: typeof smtpSettingsTable.$inferSel
   } as nodemailer.TransportOptions);
 }
 
-function buildFrom(smtp: typeof smtpSettingsTable.$inferSelect) {
+export function buildFrom(smtp: typeof smtpSettingsTable.$inferSelect) {
   return `"${smtp.fromName}" <${smtp.fromEmail}>`;
+}
+
+/** Send a single transactional email directly via SMTP (bypasses CRM automations) */
+export async function sendTransactionalEmail(to: string, subject: string, html: string): Promise<void> {
+  const smtp = await getSmtp();
+  if (!smtp || !smtp.isActive) return;
+  const transporter = await createTransporter(smtp);
+  await transporter.sendMail({ from: buildFrom(smtp), to, subject, html });
 }
 
 /** Public function called from other routes to fire automation emails */

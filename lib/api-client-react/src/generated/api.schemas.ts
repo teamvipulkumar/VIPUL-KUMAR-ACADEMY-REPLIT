@@ -57,6 +57,7 @@ export interface User {
   avatarUrl?: string | null;
   referralCode: string;
   isBanned: boolean;
+  emailVerified: boolean;
   createdAt: string;
 }
 
