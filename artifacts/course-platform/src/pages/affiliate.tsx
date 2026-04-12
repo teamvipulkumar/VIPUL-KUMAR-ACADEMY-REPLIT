@@ -214,7 +214,7 @@ function TabHeader({ title, subtitle, action }: { title: string; subtitle?: stri
 function StatCard2({ label, value, color, sub }: { icon?: React.ReactNode; label: string; value: string | number; color: string; sub?: string }) {
   return (
     <div className="bg-card border border-border rounded-xl p-4 flex flex-col items-center justify-center text-center gap-1">
-      <p className="text-muted-foreground text-[14px] font-bold">{label}</p>
+      <p className="text-muted-foreground text-[14px] font-normal">{label}</p>
       <p className="text-[#05df72] text-[24px] font-bold">{value}</p>
       {sub && <p className="text-[10px] text-muted-foreground/60">{sub}</p>}
     </div>
