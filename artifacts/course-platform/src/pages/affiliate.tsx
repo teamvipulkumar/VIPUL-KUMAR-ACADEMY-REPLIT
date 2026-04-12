@@ -235,11 +235,13 @@ function AffiliateDashboard({ user }: { user: any }) {
   const [pixel, setPixel] = useState<any>(null);
   const [copied, setCopied] = useState(false);
   const [chartDays, setChartDays] = useState<7 | 30>(7);
+  const [refreshing, setRefreshing] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => { loadDashboard(); }, []);
 
   const loadDashboard = async () => {
+    setRefreshing(true);
     const [d, c, s, p, cr, k, b, px] = await Promise.all([
       apiFetch("/api/affiliate/dashboard").then(r => r.json()),
       apiFetch("/api/affiliate/clicks").then(r => r.json()),
@@ -253,6 +255,7 @@ function AffiliateDashboard({ user }: { user: any }) {
     setDashboard(d); setClicks(c); setSales(Array.isArray(s) ? s : []);
     setPayouts(Array.isArray(p) ? p : []);
     setCreatives(Array.isArray(cr) ? cr : []); setKyc(k); setBank(b); setPixel(px);
+    setRefreshing(false);
   };
 
   const copyLink = () => {
@@ -345,8 +348,9 @@ function AffiliateDashboard({ user }: { user: any }) {
                   <h2 className="text-2xl font-extrabold text-foreground">Hello, {user?.name?.split(" ")[0] ?? "there"} 👋</h2>
                   <p className="text-sm text-muted-foreground mt-1">Welcome back to your affiliate dashboard.</p>
                 </div>
-                <Button variant="outline" size="sm" className="gap-1.5 flex-shrink-0" onClick={loadDashboard}>
-                  <RefreshCw className="w-3.5 h-3.5" /><span className="hidden sm:inline">Refresh</span>
+                <Button variant="outline" size="sm" className="gap-1.5 flex-shrink-0" onClick={loadDashboard} disabled={refreshing}>
+                  <RefreshCw className={`w-3.5 h-3.5 transition-transform ${refreshing ? "animate-spin" : ""}`} />
+                  <span className="hidden sm:inline">{refreshing ? "Refreshing…" : "Refresh"}</span>
                 </Button>
               </div>
 
