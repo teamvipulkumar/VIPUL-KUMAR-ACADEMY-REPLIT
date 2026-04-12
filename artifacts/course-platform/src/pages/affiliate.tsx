@@ -393,13 +393,14 @@ function AffiliateDashboard({ user }: { user: any }) {
                     <XAxis
                       dataKey="date"
                       tick={{ fontSize: 10, fill: "#6b7280" }}
-                      tickFormatter={v => v.substring(5)}
-                      interval={chartDays === 7 ? 0 : "preserveStartEnd"}
+                      tickFormatter={v => `${v.substring(8)}-${v.substring(5, 7)}`}
+                      interval={chartDays === 7 ? 0 : 3}
                     />
                     <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={v => `₹${v}`} width={50} />
                     <Tooltip
                       contentStyle={{ background: "#0d1424", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
                       formatter={(v: any) => [`₹${Number(v).toFixed(2)}`, "Earnings"]}
+                      labelFormatter={(v: string) => `${v.substring(8)}-${v.substring(5, 7)}-${v.substring(0, 4)}`}
                       cursor={{ fill: "rgba(255,255,255,0.04)" }}
                     />
                     <Bar dataKey="amount" fill="#2563eb" radius={[4, 4, 0, 0]} name="Earnings" maxBarSize={40} />
