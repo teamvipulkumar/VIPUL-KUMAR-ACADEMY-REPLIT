@@ -453,7 +453,7 @@ function AffiliateDashboard({ user }: { user: any }) {
                       contentStyle={{ background: "#0d1424", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
                       formatter={(v: any) => [`₹${Number(v).toFixed(2)}`, "Earnings"]}
                       labelFormatter={(v: string) => `${v.substring(8)}-${v.substring(5, 7)}-${v.substring(0, 4)}`}
-                      cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                      cursor={false}
                     />
                     <Bar dataKey="amount" fill="#2563eb" radius={[4, 4, 0, 0]} name="Earnings" maxBarSize={40} />
                   </BarChart>
