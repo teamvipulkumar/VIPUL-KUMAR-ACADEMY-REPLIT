@@ -477,14 +477,13 @@ function AffiliateDashboard({ user }: { user: any }) {
               <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="grid grid-cols-3 divide-x divide-border">
                   {[
-                    { label: "Total Earned", value: `₹${(dashboard?.totalEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-foreground", icon: <Banknote className="w-3.5 h-3.5" /> },
-                    { label: "Pending Payout", value: `₹${(dashboard?.pendingEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-amber-400", icon: <Clock className="w-3.5 h-3.5" /> },
-                    { label: "Total Paid", value: `₹${(dashboard?.paidEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-green-400", icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+                    { label: "Total Earned", value: `₹${(dashboard?.totalEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-foreground" },
+                    { label: "Pending Payout", value: `₹${(dashboard?.pendingEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-amber-400" },
+                    { label: "Total Paid", value: `₹${(dashboard?.paidEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-green-400" },
                   ].map(s => (
                     <div key={s.label} className="text-center px-3 py-4">
-                      <div className={`flex items-center justify-center gap-1 ${s.color} mb-1`}>{s.icon}</div>
+                      <p className="text-[11px] text-muted-foreground mb-1">{s.label}</p>
                       <p className={`text-base sm:text-lg font-bold ${s.color}`}>{s.value}</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{s.label}</p>
                     </div>
                   ))}
                 </div>
@@ -494,25 +493,16 @@ function AffiliateDashboard({ user }: { user: any }) {
               <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="grid grid-cols-3 divide-x divide-border">
                   <div className="text-center px-3 py-4">
-                    <div className="flex items-center justify-center gap-1 text-blue-400 mb-1">
-                      <Percent className="w-3.5 h-3.5" />
-                    </div>
+                    <p className="text-[11px] text-muted-foreground mb-1">Commission Rate</p>
                     <p className="text-base sm:text-lg font-bold text-blue-400">{dashboard?.commissionRate ?? "–"}%</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Commission Rate</p>
                   </div>
                   <div className="text-center px-3 py-4">
-                    <div className="flex items-center justify-center gap-1 text-purple-400 mb-1">
-                      <Cookie className="w-3.5 h-3.5" />
-                    </div>
+                    <p className="text-[11px] text-muted-foreground mb-1">Cookie Duration</p>
                     <p className="text-base sm:text-lg font-bold text-purple-400">{dashboard?.cookieDays ?? 30} Days</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Cookie Duration</p>
                   </div>
                   <div className="text-center px-3 py-4">
-                    <div className="flex items-center justify-center gap-1 text-green-400 mb-1">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                    </div>
+                    <p className="text-[11px] text-muted-foreground mb-1">Account Health</p>
                     <p className="text-base sm:text-lg font-bold text-green-400">Healthy</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Account Health</p>
                   </div>
                 </div>
               </div>
