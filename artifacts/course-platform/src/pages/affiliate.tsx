@@ -221,6 +221,17 @@ function StatCard2({ label, value, color, sub }: { icon?: React.ReactNode; label
   );
 }
 
+/* ─── Custom earnings bar shape: real bar for non-zero, ghost stub for zero ─── */
+const EarningsBarShape = (props: any) => {
+  const { x, y, width, height, value, fill, style } = props;
+  const w = Math.max(width ?? 20, 1);
+  if (!value || value === 0) {
+    const ghostFill = fill && fill !== "#2563eb" ? "rgba(59,130,246,0.35)" : "rgba(255,255,255,0.1)";
+    return <rect x={x} y={y} width={w} height={3} fill={ghostFill} rx={2} ry={2} />;
+  }
+  return <rect x={x} y={y} width={w} height={height} fill={fill ?? "#2563eb"} rx={4} ry={4} style={style} />;
+};
+
 /* ─── Full Dashboard ─── */
 function AffiliateDashboard({ user }: { user: any }) {
   const [tab, setTab] = useState<Tab>("earnings");
@@ -455,8 +466,9 @@ function AffiliateDashboard({ user }: { user: any }) {
                       labelFormatter={(v: string) => `${v.substring(8)}-${v.substring(5, 7)}-${v.substring(0, 4)}`}
                       cursor={false}
                     />
-                    <Bar dataKey="amount" fill="#2563eb" radius={[4, 4, 0, 0]} name="Earnings" maxBarSize={40}
-                      activeBar={{ fill: "#3b82f6", filter: "drop-shadow(0 0 6px rgba(59,130,246,0.7))" }} />
+                    <Bar dataKey="amount" fill="#2563eb" name="Earnings" maxBarSize={40}
+                      shape={<EarningsBarShape />}
+                      activeBar={<EarningsBarShape fill="#3b82f6" style={{ filter: "drop-shadow(0 0 6px rgba(59,130,246,0.7))" }} />} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
