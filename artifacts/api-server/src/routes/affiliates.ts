@@ -59,6 +59,7 @@ router.get("/dashboard", requireAuth, async (req, res): Promise<void> => {
 
   const settings = await db.select().from(platformSettingsTable).limit(1);
   const commissionRate = settings[0]?.commissionRate ?? 20;
+  const cookieDays = settings[0]?.affiliateCookieDays ?? 30;
 
   const referrals = await db.select().from(referralsTable).where(eq(referralsTable.referrerId, authedReq.user.userId));
   const allClicks = await db.select().from(affiliateClicksTable).where(eq(affiliateClicksTable.affiliateId, authedReq.user.userId));
@@ -115,6 +116,7 @@ router.get("/dashboard", requireAuth, async (req, res): Promise<void> => {
     pendingEarnings: Math.max(0, totalEarnings - paidEarnings),
     paidEarnings,
     commissionRate,
+    cookieDays,
     todayEarnings,
     yesterdayEarnings,
     last7Earnings,

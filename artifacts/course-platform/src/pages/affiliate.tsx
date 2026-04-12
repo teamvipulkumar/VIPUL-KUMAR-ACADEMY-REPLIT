@@ -16,7 +16,7 @@ import {
   ShieldCheck, Wallet, Zap, Building2, RefreshCw, Download, Plus,
   Trash2, Eye, EyeOff, Send, ChevronRight, Activity, Target,
   Calendar, Star, Lock, Loader2, Menu, X, ExternalLink, Share2,
-  ArrowUpRight, TrendingDown, Banknote, Info
+  ArrowUpRight, TrendingDown, Banknote, Info, Percent, Cookie
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
@@ -487,6 +487,33 @@ function AffiliateDashboard({ user }: { user: any }) {
                       <p className="text-[11px] text-muted-foreground mt-0.5">{s.label}</p>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Account info strip */}
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="grid grid-cols-3 divide-x divide-border">
+                  <div className="text-center px-3 py-4">
+                    <div className="flex items-center justify-center gap-1 text-blue-400 mb-1">
+                      <Percent className="w-3.5 h-3.5" />
+                    </div>
+                    <p className="text-base sm:text-lg font-bold text-blue-400">{dashboard?.commissionRate ?? "–"}%</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Commission Rate</p>
+                  </div>
+                  <div className="text-center px-3 py-4">
+                    <div className="flex items-center justify-center gap-1 text-purple-400 mb-1">
+                      <Cookie className="w-3.5 h-3.5" />
+                    </div>
+                    <p className="text-base sm:text-lg font-bold text-purple-400">{dashboard?.cookieDays ?? 30} Days</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Cookie Duration</p>
+                  </div>
+                  <div className="text-center px-3 py-4">
+                    <div className="flex items-center justify-center gap-1 text-green-400 mb-1">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                    </div>
+                    <p className="text-base sm:text-lg font-bold text-green-400">Healthy</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Account Health</p>
+                  </div>
                 </div>
               </div>
             </div>
