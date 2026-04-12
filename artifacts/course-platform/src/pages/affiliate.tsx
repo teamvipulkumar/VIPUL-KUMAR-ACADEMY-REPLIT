@@ -493,7 +493,7 @@ function AffiliateDashboard({ user }: { user: any }) {
               <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="grid grid-cols-3 divide-x divide-border">
                   <div className="text-center px-3 py-4">
-                    <p className="text-[11px] text-muted-foreground mb-1">Commission Rate</p>
+                    <p className="text-[11px] text-muted-foreground mb-1">Commission</p>
                     <p className="text-base sm:text-lg font-bold text-blue-400">{dashboard?.commissionRate ?? "–"}%</p>
                   </div>
                   <div className="text-center px-3 py-4">
