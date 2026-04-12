@@ -235,6 +235,7 @@ function AffiliateDashboard({ user }: { user: any }) {
   const [pixel, setPixel] = useState<any>(null);
   const [copied, setCopied] = useState(false);
   const [chartDays, setChartDays] = useState<7 | 30>(7);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 1024);
   const { toast } = useToast();
@@ -262,6 +263,7 @@ function AffiliateDashboard({ user }: { user: any }) {
     setDashboard(d); setClicks(c); setSales(Array.isArray(s) ? s : []);
     setPayouts(Array.isArray(p) ? p : []);
     setCreatives(Array.isArray(cr) ? cr : []); setKyc(k); setBank(b); setPixel(px);
+    setLoading(false);
     setRefreshing(false);
   };
 
@@ -348,7 +350,47 @@ function AffiliateDashboard({ user }: { user: any }) {
           </div>
 
           {/* ── Earnings Tab ── */}
-          {tab === "earnings" && (
+          {tab === "earnings" && loading && (
+            <div className="space-y-6 animate-pulse">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-2">
+                  <div className="h-7 w-48 bg-white/[0.06] rounded-lg" />
+                  <div className="h-4 w-64 bg-white/[0.04] rounded-lg" />
+                </div>
+                <div className="h-8 w-24 bg-white/[0.06] rounded-lg flex-shrink-0" />
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="h-3.5 w-16 bg-white/[0.06] rounded" />
+                      <div className="h-8 w-8 bg-white/[0.06] rounded-xl" />
+                    </div>
+                    <div className="h-7 w-24 bg-white/[0.06] rounded-lg" />
+                  </div>
+                ))}
+              </div>
+              <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="h-4 w-28 bg-white/[0.06] rounded" />
+                  <div className="h-7 w-20 bg-white/[0.06] rounded-lg" />
+                </div>
+                <div className="h-[200px] bg-white/[0.03] rounded-xl" />
+              </div>
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="grid grid-cols-3 divide-x divide-border">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="text-center px-3 py-5 space-y-2 flex flex-col items-center">
+                      <div className="h-5 w-20 bg-white/[0.06] rounded" />
+                      <div className="h-3 w-16 bg-white/[0.04] rounded" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tab === "earnings" && !loading && (
             <div className="space-y-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
