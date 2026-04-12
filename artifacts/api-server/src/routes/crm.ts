@@ -21,7 +21,12 @@ export async function createTransporter(smtp: typeof smtpSettingsTable.$inferSel
     host: smtp.host,
     port: smtp.port,
     secure: smtp.secure,
+    requireTLS: !smtp.secure,
     auth: { user: smtp.username, pass: smtp.password },
+    connectionTimeout: 10000,
+    greetingTimeout: 5000,
+    socketTimeout: 15000,
+    tls: { rejectUnauthorized: false },
   } as nodemailer.TransportOptions);
 }
 
@@ -117,6 +122,7 @@ router.post("/smtp/test", requireAdmin, async (req, res): Promise<void> => {
   if (!to) { res.status(400).json({ error: "Recipient email required" }); return; }
   try {
     const transporter = await createTransporter(smtp);
+    await transporter.verify();
     await transporter.sendMail({
       from: buildFrom(smtp),
       to,
@@ -130,7 +136,9 @@ router.post("/smtp/test", requireAdmin, async (req, res): Promise<void> => {
     await db.insert(emailSendsTable).values({ type: "test", email: to, subject: "VK Academy — SMTP Test", status: "sent" });
     res.json({ success: true, message: "Test email sent successfully" });
   } catch (err: any) {
-    res.status(500).json({ error: `Failed to send: ${err?.message ?? "Unknown error"}` });
+    const msg = err?.message ?? "Unknown error";
+    await db.insert(emailSendsTable).values({ type: "test", email: to, subject: "VK Academy — SMTP Test", status: "failed", failReason: msg }).catch(() => {});
+    res.status(500).json({ error: msg });
   }
 });
 
