@@ -330,6 +330,11 @@ router.get("/creatives", requireAuth, async (req, res): Promise<void> => {
 router.post("/track", async (req, res): Promise<void> => {
   const { referralCode, courseId } = req.body;
   if (!referralCode) { res.status(400).json({ error: "referralCode is required" }); return; }
+
+  /* Always return cookieDays so the client can set the correct expiry */
+  const [settings] = await db.select().from(platformSettingsTable).limit(1);
+  const cookieDays = settings?.affiliateCookieDays ?? 30;
+
   const [referrer] = await db.select().from(usersTable).where(eq(usersTable.referralCode, referralCode)).limit(1);
   if (referrer) {
     const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ?? req.socket.remoteAddress ?? "unknown";
@@ -353,7 +358,7 @@ router.post("/track", async (req, res): Promise<void> => {
     /* Also create a referral record for backward compat */
     await db.insert(referralsTable).values({ referrerId: referrer.id, courseId: courseId || null, status: "click" });
   }
-  res.json({ message: "Tracked" });
+  res.json({ message: "Tracked", cookieDays });
 });
 
 /* ── Admin: affiliate applications ── */

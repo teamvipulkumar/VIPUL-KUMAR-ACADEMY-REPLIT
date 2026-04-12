@@ -11,21 +11,45 @@ import NotFound from "@/pages/not-found";
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 /* ── Referral link tracker ─────────────────────────────────────────────────── */
+const VKA_REF_KEY = "vka_ref_v2";
+
+export function getStoredRef(): string | null {
+  try {
+    const raw = localStorage.getItem(VKA_REF_KEY);
+    if (!raw) return null;
+    const { code, expiry } = JSON.parse(raw) as { code: string; expiry: number };
+    if (Date.now() > expiry) {
+      localStorage.removeItem(VKA_REF_KEY);
+      return null;
+    }
+    return code;
+  } catch {
+    return null;
+  }
+}
+
 function RefTracker() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get("ref");
     if (!ref) return;
 
-    // Persist so checkout can send it even after navigation
-    sessionStorage.setItem("vka_ref", ref);
-
-    // Fire-and-forget click track
+    // Track click and get cookieDays from server, then store with expiry
     fetch(`${API_BASE}/api/affiliate/track`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ referralCode: ref }),
-    }).catch(() => {});
+    })
+      .then(r => r.json())
+      .then(({ cookieDays = 30 }) => {
+        const expiry = Date.now() + cookieDays * 24 * 60 * 60 * 1000;
+        localStorage.setItem(VKA_REF_KEY, JSON.stringify({ code: ref, expiry }));
+      })
+      .catch(() => {
+        // Fallback: store with 30-day default if fetch fails
+        const expiry = Date.now() + 30 * 24 * 60 * 60 * 1000;
+        localStorage.setItem(VKA_REF_KEY, JSON.stringify({ code: ref, expiry }));
+      });
   }, []);
   return null;
 }

@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useGetCourse, useValidateCoupon } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { SiteFooter } from "@/components/layout/app-layout";
+import { getStoredRef } from "@/App";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -412,7 +413,7 @@ export default function CheckoutPage() {
 
   const executePayment = async () => {
     setProcessing(true);
-    const affiliateRef = sessionStorage.getItem("vka_ref") || undefined;
+    const affiliateRef = getStoredRef() || undefined;
     try {
       const res = await fetch(`${API_BASE}/api/payments/checkout/guest`, {
         method: "POST",
@@ -448,7 +449,7 @@ export default function CheckoutPage() {
   // ── Real Cashfree Payment ──────────────────────────────────────────────────
   const handleCashfreePayment = async () => {
     setProcessing(true);
-    const affiliateRef = sessionStorage.getItem("vka_ref") || undefined;
+    const affiliateRef = getStoredRef() || undefined;
     try {
       // Step 1: Create order on backend (creates user if needed)
       const res = await fetch(`${API_BASE}/api/payments/cashfree/create-order`, {
