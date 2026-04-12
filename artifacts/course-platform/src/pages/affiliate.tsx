@@ -333,7 +333,7 @@ function AffiliateDashboard({ user }: { user: any }) {
   );
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] bg-background">
+    <div className="flex h-[calc(100vh-4rem)] bg-background overflow-hidden">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed top-16 inset-x-0 bottom-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />

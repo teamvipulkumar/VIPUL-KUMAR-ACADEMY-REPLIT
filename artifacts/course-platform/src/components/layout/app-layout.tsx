@@ -482,7 +482,7 @@ export function SiteFooter() {
   );
 }
 
-export function AppLayout({ children }: { children: React.ReactNode }) {
+export function AppLayout({ children, noFooter }: { children: React.ReactNode; noFooter?: boolean }) {
   return (
     <div className="relative flex min-h-screen flex-col">
       <Navbar />
@@ -490,7 +490,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <EmailVerificationBanner />
         <main className="flex-1 min-w-0">{children}</main>
       </div>
-      <SiteFooter />
+      {!noFooter && <SiteFooter />}
     </div>
   );
 }
