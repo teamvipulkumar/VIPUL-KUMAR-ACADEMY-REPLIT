@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
-import { useLogout, useListNotifications, getListNotificationsQueryKey, getGetMeQueryKey } from "@workspace/api-client-react";
+import { useLogout, useListNotifications, getListNotificationsQueryKey, getGetMeQueryKey, useMarkNotificationRead, useMarkAllNotificationsRead } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Bell, Menu, X, BookOpen, Share2, GraduationCap, LogOut, ShieldCheck, ChevronRight, Mail, Youtube, Twitter, Linkedin, Instagram } from "lucide-react";
+import { Bell, Menu, X, BookOpen, Share2, GraduationCap, LogOut, ShieldCheck, ChevronRight, Mail, Youtube, Twitter, Linkedin, Instagram, CheckCheck } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EmailVerificationBanner } from "@/components/email-verification-banner";
 
@@ -20,14 +20,121 @@ function AcademyLogo({ size = 32 }: { size?: number }) {
   );
 }
 
+/* ─── Notification Popup ─── */
+function NotificationPopup({ iconSize = "w-4 h-4" }: { iconSize?: string }) {
+  const { isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: notifications } = useListNotifications({ query: { queryKey: getListNotificationsQueryKey(), enabled: isAuthenticated } });
+  const markRead = useMarkNotificationRead();
+  const markAll = useMarkAllNotificationsRead();
+  const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;
+
+  const handleMarkRead = (id: number) => {
+    markRead.mutate({ notificationId: id }, {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListNotificationsQueryKey() }),
+    });
+  };
+  const handleMarkAll = () => {
+    markAll.mutate(undefined, {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListNotificationsQueryKey() }),
+    });
+  };
+  const timeAgo = (date: string) => {
+    const diff = Date.now() - new Date(date).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  };
+  const typeStyle: Record<string, { dot: string; border: string }> = {
+    success: { dot: "bg-green-400", border: "border-l-green-500" },
+    info:    { dot: "bg-blue-400",  border: "border-l-blue-500"  },
+    warning: { dot: "bg-amber-400", border: "border-l-amber-500" },
+    error:   { dot: "bg-red-400",   border: "border-l-red-500"   },
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="relative w-9 h-9 p-0 rounded-lg hover:bg-white/5">
+          <Bell className={`${iconSize} text-foreground/70`} />
+          {unreadCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 bg-primary text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold leading-none">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80 bg-[#0d1424] border-white/10 p-0 shadow-2xl" sideOffset={8}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+          <div className="flex items-center gap-2">
+            <Bell className="w-3.5 h-3.5 text-primary" />
+            <span className="text-sm font-semibold text-foreground">Notifications</span>
+            {unreadCount > 0 && (
+              <span className="text-[10px] bg-primary/15 text-primary rounded-full px-1.5 py-0.5 font-bold">{unreadCount} new</span>
+            )}
+          </div>
+          {unreadCount > 0 && (
+            <button onClick={handleMarkAll} className="text-[11px] text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+              <CheckCheck className="w-3 h-3" />Mark all read
+            </button>
+          )}
+        </div>
+
+        {/* List */}
+        <div className="max-h-[360px] overflow-y-auto divide-y divide-white/[0.05]">
+          {!notifications || notifications.length === 0 ? (
+            <div className="py-12 text-center">
+              <Bell className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No notifications yet</p>
+            </div>
+          ) : (
+            notifications.slice(0, 8).map(n => {
+              const ts = typeStyle[n.type] ?? typeStyle.info;
+              return (
+                <div
+                  key={n.id}
+                  onClick={() => { if (!n.isRead) handleMarkRead(n.id); }}
+                  className={`flex gap-3 px-4 py-3 border-l-2 ${ts.border} transition-colors ${
+                    n.isRead ? "opacity-55" : "bg-white/[0.025] cursor-pointer hover:bg-white/[0.05]"
+                  }`}
+                >
+                  <span className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${ts.dot} ${n.isRead ? "opacity-40" : ""}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className={`text-xs font-semibold leading-snug ${n.isRead ? "text-muted-foreground" : "text-foreground"}`}>{n.title}</p>
+                      <span className="text-[10px] text-muted-foreground/50 flex-shrink-0 mt-0.5">{timeAgo(String(n.createdAt))}</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug line-clamp-2">{n.message}</p>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Footer */}
+        {notifications && notifications.length > 0 && (
+          <div className="px-4 py-2.5 border-t border-white/10">
+            <Link href="/notifications" className="text-xs text-primary hover:text-primary/80 transition-colors font-medium flex items-center justify-center gap-1">
+              View all notifications <ChevronRight className="w-3 h-3" />
+            </Link>
+          </div>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function Navbar() {
   const { user, isAuthenticated, isAdmin } = useAuth();
   const [, setLocation] = useLocation();
   const [location] = useLocation();
   const logout = useLogout();
   const queryClient = useQueryClient();
-  const { data: notifications } = useListNotifications({ query: { queryKey: getListNotificationsQueryKey(), enabled: isAuthenticated } });
-  const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -115,16 +222,7 @@ export function Navbar() {
               </>
             ) : (
               <div className="flex items-center gap-1.5">
-                <Link href="/notifications">
-                  <Button variant="ghost" size="sm" className="relative w-9 h-9 p-0 rounded-lg hover:bg-white/5">
-                    <Bell className="w-4 h-4 text-foreground/70" />
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 bg-primary text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold leading-none">
-                        {unreadCount > 9 ? "9+" : unreadCount}
-                      </span>
-                    )}
-                  </Button>
-                </Link>
+                <NotificationPopup iconSize="w-4 h-4" />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="gap-2 h-9 px-2 rounded-lg hover:bg-white/5">
@@ -159,18 +257,7 @@ export function Navbar() {
 
           {/* ── Mobile right controls ── */}
           <div className="flex md:hidden items-center gap-1 ml-auto">
-            {isAuthenticated && (
-              <Link href="/notifications" onClick={() => setMobileOpen(false)}>
-                <Button variant="ghost" size="sm" className="relative w-9 h-9 p-0 rounded-lg hover:bg-white/5">
-                  <Bell className="w-5 h-5 text-foreground/70" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 bg-primary text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </span>
-                  )}
-                </Button>
-              </Link>
-            )}
+            {isAuthenticated && <NotificationPopup iconSize="w-5 h-5" />}
             <Button
               variant="ghost"
               size="sm"
