@@ -30,7 +30,7 @@ type Tab = "earnings" | "sales" | "links" | "clicks" | "creatives" | "kyc" | "pa
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "earnings",   label: "Dashboard",      icon: <BadgeIndianRupee className="w-4 h-4" /> },
-  { id: "sales",      label: "Sales",          icon: <FileText className="w-4 h-4" /> },
+  { id: "sales",      label: "Sales Report",   icon: <FileText className="w-4 h-4" /> },
   { id: "links",      label: "Affiliate Links", icon: <Link2 className="w-4 h-4" /> },
   { id: "clicks",     label: "Clicks",         icon: <MousePointerClick className="w-4 h-4" /> },
   { id: "creatives",  label: "Creatives",      icon: <Image className="w-4 h-4" /> },
