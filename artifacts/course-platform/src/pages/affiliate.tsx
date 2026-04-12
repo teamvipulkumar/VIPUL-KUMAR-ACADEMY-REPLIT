@@ -486,16 +486,18 @@ function AffiliateDashboard({ user }: { user: any }) {
 
               {/* Summary row */}
               <div className="grid grid-cols-3 gap-3">
-                {[
-                  { label: "Total Sales", value: sales.length, color: "text-foreground" },
-                  { label: "Total Revenue", value: `₹${sales.reduce((s, r) => s + (r.saleAmount ?? 0), 0).toLocaleString("en-IN")}`, color: "text-blue-400" },
-                  { label: "Total Commission", value: `₹${sales.reduce((s, r) => s + r.commission, 0).toLocaleString("en-IN")}`, color: "text-green-400" },
-                ].map(s => (
-                  <div key={s.label} className="bg-card border border-border rounded-xl p-4 text-center">
-                    <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
-                  </div>
-                ))}
+                <div className="bg-card border border-border rounded-xl p-4 text-center">
+                  <p className="text-xl font-bold text-foreground">{sales.length}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Total Sales</p>
+                </div>
+                <div className="bg-card border border-border rounded-xl p-4 text-center transition-colors hover:border-blue-500/40 hover:bg-blue-500/5 cursor-default">
+                  <p className="text-xl font-bold text-blue-400">₹{sales.reduce((s, r) => s + (r.saleAmount ?? 0), 0).toLocaleString("en-IN")}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Total Revenue</p>
+                </div>
+                <div className="bg-card border border-border rounded-xl p-4 text-center">
+                  <p className="text-xl font-bold text-green-400">₹{sales.reduce((s, r) => s + r.commission, 0).toLocaleString("en-IN")}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Total Commission</p>
+                </div>
               </div>
 
               {/* Sales table */}
@@ -522,7 +524,7 @@ function AffiliateDashboard({ user }: { user: any }) {
                         {sales.map((sale, i) => {
                           const dt = new Date(sale.createdAt);
                           return (
-                            <tr key={sale.id} className="hover:bg-white/[0.02] transition-colors">
+                            <tr key={sale.id}>
                               <td className="px-5 py-3.5 text-xs text-muted-foreground">{i + 1}</td>
                               <td className="px-5 py-3.5">
                                 <span className="font-medium text-foreground text-sm">{sale.courseTitle}</span>
