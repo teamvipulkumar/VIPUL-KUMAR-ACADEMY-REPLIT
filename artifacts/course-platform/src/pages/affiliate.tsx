@@ -234,6 +234,7 @@ function AffiliateDashboard({ user }: { user: any }) {
   const [bank, setBank] = useState<any>(null);
   const [pixel, setPixel] = useState<any>(null);
   const [copied, setCopied] = useState(false);
+  const [chartDays, setChartDays] = useState<7 | 30>(7);
   const { toast } = useToast();
 
   useEffect(() => { loadDashboard(); }, []);
@@ -361,21 +362,44 @@ function AffiliateDashboard({ user }: { user: any }) {
 
               {/* Daily chart */}
               <div className="bg-card border border-border rounded-2xl p-4 sm:p-5">
-                <h3 className="text-sm font-semibold text-foreground mb-4">Daily Earnings — Last 30 Days</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-foreground">Daily Earnings</h3>
+                  <div className="flex items-center gap-1 bg-background border border-border rounded-lg p-0.5">
+                    {([7, 30] as const).map(d => (
+                      <button
+                        key={d}
+                        onClick={() => setChartDays(d)}
+                        className={`text-xs px-2.5 py-1 rounded-md font-medium transition-all ${
+                          chartDays === d
+                            ? "bg-primary text-white"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {d}d
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <ResponsiveContainer width="100%" height={200}>
-                  <AreaChart data={dashboard?.dailyChart ?? []} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
-                    <defs>
-                      <linearGradient id="earningsGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={v => v.substring(5)} interval="preserveStartEnd" />
+                  <BarChart
+                    data={(dashboard?.dailyChart ?? []).slice(-chartDays)}
+                    margin={{ top: 5, right: 5, bottom: 5, left: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 10, fill: "#6b7280" }}
+                      tickFormatter={v => v.substring(5)}
+                      interval={chartDays === 7 ? 0 : "preserveStartEnd"}
+                    />
                     <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={v => `₹${v}`} width={50} />
-                    <Tooltip contentStyle={{ background: "#0d1424", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }} formatter={(v: any) => [`₹${Number(v).toFixed(2)}`, "Earnings"]} />
-                    <Area type="monotone" dataKey="amount" stroke="#2563eb" strokeWidth={2} fill="url(#earningsGrad)" />
-                  </AreaChart>
+                    <Tooltip
+                      contentStyle={{ background: "#0d1424", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
+                      formatter={(v: any) => [`₹${Number(v).toFixed(2)}`, "Earnings"]}
+                      cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                    />
+                    <Bar dataKey="amount" fill="#2563eb" radius={[4, 4, 0, 0]} name="Earnings" maxBarSize={40} />
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
 
