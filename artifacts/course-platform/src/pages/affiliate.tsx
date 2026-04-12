@@ -455,7 +455,8 @@ function AffiliateDashboard({ user }: { user: any }) {
                       labelFormatter={(v: string) => `${v.substring(8)}-${v.substring(5, 7)}-${v.substring(0, 4)}`}
                       cursor={false}
                     />
-                    <Bar dataKey="amount" fill="#2563eb" radius={[4, 4, 0, 0]} name="Earnings" maxBarSize={40} />
+                    <Bar dataKey="amount" fill="#2563eb" radius={[4, 4, 0, 0]} name="Earnings" maxBarSize={40}
+                      activeBar={{ fill: "#3b82f6", filter: "drop-shadow(0 0 6px rgba(59,130,246,0.7))" }} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
