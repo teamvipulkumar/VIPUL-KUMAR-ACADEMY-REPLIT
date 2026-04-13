@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -649,82 +649,88 @@ function KycTab() {
           <p className="font-semibold">No KYC submissions</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {filtered.map(r => (
-            <div key={r.id} className="bg-card border border-border rounded-xl overflow-hidden">
-              {/* Header */}
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
-                  {r.userName.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm">{r.userName}</p>
-                  <p className="text-xs text-muted-foreground">{r.userEmail} · Submitted {fmtDate(r.submittedAt)}</p>
-                </div>
-                <StatusBadge status={r.status} />
-              </div>
-
-              {/* Details */}
-              <div className="px-4 py-3 grid md:grid-cols-2 gap-4">
-                {/* Name as Per PAN */}
-                <div>
-                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Name as Per PAN</p>
-                  <p className="text-sm font-medium text-foreground bg-background border border-border rounded-lg px-3 py-2">
-                    {r.idProofName ?? <span className="text-muted-foreground">Not provided</span>}
-                  </p>
-                </div>
-
-                {/* PAN Front Photo */}
-                <div>
-                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1">PAN Front Photo</p>
-                  {r.addressProofName ? (
-                    <div
-                      className="relative rounded-lg overflow-hidden border border-border cursor-pointer group h-24"
-                      onClick={() => setExpandedPhoto(r.addressProofName!)}
-                    >
-                      <img src={r.addressProofName} alt="PAN" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
-                        <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium transition-opacity">Click to enlarge</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="h-24 bg-background border border-border rounded-lg flex items-center justify-center">
-                      <p className="text-xs text-muted-foreground">No photo uploaded</p>
-                    </div>
+        <div className="border border-border rounded-xl overflow-hidden">
+          <table className="w-full min-w-[700px]">
+            <thead className="bg-card border-b border-border">
+              <tr>
+                {["Affiliate", "Name as Per PAN", "PAN Photo", "Date", "Status", "Actions"].map(h => (
+                  <th key={h} className="text-left text-xs font-medium text-muted-foreground px-3 py-2.5">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filtered.map(r => (
+                <Fragment key={r.id}>
+                  <tr className="hover:bg-card/40 transition-colors">
+                    <td className="px-3 py-2.5">
+                      <p className="text-sm font-medium text-foreground leading-tight">{r.userName}</p>
+                      <p className="text-[11px] text-muted-foreground">{r.userEmail}</p>
+                    </td>
+                    <td className="px-3 py-2.5 text-sm text-foreground max-w-[160px] truncate" title={r.idProofName ?? ""}>
+                      {r.idProofName ?? <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {r.addressProofName ? (
+                        <div
+                          className="w-12 h-8 rounded overflow-hidden border border-border cursor-pointer group relative flex-shrink-0"
+                          onClick={() => setExpandedPhoto(r.addressProofName!)}
+                        >
+                          <img src={r.addressProofName} alt="PAN" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all" />
+                        </div>
+                      ) : <span className="text-muted-foreground text-xs">—</span>}
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{fmtDate(r.submittedAt)}</td>
+                    <td className="px-3 py-2.5"><StatusBadge status={r.status} /></td>
+                    <td className="px-3 py-2.5">
+                      {r.status === "pending" ? (
+                        <div className="flex items-center gap-1.5">
+                          <Button onClick={() => doAction(r.userId, "approve")} disabled={!!actionLoading} size="sm"
+                            className="bg-green-500 hover:bg-green-600 text-white h-6 text-[10px] px-2 gap-1">
+                            {actionLoading === `approve-${r.userId}` ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <CheckCircle2 className="w-2.5 h-2.5" />}Approve
+                          </Button>
+                          <Button
+                            onClick={() => setRejectNote(n => ({ ...n, [r.userId]: n[r.userId] === undefined ? "" : undefined as any }))}
+                            size="sm" variant="outline"
+                            className="border-red-500/30 text-red-400 hover:bg-red-500/10 h-6 text-[10px] px-2 gap-1">
+                            <XCircle className="w-2.5 h-2.5" />Reject
+                          </Button>
+                        </div>
+                      ) : r.adminNote ? (
+                        <p className="text-[10px] text-muted-foreground max-w-[120px] truncate" title={r.adminNote}>{r.adminNote}</p>
+                      ) : null}
+                    </td>
+                  </tr>
+                  {/* Inline reject reason row */}
+                  {r.status === "pending" && rejectNote[r.userId] !== undefined && (
+                    <tr className="bg-red-500/5">
+                      <td colSpan={6} className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            placeholder="Enter rejection reason…"
+                            value={rejectNote[r.userId] ?? ""}
+                            onChange={e => setRejectNote(n => ({ ...n, [r.userId]: e.target.value }))}
+                            className="bg-background border-red-500/30 text-sm h-7 flex-1"
+                            autoFocus
+                          />
+                          <Button onClick={() => doAction(r.userId, "reject")} disabled={!!actionLoading} size="sm"
+                            className="bg-red-500 hover:bg-red-600 text-white h-7 text-xs px-3 gap-1 flex-shrink-0">
+                            {actionLoading === `reject-${r.userId}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}Confirm Reject
+                          </Button>
+                          <button
+                            onClick={() => setRejectNote(n => { const c = { ...n }; delete c[r.userId]; return c; })}
+                            className="text-muted-foreground hover:text-foreground flex-shrink-0"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   )}
-                </div>
-              </div>
-
-              {/* Actions for pending */}
-              {r.status === "pending" && (
-                <div className="px-4 pb-4 space-y-2">
-                  <Input
-                    placeholder="Rejection reason (required to reject)…"
-                    value={rejectNote[r.userId] ?? ""}
-                    onChange={e => setRejectNote(n => ({ ...n, [r.userId]: e.target.value }))}
-                    className="bg-background border-border text-sm h-8"
-                  />
-                  <div className="flex gap-2">
-                    <Button onClick={() => doAction(r.userId, "approve")} disabled={!!actionLoading} size="sm"
-                      className="bg-green-500 hover:bg-green-600 text-white gap-1.5">
-                      {actionLoading === `approve-${r.userId}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}Approve KYC
-                    </Button>
-                    <Button onClick={() => doAction(r.userId, "reject")} disabled={!!actionLoading} size="sm" variant="outline"
-                      className="border-red-500/30 text-red-400 hover:bg-red-500/10 gap-1.5">
-                      {actionLoading === `reject-${r.userId}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}Reject
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Admin note for reviewed records */}
-              {r.adminNote && r.status !== "pending" && (
-                <div className="px-4 pb-3">
-                  <p className="text-[11px] text-muted-foreground"><span className="font-medium text-foreground">Admin note:</span> {r.adminNote}</p>
-                </div>
-              )}
-            </div>
-          ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
