@@ -54,12 +54,20 @@ html, body {
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-:root {
+/* ── Dark mode (default) ── */
+:root, .dark {
   --button-outline: rgba(255,255,255, .10);
   --badge-outline: rgba(255,255,255, .05);
   --opaque-button-border-intensity: 9;
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
+
+  --nav-bg: #070c1a;
+  --nav-border: rgba(255,255,255,0.06);
+  --dropdown-bg: #0d1424;
+  --dropdown-border: rgba(255,255,255,0.10);
+  --footer-bg: #040810;
+  --mobile-drawer-bg: #070c1a;
 
   /* Deep Navy Background */
   --background: 222 47% 7%;
@@ -111,7 +119,7 @@ html, body {
   --app-font-sans: 'Inter', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
-  --radius: .5rem; 
+  --radius: .5rem;
 
   --shadow-sm: 0px 2px 4px 0px rgba(0,0,0,0.5);
   --shadow: 0px 4px 8px 0px rgba(0,0,0,0.5);
@@ -121,8 +129,72 @@ html, body {
   color-scheme: dark;
 }
 
-.dark {
-  /* It is always dark */
+/* ── Light mode ── */
+.light {
+  --button-outline: rgba(0,0,0, .10);
+  --badge-outline: rgba(0,0,0, .05);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(0,0,0, .03);
+  --elevate-2: rgba(0,0,0, .06);
+
+  --nav-bg: #ffffff;
+  --nav-border: rgba(0,0,0,0.08);
+  --dropdown-bg: #ffffff;
+  --dropdown-border: rgba(0,0,0,0.10);
+  --footer-bg: #f1f5f9;
+  --mobile-drawer-bg: #ffffff;
+
+  --background: 0 0% 98%;
+  --foreground: 222 47% 11%;
+
+  --border: 214 31.8% 88%;
+  --input: 214 31.8% 88%;
+  --ring: 224 76% 48%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --card-border: 214 31.8% 88%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --popover-border: 214 31.8% 88%;
+
+  --sidebar: 210 40% 96%;
+  --sidebar-foreground: 222 47% 11%;
+  --sidebar-border: 214 31.8% 88%;
+  --sidebar-primary: 224 76% 48%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 210 40% 94%;
+  --sidebar-accent-foreground: 222 47% 11%;
+  --sidebar-ring: 224 76% 48%;
+
+  --primary: 224 76% 48%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 210 40% 93%;
+  --secondary-foreground: 222 47% 11%;
+
+  --muted: 210 40% 93%;
+  --muted-foreground: 215 16% 47%;
+
+  --accent: 210 40% 93%;
+  --accent-foreground: 222 47% 11%;
+
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+
+  --chart-1: 224 76% 48%;
+  --chart-2: 222 47% 11%;
+  --chart-3: 199 89% 48%;
+  --chart-4: 210 40% 93%;
+  --chart-5: 0 0% 100%;
+
+  --shadow-sm: 0px 2px 4px 0px rgba(0,0,0,0.08);
+  --shadow: 0px 4px 8px 0px rgba(0,0,0,0.08);
+  --shadow-md: 0px 8px 16px 0px rgba(0,0,0,0.08);
+  --shadow-lg: 0px 16px 32px 0px rgba(0,0,0,0.08);
+
+  color-scheme: light;
 }
 
 @layer base {

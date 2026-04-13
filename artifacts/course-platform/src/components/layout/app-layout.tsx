@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
+import { useTheme } from "@/lib/theme-context";
 import { Button } from "@/components/ui/button";
 import { useLogout, useListNotifications, getListNotificationsQueryKey, getGetMeQueryKey, useMarkNotificationRead, useMarkAllNotificationsRead } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Bell, Menu, X, BookOpen, Share2, GraduationCap, LogOut, ShieldCheck, ChevronRight, Mail, Youtube, Twitter, Linkedin, Instagram, CheckCheck } from "lucide-react";
+import { Bell, Menu, X, BookOpen, Share2, GraduationCap, LogOut, ShieldCheck, ChevronRight, Mail, Youtube, Twitter, Linkedin, Instagram, CheckCheck, Sun, Moon } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EmailVerificationBanner } from "@/components/email-verification-banner";
 
@@ -67,7 +68,7 @@ function NotificationPopup({ iconSize = "w-4 h-4" }: { iconSize?: string }) {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 bg-[#0d1424] border-white/10 p-0 shadow-2xl" sideOffset={8}>
+      <DropdownMenuContent align="end" className="w-80 border p-0 shadow-2xl" style={{ backgroundColor: "var(--dropdown-bg)", borderColor: "var(--dropdown-border)" }} sideOffset={8}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
           <div className="flex items-center gap-2">
@@ -131,6 +132,7 @@ function NotificationPopup({ iconSize = "w-4 h-4" }: { iconSize?: string }) {
 
 export function Navbar() {
   const { user, isAuthenticated, isAdmin } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [, setLocation] = useLocation();
   const [location] = useLocation();
   const logout = useLogout();
@@ -181,11 +183,9 @@ export function Navbar() {
 
   return (
     <>
-      <header className={`fixed top-0 left-0 right-0 z-50 w-full border-b border-white/[0.06] transition-all duration-300 ${
-        scrolled
-          ? "bg-[#070c1a] shadow-[0_2px_20px_0_rgba(0,0,0,0.4)]"
-          : "bg-[#070c1a] shadow-[0_1px_0_0_rgba(255,255,255,0.05)]"
-      }`}>
+      <header className={`fixed top-0 left-0 right-0 z-50 w-full border-b transition-all duration-300 ${
+        scrolled ? "shadow-[0_2px_20px_0_rgba(0,0,0,0.15)]" : ""
+      }`} style={{ backgroundColor: "var(--nav-bg)", borderColor: "var(--nav-border)" }}>
         <div className={`max-w-screen-xl mx-auto flex items-center px-4 md:px-8 gap-4 transition-all duration-300 ${scrolled ? "h-12" : "h-16"}`}>
 
           {/* ── Logo (left) ── */}
@@ -232,8 +232,8 @@ export function Navbar() {
                       <span className="hidden lg:block text-sm font-medium text-foreground/80">{user?.name?.split(" ")[0]}</span>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-52 bg-[#0d1424] border-white/10">
-                    <div className="px-3 py-2 border-b border-white/5 mb-1">
+                  <DropdownMenuContent align="end" className="w-56 border" style={{ backgroundColor: "var(--dropdown-bg)", borderColor: "var(--dropdown-border)" }}>
+                    <div className="px-3 py-2 border-b mb-1" style={{ borderColor: "var(--dropdown-border)" }}>
                       <p className="text-xs font-semibold text-foreground truncate">{user?.name}</p>
                       <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                     </div>
@@ -245,6 +245,22 @@ export function Navbar() {
                         <DropdownMenuItem asChild><Link href="/admin">Admin Panel</Link></DropdownMenuItem>
                       </>
                     )}
+                    <DropdownMenuSeparator />
+                    <div className="px-2 py-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-1 mb-1">Preferences</p>
+                      <button
+                        onClick={toggleTheme}
+                        className="w-full flex items-center justify-between px-2 py-1.5 rounded-md text-sm text-foreground hover:bg-accent transition-colors"
+                      >
+                        <span className="flex items-center gap-2">
+                          {theme === "dark" ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
+                          {theme === "dark" ? "Dark Mode" : "Light Mode"}
+                        </span>
+                        <span className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${theme === "dark" ? "bg-primary" : "bg-muted"}`}>
+                          <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform ${theme === "dark" ? "translate-x-3.5" : "translate-x-0.5"}`} />
+                        </span>
+                      </button>
+                    </div>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout} className="text-red-400 focus:text-red-400 focus:bg-red-500/10">
                       <LogOut className="w-3.5 h-3.5 mr-2" />Sign Out
@@ -275,7 +291,7 @@ export function Navbar() {
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <nav className="absolute top-16 left-0 right-0 bg-[#070c1a] border-b border-white/10 shadow-2xl max-h-[calc(100vh-4rem)] overflow-y-auto">
+          <nav className="absolute top-16 left-0 right-0 border-b shadow-2xl max-h-[calc(100vh-4rem)] overflow-y-auto" style={{ backgroundColor: "var(--mobile-drawer-bg)", borderColor: "var(--nav-border)" }}>
             {isAuthenticated && (
               <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5">
                 <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-white">
@@ -364,7 +380,7 @@ export function SiteFooter() {
   ];
 
   return (
-    <footer className="bg-[#040810] border-t border-white/[0.06]">
+    <footer className="border-t" style={{ backgroundColor: "var(--footer-bg)", borderColor: "var(--nav-border)" }}>
       {/* ── Main grid ── */}
       <div className="max-w-screen-xl mx-auto px-4 md:px-8 pt-14 pb-10">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
