@@ -59,6 +59,7 @@ export const affiliateKycTable = pgTable("affiliate_kyc", {
   addressProofUrl: text("address_proof_url"),
   idProofName: text("id_proof_name"),
   addressProofName: text("address_proof_name"),
+  panNumber: text("pan_number"),
   status: text("status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"),
   adminNote: text("admin_note"),
   submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),

@@ -73,6 +73,7 @@ type KycRecord = {
   id: number;
   userId: number;
   idProofName: string | null;
+  panNumber: string | null;
   addressProofName: string | null;
   status: "pending" | "approved" | "rejected";
   adminNote: string | null;
@@ -653,7 +654,7 @@ function KycTab() {
           <table className="w-full min-w-[700px]">
             <thead className="bg-card border-b border-border">
               <tr>
-                {["Affiliate", "Name as Per PAN", "PAN Photo", "Date", "Status", "Actions"].map(h => (
+                {["Affiliate", "Name as Per PAN", "PAN Number", "PAN Photo", "Date", "Status", "Actions"].map(h => (
                   <th key={h} className="text-left text-xs font-medium text-muted-foreground px-3 py-2.5">{h}</th>
                 ))}
               </tr>
@@ -668,6 +669,9 @@ function KycTab() {
                     </td>
                     <td className="px-3 py-2.5 text-sm text-foreground max-w-[160px] truncate" title={r.idProofName ?? ""}>
                       {r.idProofName ?? <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td className="px-3 py-2.5 text-sm font-mono text-foreground tracking-widest whitespace-nowrap">
+                      {r.panNumber ?? <span className="text-muted-foreground font-sans tracking-normal">—</span>}
                     </td>
                     <td className="px-3 py-2.5">
                       {r.addressProofName ? (

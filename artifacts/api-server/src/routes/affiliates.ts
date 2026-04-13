@@ -248,7 +248,7 @@ router.get("/kyc", requireAuth, async (req, res): Promise<void> => {
 
 router.post("/kyc", requireAuth, async (req, res): Promise<void> => {
   const authedReq = req as AuthedRequest;
-  const { idProofName, addressProofName } = req.body;
+  const { idProofName, addressProofName, panNumber } = req.body;
   if (!idProofName || !addressProofName) {
     res.status(400).json({ error: "Both ID proof and address proof names are required" }); return;
   }
@@ -256,12 +256,12 @@ router.post("/kyc", requireAuth, async (req, res): Promise<void> => {
     .where(eq(affiliateKycTable.userId, authedReq.user.userId)).limit(1);
   if (existing) {
     const [updated] = await db.update(affiliateKycTable)
-      .set({ idProofName, addressProofName, status: "pending", adminNote: null, submittedAt: new Date() })
+      .set({ idProofName, addressProofName, panNumber: panNumber ?? null, status: "pending", adminNote: null, submittedAt: new Date() })
       .where(eq(affiliateKycTable.userId, authedReq.user.userId)).returning();
     res.json(updated);
   } else {
     const [created] = await db.insert(affiliateKycTable).values({
-      userId: authedReq.user.userId, idProofName, addressProofName, status: "pending",
+      userId: authedReq.user.userId, idProofName, addressProofName, panNumber: panNumber ?? null, status: "pending",
     }).returning();
     res.json(created);
   }

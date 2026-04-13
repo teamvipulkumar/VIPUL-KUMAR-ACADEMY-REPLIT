@@ -845,6 +845,7 @@ function CreativesTab({ creatives }: { creatives: any[] }) {
 function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
   const { toast } = useToast();
   const [panName, setPanName] = useState(kyc?.idProofName ?? "");
+  const [panNumber, setPanNumber] = useState(kyc?.panNumber ?? "");
   const [panPhotoUrl, setPanPhotoUrl] = useState(kyc?.addressProofName ?? "");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -884,7 +885,7 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
     try {
       const res = await apiFetch("/api/affiliate/kyc", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idProofName: panName.trim(), addressProofName: panPhotoUrl }),
+        body: JSON.stringify({ idProofName: panName.trim(), addressProofName: panPhotoUrl, panNumber: panNumber.trim().toUpperCase() || null }),
       });
       if (!res.ok) throw new Error("Failed");
       const data = await res.json();
@@ -915,9 +916,15 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
           <div className="text-left space-y-2 pt-1">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Submitted Details</p>
             <div className="bg-background border border-border rounded-xl p-3 space-y-3">
-              <div>
-                <p className="text-[11px] text-muted-foreground">Name as Per PAN</p>
-                <p className="text-sm font-medium text-foreground mt-0.5">{kyc.idProofName ?? "—"}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Name as Per PAN</p>
+                  <p className="text-sm font-medium text-foreground mt-0.5">{kyc.idProofName ?? "—"}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">PAN Number</p>
+                  <p className="text-sm font-mono font-medium text-foreground mt-0.5 tracking-widest">{kyc.panNumber ?? "—"}</p>
+                </div>
               </div>
               {kyc.addressProofName && (
                 <div>
@@ -947,9 +954,15 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
           <div className="text-left space-y-2">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Verified Details</p>
             <div className="bg-background border border-border rounded-xl p-3 space-y-3">
-              <div>
-                <p className="text-[11px] text-muted-foreground">Name as Per PAN</p>
-                <p className="text-sm font-medium text-foreground mt-0.5">{kyc.idProofName ?? "—"}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Name as Per PAN</p>
+                  <p className="text-sm font-medium text-foreground mt-0.5">{kyc.idProofName ?? "—"}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">PAN Number</p>
+                  <p className="text-sm font-mono font-medium text-foreground mt-0.5 tracking-widest">{kyc.panNumber ?? "—"}</p>
+                </div>
               </div>
               {kyc.addressProofName && (
                 <div>
@@ -990,7 +1003,19 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
             />
           </div>
 
-          {/* Field 2 — PAN Front Photo */}
+          {/* Field 2 — PAN Number */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">PAN Number</Label>
+            <Input
+              value={panNumber}
+              onChange={e => setPanNumber(e.target.value.toUpperCase())}
+              placeholder="e.g. ABCDE1234F"
+              maxLength={10}
+              className="bg-background border-border font-mono uppercase tracking-widest"
+            />
+          </div>
+
+          {/* Field 3 — PAN Front Photo */}
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">PAN Front Photo <span className="text-muted-foreground/60">(Max 1 MB)</span></Label>
             <input
