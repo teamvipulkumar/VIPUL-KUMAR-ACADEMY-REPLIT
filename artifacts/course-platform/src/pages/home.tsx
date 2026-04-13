@@ -39,8 +39,7 @@ export default function Home() {
     <div className="flex flex-col">
       {/* Hero */}
       <section className="relative py-14 md:py-24 px-4 md:px-12 flex flex-col items-center text-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-radial from-primary/15 via-primary/5 to-transparent pointer-events-none" />
-        <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-radial from-primary/10 via-transparent to-transparent pointer-events-none" />
         <div className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary mb-8">
           <Star className="w-3.5 h-3.5 mr-2 fill-primary" />
           Premium Business Education
