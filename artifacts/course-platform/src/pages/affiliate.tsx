@@ -559,7 +559,7 @@ function AffiliateDashboard({ user }: { user: any }) {
                               <td className="px-5 py-3.5 text-left">
                                 <span className="font-bold text-green-400">₹{sale.commission.toLocaleString("en-IN")}</span>
                               </td>
-                              <td className="px-5 py-3.5 text-right">
+                              <td className="px-5 py-3.5 text-left">
                                 {sale.saleAmount != null
                                   ? <span className="font-semibold text-foreground">₹{Number(sale.saleAmount).toLocaleString("en-IN")}</span>
                                   : <span className="text-muted-foreground text-xs">—</span>
