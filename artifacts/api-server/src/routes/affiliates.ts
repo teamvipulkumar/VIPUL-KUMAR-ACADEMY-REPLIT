@@ -413,21 +413,33 @@ router.post("/track", async (req, res): Promise<void> => {
     });
     /* Also create a referral record for backward compat */
     await db.insert(referralsTable).values({ referrerId: referrer.id, courseId: courseId || null, status: "click" });
-
-    /* Fire FB InitiateCheckout event (non-blocking) */
-    const [pixel] = await db.select({ facebookPixelId: affiliatePixelTable.facebookPixelId, accessToken: affiliatePixelTable.accessToken })
-      .from(affiliatePixelTable).where(eq(affiliatePixelTable.userId, referrer.id)).limit(1);
-    if (pixel?.facebookPixelId && pixel?.accessToken) {
-      const userIp = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ?? req.socket.remoteAddress ?? undefined;
-      const userAgent = req.headers["user-agent"] ?? undefined;
-      sendFbEvent(pixel.facebookPixelId, pixel.accessToken, {
-        eventName: "InitiateCheckout",
-        userIp,
-        userAgent,
-      }).catch(e => console.error("[fb pixel InitiateCheckout]", e));
-    }
   }
   res.json({ message: "Tracked", cookieDays });
+});
+
+/* ── Fire InitiateCheckout pixel event when checkout page opens ── */
+router.post("/pixel/initiate-checkout", async (req, res): Promise<void> => {
+  const { affiliateRef } = req.body;
+  if (!affiliateRef) { res.json({ sent: false }); return; }
+
+  const [referrer] = await db.select({ id: usersTable.id })
+    .from(usersTable).where(eq(usersTable.referralCode, affiliateRef)).limit(1);
+  if (!referrer) { res.json({ sent: false }); return; }
+
+  const [pixel] = await db.select({ facebookPixelId: affiliatePixelTable.facebookPixelId, accessToken: affiliatePixelTable.accessToken })
+    .from(affiliatePixelTable).where(eq(affiliatePixelTable.userId, referrer.id)).limit(1);
+  if (!pixel?.facebookPixelId || !pixel?.accessToken) { res.json({ sent: false }); return; }
+
+  const userIp = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ?? req.socket.remoteAddress ?? undefined;
+  const userAgent = req.headers["user-agent"] ?? undefined;
+
+  sendFbEvent(pixel.facebookPixelId, pixel.accessToken, {
+    eventName: "InitiateCheckout",
+    userIp,
+    userAgent,
+  }).catch(e => console.error("[fb pixel InitiateCheckout]", e));
+
+  res.json({ sent: true });
 });
 
 /* ── Admin: affiliate applications ── */

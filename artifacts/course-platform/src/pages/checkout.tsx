@@ -398,6 +398,17 @@ export default function CheckoutPage() {
     if (!success && course?.isEnrolled) navigate(`/learn/${courseId}`);
   }, [course?.isEnrolled, success]);
 
+  // Fire InitiateCheckout FB pixel event when checkout page opens
+  useEffect(() => {
+    const ref = getStoredRef();
+    if (!ref) return;
+    fetch(`${API_BASE}/api/affiliate/pixel/initiate-checkout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ affiliateRef: ref }),
+    }).catch(() => {});
+  }, []);
+
   const handleApplyCoupon = () => {
     if (!couponCode.trim()) return;
     const code = couponCode.trim().toUpperCase();
