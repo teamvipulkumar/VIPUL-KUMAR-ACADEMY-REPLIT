@@ -367,11 +367,9 @@ function SmtpTab() {
                     <Input value={form.username} onChange={e => set("username", e.target.value)} placeholder="you@gmail.com" className="bg-background border-border" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">
-                      Password / App Password
-                      {smtp?.passwordSet && <span className="ml-1 text-green-400">(saved — leave blank to keep)</span>}
-                    </Label>
-                    <Input type="password" value={form.password} onChange={e => set("password", e.target.value)} placeholder={smtp?.passwordSet ? "Leave blank to keep current password" : "Enter password"} className="bg-background border-border" />
+                    <Label className="text-xs text-muted-foreground">Password / App Password</Label>
+                    <Input type="password" value={form.password} onChange={e => set("password", e.target.value)} placeholder={smtp?.passwordSet ? "Leave blank to keep current" : "Enter password"} className="bg-background border-border" />
+                    {smtp?.passwordSet && <p className="text-xs text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Saved — leave blank to keep</p>}
                   </div>
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4">
