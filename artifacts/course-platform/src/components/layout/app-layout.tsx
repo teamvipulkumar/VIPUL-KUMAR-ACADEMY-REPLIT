@@ -194,9 +194,9 @@ export function Navbar() {
               <AcademyLogo size={34} />
             </div>
             <div className="leading-none">
-              <span className="font-extrabold text-sm tracking-wide text-white whitespace-nowrap">VIPUL KUMAR</span>
+              <span className="font-extrabold text-sm tracking-wide text-foreground whitespace-nowrap">VIPUL KUMAR</span>
               <br />
-              <span className="font-bold text-[11px] tracking-[0.18em] text-primary/90 uppercase whitespace-nowrap">Academy</span>
+              <span className="font-bold text-[11px] tracking-[0.18em] text-primary uppercase whitespace-nowrap">Academy</span>
             </div>
           </Link>
 
@@ -390,8 +390,8 @@ export function SiteFooter() {
             <Link href="/" className="inline-flex items-center gap-2.5 mb-4 group">
               <AcademyLogo size={36} />
               <div className="leading-none">
-                <p className="font-extrabold text-sm tracking-wide text-white">VIPUL KUMAR</p>
-                <p className="font-bold text-[11px] tracking-[0.2em] text-primary/90 uppercase">Academy</p>
+                <p className="font-extrabold text-sm tracking-wide text-foreground">VIPUL KUMAR</p>
+                <p className="font-bold text-[11px] tracking-[0.2em] text-primary uppercase">Academy</p>
               </div>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mb-5">
@@ -406,7 +406,7 @@ export function SiteFooter() {
                   target={href.startsWith("http") ? "_blank" : undefined}
                   rel="noopener noreferrer"
                   aria-label={label}
-                  className={`w-8 h-8 rounded-lg bg-white/5 border border-white/[0.07] flex items-center justify-center text-muted-foreground transition-all hover:bg-white/10 hover:border-white/15 ${color}`}
+                  className={`w-8 h-8 rounded-lg border flex items-center justify-center text-muted-foreground transition-all hover:text-foreground ${color}`} style={{ backgroundColor: "var(--elevate-1)", borderColor: "var(--button-outline)" }}
                 >
                   <Icon className="w-3.5 h-3.5" />
                 </a>
@@ -416,7 +416,7 @@ export function SiteFooter() {
 
           {/* Platform */}
           <div>
-            <h4 className="text-xs font-semibold text-white uppercase tracking-widest mb-4">Platform</h4>
+            <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-4">Platform</h4>
             <ul className="space-y-2.5">
               {footerNav.platform.map(item => (
                 <li key={item.href}>
@@ -430,7 +430,7 @@ export function SiteFooter() {
 
           {/* Company */}
           <div>
-            <h4 className="text-xs font-semibold text-white uppercase tracking-widest mb-4">Company</h4>
+            <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-4">Company</h4>
             <ul className="space-y-2.5">
               {footerNav.company.map(item => (
                 <li key={item.label}>
@@ -448,7 +448,7 @@ export function SiteFooter() {
 
           {/* Legal */}
           <div>
-            <h4 className="text-xs font-semibold text-white uppercase tracking-widest mb-4">Legal</h4>
+            <h4 className="text-xs font-semibold text-foreground uppercase tracking-widest mb-4">Legal</h4>
             <ul className="space-y-2.5">
               {footerNav.legal.map(item => (
                 <li key={item.href}>
