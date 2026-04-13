@@ -200,7 +200,7 @@ function DashboardTab() {
 
           <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm ${stats?.smtpConnected ? "bg-green-500/5 border-green-500/20 text-green-400" : "bg-red-500/5 border-red-500/20 text-red-400"}`}>
             {stats?.smtpConnected ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
-            {stats?.smtpConnected ? "SMTP is connected and active" : "SMTP is not configured — emails won't be sent. Go to the SMTP tab to set it up."}
+            {stats?.smtpConnected ? "SMTP is enabled — use the SMTP tab to send a test email and verify delivery" : "SMTP is not enabled — emails won't be sent. Go to the SMTP tab to configure."}
           </div>
 
           <div className="bg-card border border-border rounded-xl overflow-hidden">

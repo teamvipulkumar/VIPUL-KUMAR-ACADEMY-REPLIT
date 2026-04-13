@@ -21,12 +21,12 @@ export async function createTransporter(smtp: typeof smtpSettingsTable.$inferSel
     host: smtp.host,
     port: smtp.port,
     secure: smtp.secure,
-    requireTLS: !smtp.secure,
     auth: { user: smtp.username, pass: smtp.password },
-    connectionTimeout: 10000,
-    greetingTimeout: 5000,
-    socketTimeout: 15000,
-    tls: { rejectUnauthorized: false },
+    connectionTimeout: 15000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
+    tls: { rejectUnauthorized: false, minVersion: "TLSv1.2" },
+    ...(smtp.secure ? {} : { starttls: { enable: true } }),
   } as nodemailer.TransportOptions);
 }
 
@@ -118,25 +118,27 @@ router.put("/smtp", requireAdmin, async (req, res): Promise<void> => {
 router.post("/smtp/test", requireAdmin, async (req, res): Promise<void> => {
   const smtp = await getSmtp();
   if (!smtp || !smtp.host) { res.status(400).json({ error: "SMTP not configured" }); return; }
+  if (!smtp.password) { res.status(400).json({ error: "SMTP password not set — save your settings first" }); return; }
   const { to } = req.body;
   if (!to) { res.status(400).json({ error: "Recipient email required" }); return; }
   try {
     const transporter = await createTransporter(smtp);
-    await transporter.verify();
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: buildFrom(smtp),
       to,
       subject: "VK Academy — SMTP Test",
       html: `<div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px;background:#0a0f1e;color:#e2e8f0;border-radius:12px;">
         <h2 style="color:#2563eb;">✅ SMTP Test Successful</h2>
         <p>Your SMTP configuration is working correctly.</p>
-        <p style="color:#64748b;font-size:12px;">Sent from VK Academy CRM</p>
+        <p style="color:#64748b;font-size:12px;">Sent from VK Academy CRM · Host: ${smtp.host}:${smtp.port}</p>
       </div>`,
     });
+    console.log("[SMTP test] Sent OK — messageId:", info.messageId);
     await db.insert(emailSendsTable).values({ type: "test", email: to, subject: "VK Academy — SMTP Test", status: "sent" });
     res.json({ success: true, message: "Test email sent successfully" });
   } catch (err: any) {
     const msg = err?.message ?? "Unknown error";
+    console.error("[SMTP test] Failed —", msg, "| host:", smtp.host, "port:", smtp.port, "user:", smtp.username);
     await db.insert(emailSendsTable).values({ type: "test", email: to, subject: "VK Academy — SMTP Test", status: "failed", failReason: msg }).catch(() => {});
     res.status(500).json({ error: msg });
   }
