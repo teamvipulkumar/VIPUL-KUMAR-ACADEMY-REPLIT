@@ -246,6 +246,23 @@ router.get("/kyc", requireAuth, async (req, res): Promise<void> => {
   res.json(kyc ?? null);
 });
 
+router.patch("/kyc/pan-number", requireAuth, async (req, res): Promise<void> => {
+  const authedReq = req as AuthedRequest;
+  const { panNumber } = req.body;
+  if (!panNumber || typeof panNumber !== "string" || panNumber.trim().length === 0) {
+    res.status(400).json({ error: "PAN number is required" }); return;
+  }
+  const [existing] = await db.select().from(affiliateKycTable)
+    .where(eq(affiliateKycTable.userId, authedReq.user.userId)).limit(1);
+  if (!existing) {
+    res.status(404).json({ error: "No KYC record found" }); return;
+  }
+  const [updated] = await db.update(affiliateKycTable)
+    .set({ panNumber: panNumber.trim().toUpperCase() })
+    .where(eq(affiliateKycTable.userId, authedReq.user.userId)).returning();
+  res.json(updated);
+});
+
 router.post("/kyc", requireAuth, async (req, res): Promise<void> => {
   const authedReq = req as AuthedRequest;
   const { idProofName, addressProofName, panNumber } = req.body;

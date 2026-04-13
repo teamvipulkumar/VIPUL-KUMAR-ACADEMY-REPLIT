@@ -850,7 +850,29 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [panInput, setPanInput] = useState("");
+  const [panInputSaving, setPanInputSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const savePanOnly = async () => {
+    const val = panInput.trim().toUpperCase();
+    if (!val || val.length !== 10) {
+      toast({ title: "Enter a valid 10-character PAN number", variant: "destructive" }); return;
+    }
+    setPanInputSaving(true);
+    try {
+      const res = await apiFetch("/api/affiliate/kyc/pan-number", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ panNumber: val }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      onSaved(data);
+      toast({ title: "PAN number saved!" });
+    } catch {
+      toast({ title: "Failed to save PAN number", variant: "destructive" });
+    } finally { setPanInputSaving(false); }
+  };
 
   const handlePanPhoto = useCallback(async (file: File | undefined) => {
     if (!file) return;
@@ -934,6 +956,24 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
               )}
             </div>
           </div>
+          {!kyc.panNumber && (
+            <div className="text-left bg-amber-400/5 border border-amber-400/20 rounded-xl p-4 space-y-2.5">
+              <p className="text-xs font-medium text-amber-300 flex items-center gap-1.5"><Lock className="w-3 h-3" />PAN number missing — add it without resubmitting</p>
+              <div className="flex gap-2">
+                <Input
+                  value={panInput}
+                  onChange={e => setPanInput(e.target.value.toUpperCase())}
+                  placeholder="e.g. ABCDE1234F"
+                  maxLength={10}
+                  className="bg-background border-border font-mono uppercase tracking-widest text-sm flex-1"
+                />
+                <Button onClick={savePanOnly} disabled={panInputSaving} size="sm" className="bg-primary shrink-0 gap-1.5">
+                  {panInputSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                  {panInputSaving ? "Saving…" : "Save"}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -972,6 +1012,24 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
               )}
             </div>
           </div>
+          {!kyc.panNumber && (
+            <div className="text-left bg-amber-400/5 border border-amber-400/20 rounded-xl p-4 space-y-2.5">
+              <p className="text-xs font-medium text-amber-300 flex items-center gap-1.5"><Lock className="w-3 h-3" />PAN number missing — add it for TDS compliance</p>
+              <div className="flex gap-2">
+                <Input
+                  value={panInput}
+                  onChange={e => setPanInput(e.target.value.toUpperCase())}
+                  placeholder="e.g. ABCDE1234F"
+                  maxLength={10}
+                  className="bg-background border-border font-mono uppercase tracking-widest text-sm flex-1"
+                />
+                <Button onClick={savePanOnly} disabled={panInputSaving} size="sm" className="bg-primary shrink-0 gap-1.5">
+                  {panInputSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                  {panInputSaving ? "Saving…" : "Save"}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
