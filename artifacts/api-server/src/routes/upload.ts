@@ -34,7 +34,7 @@ const upload = multer({
   },
 });
 
-router.post("/image", requireAuth, requireAdmin, upload.single("image"), (req, res) => {
+router.post("/image", requireAuth, upload.single("image"), (req, res) => {
   if (!req.file) {
     res.status(400).json({ error: "No image file provided" });
     return;
