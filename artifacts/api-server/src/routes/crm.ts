@@ -144,6 +144,50 @@ router.post("/smtp/test", requireAdmin, async (req, res): Promise<void> => {
   }
 });
 
+/* ── Live SMTP test (uses form values, not saved DB settings) ── */
+router.post("/smtp/test-live", requireAdmin, async (req, res): Promise<void> => {
+  const { host, port, secure, username, password, fromName, fromEmail, to } = req.body;
+  if (!to) { res.status(400).json({ error: "Recipient email required" }); return; }
+  if (!host) { res.status(400).json({ error: "SMTP host required" }); return; }
+  if (!username) { res.status(400).json({ error: "SMTP username required" }); return; }
+
+  // If password omitted (leave-blank-to-keep), fall back to the stored DB password
+  let resolvedPassword = password;
+  if (!resolvedPassword) {
+    const saved = await getSmtp();
+    resolvedPassword = saved?.password ?? "";
+  }
+  if (!resolvedPassword) { res.status(400).json({ error: "Password required — enter a password or save settings first" }); return; }
+
+  const cfg = {
+    host, port: parseInt(String(port)) || 587, secure: !!secure,
+    username, password: resolvedPassword,
+    fromName: fromName || "VK Academy", fromEmail: fromEmail || username,
+  } as typeof smtpSettingsTable.$inferSelect;
+
+  try {
+    const transporter = await createTransporter(cfg);
+    const info = await transporter.sendMail({
+      from: buildFrom(cfg),
+      to,
+      subject: "VK Academy — SMTP Live Test",
+      html: `<div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px;background:#0a0f1e;color:#e2e8f0;border-radius:12px;">
+        <h2 style="color:#2563eb;">✅ SMTP Live Test Successful</h2>
+        <p>Your unsaved SMTP settings are working correctly.</p>
+        <p style="color:#64748b;font-size:12px;">Host: ${host}:${port} · User: ${username}</p>
+      </div>`,
+    });
+    console.log("[SMTP live-test] Sent OK — messageId:", info.messageId);
+    await db.insert(emailSendsTable).values({ type: "test", email: to, subject: "VK Academy — SMTP Live Test", status: "sent" });
+    res.json({ success: true, message: "Test email sent with current form settings" });
+  } catch (err: any) {
+    const msg = err?.message ?? "Unknown error";
+    console.error("[SMTP live-test] Failed —", msg, "| host:", host, "port:", port, "user:", username);
+    await db.insert(emailSendsTable).values({ type: "test", email: to, subject: "VK Academy — SMTP Live Test", status: "failed", failReason: msg }).catch(() => {});
+    res.status(500).json({ error: msg });
+  }
+});
+
 /* ── Template test-send ── */
 const SAMPLE_VARIABLES: Record<string, string> = {
   name: "Rahul Sharma",

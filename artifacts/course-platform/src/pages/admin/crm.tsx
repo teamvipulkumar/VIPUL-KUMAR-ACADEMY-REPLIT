@@ -281,10 +281,20 @@ function SmtpTab() {
   const sendTest = async () => {
     if (!testEmail) { toast({ title: "Enter a recipient email", variant: "destructive" }); return; }
     setTesting(true);
-    const res = await apiFetch("/api/admin/crm/smtp/test", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to: testEmail }),
-    });
+    let res: Response;
+    if (showForm) {
+      // Use live form values (unsaved settings)
+      res = await apiFetch("/api/admin/crm/smtp/test-live", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: testEmail, host: form.host, port: parseInt(form.port) || 587, secure: form.secure, username: form.username, password: form.password, fromName: form.fromName, fromEmail: form.fromEmail }),
+      });
+    } else {
+      // Use saved DB settings
+      res = await apiFetch("/api/admin/crm/smtp/test", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: testEmail }),
+      });
+    }
     const data = await res.json().catch(() => ({}));
     if (res.ok) toast({ title: "Test email sent!", description: `Check ${testEmail}` });
     else toast({ title: data.error ?? "Test failed", variant: "destructive" });
@@ -431,7 +441,10 @@ function SmtpTab() {
                     Send
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground flex items-center gap-1"><Info className="w-3 h-3" />Uses your saved SMTP settings to send a test email</p>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Info className="w-3 h-3 flex-shrink-0" />
+                  {showForm ? "Tests with the values currently in the form above (not yet saved)" : "Tests with your saved SMTP settings"}
+                </p>
               </>
             )}
           </div>
