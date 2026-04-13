@@ -556,7 +556,7 @@ function AffiliateDashboard({ user }: { user: any }) {
                           return (
                             <tr key={sale.id}>
                               <td className="px-5 py-3.5 text-xs text-muted-foreground">{i + 1}</td>
-                              <td className="px-5 py-3.5 text-right">
+                              <td className="px-5 py-3.5 text-left">
                                 <span className="font-bold text-green-400">₹{sale.commission.toLocaleString("en-IN")}</span>
                               </td>
                               <td className="px-5 py-3.5 text-right">
