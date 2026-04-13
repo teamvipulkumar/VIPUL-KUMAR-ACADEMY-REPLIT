@@ -417,20 +417,24 @@ function SmtpTab() {
             </>
           )}
 
-          {/* Test send */}
-          {smtp && (
-            <div className="bg-card border border-border rounded-xl p-5 space-y-3">
-              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><TestTube className="w-4 h-4 text-primary" />Send Test Email</h3>
-              <div className="flex gap-2">
-                <Input value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="test@example.com" className="bg-background border-border flex-1" />
-                <Button onClick={sendTest} disabled={testing} variant="outline" className="gap-1.5 flex-shrink-0">
-                  {testing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                  Send
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground flex items-center gap-1"><Info className="w-3 h-3" />Uses your saved SMTP settings to send a test email</p>
-            </div>
-          )}
+          {/* Test send — always visible */}
+          <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><TestTube className="w-4 h-4 text-primary" />Send Test Email</h3>
+            {!smtp ? (
+              <p className="text-xs text-amber-400 flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />Save your SMTP settings above first before sending a test email.</p>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <Input value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="test@example.com" className="bg-background border-border flex-1" />
+                  <Button onClick={sendTest} disabled={testing} variant="outline" className="gap-1.5 flex-shrink-0">
+                    {testing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                    Send
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1"><Info className="w-3 h-3" />Uses your saved SMTP settings to send a test email</p>
+              </>
+            )}
+          </div>
         </>
       )}
     </div>
