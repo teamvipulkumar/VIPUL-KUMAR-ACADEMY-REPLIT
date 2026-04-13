@@ -92,6 +92,7 @@ export const affiliatePixelTable = pgTable("affiliate_pixels", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   facebookPixelId: text("facebook_pixel_id"),
+  accessToken: text("access_token"),
   trackPageView: boolean("track_page_view").notNull().default(true),
   trackPurchase: boolean("track_purchase").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

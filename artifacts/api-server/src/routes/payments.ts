@@ -6,12 +6,13 @@ import { db } from "@workspace/db";
 import {
   paymentsTable, coursesTable, enrollmentsTable, couponsTable, notificationsTable,
   usersTable, paymentGatewaysTable, referralsTable, affiliateClicksTable,
-  affiliateApplicationsTable, platformSettingsTable,
+  affiliateApplicationsTable, platformSettingsTable, affiliatePixelTable,
 } from "@workspace/db";
 import { eq, and, desc, isNull, or } from "drizzle-orm";
 import { requireAuth, signToken, verifyToken, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import { triggerAutomation } from "./crm";
+import { sendFbEvent } from "../lib/facebook-pixel";
 
 const router = Router();
 type AuthedRequest = Request & { user: JwtPayload };
@@ -99,6 +100,17 @@ async function recordAffiliateCommission(
       message: `You earned ₹${commission.toFixed(2)} commission from a course purchase.`,
       type: "success",
     });
+
+    // Fire FB Purchase event (non-blocking) — value = affiliate commission
+    const [pixel] = await db.select({ facebookPixelId: affiliatePixelTable.facebookPixelId, accessToken: affiliatePixelTable.accessToken })
+      .from(affiliatePixelTable).where(eq(affiliatePixelTable.userId, referrer.id)).limit(1);
+    if (pixel?.facebookPixelId && pixel?.accessToken) {
+      sendFbEvent(pixel.facebookPixelId, pixel.accessToken, {
+        eventName: "Purchase",
+        value: commission,
+        currency: "INR",
+      }).catch(e => console.error("[fb pixel Purchase]", e));
+    }
   } catch (err) { console.error("[affiliate commission]", err); }
 }
 

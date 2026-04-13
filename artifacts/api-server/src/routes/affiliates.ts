@@ -10,6 +10,7 @@ import { eq, and, sum, count, sql, desc, gte, lt, ne } from "drizzle-orm";
 import { requireAuth, requireAdmin, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import crypto from "crypto";
+import { sendFbEvent, sendFbTestEvent } from "../lib/facebook-pixel";
 
 const router = Router();
 type AuthedRequest = Request & { user: JwtPayload };
@@ -322,18 +323,56 @@ router.get("/pixel", requireAuth, async (req, res): Promise<void> => {
 
 router.post("/pixel", requireAuth, async (req, res): Promise<void> => {
   const authedReq = req as AuthedRequest;
-  const { facebookPixelId, trackPageView, trackPurchase } = req.body;
+  const { facebookPixelId, accessToken, trackPageView, trackPurchase } = req.body;
+  const updates = {
+    facebookPixelId: facebookPixelId || null,
+    accessToken: accessToken || null,
+    trackPageView: trackPageView ?? true,
+    trackPurchase: trackPurchase ?? true,
+  };
   const [existing] = await db.select().from(affiliatePixelTable)
     .where(eq(affiliatePixelTable.userId, authedReq.user.userId)).limit(1);
   if (existing) {
     const [updated] = await db.update(affiliatePixelTable)
-      .set({ facebookPixelId: facebookPixelId || null, trackPageView: trackPageView ?? true, trackPurchase: trackPurchase ?? true })
+      .set(updates)
       .where(eq(affiliatePixelTable.userId, authedReq.user.userId)).returning();
     res.json(updated);
   } else {
     const [created] = await db.insert(affiliatePixelTable)
-      .values({ userId: authedReq.user.userId, facebookPixelId: facebookPixelId || null, trackPageView: trackPageView ?? true, trackPurchase: trackPurchase ?? true }).returning();
+      .values({ userId: authedReq.user.userId, ...updates }).returning();
     res.json(created);
+  }
+});
+
+router.post("/pixel/test-event", requireAuth, async (req, res): Promise<void> => {
+  const authedReq = req as AuthedRequest;
+  const { testEventCode, eventName = "Purchase", value = 999 } = req.body;
+  if (!testEventCode) { res.status(400).json({ error: "testEventCode is required" }); return; }
+
+  const [pixel] = await db.select().from(affiliatePixelTable)
+    .where(eq(affiliatePixelTable.userId, authedReq.user.userId)).limit(1);
+
+  if (!pixel?.facebookPixelId || !pixel?.accessToken) {
+    res.status(400).json({ error: "Please save your Pixel ID and Access Token first." }); return;
+  }
+
+  const userIp = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ?? req.socket.remoteAddress ?? undefined;
+  const userAgent = req.headers["user-agent"] ?? undefined;
+
+  const result = await sendFbTestEvent(
+    pixel.facebookPixelId,
+    pixel.accessToken,
+    testEventCode,
+    eventName as "InitiateCheckout" | "Purchase",
+    Number(value),
+    userIp,
+    userAgent,
+  );
+
+  if (result.success) {
+    res.json({ success: true, message: "Test event sent successfully!", result: result.result });
+  } else {
+    res.status(400).json({ success: false, error: result.error });
   }
 });
 
@@ -374,6 +413,19 @@ router.post("/track", async (req, res): Promise<void> => {
     });
     /* Also create a referral record for backward compat */
     await db.insert(referralsTable).values({ referrerId: referrer.id, courseId: courseId || null, status: "click" });
+
+    /* Fire FB InitiateCheckout event (non-blocking) */
+    const [pixel] = await db.select({ facebookPixelId: affiliatePixelTable.facebookPixelId, accessToken: affiliatePixelTable.accessToken })
+      .from(affiliatePixelTable).where(eq(affiliatePixelTable.userId, referrer.id)).limit(1);
+    if (pixel?.facebookPixelId && pixel?.accessToken) {
+      const userIp = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ?? req.socket.remoteAddress ?? undefined;
+      const userAgent = req.headers["user-agent"] ?? undefined;
+      sendFbEvent(pixel.facebookPixelId, pixel.accessToken, {
+        eventName: "InitiateCheckout",
+        userIp,
+        userAgent,
+      }).catch(e => console.error("[fb pixel InitiateCheckout]", e));
+    }
   }
   res.json({ message: "Tracked", cookieDays });
 });

@@ -1226,65 +1226,255 @@ function PayoutsTab({ dashboard, payouts, onRequested }: { dashboard: any; payou
 /* ─── Pixel Tab ─── */
 function PixelTab({ pixel, onSaved }: { pixel: any; onSaved: (p: any) => void }) {
   const { toast } = useToast();
+
+  /* Setup form */
   const [pixelId, setPixelId] = useState(pixel?.facebookPixelId ?? "");
-  const [trackPV, setTrackPV] = useState(pixel?.trackPageView ?? true);
-  const [trackP, setTrackP] = useState(pixel?.trackPurchase ?? true);
+  const [accessToken, setAccessToken] = useState(pixel?.accessToken ?? "");
+  const [showToken, setShowToken] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  /* Test tool */
+  const [testEventCode, setTestEventCode] = useState("");
+  const [testEventName, setTestEventName] = useState<"InitiateCheckout" | "Purchase">("Purchase");
+  const [testValue, setTestValue] = useState("999");
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message?: string; error?: string } | null>(null);
+
+  const isConnected = !!(pixel?.facebookPixelId && pixel?.accessToken);
+
   const save = async () => {
+    if (!pixelId.trim()) { toast({ title: "Pixel ID is required", variant: "destructive" }); return; }
+    if (!accessToken.trim()) { toast({ title: "Access Token is required", variant: "destructive" }); return; }
     setSaving(true);
     try {
       const res = await apiFetch("/api/affiliate/pixel", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ facebookPixelId: pixelId || null, trackPageView: trackPV, trackPurchase: trackP }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ facebookPixelId: pixelId.trim(), accessToken: accessToken.trim(), trackPageView: true, trackPurchase: true }),
       });
       if (!res.ok) throw new Error("Failed");
-      onSaved(await res.json());
-      toast({ title: "Pixel settings saved!" });
-    } catch { toast({ title: "Failed to save pixel", variant: "destructive" }); }
+      const saved = await res.json();
+      onSaved(saved);
+      toast({ title: "Pixel settings saved!", description: "Events will fire automatically on your referral activity." });
+    } catch { toast({ title: "Failed to save pixel settings", variant: "destructive" }); }
     finally { setSaving(false); }
   };
 
+  const sendTestEvent = async () => {
+    if (!testEventCode.trim()) { toast({ title: "Test Event Code is required", variant: "destructive" }); return; }
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await apiFetch("/api/affiliate/pixel/test-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ testEventCode: testEventCode.trim(), eventName: testEventName, value: parseFloat(testValue) || 999 }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setTestResult({ success: true, message: data.message ?? "Test event sent successfully!" });
+      } else {
+        setTestResult({ success: false, error: data.error ?? "Failed to send test event." });
+      }
+    } catch { setTestResult({ success: false, error: "Network error. Please try again." }); }
+    finally { setTesting(false); }
+  };
+
   return (
-    <div className="max-w-lg space-y-4">
+    <div className="max-w-xl space-y-4">
+
+      {/* Status bar */}
+      <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm ${
+        isConnected
+          ? "bg-green-500/8 border-green-500/20 text-green-400"
+          : "bg-amber-500/8 border-amber-500/20 text-amber-400"
+      }`}>
+        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isConnected ? "bg-green-400" : "bg-amber-400"}`} />
+        {isConnected
+          ? `Connected — Pixel ${pixel.facebookPixelId}`
+          : "Not connected — add your Pixel ID and Access Token to start tracking"}
+      </div>
+
+      {/* Setup card */}
       <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-        <h3 className="text-sm font-semibold text-foreground">Facebook Pixel Setup</h3>
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Facebook Pixel ID</Label>
-          <Input value={pixelId} onChange={e => setPixelId(e.target.value)} placeholder="e.g. 123456789012345" className="bg-background border-border font-mono" />
-          <p className="text-[11px] text-muted-foreground">Find your Pixel ID in Facebook Events Manager.</p>
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
+            <Zap className="w-3.5 h-3.5 text-blue-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Facebook Pixel Setup</h3>
+            <p className="text-[11px] text-muted-foreground">Connect via Conversions API — events fire server-side, no browser required.</p>
+          </div>
         </div>
-        <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Track Events</Label>
-          {[
-            { label: "Page View", checked: trackPV, onChange: setTrackPV },
-            { label: "Purchase", checked: trackP, onChange: setTrackP },
-          ].map(e => (
-            <label key={e.label} className="flex items-center gap-2.5 cursor-pointer">
-              <input type="checkbox" checked={e.checked} onChange={ev => e.onChange(ev.target.checked)} className="accent-primary w-4 h-4" />
-              <span className="text-sm text-foreground">{e.label}</span>
-            </label>
-          ))}
+
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Facebook Pixel ID <span className="text-red-400">*</span></Label>
+            <Input
+              value={pixelId}
+              onChange={e => setPixelId(e.target.value)}
+              placeholder="e.g. 123456789012345"
+              className="bg-background border-border font-mono"
+            />
+            <p className="text-[11px] text-muted-foreground">Found in Meta Events Manager → Data Sources → your Pixel.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Conversions API Access Token <span className="text-red-400">*</span></Label>
+            <div className="relative">
+              <Input
+                type={showToken ? "text" : "password"}
+                value={accessToken}
+                onChange={e => setAccessToken(e.target.value)}
+                placeholder="EAAxxxxxxxxxxxxxxxx…"
+                className="bg-background border-border font-mono pr-10 text-xs"
+              />
+              <button
+                type="button"
+                onClick={() => setShowToken(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showToken
+                  ? <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                }
+              </button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">Generate in Events Manager → Settings → Conversions API → Generate Access Token.</p>
+          </div>
         </div>
-        <Button onClick={save} disabled={saving} className="w-full bg-primary gap-2">
+
+        <Button onClick={save} disabled={saving} className="w-full gap-2">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-          {saving ? "Saving…" : "Save Pixel Settings"}
+          {saving ? "Saving…" : "Save & Connect"}
         </Button>
       </div>
 
-      {pixelId && (
-        <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs font-semibold text-foreground mb-2">Preview Code Snippet</p>
-          <pre className="text-[10px] text-muted-foreground bg-background rounded-lg p-3 overflow-x-auto border border-border whitespace-pre-wrap">{`<!-- Facebook Pixel -->
-<script>
-!function(f,b,e,v,n,t,s){...}(window, document,'script',
-'https://connect.facebook.net/en_US/fbevents.js');
-fbq('init', '${pixelId}');
-${trackPV ? "fbq('track', 'PageView');" : ""}
-${trackP ? "fbq('track', 'Purchase', {value: amount, currency: 'INR'});" : ""}
-</script>`}</pre>
+      {/* Active events info */}
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+        <h3 className="text-sm font-semibold text-foreground">Active Events</h3>
+        <p className="text-[11px] text-muted-foreground">These events fire automatically server-side whenever activity occurs via your referral link.</p>
+        <div className="space-y-2">
+          {[
+            {
+              name: "InitiateCheckout",
+              trigger: "Someone clicks your affiliate link and lands on the site",
+              color: "text-blue-400",
+              bg: "bg-blue-500/10",
+              border: "border-blue-500/20",
+            },
+            {
+              name: "Purchase",
+              trigger: "A sale is completed through your link",
+              value: "Value = your commission earned (₹)",
+              color: "text-green-400",
+              bg: "bg-green-500/10",
+              border: "border-green-500/20",
+            },
+          ].map(ev => (
+            <div key={ev.name} className={`flex items-start gap-3 px-3 py-2.5 rounded-lg border ${ev.bg} ${ev.border}`}>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className={`text-xs font-bold font-mono ${ev.color}`}>{ev.name}</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-500/15 text-green-400 border border-green-500/20 font-medium">ACTIVE</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">{ev.trigger}</p>
+                {ev.value && <p className={`text-[10px] mt-0.5 font-medium ${ev.color}`}>{ev.value}</p>}
+              </div>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
+
+      {/* Test event tool */}
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-purple-500/15 flex items-center justify-center flex-shrink-0">
+            <Activity className="w-3.5 h-3.5 text-purple-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Event Testing Tool</h3>
+            <p className="text-[11px] text-muted-foreground">Send a test event to verify your Pixel & Access Token are working.</p>
+          </div>
+        </div>
+
+        {!isConnected && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/8 border border-amber-500/20">
+            <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            <p className="text-xs text-amber-400">Save your Pixel ID and Access Token above before testing.</p>
+          </div>
+        )}
+
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Test Event Code <span className="text-red-400">*</span></Label>
+            <Input
+              value={testEventCode}
+              onChange={e => setTestEventCode(e.target.value)}
+              placeholder="e.g. TEST12345"
+              className="bg-background border-border font-mono uppercase"
+              disabled={!isConnected}
+            />
+            <p className="text-[11px] text-muted-foreground">Find this in Meta Events Manager → Test Events tab.</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Event Type</Label>
+              <select
+                value={testEventName}
+                onChange={e => setTestEventName(e.target.value as "InitiateCheckout" | "Purchase")}
+                disabled={!isConnected}
+                className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
+              >
+                <option value="Purchase">Purchase</option>
+                <option value="InitiateCheckout">InitiateCheckout</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Value (₹)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={testValue}
+                onChange={e => setTestValue(e.target.value)}
+                placeholder="999"
+                className="bg-background border-border"
+                disabled={!isConnected}
+              />
+            </div>
+          </div>
+        </div>
+
+        <Button
+          onClick={sendTestEvent}
+          disabled={testing || !isConnected}
+          variant="outline"
+          className="w-full gap-2 border-purple-500/30 text-purple-400 hover:bg-purple-500/10 hover:border-purple-500/50 hover:text-purple-300 disabled:opacity-40"
+        >
+          {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
+          {testing ? "Sending…" : "Send Test Event"}
+        </Button>
+
+        {testResult && (
+          <div className={`flex items-start gap-2.5 p-3 rounded-lg border text-xs ${
+            testResult.success
+              ? "bg-green-500/8 border-green-500/20 text-green-400"
+              : "bg-red-500/8 border-red-500/20 text-red-400"
+          }`}>
+            {testResult.success
+              ? <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              : <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            }
+            <div>
+              <p className="font-semibold">{testResult.success ? "Success" : "Failed"}</p>
+              <p className="opacity-80 mt-0.5">{testResult.success ? testResult.message : testResult.error}</p>
+            </div>
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
