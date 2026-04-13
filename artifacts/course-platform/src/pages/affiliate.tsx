@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -16,7 +16,8 @@ import {
   ShieldCheck, Wallet, Zap, Building2, RefreshCw, Download, Plus,
   Trash2, Eye, EyeOff, Send, ChevronRight, Activity, Target,
   Calendar, Star, Lock, Loader2, Menu, X, ExternalLink, Share2,
-  ArrowUpRight, TrendingDown, Banknote, Info, Percent, Cookie
+  ArrowUpRight, TrendingDown, Banknote, Info, Percent, Cookie,
+  Upload, FileImage
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
@@ -843,17 +844,47 @@ function CreativesTab({ creatives }: { creatives: any[] }) {
 /* ─── KYC Tab ─── */
 function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
   const { toast } = useToast();
-  const [idName, setIdName] = useState(kyc?.idProofName ?? "");
-  const [addrName, setAddrName] = useState(kyc?.addressProofName ?? "");
+  const [panName, setPanName] = useState(kyc?.idProofName ?? "");
+  const [panPhotoUrl, setPanPhotoUrl] = useState(kyc?.addressProofName ?? "");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePanPhoto = useCallback(async (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Please select an image file (JPEG, PNG, WebP)."); return;
+    }
+    if (file.size > 1 * 1024 * 1024) {
+      setUploadError("PAN photo must be smaller than 1 MB."); return;
+    }
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const res = await fetch(`${API_BASE}/api/upload/image`, {
+        method: "POST", credentials: "include", body: formData,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      const data = await res.json();
+      setPanPhotoUrl(data.url);
+    } catch {
+      setUploadError("Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  }, []);
 
   const save = async () => {
-    if (!idName || !addrName) { toast({ title: "Both fields required", variant: "destructive" }); return; }
+    if (!panName.trim()) { toast({ title: "Name as per PAN is required", variant: "destructive" }); return; }
+    if (!panPhotoUrl) { toast({ title: "Please upload your PAN front photo", variant: "destructive" }); return; }
     setSaving(true);
     try {
       const res = await apiFetch("/api/affiliate/kyc", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idProofName: idName, addressProofName: addrName }),
+        body: JSON.stringify({ idProofName: panName.trim(), addressProofName: panPhotoUrl }),
       });
       if (!res.ok) throw new Error("Failed");
       const data = await res.json();
@@ -876,19 +907,67 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
             <p className="text-sm text-muted-foreground">{kyc.adminNote}</p>
           </div>
         )}
-        <div className="space-y-3">
+        <div className="space-y-4">
+          {/* Field 1 — Name as Per PAN */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">ID Proof (Aadhar / PAN / Passport)</Label>
-            <Input value={idName} onChange={e => setIdName(e.target.value)} placeholder="e.g. Aadhar Card - XXXX XXXX XXXX 1234" className="bg-background border-border" />
+            <Label className="text-xs text-muted-foreground">Name as Per PAN</Label>
+            <Input
+              value={panName}
+              onChange={e => setPanName(e.target.value)}
+              placeholder="Enter your name exactly as on PAN card"
+              className="bg-background border-border"
+            />
           </div>
+
+          {/* Field 2 — PAN Front Photo */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Address Proof</Label>
-            <Input value={addrName} onChange={e => setAddrName(e.target.value)} placeholder="e.g. Electricity bill - Jan 2025" className="bg-background border-border" />
+            <Label className="text-xs text-muted-foreground">PAN Front Photo <span className="text-muted-foreground/60">(Max 1 MB)</span></Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={e => handlePanPhoto(e.target.files?.[0])}
+            />
+            {panPhotoUrl ? (
+              <div className="relative rounded-xl overflow-hidden border border-border group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                <img src={panPhotoUrl} alt="PAN front photo" className="w-full h-40 object-cover" />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all flex items-center justify-center">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 text-white text-sm font-medium bg-white/20 backdrop-blur-sm rounded-lg px-3 py-1.5">
+                    <Upload className="w-3.5 h-3.5" /> Replace Photo
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={e => { e.stopPropagation(); setPanPhotoUrl(""); }}
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-red-500/80 transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="w-full h-32 rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 text-muted-foreground"
+              >
+                {uploading ? (
+                  <><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="text-xs text-primary">Uploading…</span></>
+                ) : (
+                  <><FileImage className="w-6 h-6" /><span className="text-xs">Click to upload PAN front photo</span><span className="text-[11px] text-muted-foreground/60">JPG, PNG, WebP · Max 1 MB</span></>
+                )}
+              </button>
+            )}
+            {uploadError && (
+              <p className="text-xs text-red-400 flex items-center gap-1.5"><AlertCircle className="w-3 h-3" />{uploadError}</p>
+            )}
           </div>
+
           <div className="p-3 bg-amber-400/5 border border-amber-400/20 rounded-lg">
             <p className="text-xs text-amber-300 flex items-center gap-1.5"><Lock className="w-3 h-3" />Your documents are stored securely and only visible to admins.</p>
           </div>
-          <Button onClick={save} disabled={saving} className="w-full bg-primary gap-2">
+          <Button onClick={save} disabled={saving || uploading} className="w-full bg-primary gap-2">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
             {saving ? "Submitting…" : kyc ? "Resubmit KYC" : "Submit KYC"}
           </Button>
