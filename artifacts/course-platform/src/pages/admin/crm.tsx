@@ -239,6 +239,7 @@ function SmtpTab() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testEmail, setTestEmail] = useState("");
+  const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ host: "", port: "587", secure: false, username: "", password: "", fromName: "VK Academy", fromEmail: "", isActive: false });
 
   const load = useCallback(async () => {
@@ -249,7 +250,12 @@ function SmtpTab() {
       if (data) {
         setSmtp(data);
         setForm(f => ({ ...f, host: data.host, port: String(data.port), secure: data.secure, username: data.username, fromName: data.fromName, fromEmail: data.fromEmail, isActive: data.isActive, password: "" }));
+        setShowForm(false);
+      } else {
+        setShowForm(true);
       }
+    } else {
+      setShowForm(true);
     }
     setLoading(false);
   }, []);
@@ -263,9 +269,8 @@ function SmtpTab() {
       body: JSON.stringify({ ...form, port: parseInt(form.port) || 587 }),
     });
     if (res.ok) {
-      const data = await res.json();
-      setSmtp(data);
       toast({ title: "SMTP settings saved!" });
+      await load();
     } else {
       const err = await res.json().catch(() => ({}));
       toast({ title: err.error ?? "Failed to save", variant: "destructive" });
@@ -309,70 +314,104 @@ function SmtpTab() {
             {smtp?.isActive ? "SMTP is active — emails are being sent" : "SMTP is not active. Enable it after saving your settings."}
           </div>
 
-          {/* Provider presets */}
-          <div className="bg-card border border-border rounded-xl p-4">
-            <p className="text-xs font-medium text-muted-foreground mb-3">Quick presets</p>
-            <div className="flex flex-wrap gap-2">
-              {PRESETS.map(p => (
-                <button key={p.label} onClick={() => setForm(f => ({ ...f, host: p.host, port: p.port, secure: p.secure }))}
-                  className="px-3 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
-                  {p.label}
-                </button>
-              ))}
+          {/* Saved summary (collapsed view) */}
+          {smtp && !showForm && (
+            <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between gap-4">
+              <div className="space-y-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">Settings Saved</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {smtp.host}:{smtp.port} · {smtp.username} · From: {smtp.fromName} &lt;{smtp.fromEmail}&gt;
+                </p>
+                <div className="flex items-center gap-1.5 text-xs text-green-400 mt-0.5">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Password saved securely
+                </div>
+              </div>
+              <Button variant="outline" size="sm" className="flex-shrink-0 gap-1.5" onClick={() => setShowForm(true)}>
+                <Edit2 className="w-3.5 h-3.5" />
+                Edit Settings
+              </Button>
             </div>
-          </div>
+          )}
 
-          {/* Form */}
-          <div className="bg-card border border-border rounded-xl p-5 space-y-4">
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">SMTP Host</Label>
-                <Input value={form.host} onChange={e => set("host", e.target.value)} placeholder="smtp.gmail.com" className="bg-background border-border" />
+          {/* Form (expanded) */}
+          {showForm && (
+            <>
+              {/* Provider presets */}
+              <div className="bg-card border border-border rounded-xl p-4">
+                <p className="text-xs font-medium text-muted-foreground mb-3">Quick presets</p>
+                <div className="flex flex-wrap gap-2">
+                  {PRESETS.map(p => (
+                    <button key={p.label} onClick={() => setForm(f => ({ ...f, host: p.host, port: p.port, secure: p.secure }))}
+                      className="px-3 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Port</Label>
-                <Input value={form.port} onChange={e => set("port", e.target.value)} placeholder="587" className="bg-background border-border" />
+
+              <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">SMTP Host</Label>
+                    <Input value={form.host} onChange={e => set("host", e.target.value)} placeholder="smtp.gmail.com" className="bg-background border-border" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Port</Label>
+                    <Input value={form.port} onChange={e => set("port", e.target.value)} placeholder="587" className="bg-background border-border" />
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Username / Email</Label>
+                    <Input value={form.username} onChange={e => set("username", e.target.value)} placeholder="you@gmail.com" className="bg-background border-border" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      Password / App Password
+                      {smtp?.passwordSet && <span className="ml-1 text-green-400">(saved — leave blank to keep)</span>}
+                    </Label>
+                    <Input type="password" value={form.password} onChange={e => set("password", e.target.value)} placeholder={smtp?.passwordSet ? "Leave blank to keep current password" : "Enter password"} className="bg-background border-border" />
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">From Name</Label>
+                    <Input value={form.fromName} onChange={e => set("fromName", e.target.value)} placeholder="VK Academy" className="bg-background border-border" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">From Email</Label>
+                    <Input value={form.fromEmail} onChange={e => set("fromEmail", e.target.value)} placeholder="noreply@vkacademy.com" className="bg-background border-border" />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Use SSL/TLS (port 465)</p>
+                    <p className="text-xs text-muted-foreground">Enable for port 465 — keep off for 587 (STARTTLS)</p>
+                  </div>
+                  <Switch checked={form.secure} onCheckedChange={v => set("secure", v)} />
+                </div>
+                <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Activate SMTP</p>
+                    <p className="text-xs text-muted-foreground">When disabled, no emails will be sent from the platform</p>
+                  </div>
+                  <Switch checked={form.isActive} onCheckedChange={v => set("isActive", v)} />
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={save} disabled={saving} className="flex-1 bg-primary gap-2">
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    {saving ? "Saving…" : "Save SMTP Settings"}
+                  </Button>
+                  {smtp && (
+                    <Button variant="outline" onClick={() => { setShowForm(false); setForm(f => ({ ...f, password: "" })); }} disabled={saving}>
+                      Cancel
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Username / Email</Label>
-                <Input value={form.username} onChange={e => set("username", e.target.value)} placeholder="you@gmail.com" className="bg-background border-border" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Password / App Password{smtp?.passwordSet && " (leave blank to keep)"}</Label>
-                <Input type="password" value={form.password} onChange={e => set("password", e.target.value)} placeholder={smtp?.passwordSet ? "••••••••" : "Enter password"} className="bg-background border-border" />
-              </div>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">From Name</Label>
-                <Input value={form.fromName} onChange={e => set("fromName", e.target.value)} placeholder="VK Academy" className="bg-background border-border" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">From Email</Label>
-                <Input value={form.fromEmail} onChange={e => set("fromEmail", e.target.value)} placeholder="noreply@vkacademy.com" className="bg-background border-border" />
-              </div>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
-              <div>
-                <p className="text-sm font-medium text-foreground">Use SSL/TLS (port 465)</p>
-                <p className="text-xs text-muted-foreground">Enable for port 465 — keep off for 587 (STARTTLS)</p>
-              </div>
-              <Switch checked={form.secure} onCheckedChange={v => set("secure", v)} />
-            </div>
-            <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
-              <div>
-                <p className="text-sm font-medium text-foreground">Activate SMTP</p>
-                <p className="text-xs text-muted-foreground">When disabled, no emails will be sent from the platform</p>
-              </div>
-              <Switch checked={form.isActive} onCheckedChange={v => set("isActive", v)} />
-            </div>
-            <Button onClick={save} disabled={saving} className="w-full bg-primary gap-2">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              {saving ? "Saving…" : "Save SMTP Settings"}
-            </Button>
-          </div>
+            </>
+          )}
 
           {/* Test send */}
           {smtp && (
