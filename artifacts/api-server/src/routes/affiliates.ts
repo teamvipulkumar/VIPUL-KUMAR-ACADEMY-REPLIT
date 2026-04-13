@@ -266,8 +266,8 @@ router.patch("/kyc/pan-number", requireAuth, async (req, res): Promise<void> => 
 router.post("/kyc", requireAuth, async (req, res): Promise<void> => {
   const authedReq = req as AuthedRequest;
   const { idProofName, addressProofName, panNumber } = req.body;
-  if (!idProofName || !addressProofName) {
-    res.status(400).json({ error: "Both ID proof and address proof names are required" }); return;
+  if (!idProofName || !addressProofName || !panNumber) {
+    res.status(400).json({ error: "Name, PAN number, and PAN photo are required" }); return;
   }
   const [existing] = await db.select().from(affiliateKycTable)
     .where(eq(affiliateKycTable.userId, authedReq.user.userId)).limit(1);

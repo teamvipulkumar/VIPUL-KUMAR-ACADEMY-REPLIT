@@ -902,12 +902,13 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
 
   const save = async () => {
     if (!panName.trim()) { toast({ title: "Name as per PAN is required", variant: "destructive" }); return; }
+    if (!panNumber.trim() || panNumber.trim().length !== 10) { toast({ title: "Enter a valid 10-character PAN number", variant: "destructive" }); return; }
     if (!panPhotoUrl) { toast({ title: "Please upload your PAN front photo", variant: "destructive" }); return; }
     setSaving(true);
     try {
       const res = await apiFetch("/api/affiliate/kyc", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idProofName: panName.trim(), addressProofName: panPhotoUrl, panNumber: panNumber.trim().toUpperCase() || null }),
+        body: JSON.stringify({ idProofName: panName.trim(), addressProofName: panPhotoUrl, panNumber: panNumber.trim().toUpperCase() }),
       });
       if (!res.ok) throw new Error("Failed");
       const data = await res.json();
@@ -1052,7 +1053,7 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
         <div className="space-y-4">
           {/* Field 1 — Name as Per PAN */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Name as Per PAN</Label>
+            <Label className="text-xs text-muted-foreground">Name as Per PAN <span className="text-red-400">*</span></Label>
             <Input
               value={panName}
               onChange={e => setPanName(e.target.value)}
@@ -1063,7 +1064,7 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
 
           {/* Field 2 — PAN Number */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">PAN Number</Label>
+            <Label className="text-xs text-muted-foreground">PAN Number <span className="text-red-400">*</span></Label>
             <Input
               value={panNumber}
               onChange={e => setPanNumber(e.target.value.toUpperCase())}
@@ -1075,7 +1076,7 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
 
           {/* Field 3 — PAN Front Photo */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">PAN Front Photo <span className="text-muted-foreground/60">(Max 1 MB)</span></Label>
+            <Label className="text-xs text-muted-foreground">PAN Front Photo <span className="text-red-400">*</span> <span className="text-muted-foreground/60">(Max 1 MB)</span></Label>
             <input
               ref={fileInputRef}
               type="file"
