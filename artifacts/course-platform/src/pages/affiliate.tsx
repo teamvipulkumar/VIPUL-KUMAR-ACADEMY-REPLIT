@@ -545,7 +545,7 @@ function AffiliateDashboard({ user }: { user: any }) {
                         <tr className="border-b border-border bg-background/50">
                           <th className="text-left text-xs font-semibold text-muted-foreground px-5 py-3">#</th>
                           <th className="text-xs font-semibold text-muted-foreground px-5 py-3 text-left">Commission</th>
-                          <th className="text-right text-xs font-semibold text-muted-foreground px-5 py-3">Sale Amount</th>
+                          <th className="text-xs font-semibold text-muted-foreground px-5 py-3 text-left">Sale Amount</th>
                           <th className="text-left text-xs font-semibold text-muted-foreground px-5 py-3">Date & Time</th>
                           <th className="text-left text-xs font-semibold text-muted-foreground px-5 py-3">Course</th>
                         </tr>
