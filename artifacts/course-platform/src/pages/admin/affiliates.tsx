@@ -574,6 +574,8 @@ function KycTab() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [rejectNote, setRejectNote] = useState<Record<number, string>>({});
+  const [expandedPhoto, setExpandedPhoto] = useState<string | null>(null);
   const { toast } = useToast();
 
   const load = useCallback(async () => {
@@ -586,12 +588,16 @@ function KycTab() {
 
   useEffect(() => { load(); }, [load]);
 
-  const doAction = async (userId: number, action: "approve" | "reject", note?: string) => {
+  const doAction = async (userId: number, action: "approve" | "reject") => {
+    const note = rejectNote[userId] ?? "";
+    if (action === "reject" && !note.trim()) {
+      toast({ title: "Please enter a rejection reason", variant: "destructive" }); return;
+    }
     setActionLoading(`${action}-${userId}`);
     try {
       const res = await apiFetch(`/api/affiliate/admin/kyc/${userId}/${action}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(action === "reject" ? { adminNote: note || "Rejected by admin" } : {}),
+        body: JSON.stringify(action === "reject" ? { adminNote: note } : {}),
       });
       if (res.ok) { toast({ title: `KYC ${action}d` }); load(); }
       else toast({ title: "Failed", variant: "destructive" });
@@ -599,16 +605,40 @@ function KycTab() {
   };
 
   const filtered = records.filter(r => filter === "all" || r.status === filter);
+  const pendingCount = records.filter(r => r.status === "pending").length;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5 w-fit">
-        {(["all", "pending", "approved", "rejected"] as const).map(f => (
-          <button key={f} onClick={() => setFilter(f)}
-            className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors ${filter === f ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
-            {f} {f !== "all" && `(${records.filter(r => r.status === f).length})`}
-          </button>
-        ))}
+      {/* Photo lightbox */}
+      {expandedPhoto && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setExpandedPhoto(null)}
+        >
+          <div className="relative max-w-lg w-full" onClick={e => e.stopPropagation()}>
+            <img src={expandedPhoto} alt="PAN" className="w-full rounded-xl border border-border" />
+            <button
+              onClick={() => setExpandedPhoto(null)}
+              className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center hover:bg-card"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5">
+          {(["all", "pending", "approved", "rejected"] as const).map(f => (
+            <button key={f} onClick={() => setFilter(f)}
+              className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors ${filter === f ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
+              {f} {f !== "all" && `(${records.filter(r => r.status === f).length})`}
+            </button>
+          ))}
+        </div>
+        {pendingCount > 0 && (
+          <span className="text-xs text-amber-400 font-medium">{pendingCount} pending review</span>
+        )}
       </div>
 
       {loading ? (
@@ -619,45 +649,82 @@ function KycTab() {
           <p className="font-semibold">No KYC submissions</p>
         </div>
       ) : (
-        <div className="border border-border rounded-xl overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-card border-b border-border">
-              <tr>{["Affiliate", "ID Proof", "Address Proof", "Submitted", "Status", "Actions"].map(h =>
-                <th key={h} className="text-left text-xs font-medium text-muted-foreground px-3 py-3">{h}</th>
-              )}</tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filtered.map(r => (
-                <tr key={r.id} className="hover:bg-card/50">
-                  <td className="px-3 py-3">
-                    <p className="font-medium text-sm">{r.userName}</p>
-                    <p className="text-xs text-muted-foreground">{r.userEmail}</p>
-                  </td>
-                  <td className="px-3 py-3 text-sm">{r.idProofName ?? "—"}</td>
-                  <td className="px-3 py-3 text-sm">{r.addressProofName ?? "—"}</td>
-                  <td className="px-3 py-3 text-xs text-muted-foreground">{fmtDate(r.submittedAt)}</td>
-                  <td className="px-3 py-3"><StatusBadge status={r.status} /></td>
-                  <td className="px-3 py-3">
-                    {r.status === "pending" && (
-                      <div className="flex gap-1">
-                        <Button onClick={() => doAction(r.userId, "approve")} disabled={!!actionLoading} size="sm"
-                          className="bg-green-500 hover:bg-green-600 text-white h-6 text-[10px] gap-1">
-                          {actionLoading === `approve-${r.userId}` ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <CheckCircle2 className="w-2.5 h-2.5" />}Approve
-                        </Button>
-                        <Button onClick={() => doAction(r.userId, "reject")} disabled={!!actionLoading} size="sm" variant="outline"
-                          className="border-red-500/30 text-red-400 hover:bg-red-500/10 h-6 text-[10px] gap-1">
-                          {actionLoading === `reject-${r.userId}` ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <XCircle className="w-2.5 h-2.5" />}Reject
-                        </Button>
+        <div className="space-y-3">
+          {filtered.map(r => (
+            <div key={r.id} className="bg-card border border-border rounded-xl overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
+                  {r.userName.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm">{r.userName}</p>
+                  <p className="text-xs text-muted-foreground">{r.userEmail} · Submitted {fmtDate(r.submittedAt)}</p>
+                </div>
+                <StatusBadge status={r.status} />
+              </div>
+
+              {/* Details */}
+              <div className="px-4 py-3 grid md:grid-cols-2 gap-4">
+                {/* Name as Per PAN */}
+                <div>
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Name as Per PAN</p>
+                  <p className="text-sm font-medium text-foreground bg-background border border-border rounded-lg px-3 py-2">
+                    {r.idProofName ?? <span className="text-muted-foreground">Not provided</span>}
+                  </p>
+                </div>
+
+                {/* PAN Front Photo */}
+                <div>
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1">PAN Front Photo</p>
+                  {r.addressProofName ? (
+                    <div
+                      className="relative rounded-lg overflow-hidden border border-border cursor-pointer group h-24"
+                      onClick={() => setExpandedPhoto(r.addressProofName!)}
+                    >
+                      <img src={r.addressProofName} alt="PAN" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
+                        <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium transition-opacity">Click to enlarge</span>
                       </div>
-                    )}
-                    {r.adminNote && r.status !== "pending" && (
-                      <p className="text-[10px] text-muted-foreground max-w-[140px] truncate" title={r.adminNote}>{r.adminNote}</p>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </div>
+                  ) : (
+                    <div className="h-24 bg-background border border-border rounded-lg flex items-center justify-center">
+                      <p className="text-xs text-muted-foreground">No photo uploaded</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Actions for pending */}
+              {r.status === "pending" && (
+                <div className="px-4 pb-4 space-y-2">
+                  <Input
+                    placeholder="Rejection reason (required to reject)…"
+                    value={rejectNote[r.userId] ?? ""}
+                    onChange={e => setRejectNote(n => ({ ...n, [r.userId]: e.target.value }))}
+                    className="bg-background border-border text-sm h-8"
+                  />
+                  <div className="flex gap-2">
+                    <Button onClick={() => doAction(r.userId, "approve")} disabled={!!actionLoading} size="sm"
+                      className="bg-green-500 hover:bg-green-600 text-white gap-1.5">
+                      {actionLoading === `approve-${r.userId}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}Approve KYC
+                    </Button>
+                    <Button onClick={() => doAction(r.userId, "reject")} disabled={!!actionLoading} size="sm" variant="outline"
+                      className="border-red-500/30 text-red-400 hover:bg-red-500/10 gap-1.5">
+                      {actionLoading === `reject-${r.userId}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}Reject
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Admin note for reviewed records */}
+              {r.adminNote && r.status !== "pending" && (
+                <div className="px-4 pb-3">
+                  <p className="text-[11px] text-muted-foreground"><span className="font-medium text-foreground">Admin note:</span> {r.adminNote}</p>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

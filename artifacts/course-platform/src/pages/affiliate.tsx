@@ -894,6 +894,77 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
     finally { setSaving(false); }
   };
 
+  /* ── "Pending" state — under review message ── */
+  if (kyc?.status === "pending") {
+    return (
+      <div className="max-w-lg space-y-4">
+        <div className="bg-card border border-border rounded-2xl p-6 text-center space-y-4">
+          <div className="w-14 h-14 rounded-full bg-amber-400/10 border border-amber-400/20 flex items-center justify-center mx-auto">
+            <ShieldCheck className="w-7 h-7 text-amber-400" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-foreground">KYC Under Review</h3>
+            <p className="text-sm text-muted-foreground mt-1">Your documents have been submitted successfully and are being reviewed by our team.</p>
+          </div>
+          <div className="p-3 bg-amber-400/5 border border-amber-400/20 rounded-xl text-left space-y-2">
+            <p className="text-xs font-medium text-amber-300 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5" />Estimated review time: up to 24 hours
+            </p>
+            <p className="text-xs text-muted-foreground">You'll be notified once your KYC is approved or if any action is required.</p>
+          </div>
+          <div className="text-left space-y-2 pt-1">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Submitted Details</p>
+            <div className="bg-background border border-border rounded-xl p-3 space-y-3">
+              <div>
+                <p className="text-[11px] text-muted-foreground">Name as Per PAN</p>
+                <p className="text-sm font-medium text-foreground mt-0.5">{kyc.idProofName ?? "—"}</p>
+              </div>
+              {kyc.addressProofName && (
+                <div>
+                  <p className="text-[11px] text-muted-foreground">PAN Front Photo</p>
+                  <img src={kyc.addressProofName} alt="PAN" className="mt-1.5 w-full max-h-40 object-cover rounded-lg border border-border" />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── "Approved" state ── */
+  if (kyc?.status === "approved") {
+    return (
+      <div className="max-w-lg space-y-4">
+        <div className="bg-card border border-border rounded-2xl p-6 text-center space-y-4">
+          <div className="w-14 h-14 rounded-full bg-green-400/10 border border-green-400/20 flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-7 h-7 text-green-400" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-foreground">KYC Verified</h3>
+            <p className="text-sm text-muted-foreground mt-1">Your identity has been successfully verified. You're fully activated as an affiliate.</p>
+          </div>
+          <div className="text-left space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Verified Details</p>
+            <div className="bg-background border border-border rounded-xl p-3 space-y-3">
+              <div>
+                <p className="text-[11px] text-muted-foreground">Name as Per PAN</p>
+                <p className="text-sm font-medium text-foreground mt-0.5">{kyc.idProofName ?? "—"}</p>
+              </div>
+              {kyc.addressProofName && (
+                <div>
+                  <p className="text-[11px] text-muted-foreground">PAN Front Photo</p>
+                  <img src={kyc.addressProofName} alt="PAN" className="mt-1.5 w-full max-h-40 object-cover rounded-lg border border-border" />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Form (first submit or resubmit after rejection) ── */
   return (
     <div className="max-w-lg space-y-4">
       <div className="bg-card border border-border rounded-2xl p-5">
