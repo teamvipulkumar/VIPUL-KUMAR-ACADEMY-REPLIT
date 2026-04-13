@@ -1061,7 +1061,7 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
           </div>
 
           <div className="p-3 bg-amber-400/5 border border-amber-400/20 rounded-lg">
-            <p className="text-xs text-amber-300 flex items-center gap-1.5"><Lock className="w-3 h-3" />Your documents are stored securely and only visible to admins.</p>
+            <p className="text-xs text-amber-300 flex items-center gap-1.5"><Lock className="w-3 h-3" />Your documents are encrypted and stored securely. They will be used strictly for KYC verification and TDS compliance purposes only.</p>
           </div>
           <Button onClick={save} disabled={saving || uploading} className="w-full bg-primary gap-2">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
