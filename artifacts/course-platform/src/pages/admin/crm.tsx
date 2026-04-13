@@ -327,7 +327,10 @@ function SmtpTab() {
                   Password saved securely
                 </div>
               </div>
-              <Button variant="outline" size="sm" className="flex-shrink-0 gap-1.5" onClick={() => setShowForm(true)}>
+              <Button variant="outline" size="sm" className="flex-shrink-0 gap-1.5" onClick={() => {
+                setForm({ host: smtp.host, port: String(smtp.port), secure: smtp.secure, username: smtp.username, password: "", fromName: smtp.fromName, fromEmail: smtp.fromEmail, isActive: smtp.isActive });
+                setShowForm(true);
+              }}>
                 <Edit2 className="w-3.5 h-3.5" />
                 Edit Settings
               </Button>
@@ -402,7 +405,10 @@ function SmtpTab() {
                     {saving ? "Saving…" : "Save SMTP Settings"}
                   </Button>
                   {smtp && (
-                    <Button variant="outline" onClick={() => { setShowForm(false); setForm(f => ({ ...f, password: "" })); }} disabled={saving}>
+                    <Button variant="outline" onClick={() => {
+                      setForm({ host: smtp.host, port: String(smtp.port), secure: smtp.secure, username: smtp.username, password: "", fromName: smtp.fromName, fromEmail: smtp.fromEmail, isActive: smtp.isActive });
+                      setShowForm(false);
+                    }} disabled={saving}>
                       Cancel
                     </Button>
                   )}
