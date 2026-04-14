@@ -517,6 +517,228 @@ router.post("/cashfree/webhook", async (req, res): Promise<void> => {
   res.json({ received: true });
 });
 
+// ── Paytm: Create Order + Pre-register User ──────────────────────────────────
+router.post("/paytm/create-order", async (req, res): Promise<void> => {
+  const { courseId, email, fullName, state, mobile, couponCode, affiliateRef } = req.body;
+  if (!courseId || !email || !fullName) {
+    res.status(400).json({ error: "courseId, email, and fullName are required" }); return;
+  }
+
+  const [gw] = await db.select().from(paymentGatewaysTable).where(
+    and(eq(paymentGatewaysTable.name, "paytm"), eq(paymentGatewaysTable.isActive, true))
+  ).limit(1);
+  if (!gw?.apiKey || !gw?.secretKey) {
+    res.status(400).json({ error: "Paytm is not configured or inactive" }); return;
+  }
+
+  const mid = gw.apiKey;           // Merchant ID
+  const merchantKey = gw.secretKey; // Merchant Key
+
+  // Find or create user
+  let userId: number;
+  let isNewUser = false;
+  let tempPassword: string | undefined;
+
+  const existingToken = req.cookies?.token;
+  if (existingToken) {
+    try { const payload = verifyToken(existingToken); userId = payload.userId; }
+    catch { userId = 0; }
+  } else { userId = 0; }
+
+  if (!userId) {
+    const [existingUser] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase().trim())).limit(1);
+    if (existingUser) {
+      userId = existingUser.id;
+    } else {
+      tempPassword = nanoid(10);
+      const hashed = await bcrypt.hash(tempPassword, 10);
+      const [newUser] = await db.insert(usersTable).values({
+        email: email.toLowerCase().trim(), password: hashed, name: fullName.trim(),
+        referralCode: nanoid(8).toUpperCase(), role: "student",
+      }).returning();
+      userId = newUser.id;
+      isNewUser = true;
+    }
+  }
+
+  // Apply coupon
+  const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, parseInt(courseId))).limit(1);
+  if (!course) { res.status(404).json({ error: "Course not found" }); return; }
+
+  let amount = parseFloat(course.price);
+  if (couponCode) {
+    const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, couponCode.toUpperCase())).limit(1);
+    if (coupon?.isActive && (!coupon.maxUses || coupon.usedCount < coupon.maxUses)) {
+      const d = parseFloat(String(coupon.discountValue));
+      amount = coupon.discountType === "percentage" ? amount * (1 - d / 100) : Math.max(0, amount - d);
+    }
+  }
+
+  // Build Paytm initiateTransaction request body
+  const orderId = `PT_${nanoid(14)}`;
+  const host = gw.isTestMode ? "https://securegw-stage.paytm.in" : "https://securegw.paytm.in";
+
+  const txnBody = {
+    requestType: "Payment",
+    mid,
+    websiteName: gw.isTestMode ? "WEBSTAGING" : "DEFAULT",
+    orderId,
+    callbackUrl: "",
+    txnAmount: { value: amount.toFixed(2), currency: "INR" },
+    userInfo: { custId: `uid_${userId}` },
+  };
+
+  const signature = crypto
+    .createHmac("sha256", merchantKey)
+    .update(JSON.stringify(txnBody))
+    .digest("base64");
+
+  let txnToken: string;
+  try {
+    const r = await fetch(
+      `${host}/theia/api/v1/initiateTransaction?mid=${encodeURIComponent(mid)}&orderId=${encodeURIComponent(orderId)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          head: { version: "v1", timestamp: new Date().toISOString(), channelId: "WEB", signature },
+          body: txnBody,
+        }),
+      }
+    );
+    const paytmResp = await r.json();
+    if (paytmResp.body?.resultInfo?.resultStatus !== "S") {
+      res.status(400).json({ error: paytmResp.body?.resultInfo?.resultMsg ?? "Failed to initiate Paytm transaction" }); return;
+    }
+    txnToken = paytmResp.body.txnToken;
+  } catch (err: unknown) {
+    res.status(500).json({ error: (err as Error).message }); return;
+  }
+
+  // Store pending payment
+  const sessionId = nanoid(32);
+  await db.insert(paymentsTable).values({
+    userId, courseId: parseInt(courseId),
+    amount: String(amount.toFixed(2)), currency: "INR",
+    status: "pending", gateway: "paytm",
+    sessionId, gatewayOrderId: orderId,
+    couponCode: couponCode || null,
+    affiliateRef: affiliateRef || null,
+  });
+
+  // Auto-login
+  const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  const token = signToken({ userId: freshUser!.id, email: freshUser!.email, role: freshUser!.role });
+  res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+
+  res.json({
+    txnToken,
+    orderId,
+    mid,
+    amount: parseFloat(amount.toFixed(2)),
+    isTestMode: gw.isTestMode,
+    isNewUser,
+    tempPassword,
+    userId,
+    courseId: parseInt(courseId),
+    courseTitle: course.title,
+  });
+});
+
+// ── Paytm: Verify Payment & Complete Enrollment ────────────────────────────────
+router.post("/paytm/verify", async (req, res): Promise<void> => {
+  const { orderId } = req.body;
+  if (!orderId) { res.status(400).json({ error: "orderId is required" }); return; }
+
+  const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.gatewayOrderId, orderId)).limit(1);
+  if (!payment) { res.status(404).json({ error: "Payment record not found" }); return; }
+  if (payment.status === "completed") {
+    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+    res.json({ success: true, enrolled: true, courseId: payment.courseId, courseTitle: course?.title });
+    return;
+  }
+
+  const [gw] = await db.select().from(paymentGatewaysTable).where(eq(paymentGatewaysTable.name, "paytm")).limit(1);
+  if (!gw) { res.status(400).json({ error: "Paytm not configured" }); return; }
+
+  const mid = gw.apiKey;
+  const merchantKey = gw.secretKey;
+  const host = gw.isTestMode ? "https://securegw-stage.paytm.in" : "https://securegw.paytm.in";
+
+  const statusBody = { mid, orderId };
+  const signature = crypto
+    .createHmac("sha256", merchantKey)
+    .update(JSON.stringify(statusBody))
+    .digest("base64");
+
+  try {
+    const r = await fetch(`${host}/v3/order/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        head: { version: "v1", requestTimestamp: new Date().toISOString(), channelId: "WEB", signature },
+        body: statusBody,
+      }),
+    });
+    const result = await r.json();
+    const resultStatus: string = result.body?.resultInfo?.resultStatus ?? result.body?.status ?? "";
+
+    if (resultStatus === "TXN_SUCCESS") {
+      const txnId: string = result.body?.txnId ?? `ptm_${nanoid(12)}`;
+      await db.update(paymentsTable).set({ status: "completed", paymentId: txnId }).where(eq(paymentsTable.id, payment.id));
+
+      const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
+      if (!existing) {
+        await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId: payment.courseId });
+        const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+        await db.insert(notificationsTable).values({ userId: payment.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success" });
+        if (payment.couponCode) {
+          const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
+          if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
+        }
+        const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+        const [course2] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+        if (buyer && course2) triggerAutomation("purchase", buyer.id, buyer.email, { name: buyer.name, email: buyer.email, course_name: course2.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
+        await recordAffiliateCommission(payment.affiliateRef, payment.userId, payment.courseId, parseFloat(String(payment.amount)));
+      }
+
+      const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+      res.json({ success: true, enrolled: true, courseId: payment.courseId, courseTitle: course?.title });
+    } else if (resultStatus === "PENDING") {
+      res.json({ success: false, pending: true, status: resultStatus, message: "Payment is pending. Please wait a moment and try again." });
+    } else {
+      await db.update(paymentsTable).set({ status: "failed" }).where(eq(paymentsTable.id, payment.id));
+      res.json({ success: false, failed: true, status: resultStatus, message: `Payment ${resultStatus || "failed"}. Please try again.` });
+    }
+  } catch (err: unknown) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+// ── Paytm: Webhook (server-to-server payment notification) ────────────────────
+router.post("/paytm/webhook", async (req, res): Promise<void> => {
+  const event = req.body;
+  const orderId: string | undefined = event?.ORDERID;
+  const txnStatus: string | undefined = event?.STATUS;
+
+  if (!orderId || txnStatus !== "TXN_SUCCESS") { res.json({ received: true }); return; }
+
+  const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.gatewayOrderId, orderId)).limit(1);
+  if (!payment || payment.status === "completed") { res.json({ received: true }); return; }
+
+  const txnId: string = event?.TXNID ?? `ptm_wh_${nanoid(10)}`;
+  await db.update(paymentsTable).set({ status: "completed", paymentId: txnId }).where(eq(paymentsTable.id, payment.id));
+
+  const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
+  if (!existing) {
+    await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId: payment.courseId });
+    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+    await db.insert(notificationsTable).values({ userId: payment.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success" });
+    await recordAffiliateCommission(payment.affiliateRef, payment.userId, payment.courseId, parseFloat(String(payment.amount)));
+  }
+  res.json({ received: true });
+});
+
 // ── Public: Active Gateways for Checkout ─────────────────────────────────────
 router.get("/gateways/active", async (req, res): Promise<void> => {
   const gateways = await db.select({
