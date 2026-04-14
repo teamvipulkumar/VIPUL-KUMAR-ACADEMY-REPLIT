@@ -14,6 +14,10 @@ import { useMemo } from "react";
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Invalid email address." }),
+  phone: z.string()
+    .min(10, { message: "Enter a valid 10-digit mobile number." })
+    .max(15, { message: "Mobile number is too long." })
+    .regex(/^[6-9]\d{9}$/, { message: "Enter a valid Indian mobile number." }),
   password: z.string().min(8, { message: "Password must be at least 8 characters." }),
   referralCode: z.string().optional(),
 });
@@ -35,13 +39,14 @@ export default function Register() {
     defaultValues: {
       name: "",
       email: "",
+      phone: "",
       password: "",
       referralCode: referralCodeFromUrl,
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    registerMutation.mutate({ data: values }, {
+    registerMutation.mutate({ data: values as any }, {
       onSuccess: async (data) => {
         queryClient.setQueryData(getGetMeQueryKey(), data);
         await queryClient.refetchQueries({ queryKey: getGetMeQueryKey() });
@@ -90,6 +95,25 @@ export default function Register() {
                     <FormLabel>Email</FormLabel>
                     <FormControl>
                       <Input placeholder="name@example.com" type="email" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Mobile Number</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="10-digit mobile number"
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={10}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

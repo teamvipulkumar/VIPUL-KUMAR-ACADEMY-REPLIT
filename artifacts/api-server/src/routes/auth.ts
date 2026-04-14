@@ -38,9 +38,13 @@ function buildVerificationEmailHtml(name: string, verifyLink: string): string {
 }
 
 router.post("/register", async (req, res): Promise<void> => {
-  const { email, password, name, referralCode: referredBy } = req.body;
+  const { email, password, name, phone, referralCode: referredBy } = req.body;
   if (!email || !password || !name) {
     res.status(400).json({ error: "email, password, and name are required" });
+    return;
+  }
+  if (!phone || !phone.trim()) {
+    res.status(400).json({ error: "Mobile number is required" });
     return;
   }
   const existing = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
@@ -57,6 +61,7 @@ router.post("/register", async (req, res): Promise<void> => {
     email,
     password: hashed,
     name,
+    phone: phone.trim(),
     referralCode,
     role: "student",
     emailVerified: false,
