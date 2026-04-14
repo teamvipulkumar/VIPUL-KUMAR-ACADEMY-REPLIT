@@ -814,7 +814,7 @@ function CreativesTab({ creatives }: { creatives: any[] }) {
             <Badge variant="outline" className="text-[10px] capitalize border-border text-muted-foreground">{c.type}</Badge>
             <h4 className="font-medium text-sm text-foreground truncate flex-1">{c.title}</h4>
           </div>
-          {c.url && (
+          {c.url && c.type !== "link" && (
             <img src={c.url} alt={c.title} className="w-full h-28 object-contain rounded-lg bg-background border border-border mb-3" />
           )}
           {c.content && (
@@ -822,7 +822,14 @@ function CreativesTab({ creatives }: { creatives: any[] }) {
           )}
           {c.description && <p className="text-xs text-muted-foreground mb-3">{c.description}</p>}
           <div className="flex gap-2">
-            {c.url && (
+            {c.url && c.type === "link" && (
+              <a href={c.url} target="_blank" rel="noopener noreferrer" className="flex-1">
+                <Button variant="outline" size="sm" className="w-full gap-1.5 border-border text-xs">
+                  <Download className="w-3 h-3" />Open Link
+                </Button>
+              </a>
+            )}
+            {c.url && c.type !== "link" && (
               <a href={c.url} download className="flex-1">
                 <Button variant="outline" size="sm" className="w-full gap-1.5 border-border text-xs">
                   <Download className="w-3 h-3" />Download
