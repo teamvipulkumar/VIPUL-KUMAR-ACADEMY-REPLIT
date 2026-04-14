@@ -627,23 +627,25 @@ router.get("/admin/all-kyc", requireAdmin, async (req, res): Promise<void> => {
 /* ── Admin: affiliate program settings ── */
 router.get("/admin/settings", requireAdmin, async (req, res): Promise<void> => {
   const [settings] = await db.select().from(platformSettingsTable).limit(1);
-  if (!settings) { res.json({ commissionRate: 20, affiliateEnabled: true, affiliateCookieDays: 30, affiliateMinPayout: 500 }); return; }
+  if (!settings) { res.json({ commissionRate: 20, affiliateEnabled: true, affiliateCookieDays: 30, affiliateMinPayout: 500, payoutPeriodDays: 7 }); return; }
   res.json({
     commissionRate: settings.commissionRate,
     affiliateEnabled: settings.affiliateEnabled,
     affiliateCookieDays: settings.affiliateCookieDays,
     affiliateMinPayout: settings.affiliateMinPayout,
+    payoutPeriodDays: settings.payoutPeriodDays,
   });
 });
 
 router.post("/admin/settings", requireAdmin, async (req, res): Promise<void> => {
-  const { commissionRate, affiliateEnabled, affiliateCookieDays, affiliateMinPayout } = req.body;
+  const { commissionRate, affiliateEnabled, affiliateCookieDays, affiliateMinPayout, payoutPeriodDays } = req.body;
   const [existing] = await db.select().from(platformSettingsTable).limit(1);
   const updates = {
     ...(commissionRate !== undefined && { commissionRate: parseInt(String(commissionRate)) }),
     ...(affiliateEnabled !== undefined && { affiliateEnabled: Boolean(affiliateEnabled) }),
     ...(affiliateCookieDays !== undefined && { affiliateCookieDays: parseInt(String(affiliateCookieDays)) }),
     ...(affiliateMinPayout !== undefined && { affiliateMinPayout: parseInt(String(affiliateMinPayout)) }),
+    ...(payoutPeriodDays !== undefined && { payoutPeriodDays: parseInt(String(payoutPeriodDays)) }),
   };
   if (existing) {
     await db.update(platformSettingsTable).set(updates).where(eq(platformSettingsTable.id, existing.id));

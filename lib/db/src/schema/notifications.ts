@@ -25,6 +25,7 @@ export const platformSettingsTable = pgTable("platform_settings", {
   affiliateEnabled: boolean("affiliate_enabled").notNull().default(true),
   affiliateCookieDays: integer("affiliate_cookie_days").notNull().default(30),
   affiliateMinPayout: integer("affiliate_min_payout").notNull().default(500),
+  payoutPeriodDays: integer("payout_period_days").notNull().default(7),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

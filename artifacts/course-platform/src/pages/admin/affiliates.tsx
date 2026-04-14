@@ -11,7 +11,7 @@ import {
   Search, ChevronDown, ChevronUp, MessageSquare, ShieldCheck,
   Ban, RotateCcw, Percent, Loader2, Plus, Trash2, Download,
   Settings, FileText, CreditCard, BadgeIndianRupee, BarChart3,
-  Shield, Image, Edit2, Save, X
+  Shield, Image, Edit2, Save, X, Calendar
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
@@ -98,6 +98,7 @@ type AffSettings = {
   affiliateEnabled: boolean;
   affiliateCookieDays: number;
   affiliateMinPayout: number;
+  payoutPeriodDays: number;
 };
 
 /* ── Status helpers ── */
@@ -875,7 +876,7 @@ function CreativesTab() {
    TAB 6 — Settings
 ══════════════════════════════════════════ */
 function SettingsTab() {
-  const [settings, setSettings] = useState<AffSettings>({ commissionRate: 20, affiliateEnabled: true, affiliateCookieDays: 30, affiliateMinPayout: 500 });
+  const [settings, setSettings] = useState<AffSettings>({ commissionRate: 20, affiliateEnabled: true, affiliateCookieDays: 30, affiliateMinPayout: 500, payoutPeriodDays: 7 });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -962,6 +963,46 @@ function SettingsTab() {
               className="bg-background border-border h-9 text-sm"
             />
             <p className="text-[10px] text-muted-foreground">Minimum withdrawal amount</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Payout Period */}
+      <div className="bg-card border border-border rounded-xl p-5">
+        <h3 className="font-semibold text-sm mb-1 flex items-center gap-2"><Calendar className="w-4 h-4 text-primary" />Payout Schedule</h3>
+        <p className="text-[11px] text-muted-foreground mb-4">How often affiliates can request or receive automatic payouts.</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+          {[
+            { label: "Every 3 Days", days: 3 },
+            { label: "Every Week",   days: 7 },
+            { label: "Every 2 Weeks", days: 14 },
+            { label: "Every Month",  days: 30 },
+          ].map(opt => (
+            <button
+              key={opt.days}
+              onClick={() => setSettings(s => ({ ...s, payoutPeriodDays: opt.days }))}
+              className={`px-3 py-2.5 rounded-lg border text-xs font-medium transition-all text-center ${
+                settings.payoutPeriodDays === opt.days
+                  ? "bg-primary/15 border-primary/40 text-primary"
+                  : "bg-background border-border text-muted-foreground hover:text-foreground hover:border-border/80"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="space-y-1.5 flex-1">
+            <Label className="text-xs text-muted-foreground">Custom period (days)</Label>
+            <Input
+              type="number" min={1} max={365}
+              value={settings.payoutPeriodDays}
+              onChange={e => setSettings(s => ({ ...s, payoutPeriodDays: parseInt(e.target.value) || 7 }))}
+              className="bg-background border-border h-9 text-sm"
+            />
+          </div>
+          <div className="pt-5 text-xs text-muted-foreground flex-shrink-0">
+            = every <span className="text-foreground font-semibold">{settings.payoutPeriodDays}</span> day{settings.payoutPeriodDays !== 1 ? "s" : ""}
           </div>
         </div>
       </div>
