@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mail, MessageSquare, Phone, MapPin, Clock, Send, Loader2, CheckCircle } from "lucide-react";
+import { Mail, MessageSquare, Phone, Clock, Send, Loader2, CheckCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -180,15 +180,6 @@ export default function ContactUsPage() {
               </Button>
             </form>
           )}
-        </div>
-
-        {/* Office */}
-        <div className="flex items-start gap-3 p-5 rounded-xl border border-border bg-card mb-14">
-          <MapPin className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="font-semibold text-foreground mb-1">Registered Office</p>
-            <p className="text-sm text-muted-foreground leading-relaxed">Vipul Kumar Academy<br />India — Remote-first company<br />GST & Legal details available on request</p>
-          </div>
         </div>
 
         {/* FAQs */}
