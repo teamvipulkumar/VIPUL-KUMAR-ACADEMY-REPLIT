@@ -581,11 +581,13 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
   const orderId = `PT_${nanoid(14)}`;
   const host = gw.isTestMode ? "https://securegw-stage.paytm.in" : "https://securegw.paytm.in";
 
-  const origin = `${req.protocol}://${req.get("host")}`;
+  const forwardedProto = req.get("x-forwarded-proto") || req.protocol;
+  const origin = `${forwardedProto}://${req.get("host")}`;
+  const websiteName = gw.isTestMode ? "WEBSTAGING" : (gw.webhookSecret?.startsWith("WS:") ? gw.webhookSecret.slice(3) : "DEFAULT");
   const txnBody: Record<string, unknown> = {
     requestType: "Payment",
     mid,
-    websiteName: gw.isTestMode ? "WEBSTAGING" : "DEFAULT",
+    websiteName,
     orderId,
     callbackUrl: `${origin}/api/payments/paytm/callback`,
     txnAmount: { value: amount.toFixed(2), currency: "INR" },
