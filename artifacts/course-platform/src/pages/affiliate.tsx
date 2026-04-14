@@ -792,10 +792,10 @@ function CustomLinkGenerator({ referralCode }: { referralCode: string }) {
 
 /* ─── Creatives Tab ─── */
 function CreativesTab({ creatives }: { creatives: any[] }) {
-  const [copied, setCopied] = useState<number | null>(null);
-  const copy = (text: string, id: number) => {
+  const [copied, setCopied] = useState<string | null>(null);
+  const copy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
-    setCopied(id); setTimeout(() => setCopied(null), 2000);
+    setCopied(key); setTimeout(() => setCopied(null), 2000);
   };
   if (creatives.length === 0) {
     return (
@@ -821,8 +821,8 @@ function CreativesTab({ creatives }: { creatives: any[] }) {
             <div className="mb-3">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wide">Primary Text / Ad Copy</p>
-                <button onClick={() => copy(c.content, c.id)} className="text-muted-foreground hover:text-foreground transition-colors">
-                  {copied === c.id ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                <button onClick={() => copy(c.content, `${c.id}-c`)} className="text-muted-foreground hover:text-foreground transition-colors">
+                  {copied === `${c.id}-c` ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
                 </button>
               </div>
               <p className="text-xs text-muted-foreground bg-background border border-border rounded-lg p-2.5 line-clamp-3">{c.content}</p>
@@ -830,7 +830,12 @@ function CreativesTab({ creatives }: { creatives: any[] }) {
           )}
           {c.headline && (
             <div className="mb-3">
-              <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wide mb-1">Headline</p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wide">Headline</p>
+                <button onClick={() => copy(c.headline, `${c.id}-h`)} className="text-muted-foreground hover:text-foreground transition-colors">
+                  {copied === `${c.id}-h` ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                </button>
+              </div>
               <p className="text-xs text-foreground font-medium bg-background border border-border rounded-lg p-2.5">{c.headline}</p>
             </div>
           )}
