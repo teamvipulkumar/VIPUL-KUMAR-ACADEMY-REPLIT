@@ -87,7 +87,7 @@ type KycRecord = {
 type Creative = {
   id: number;
   title: string;
-  type: "image" | "banner" | "text";
+  type: "image" | "banner" | "text" | "link";
   url: string | null;
   content: string | null;
   description: string | null;
@@ -1350,13 +1350,22 @@ function CreativesTab() {
                 <option value="text">Text</option>
                 <option value="image">Image</option>
                 <option value="banner">Banner</option>
+                <option value="link">Link</option>
               </select>
             </div>
           </div>
           {form.type !== "text" && (
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">URL</Label>
-              <Input value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} placeholder="https://..." className="bg-background border-border text-sm h-8" />
+              <Label className="text-xs text-muted-foreground">{form.type === "link" ? "Video / Link URL" : "URL"}</Label>
+              <Input
+                value={form.url}
+                onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
+                placeholder={form.type === "link" ? "https://drive.google.com/file/d/..." : "https://..."}
+                className="bg-background border-border text-sm h-8"
+              />
+              {form.type === "link" && (
+                <p className="text-[10px] text-muted-foreground">Paste a Google Drive, YouTube, or any video link. Affiliates can share this directly.</p>
+              )}
             </div>
           )}
           <div className="space-y-1.5">
