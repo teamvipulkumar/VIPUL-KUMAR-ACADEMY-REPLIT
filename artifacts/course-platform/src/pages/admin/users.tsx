@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   UserPlus, Search, Eye, Pencil, Trash2, ShieldCheck,
   GraduationCap, Share2, Mail, Calendar, BookOpen, BadgeIndianRupee,
-  MoreHorizontal, CheckCircle, XCircle, Lock
+  MoreHorizontal, CheckCircle, XCircle, Lock, Phone
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -261,6 +261,12 @@ function ViewProfileDialog({ userId, onClose }: { userId: number; onClose: () =>
               <div className="flex justify-between py-2 border-b border-border/50">
                 <span className="text-muted-foreground flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />Joined</span>
                 <span className="text-foreground font-medium">{new Date(user.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-border/50">
+                <span className="text-muted-foreground flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />Mobile</span>
+                <span className="text-foreground font-medium">
+                  {(user as { phone?: string | null }).phone ?? <span className="text-muted-foreground italic text-xs">Not provided</span>}
+                </span>
               </div>
               {user.referralCode && (
                 <div className="flex justify-between py-2 border-b border-border/50">
