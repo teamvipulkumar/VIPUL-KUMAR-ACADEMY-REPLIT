@@ -211,6 +211,20 @@ router.post("/reset-password", async (req, res): Promise<void> => {
   res.json({ message: "Password reset successfully" });
 });
 
+/* ── Update own profile (phone, name) ── */
+router.patch("/profile", requireAuth, async (req, res): Promise<void> => {
+  const { phone, name } = req.body;
+  const authReq = req as Request & { user?: JwtPayload };
+  if (!authReq.user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const updates: Record<string, unknown> = {};
+  if (name !== undefined && name.trim()) updates.name = name.trim();
+  if (phone !== undefined) updates.phone = phone.trim() || null;
+  if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
+  const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, authReq.user.userId)).returning();
+  const { password: _, emailVerifyToken: _vt, emailVerifyTokenExpiresAt: _vte, resetToken: _rt, resetTokenExpiresAt: _rte, ...safeUser } = updated;
+  res.json(safeUser);
+});
+
 /* ── Public: returns whether Google Sign-In is enabled and the clientId ── */
 router.get("/google-config", async (_req, res): Promise<void> => {
   const [settings] = await db.select({
@@ -252,7 +266,9 @@ router.post("/google-login", async (req, res): Promise<void> => {
   const email = gUser.email.toLowerCase();
   let [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
 
+  let isNewUser = false;
   if (!user) {
+    isNewUser = true;
     const referralCode = nanoid(8).toUpperCase();
     const randomPassword = await bcrypt.hash(nanoid(32), 10);
     const [created] = await db.insert(usersTable).values({
@@ -274,7 +290,7 @@ router.post("/google-login", async (req, res): Promise<void> => {
   const jwtToken = signToken({ userId: user.id, email: user.email, role: user.role });
   res.cookie("token", jwtToken, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
   const { password: _, emailVerifyToken: _vt, emailVerifyTokenExpiresAt: _vte, resetToken: _rt, resetTokenExpiresAt: _rte, ...safeUser } = user;
-  res.json({ user: safeUser, message: "Signed in with Google" });
+  res.json({ user: safeUser, isNewUser, message: "Signed in with Google" });
 });
 
 export default router;
