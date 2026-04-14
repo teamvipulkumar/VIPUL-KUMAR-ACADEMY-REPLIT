@@ -605,23 +605,28 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
 
   let txnToken: string;
   try {
+    const reqPayload = {
+      head: { version: "v1", signature },
+      body: txnBody,
+    };
+    console.log("[paytm create-order] host:", host, "mid:", mid, "orderId:", orderId);
+    console.log("[paytm create-order] body:", JSON.stringify(txnBody));
     const r = await fetch(
       `${host}/theia/api/v1/initiateTransaction?mid=${encodeURIComponent(mid)}&orderId=${encodeURIComponent(orderId)}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          head: { version: "v1", signature },
-          body: txnBody,
-        }),
+        body: JSON.stringify(reqPayload),
       }
     );
     const paytmResp = await r.json();
+    console.log("[paytm create-order] response:", JSON.stringify(paytmResp));
     if (paytmResp.body?.resultInfo?.resultStatus !== "S") {
       res.status(400).json({ error: paytmResp.body?.resultInfo?.resultMsg ?? "Failed to initiate Paytm transaction" }); return;
     }
     txnToken = paytmResp.body.txnToken;
   } catch (err: unknown) {
+    console.error("[paytm create-order] error:", err);
     res.status(500).json({ error: (err as Error).message }); return;
   }
 
