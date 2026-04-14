@@ -462,9 +462,21 @@ function ApplicationsTab() {
 /* ══════════════════════════════════════════
    TAB 3 — Payouts
 ══════════════════════════════════════════ */
-function AffiliateProfileModal({ payout, onClose }: { payout: ScheduledPayout; onClose: () => void }) {
+function AffiliateProfileModal({
+  payout, onClose, actionLoading, rejectState, onRejectStateChange, onAction,
+}: {
+  payout: ScheduledPayout;
+  onClose: () => void;
+  actionLoading: string | null;
+  rejectState: { open: boolean; note: string };
+  onRejectStateChange: (s: { open: boolean; note: string }) => void;
+  onAction: (affiliateId: number, action: "paid" | "hold" | "reject", note?: string) => void;
+}) {
+  const isHold     = payout.latestAction?.status === "hold";
+  const isPaid     = payout.latestAction?.status === "approved";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
       <div
         className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}
@@ -540,6 +552,62 @@ function AffiliateProfileModal({ payout, onClose }: { payout: ScheduledPayout; o
             <p className="text-xs text-muted-foreground border-t border-border pt-3">
               <span className="font-medium">Admin note: </span>{payout.latestAction.note}
             </p>
+          )}
+
+          {/* Action buttons */}
+          {!isPaid && (
+            <div className="border-t border-border pt-3 space-y-2">
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => { onAction(payout.affiliateId, "paid"); onClose(); }} disabled={!!actionLoading} size="sm"
+                  className="bg-green-500 hover:bg-green-600 text-white gap-1.5 h-8 text-xs">
+                  {actionLoading === `paid-${payout.affiliateId}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                  Mark as Paid
+                </Button>
+                {!isHold && (
+                  <Button onClick={() => { onAction(payout.affiliateId, "hold"); onClose(); }} disabled={!!actionLoading} size="sm" variant="outline"
+                    className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 gap-1.5 h-8 text-xs">
+                    {actionLoading === `hold-${payout.affiliateId}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
+                    Hold
+                  </Button>
+                )}
+                <Button onClick={() => onRejectStateChange({ open: !rejectState.open, note: rejectState.note })}
+                  disabled={!!actionLoading} size="sm" variant="outline"
+                  className="border-red-500/30 text-red-400 hover:bg-red-500/10 gap-1.5 h-8 text-xs">
+                  <XCircle className="w-3 h-3" />Reject
+                </Button>
+              </div>
+              {rejectState.open && (
+                <div className="flex items-center gap-2">
+                  <Input value={rejectState.note} onChange={e => onRejectStateChange({ ...rejectState, note: e.target.value })}
+                    placeholder="Rejection reason (required)..." className="bg-background border-red-500/30 h-8 text-xs flex-1" autoFocus />
+                  <Button onClick={() => { onAction(payout.affiliateId, "reject", rejectState.note); onClose(); }}
+                    disabled={!!actionLoading || !rejectState.note.trim()} size="sm"
+                    className="bg-red-500 hover:bg-red-600 text-white h-8 text-xs gap-1 flex-shrink-0">
+                    {actionLoading === `reject-${payout.affiliateId}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
+                    Confirm
+                  </Button>
+                  <button onClick={() => onRejectStateChange({ open: false, note: "" })} className="text-muted-foreground hover:text-foreground flex-shrink-0">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          {isPaid && (
+            <div className="border-t border-border pt-3 flex items-center gap-2">
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+              <p className="text-xs text-green-400 font-medium">Paid on {payout.latestAction?.date ? fmtDate(payout.latestAction.date) : "—"}</p>
+            </div>
+          )}
+          {isHold && (
+            <div className="border-t border-border pt-3 flex flex-wrap items-center gap-2">
+              <p className="text-xs text-blue-400 flex-1">⏸ On hold{payout.latestAction?.note ? `: ${payout.latestAction.note}` : ""}</p>
+              <Button onClick={() => { onAction(payout.affiliateId, "paid"); onClose(); }} disabled={!!actionLoading} size="sm"
+                className="bg-green-500 hover:bg-green-600 text-white gap-1.5 h-8 text-xs">
+                {actionLoading === `paid-${payout.affiliateId}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                Mark as Paid
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -759,7 +827,16 @@ function PayoutsTab() {
   return (
     <div className="space-y-4">
       {/* Affiliate profile modal */}
-      {viewPayout && <AffiliateProfileModal payout={viewPayout} onClose={() => setViewPayout(null)} />}
+      {viewPayout && (
+        <AffiliateProfileModal
+          payout={viewPayout}
+          onClose={() => setViewPayout(null)}
+          actionLoading={actionLoading}
+          rejectState={rejectState[viewPayout.affiliateId] ?? { open: false, note: "" }}
+          onRejectStateChange={s => setRejectState(r => ({ ...r, [viewPayout.affiliateId]: s }))}
+          onAction={doScheduledAction}
+        />
+      )}
 
       {/* View toggle */}
       <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5 w-fit">
