@@ -633,11 +633,21 @@ router.get("/admin/scheduled-payouts", requireAdmin, async (req, res): Promise<v
   const [settings] = await db.select().from(platformSettingsTable).limit(1);
   const payoutPeriodDays = settings?.payoutPeriodDays ?? 7;
 
+  // Union: approved applications + any user with role='affiliate' (some affiliates may have been created directly)
   const approvedApps = await db.select({ userId: affiliateApplicationsTable.userId })
     .from(affiliateApplicationsTable)
     .where(eq(affiliateApplicationsTable.status, "approved"));
 
-  const results = await Promise.all(approvedApps.map(async ({ userId }) => {
+  const affiliateUsers = await db.select({ userId: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.role, "affiliate"));
+
+  const uniqueIds = Array.from(new Set([
+    ...approvedApps.map(a => a.userId),
+    ...affiliateUsers.map(u => u.userId),
+  ]));
+
+  const results = await Promise.all(uniqueIds.map(async (userId) => {
     const [user] = await db.select({ name: usersTable.name, email: usersTable.email, phone: (usersTable as any).phone })
       .from(usersTable).where(eq(usersTable.id, userId)).limit(1);
     if (!user) return null;
