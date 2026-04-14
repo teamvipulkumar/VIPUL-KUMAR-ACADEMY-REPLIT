@@ -102,6 +102,69 @@ router.post("/users/:userId/ban", requireAdmin, async (req, res): Promise<void> 
   res.json({ message: `User ${banned ? "banned" : "unbanned"}` });
 });
 
+// ── Export users as CSV ───────────────────────────────────────────────────────
+router.get("/users/export", requireAdmin, async (req, res): Promise<void> => {
+  const users = await db.select({
+    id: usersTable.id, name: usersTable.name, email: usersTable.email,
+    role: usersTable.role, isBanned: usersTable.isBanned,
+    phone: (usersTable as any).phone,
+    referralCode: usersTable.referralCode, createdAt: usersTable.createdAt,
+  }).from(usersTable).orderBy(desc(usersTable.createdAt));
+
+  const escape = (v: unknown) => {
+    const s = v == null ? "" : String(v);
+    return `"${s.replace(/"/g, '""')}"`;
+  };
+  const header = ["ID", "Name", "Email", "Role", "Status", "Phone", "Referral Code", "Joined Date"];
+  const rows = users.map(u => [
+    u.id, u.name, u.email, u.role,
+    u.isBanned ? "banned" : "active",
+    u.phone ?? "",
+    u.referralCode ?? "",
+    new Date(u.createdAt).toISOString().split("T")[0],
+  ].map(escape).join(","));
+
+  const csv = [header.join(","), ...rows].join("\n");
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", `attachment; filename="users-${new Date().toISOString().split("T")[0]}.csv"`);
+  res.send(csv);
+});
+
+// ── Import users from CSV/JSON ────────────────────────────────────────────────
+router.post("/users/import", requireAdmin, async (req, res): Promise<void> => {
+  const rows: Array<{ name: string; email: string; password: string; role?: string }> = req.body?.users;
+  if (!Array.isArray(rows) || rows.length === 0) {
+    res.status(400).json({ error: "Provide a non-empty users array" }); return;
+  }
+  if (rows.length > 500) {
+    res.status(400).json({ error: "Maximum 500 users per import" }); return;
+  }
+
+  const created: number[] = [];
+  const errors: Array<{ row: number; email: string; error: string }> = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r.name?.trim() || !r.email?.trim() || !r.password?.trim()) {
+      errors.push({ row: i + 1, email: r.email ?? "", error: "name, email, and password are required" }); continue;
+    }
+    const emailLower = r.email.trim().toLowerCase();
+    const role = (["admin", "student", "affiliate"].includes(r.role ?? "")) ? r.role as string : "student";
+    try {
+      const [existing] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, emailLower)).limit(1);
+      if (existing) { errors.push({ row: i + 1, email: emailLower, error: "Email already exists" }); continue; }
+      const hashed = await bcrypt.hash(r.password.trim(), 10);
+      const referralCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+      const [user] = await db.insert(usersTable).values({ name: r.name.trim(), email: emailLower, password: hashed, role: role as "admin" | "student" | "affiliate", referralCode }).returning({ id: usersTable.id });
+      created.push(user.id);
+    } catch {
+      errors.push({ row: i + 1, email: emailLower, error: "Database error" });
+    }
+  }
+
+  res.json({ created: created.length, errors, total: rows.length });
+});
+
 router.get("/analytics", requireAdmin, async (req, res): Promise<void> => {
   const now = new Date();
   const monthAgo = new Date(now.getFullYear(), now.getMonth(), 1);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   useAdminListUsers, getAdminListUsersQueryKey,
   useAdminGetUser, getAdminGetUserQueryKey,
@@ -15,7 +15,8 @@ import { useToast } from "@/hooks/use-toast";
 import {
   UserPlus, Search, Eye, Pencil, Trash2, ShieldCheck,
   GraduationCap, Share2, Mail, Calendar, BookOpen, BadgeIndianRupee,
-  MoreHorizontal, CheckCircle, XCircle, Lock, Phone
+  MoreHorizontal, CheckCircle, XCircle, Lock, Phone,
+  Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, X, Loader2
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -44,6 +45,246 @@ function Avatar({ name, size = "md" }: { name: string; size?: "sm" | "md" | "lg"
     <div className={`${sz} ${color} rounded-full flex items-center justify-center font-bold text-white flex-shrink-0`}>
       {name.charAt(0).toUpperCase()}
     </div>
+  );
+}
+
+// ── CSV helpers ───────────────────────────────────────────────────────────────
+type CsvRow = { name: string; email: string; password: string; role: string };
+
+function parseCsv(text: string): CsvRow[] {
+  const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim().split("\n");
+  if (lines.length < 2) return [];
+  const headerRaw = lines[0].split(",").map(h => h.replace(/^"|"$/g, "").trim().toLowerCase());
+  const nameIdx    = headerRaw.findIndex(h => h === "name");
+  const emailIdx   = headerRaw.findIndex(h => h === "email");
+  const passIdx    = headerRaw.findIndex(h => ["password", "pass"].includes(h));
+  const roleIdx    = headerRaw.findIndex(h => h === "role");
+
+  return lines.slice(1).filter(l => l.trim()).map(line => {
+    const cols = line.split(",").map(c => c.replace(/^"|"$/g, "").trim());
+    return {
+      name:     nameIdx  >= 0 ? cols[nameIdx]  ?? "" : "",
+      email:    emailIdx >= 0 ? cols[emailIdx] ?? "" : "",
+      password: passIdx  >= 0 ? cols[passIdx]  ?? "" : "",
+      role:     roleIdx  >= 0 ? cols[roleIdx]  ?? "student" : "student",
+    };
+  });
+}
+
+const TEMPLATE_CSV = `name,email,password,role
+Jane Doe,jane@example.com,Password@123,student
+John Smith,john@example.com,Password@123,affiliate`;
+
+// ── Import Users Dialog ───────────────────────────────────────────────────────
+function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClose: () => void; onSuccess: () => void }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [rows, setRows] = useState<CsvRow[]>([]);
+  const [fileName, setFileName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<{ created: number; errors: Array<{ row: number; email: string; error: string }>; total: number } | null>(null);
+  const { toast } = useToast();
+
+  const handleFile = (file: File) => {
+    setFileName(file.name);
+    setResult(null);
+    const reader = new FileReader();
+    reader.onload = e => { const text = e.target?.result as string; setRows(parseCsv(text)); };
+    reader.readAsText(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file?.name.endsWith(".csv")) handleFile(file);
+  };
+
+  const handleImport = async () => {
+    if (!rows.length) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/users/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ users: rows }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Import failed");
+      setResult(data);
+      if (data.created > 0) onSuccess();
+      toast({ title: `Imported ${data.created} of ${data.total} users` });
+    } catch (err: unknown) {
+      toast({ title: "Import failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    const blob = new Blob([TEMPLATE_CSV], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "users-import-template.csv"; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const resetDialog = () => { setRows([]); setFileName(""); setResult(null); };
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) { onClose(); resetDialog(); } }}>
+      <DialogContent className="sm:max-w-2xl bg-[#0d1424] border-white/10 max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Upload className="w-4 h-4 text-primary" />Import Users</DialogTitle>
+          <DialogDescription>Upload a CSV file to bulk-create users. Maximum 500 rows per import.</DialogDescription>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+          {!result ? (
+            <>
+              {/* Template download */}
+              <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-xl">
+                <div className="flex items-center gap-2.5">
+                  <FileSpreadsheet className="w-4 h-4 text-primary flex-shrink-0" />
+                  <div>
+                    <p className="text-xs font-medium text-foreground">Required columns: <code className="text-primary font-mono">name, email, password</code></p>
+                    <p className="text-[11px] text-muted-foreground">Optional: <code className="font-mono">role</code> (student / affiliate / admin) — defaults to student</p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" className="border-primary/30 text-primary hover:bg-primary/10 flex-shrink-0 gap-1.5 cursor-pointer" onClick={handleDownloadTemplate}>
+                  <Download className="w-3.5 h-3.5" />Template
+                </Button>
+              </div>
+
+              {/* Drop zone */}
+              <div
+                className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer ${fileName ? "border-primary/40 bg-primary/5" : "border-border hover:border-primary/40 hover:bg-card/50"}`}
+                onDrop={handleDrop}
+                onDragOver={e => e.preventDefault()}
+                onClick={() => fileRef.current?.click()}
+              >
+                <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+                {fileName ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <FileSpreadsheet className="w-5 h-5 text-primary" />
+                    <span className="text-sm font-medium text-foreground">{fileName}</span>
+                    <button className="text-muted-foreground hover:text-foreground cursor-pointer" onClick={e => { e.stopPropagation(); resetDialog(); }}>
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm font-medium text-foreground">Drop your CSV here or click to browse</p>
+                    <p className="text-xs text-muted-foreground mt-1">Supports .csv files up to 500 rows</p>
+                  </>
+                )}
+              </div>
+
+              {/* Preview table */}
+              {rows.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{rows.length} rows detected — preview</p>
+                    {rows.some(r => !r.name || !r.email || !r.password) && (
+                      <span className="flex items-center gap-1 text-xs text-amber-400"><AlertCircle className="w-3 h-3" />Some rows have missing fields</span>
+                    )}
+                  </div>
+                  <div className="border border-border rounded-xl overflow-hidden overflow-x-auto max-h-52">
+                    <table className="w-full text-xs min-w-[480px]">
+                      <thead className="bg-card border-b border-border">
+                        <tr>
+                          {["#", "Name", "Email", "Password", "Role", "Valid"].map(h => (
+                            <th key={h} className="text-left px-3 py-2 text-muted-foreground font-semibold uppercase tracking-wide">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {rows.slice(0, 20).map((r, i) => {
+                          const valid = !!r.name && !!r.email && !!r.password;
+                          return (
+                            <tr key={i} className={valid ? "" : "bg-red-500/5"}>
+                              <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
+                              <td className="px-3 py-2 text-foreground truncate max-w-[100px]">{r.name || <span className="text-red-400">missing</span>}</td>
+                              <td className="px-3 py-2 text-foreground truncate max-w-[120px]">{r.email || <span className="text-red-400">missing</span>}</td>
+                              <td className="px-3 py-2 text-muted-foreground">{r.password ? "••••••••" : <span className="text-red-400">missing</span>}</td>
+                              <td className="px-3 py-2">
+                                <Badge className={`text-[10px] ${r.role === "admin" ? "text-red-400 border-red-400/30 bg-red-400/10" : r.role === "affiliate" ? "text-purple-400 border-purple-400/30 bg-purple-400/10" : "text-blue-400 border-blue-400/30 bg-blue-400/10"}`}>
+                                  {r.role || "student"}
+                                </Badge>
+                              </td>
+                              <td className="px-3 py-2">
+                                {valid ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400" /> : <AlertCircle className="w-3.5 h-3.5 text-red-400" />}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {rows.length > 20 && (
+                          <tr><td colSpan={6} className="px-3 py-2 text-center text-muted-foreground">...and {rows.length - 20} more rows</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            /* Results */
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-center">
+                  <p className="text-2xl font-bold text-green-400">{result.created}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Created</p>
+                </div>
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
+                  <p className="text-2xl font-bold text-red-400">{result.errors.length}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Errors</p>
+                </div>
+                <div className="p-3 bg-card border border-border rounded-xl text-center">
+                  <p className="text-2xl font-bold text-foreground">{result.total}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Total</p>
+                </div>
+              </div>
+              {result.errors.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Errors</p>
+                  <div className="border border-border rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+                    {result.errors.map((e, i) => (
+                      <div key={i} className="flex items-center gap-2.5 px-3 py-2 border-b border-border/50 last:border-0 bg-red-500/5">
+                        <AlertCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                        <span className="text-xs text-muted-foreground">Row {e.row}</span>
+                        <span className="text-xs text-foreground truncate flex-1">{e.email}</span>
+                        <span className="text-xs text-red-400 flex-shrink-0">{e.error}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {result.created > 0 && (
+                <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-xl">
+                  <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+                  <p className="text-sm text-green-400">{result.created} user{result.created !== 1 ? "s" : ""} successfully created.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="gap-2 mt-4 flex-shrink-0">
+          <Button variant="outline" onClick={() => { onClose(); resetDialog(); }} className="border-white/10">
+            {result ? "Close" : "Cancel"}
+          </Button>
+          {!result && (
+            <Button onClick={handleImport} disabled={loading || rows.length === 0} className="bg-primary gap-2">
+              {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Importing...</> : <><Upload className="w-4 h-4" />Import {rows.length > 0 ? `${rows.length} Users` : "Users"}</>}
+            </Button>
+          )}
+          {result && (
+            <Button onClick={() => { resetDialog(); }} variant="outline" className="border-white/10 gap-2">
+              <Upload className="w-4 h-4" />Import Another File
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -338,6 +579,7 @@ export default function AdminUsersPage() {
   const [status, setStatus] = useState("all");
 
   const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [viewingUser, setViewingUser] = useState<User | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
@@ -358,6 +600,23 @@ export default function AdminUsersPage() {
   };
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: getAdminListUsersQueryKey({}) });
+
+  const handleExport = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/users/export`, { credentials: "include" });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `users-${new Date().toISOString().split("T")[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Users exported", description: "CSV file downloaded." });
+    } catch {
+      toast({ title: "Export failed", variant: "destructive" });
+    }
+  };
 
   const handleBan = (userId: number, banned: boolean, name: string) => {
     banUser.mutate({ userId, data: { banned } }, {
@@ -388,9 +647,17 @@ export default function AdminUsersPage() {
           <h1 className="text-2xl font-bold text-foreground">Users</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{roleCounts.total} total users</p>
         </div>
-        <Button onClick={() => setAddOpen(true)} className="bg-primary hover:bg-primary/90 gap-2 self-start sm:self-auto">
-          <UserPlus className="w-4 h-4" />Add User
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+          <Button variant="outline" onClick={handleExport} className="border-border gap-2 cursor-pointer">
+            <Download className="w-4 h-4" />Export CSV
+          </Button>
+          <Button variant="outline" onClick={() => setImportOpen(true)} className="border-border gap-2 cursor-pointer">
+            <Upload className="w-4 h-4" />Import CSV
+          </Button>
+          <Button onClick={() => setAddOpen(true)} className="bg-primary hover:bg-primary/90 gap-2">
+            <UserPlus className="w-4 h-4" />Add User
+          </Button>
+        </div>
       </div>
 
       {/* Stats strip */}
@@ -546,6 +813,7 @@ export default function AdminUsersPage() {
 
       {/* Dialogs */}
       <AddUserDialog open={addOpen} onClose={() => setAddOpen(false)} onSuccess={refresh} />
+      <ImportUsersDialog open={importOpen} onClose={() => setImportOpen(false)} onSuccess={refresh} />
       {viewingUser && <ViewProfileDialog userId={viewingUser.id} onClose={() => setViewingUser(null)} />}
       {editingUser && <EditUserDialog user={editingUser} onClose={() => setEditingUser(null)} onSuccess={refresh} />}
       {deletingUser && <DeleteDialog user={deletingUser} onClose={() => setDeletingUser(null)} onSuccess={refresh} />}
