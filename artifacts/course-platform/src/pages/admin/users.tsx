@@ -649,10 +649,10 @@ export default function AdminUsersPage() {
         </div>
         <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
           <Button variant="outline" onClick={handleExport} className="border-border gap-2 cursor-pointer">
-            <Download className="w-4 h-4" />Export CSV
+            <Upload className="w-4 h-4" />Export CSV
           </Button>
           <Button variant="outline" onClick={() => setImportOpen(true)} className="border-border gap-2 cursor-pointer">
-            <Upload className="w-4 h-4" />Import CSV
+            <Download className="w-4 h-4" />Import CSV
           </Button>
           <Button onClick={() => setAddOpen(true)} className="bg-primary hover:bg-primary/90 gap-2">
             <UserPlus className="w-4 h-4" />Add User
