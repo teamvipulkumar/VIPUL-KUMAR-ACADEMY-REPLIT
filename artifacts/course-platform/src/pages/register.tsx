@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { GoogleSignInButton, getGoogleConfig } from "@/components/google-sign-in-button";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -28,6 +29,7 @@ export default function Register() {
   const { toast } = useToast();
   const registerMutation = useRegister();
   const queryClient = useQueryClient();
+  const googleConfig = getGoogleConfig();
 
   const referralCodeFromUrl = useMemo(() => {
     const params = new URLSearchParams(searchString);
@@ -150,6 +152,17 @@ export default function Register() {
               </Button>
             </form>
           </Form>
+          {googleConfig && (
+            <div className="mt-4 space-y-3">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">or</span>
+                </div>
+              </div>
+              <GoogleSignInButton mode="signup" />
+            </div>
+          )}
         </CardContent>
         <CardFooter className="flex justify-center">
           <p className="text-sm text-muted-foreground">

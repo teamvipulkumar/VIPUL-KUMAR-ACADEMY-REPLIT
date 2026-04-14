@@ -12,6 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { GoogleSignInButton, getGoogleConfig } from "@/components/google-sign-in-button";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -26,6 +27,7 @@ export default function Login() {
   const { isAuthenticated } = useAuth();
   const [showPw, setShowPw] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const googleConfig = getGoogleConfig();
 
   // If user is already authenticated (e.g. navigated to /login while logged in), redirect them
   useEffect(() => {
@@ -132,6 +134,17 @@ export default function Login() {
               </Button>
             </form>
           </Form>
+          {googleConfig && (
+            <div className="mt-4 space-y-3">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">or</span>
+                </div>
+              </div>
+              <GoogleSignInButton mode="signin" />
+            </div>
+          )}
         </CardContent>
         <CardFooter className="flex justify-center">
           <p className="text-sm text-muted-foreground">

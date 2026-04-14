@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { signToken, requireAuth, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import { triggerAutomation, sendTransactionalEmail } from "./crm";
+import { OAuth2Client } from "google-auth-library";
 
 const router = Router();
 
@@ -208,6 +209,59 @@ router.post("/reset-password", async (req, res): Promise<void> => {
   const hashed = await bcrypt.hash(password, 10);
   await db.update(usersTable).set({ password: hashed, resetToken: null, resetTokenExpiresAt: null }).where(eq(usersTable.id, user.id));
   res.json({ message: "Password reset successfully" });
+});
+
+/* ── Google OAuth Sign-In ── */
+router.post("/google-login", async (req, res): Promise<void> => {
+  const { accessToken } = req.body;
+  if (!accessToken) {
+    res.status(400).json({ error: "accessToken is required" });
+    return;
+  }
+
+  let gUser: { email?: string; name?: string; picture?: string } = {};
+  try {
+    const infoRes = await fetch(`https://www.googleapis.com/oauth2/v2/userinfo`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!infoRes.ok) throw new Error("Failed to fetch Google user info");
+    gUser = await infoRes.json();
+  } catch {
+    res.status(401).json({ error: "Invalid or expired Google access token" });
+    return;
+  }
+
+  if (!gUser.email) {
+    res.status(401).json({ error: "Could not retrieve email from Google account" });
+    return;
+  }
+
+  const email = gUser.email.toLowerCase();
+  let [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+
+  if (!user) {
+    const referralCode = nanoid(8).toUpperCase();
+    const randomPassword = await bcrypt.hash(nanoid(32), 10);
+    const [created] = await db.insert(usersTable).values({
+      email,
+      password: randomPassword,
+      name: gUser.name ?? email.split("@")[0],
+      avatarUrl: gUser.picture ?? null,
+      referralCode,
+      role: "student",
+      emailVerified: true,
+    }).returning();
+    user = created;
+    triggerAutomation("welcome", user.id, user.email, { name: user.name, email: user.email, verify_link: "" }).catch(() => {});
+  } else if (user.isBanned) {
+    res.status(403).json({ error: "Account is banned" });
+    return;
+  }
+
+  const jwtToken = signToken({ userId: user.id, email: user.email, role: user.role });
+  res.cookie("token", jwtToken, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+  const { password: _, emailVerifyToken: _vt, emailVerifyTokenExpiresAt: _vte, resetToken: _rt, resetTokenExpiresAt: _rte, ...safeUser } = user;
+  res.json({ user: safeUser, message: "Signed in with Google" });
 });
 
 export default router;
