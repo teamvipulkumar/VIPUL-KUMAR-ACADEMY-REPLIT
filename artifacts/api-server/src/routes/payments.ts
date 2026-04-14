@@ -602,7 +602,7 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
       head: { version: "v1", signature },
       body: txnBody,
     };
-    console.log("[paytm create-order] host:", host, "mid:", mid, "orderId:", orderId);
+    console.log("[paytm create-order] host:", host, "mid:", mid, "orderId:", orderId, "merchantKeyLen:", merchantKey.length, "websiteName:", websiteName, "callbackUrl:", txnBody.callbackUrl);
     const r = await fetch(
       `${host}/theia/api/v1/initiateTransaction?mid=${encodeURIComponent(mid)}&orderId=${encodeURIComponent(orderId)}`,
       {
