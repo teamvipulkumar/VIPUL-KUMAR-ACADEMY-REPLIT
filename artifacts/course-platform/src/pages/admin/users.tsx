@@ -92,7 +92,7 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
     if (!open) return;
     fetch(`${API_BASE}/api/admin/courses`, { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.courses) setCourses(d.courses); })
+      .then(d => { if (Array.isArray(d)) setCourses(d); })
       .catch(() => {});
   }, [open]);
 
