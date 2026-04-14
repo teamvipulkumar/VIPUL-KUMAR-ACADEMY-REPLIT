@@ -847,7 +847,6 @@ function PayoutsTab() {
           onAction={doScheduledAction}
         />
       )}
-
       {/* View toggle */}
       <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5 w-fit">
         {[
@@ -861,7 +860,6 @@ function PayoutsTab() {
           </button>
         ))}
       </div>
-
       {/* ── SCHEDULED VIEW ── */}
       {view === "scheduled" && (
         <>
@@ -922,7 +920,6 @@ function PayoutsTab() {
           )}
         </>
       )}
-
       {/* ── REQUESTS VIEW ── */}
       {view === "requests" && (
         <>
@@ -1007,7 +1004,6 @@ function PayoutsTab() {
           )}
         </>
       )}
-
       {/* ── PAID VIEW ── */}
       {view === "paid" && (() => {
         const q = paidSearch.toLowerCase();
@@ -1027,7 +1023,6 @@ function PayoutsTab() {
                 <p className="text-xl font-bold text-green-400">{fmt(totalAmt)}</p>
               </div>
             </div>
-
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <Input
@@ -1037,7 +1032,6 @@ function PayoutsTab() {
                 className="pl-8 bg-card border-border h-8 text-xs"
               />
             </div>
-
             {loading ? (
               <div className="space-y-2">{[1, 2, 3].map(i => <div key={i} className="h-14 bg-card rounded animate-pulse" />)}</div>
             ) : filtered.length === 0 ? (
@@ -1354,7 +1348,6 @@ function CreativesTab() {
           <Plus className="w-3.5 h-3.5" />Add Creative
         </Button>
       </div>
-
       {showForm && (
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
           <p className="font-semibold text-sm">{editingId ? "Edit Creative" : "New Creative"}</p>
@@ -1389,7 +1382,7 @@ function CreativesTab() {
             </div>
           )}
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Content / Ad Copy</Label>
+            <Label className="text-xs text-muted-foreground">Primary Text / Ad Copy</Label>
             <Textarea value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} rows={3} className="bg-background border-border resize-none text-sm" placeholder="Ad copy text…" />
           </div>
           <div className="space-y-1.5">
@@ -1405,7 +1398,6 @@ function CreativesTab() {
           </div>
         </div>
       )}
-
       {loading ? (
         <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-14 bg-card rounded animate-pulse" />)}</div>
       ) : creatives.length === 0 ? (
