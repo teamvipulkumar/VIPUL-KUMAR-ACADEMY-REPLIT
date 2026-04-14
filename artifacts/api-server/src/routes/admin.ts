@@ -452,6 +452,9 @@ const SUPPORTED_GATEWAYS = [
   { name: "payu", displayName: "PayU", keyLabel: "Merchant Key", secretLabel: "Merchant Salt", supportedCountries: "India" },
 ];
 
+const maskValue = (v: string | null | undefined) =>
+  v ? v.replace(/./g, "•") : "";
+
 router.get("/payment-gateways", requireAdmin, async (req, res): Promise<void> => {
   const gateways = await db.select().from(paymentGatewaysTable);
   const result = SUPPORTED_GATEWAYS.map(sg => {
@@ -460,8 +463,8 @@ router.get("/payment-gateways", requireAdmin, async (req, res): Promise<void> =>
       ...sg,
       id: config?.id ?? null,
       apiKey: config?.apiKey ?? "",
-      secretKey: config ? "••••••••" : "",
-      webhookSecret: config?.webhookSecret ? "••••••••" : "",
+      secretKey: maskValue(config?.secretKey),
+      webhookSecret: maskValue(config?.webhookSecret),
       isActive: config?.isActive ?? false,
       isTestMode: config?.isTestMode ?? true,
       isConfigured: !!(config?.apiKey && config?.secretKey),
@@ -485,11 +488,12 @@ router.put("/payment-gateways/:name", requireAdmin, async (req, res): Promise<vo
       isTestMode: isTestMode ?? existing.isTestMode,
       updatedAt: new Date(),
     };
-    if (apiKey !== undefined && apiKey !== "••••••••" && apiKey !== "") update.apiKey = apiKey;
-    if (secretKey !== undefined && secretKey !== "••••••••" && secretKey !== "") update.secretKey = secretKey;
-    if (webhookSecret !== undefined && webhookSecret !== "••••••••") update.webhookSecret = webhookSecret || null;
+    const isBulletMask = (v: string | undefined) => typeof v === "string" && v.length > 0 && /^•+$/.test(v);
+    if (!isBulletMask(apiKey) && apiKey !== "") update.apiKey = apiKey;
+    if (!isBulletMask(secretKey) && secretKey !== "") update.secretKey = secretKey;
+    if (webhookSecret !== undefined && !isBulletMask(webhookSecret)) update.webhookSecret = webhookSecret || null;
     const [updated] = await db.update(paymentGatewaysTable).set(update).where(eq(paymentGatewaysTable.name, name)).returning();
-    res.json({ ...updated, secretKey: "••••••••", webhookSecret: updated.webhookSecret ? "••••••••" : "" });
+    res.json({ ...updated, secretKey: maskValue(updated.secretKey), webhookSecret: maskValue(updated.webhookSecret) });
   } else {
     if (!apiKey || !secretKey) { res.status(400).json({ error: "API Key and Secret Key are required" }); return; }
     const [created] = await db.insert(paymentGatewaysTable).values({
@@ -497,7 +501,7 @@ router.put("/payment-gateways/:name", requireAdmin, async (req, res): Promise<vo
       apiKey, secretKey, webhookSecret: webhookSecret || null,
       isActive: isActive ?? false, isTestMode: isTestMode ?? true,
     }).returning();
-    res.json({ ...created, secretKey: "••••••••", webhookSecret: created.webhookSecret ? "••••••••" : "" });
+    res.json({ ...created, secretKey: maskValue(created.secretKey), webhookSecret: maskValue(created.webhookSecret) });
   }
 });
 

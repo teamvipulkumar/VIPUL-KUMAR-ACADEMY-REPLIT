@@ -110,7 +110,7 @@ function GatewayCard({ gw, onSave, onRemove, onTest }: {
   const [testing, setTesting] = useState(false);
   const [removing, setRemoving] = useState(false);
 
-  const isMasked = (v: string) => v === "••••••••";
+  const isMasked = (v: string) => v.length > 0 && /^•+$/.test(v);
 
   const handleSave = async () => {
     setSaving(true);
