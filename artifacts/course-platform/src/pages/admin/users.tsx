@@ -232,6 +232,9 @@ function ViewProfileDialog({ userId, onClose }: { userId: number; onClose: () =>
               <div>
                 <p className="font-bold text-lg text-foreground">{user.name}</p>
                 <p className="text-sm text-muted-foreground flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" />{user.email}</p>
+                {(user as { phone?: string | null }).phone && (
+                  <p className="text-sm text-muted-foreground flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{(user as { phone?: string | null }).phone}</p>
+                )}
                 <div className="flex items-center gap-2 mt-1.5">
                   <Badge className={`text-xs ${roleColors[user.role] ?? ""}`}>{user.role}</Badge>
                   <Badge className={`text-xs ${user.isBanned ? "text-red-400 border-red-400/30 bg-red-400/10" : "text-green-400 border-green-400/30 bg-green-400/10"}`}>
