@@ -83,6 +83,7 @@ export const affiliateCreativesTable = pgTable("affiliate_creatives", {
   type: text("type", { enum: ["image", "banner", "text"] }).notNull(),
   url: text("url"),
   content: text("content"),
+  headline: text("headline"),
   description: text("description"),
   uploadedByAdminId: integer("uploaded_by_admin_id").references(() => usersTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

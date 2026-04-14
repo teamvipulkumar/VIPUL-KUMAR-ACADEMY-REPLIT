@@ -818,7 +818,16 @@ function CreativesTab({ creatives }: { creatives: any[] }) {
             <img src={c.url} alt={c.title} className="w-full h-28 object-contain rounded-lg bg-background border border-border mb-3" />
           )}
           {c.content && (
-            <p className="text-xs text-muted-foreground bg-background border border-border rounded-lg p-2.5 mb-3 line-clamp-3">{c.content}</p>
+            <div className="mb-3">
+              <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wide mb-1">Primary Text / Ad Copy</p>
+              <p className="text-xs text-muted-foreground bg-background border border-border rounded-lg p-2.5 line-clamp-3">{c.content}</p>
+            </div>
+          )}
+          {c.headline && (
+            <div className="mb-3">
+              <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wide mb-1">Headline</p>
+              <p className="text-xs text-foreground font-medium bg-background border border-border rounded-lg p-2.5">{c.headline}</p>
+            </div>
           )}
           {c.description && <p className="text-xs text-muted-foreground mb-3">{c.description}</p>}
           <div className="flex gap-2">

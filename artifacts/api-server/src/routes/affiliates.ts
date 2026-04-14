@@ -479,10 +479,10 @@ router.post("/admin/applications/:id/reject", requireAdmin, async (req, res): Pr
 /* ── Admin: creatives CRUD ── */
 router.post("/admin/creatives", requireAdmin, async (req, res): Promise<void> => {
   const authedReq = req as AuthedRequest;
-  const { title, type, url, content, description } = req.body;
+  const { title, type, url, content, headline, description } = req.body;
   if (!title || !type) { res.status(400).json({ error: "title and type are required" }); return; }
   const [creative] = await db.insert(affiliateCreativesTable).values({
-    title, type, url: url || null, content: content || null, description: description || null,
+    title, type, url: url || null, content: content || null, headline: headline || null, description: description || null,
     uploadedByAdminId: authedReq.user.userId,
   }).returning();
   res.json(creative);
@@ -490,10 +490,10 @@ router.post("/admin/creatives", requireAdmin, async (req, res): Promise<void> =>
 
 router.put("/admin/creatives/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
-  const { title, type, url, content, description } = req.body;
+  const { title, type, url, content, headline, description } = req.body;
   if (!title || !type) { res.status(400).json({ error: "title and type are required" }); return; }
   const [updated] = await db.update(affiliateCreativesTable)
-    .set({ title, type, url: url || null, content: content || null, description: description || null })
+    .set({ title, type, url: url || null, content: content || null, headline: headline || null, description: description || null })
     .where(eq(affiliateCreativesTable.id, id))
     .returning();
   if (!updated) { res.status(404).json({ error: "Creative not found" }); return; }

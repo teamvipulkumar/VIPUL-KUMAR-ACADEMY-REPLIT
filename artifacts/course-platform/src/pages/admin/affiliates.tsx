@@ -90,6 +90,7 @@ type Creative = {
   type: "image" | "banner" | "text" | "link";
   url: string | null;
   content: string | null;
+  headline: string | null;
   description: string | null;
   createdAt: string;
 };
@@ -1281,7 +1282,7 @@ function KycTab() {
 /* ══════════════════════════════════════════
    TAB 5 — Creatives
 ══════════════════════════════════════════ */
-const BLANK_FORM = { title: "", type: "text" as Creative["type"], url: "", content: "", description: "" };
+const BLANK_FORM = { title: "", type: "text" as Creative["type"], url: "", content: "", headline: "", description: "" };
 
 function CreativesTab() {
   const [creatives, setCreatives] = useState<Creative[]>([]);
@@ -1310,7 +1311,7 @@ function CreativesTab() {
 
   const startEdit = (c: Creative) => {
     setEditingId(c.id);
-    setForm({ title: c.title, type: c.type, url: c.url ?? "", content: c.content ?? "", description: c.description ?? "" });
+    setForm({ title: c.title, type: c.type, url: c.url ?? "", content: c.content ?? "", headline: c.headline ?? "", description: c.description ?? "" });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -1384,6 +1385,10 @@ function CreativesTab() {
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Primary Text / Ad Copy</Label>
             <Textarea value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} rows={3} className="bg-background border-border resize-none text-sm" placeholder="Ad copy text…" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Headline</Label>
+            <Input value={form.headline} onChange={e => setForm(f => ({ ...f, headline: e.target.value }))} placeholder="Short headline for the ad…" className="bg-background border-border text-sm h-8" />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Description</Label>
