@@ -371,7 +371,7 @@ export default function AdminPagesPage() {
                       key={t.value}
                       type="button"
                       onClick={() => setForm(f => ({ ...f, type: t.value }))}
-                      className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all cursor-pointer ${
                         selected
                           ? `${t.color} border-current`
                           : "border-border text-muted-foreground hover:border-border/80 hover:text-foreground"

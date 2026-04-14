@@ -325,7 +325,7 @@ export default function AdminCourseEditPage() {
               <div className="flex items-center gap-2 p-3 bg-background/60">
                 <GripVertical className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" />
                 <button
-                  className="flex-shrink-0"
+                  className="flex-shrink-0 cursor-pointer"
                   onClick={() => setExpandedModules(p => p.includes(idx) ? p.filter(i => i !== idx) : [...p, idx])}
                 >
                   {expandedModules.includes(idx)
@@ -419,7 +419,7 @@ export default function AdminCourseEditPage() {
                     </div>
                   ) : (
                     <button
-                      className="w-full flex items-center gap-1.5 px-4 py-2.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors"
+                      className="w-full flex items-center gap-1.5 px-4 py-2.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer"
                       onClick={() => { setAddLessonModuleId(mod.id); setNewLessonTitle(""); setNewLessonType("video"); }}
                     >
                       <Plus className="w-3.5 h-3.5" /> Add lesson

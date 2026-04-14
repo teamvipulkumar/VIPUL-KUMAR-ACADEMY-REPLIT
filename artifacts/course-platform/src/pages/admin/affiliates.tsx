@@ -1131,14 +1131,14 @@ function KycTab() {
       {/* Photo lightbox */}
       {expandedPhoto && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-pointer"
           onClick={() => setExpandedPhoto(null)}
         >
           <div className="relative max-w-lg w-full" onClick={e => e.stopPropagation()}>
             <img src={expandedPhoto} alt="PAN" className="w-full rounded-xl border border-border" />
             <button
               onClick={() => setExpandedPhoto(null)}
-              className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center hover:bg-card"
+              className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center hover:bg-card cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>

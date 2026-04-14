@@ -100,7 +100,7 @@ export default function DashboardPage() {
               <p className="text-sm font-medium text-primary mb-2">Your referral code</p>
               <div className="flex items-center gap-2">
                 <p className="font-mono font-bold text-lg tracking-widest flex-1">{user?.referralCode}</p>
-                <button onClick={copyCode} className="text-primary hover:text-primary/80 transition-colors">
+                <button onClick={copyCode} className="text-primary hover:text-primary/80 transition-colors cursor-pointer">
                   {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 </button>
               </div>

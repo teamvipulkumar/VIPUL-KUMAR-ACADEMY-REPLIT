@@ -176,7 +176,7 @@ function GatewayCard({ gw, onSave, onRemove, onTest }: {
               onClick={handleToggleActive}
               disabled={saving}
               title={form.isActive ? "Disable gateway" : "Enable gateway"}
-              className={`relative w-10 h-6 rounded-full transition-colors ${form.isActive ? "bg-green-500" : "bg-muted"}`}
+              className={`relative w-10 h-6 rounded-full transition-colors cursor-pointer ${form.isActive ? "bg-green-500" : "bg-muted"}`}
             >
               <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.isActive ? "translate-x-4" : "translate-x-0.5"}`} />
             </button>
@@ -202,7 +202,7 @@ function GatewayCard({ gw, onSave, onRemove, onTest }: {
             </div>
             <button
               onClick={() => setForm(f => ({ ...f, isTestMode: !f.isTestMode }))}
-              className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 ${form.isTestMode ? "bg-amber-500" : "bg-primary"}`}
+              className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 cursor-pointer ${form.isTestMode ? "bg-amber-500" : "bg-primary"}`}
             >
               <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.isTestMode ? "translate-x-0.5" : "translate-x-4"}`} />
             </button>

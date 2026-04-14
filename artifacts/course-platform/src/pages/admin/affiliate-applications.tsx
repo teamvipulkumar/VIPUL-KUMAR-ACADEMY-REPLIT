@@ -90,7 +90,7 @@ function AppCard({ app, onAction }: { app: App; onAction: () => void }) {
           </div>
           <p className="text-xs text-muted-foreground">{app.email} · Applied {new Date(app.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
         </div>
-        <button onClick={() => setExpanded(e => !e)} className="text-muted-foreground hover:text-foreground flex-shrink-0">
+        <button onClick={() => setExpanded(e => !e)} className="text-muted-foreground hover:text-foreground flex-shrink-0 cursor-pointer">
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
       </div>
@@ -236,7 +236,7 @@ export default function AdminAffiliateApplicationsPage() {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors ${
+              className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors cursor-pointer ${
                 filter === f ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"
               }`}
             >

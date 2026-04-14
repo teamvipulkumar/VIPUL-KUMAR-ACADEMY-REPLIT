@@ -251,7 +251,7 @@ export default function LearnPage() {
                   <div key={mod.id} className="mb-0.5">
                     {/* Module button */}
                     <button
-                      className="w-full flex items-start gap-2.5 px-4 py-2.5 hover:bg-background/60 text-left group transition-colors"
+                      className="w-full flex items-start gap-2.5 px-4 py-2.5 hover:bg-background/60 text-left group transition-colors cursor-pointer"
                       onClick={() => setExpandedModules(p => p.includes(idx) ? p.filter(i => i !== idx) : [...p, idx])}
                     >
                       <div className="flex-shrink-0 mt-0.5">
@@ -273,7 +273,7 @@ export default function LearnPage() {
                           return (
                             <button
                               key={lesson.id}
-                              className={`w-full flex items-start gap-2.5 pl-9 pr-4 py-2 text-left transition-all duration-150 border-l-2 ${
+                              className={`w-full flex items-start gap-2.5 pl-9 pr-4 py-2 text-left transition-all duration-150 border-l-2 cursor-pointer ${
                                 isSelected
                                   ? "bg-primary/10 border-l-primary"
                                   : "hover:bg-background/60 border-l-transparent hover:border-l-border"
@@ -543,7 +543,7 @@ export default function LearnPage() {
                         <button
                           key={l.id}
                           onClick={() => selectLesson(l as LessonEntry)}
-                          className={`rounded-full transition-all ${
+                          className={`rounded-full transition-all cursor-pointer ${
                             i === currentIndex
                               ? "w-4 h-2 bg-primary"
                               : l.isCompleted

@@ -93,7 +93,7 @@ function TemplateVariablesPanel({ type, onInsert }: { type: string; onInsert?: (
       <div className="flex flex-wrap gap-1.5">
         {vars.map(({ var: v, desc }) => (
           <button key={v} onClick={() => copyVar(v)} title={desc}
-            className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono bg-blue-500/10 border border-blue-500/20 text-blue-300 hover:bg-blue-500/20 hover:text-blue-200 transition-colors">
+            className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono bg-blue-500/10 border border-blue-500/20 text-blue-300 hover:bg-blue-500/20 hover:text-blue-200 transition-colors cursor-pointer">
             {copied === v ? <Check className="w-3 h-3 text-green-400" /> : null}
             {v}
           </button>
@@ -132,7 +132,7 @@ export default function AdminCrmPage() {
         <nav className="flex-1 p-2 space-y-0.5">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg text-left transition-colors ${tab === t.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-white/5"}`}>
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg text-left transition-colors cursor-pointer ${tab === t.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-white/5"}`}>
               {t.icon}{t.label}
             </button>
           ))}
@@ -145,7 +145,7 @@ export default function AdminCrmPage() {
         <div className="lg:hidden flex overflow-x-auto border-b border-border bg-card px-4 gap-1 py-2">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors ${tab === t.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors cursor-pointer ${tab === t.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}>
               {t.icon}{t.label}
             </button>
           ))}
@@ -356,7 +356,7 @@ function SmtpTab() {
                 <div className="flex flex-wrap gap-2">
                   {PRESETS.map(p => (
                     <button key={p.label} onClick={() => setForm(f => ({ ...f, host: p.host, port: p.port, secure: p.secure }))}
-                      className="px-3 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
+                      className="px-3 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors cursor-pointer">
                       {p.label}
                     </button>
                   ))}
@@ -548,7 +548,7 @@ function TemplatesTab() {
     return (
       <div className="space-y-5 max-w-3xl">
         <div className="flex items-center gap-3">
-          <button onClick={() => setEditing(null)} className="text-muted-foreground hover:text-foreground transition-colors"><X className="w-4 h-4" /></button>
+          <button onClick={() => setEditing(null)} className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"><X className="w-4 h-4" /></button>
           <h2 className="text-xl font-bold text-foreground">{editing === "new" ? "New Template" : "Edit Template"}</h2>
         </div>
 
@@ -692,7 +692,7 @@ function TemplatesTab() {
           <div className="bg-card border border-border rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <h3 className="text-sm font-semibold text-foreground">Email Preview</h3>
-              <button onClick={() => setPreviewing(null)}><X className="w-4 h-4 text-muted-foreground hover:text-foreground" /></button>
+              <button onClick={() => setPreviewing(null)} className="cursor-pointer"><X className="w-4 h-4 text-muted-foreground hover:text-foreground" /></button>
             </div>
             <div className="overflow-y-auto flex-1 p-4">
               <iframe srcDoc={previewing} className="w-full min-h-[480px] rounded-lg border border-border bg-white" title="preview" />
@@ -867,7 +867,7 @@ function CampaignsTab() {
     return (
       <div className="max-w-2xl space-y-5">
         <div className="flex items-center gap-3">
-          <button onClick={() => setCreating(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+          <button onClick={() => setCreating(false)} className="text-muted-foreground hover:text-foreground cursor-pointer"><X className="w-4 h-4" /></button>
           <h2 className="text-xl font-bold text-foreground">New Campaign</h2>
         </div>
         <div className="bg-card border border-border rounded-xl p-5 space-y-4">
@@ -918,7 +918,7 @@ function CampaignsTab() {
             <div className="bg-card border border-border rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
               <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                 <h3 className="text-sm font-semibold">Preview</h3>
-                <button onClick={() => setPreviewing(null)}><X className="w-4 h-4 text-muted-foreground" /></button>
+                <button onClick={() => setPreviewing(null)} className="cursor-pointer"><X className="w-4 h-4 text-muted-foreground" /></button>
               </div>
               <div className="overflow-y-auto flex-1 p-4">
                 <iframe srcDoc={previewing} className="w-full min-h-[480px] rounded-lg border border-border bg-white" title="preview" />
@@ -964,7 +964,7 @@ function CampaignsTab() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {c.htmlBody && <button onClick={() => setPreviewing(c.htmlBody)} className="text-muted-foreground hover:text-foreground transition-colors"><Eye className="w-4 h-4" /></button>}
+                    {c.htmlBody && <button onClick={() => setPreviewing(c.htmlBody)} className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"><Eye className="w-4 h-4" /></button>}
                     {c.status === "draft" && (
                       <Button size="sm" className="bg-primary gap-1 text-xs" disabled={sending === c.id} onClick={() => sendCampaign(c.id)}>
                         {sending === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
@@ -972,7 +972,7 @@ function CampaignsTab() {
                       </Button>
                     )}
                     {c.status === "draft" && (
-                      <button onClick={() => del(c.id)} disabled={deleting === c.id} className="text-muted-foreground hover:text-red-400 transition-colors">
+                      <button onClick={() => del(c.id)} disabled={deleting === c.id} className="text-muted-foreground hover:text-red-400 transition-colors cursor-pointer">
                         {deleting === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                       </button>
                     )}
@@ -988,7 +988,7 @@ function CampaignsTab() {
           <div className="bg-card border border-border rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <h3 className="text-sm font-semibold">Campaign Preview</h3>
-              <button onClick={() => setPreviewing(null)}><X className="w-4 h-4 text-muted-foreground" /></button>
+              <button onClick={() => setPreviewing(null)} className="cursor-pointer"><X className="w-4 h-4 text-muted-foreground" /></button>
             </div>
             <div className="overflow-y-auto flex-1 p-4">
               <iframe srcDoc={previewing} className="w-full min-h-[480px] rounded-lg border border-border bg-white" title="preview" />

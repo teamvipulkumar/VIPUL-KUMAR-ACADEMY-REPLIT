@@ -784,11 +784,11 @@ export function EmailBlockBuilder({ value, onChange }: EmailBlockBuilderProps) {
 
       {/* Full-screen preview modal */}
       {showPreview && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setShowPreview(false)}>
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 cursor-pointer" onClick={() => setShowPreview(false)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 flex-shrink-0">
               <h3 className="text-sm font-semibold text-slate-800">Email Preview</h3>
-              <button type="button" onClick={() => setShowPreview(false)} className="text-slate-400 hover:text-slate-700"><X className="w-4 h-4" /></button>
+              <button type="button" onClick={() => setShowPreview(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer"><X className="w-4 h-4" /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-4">
               <iframe srcDoc={previewHtml} className="w-full rounded-lg border border-slate-200 bg-white"
@@ -832,7 +832,7 @@ function AddBlockRow({ onAdd }: { onAdd: (type: BlockType) => void }) {
               return (
                 <button key={type} type="button"
                   onClick={() => { onAdd(type); setOpen(false); }}
-                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-left hover:bg-blue-50 hover:text-blue-700 transition-colors group">
+                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-left hover:bg-blue-50 hover:text-blue-700 transition-colors group cursor-pointer">
                   <span className="text-slate-400 group-hover:text-blue-500 flex-shrink-0">{meta.icon}</span>
                   <span className="text-xs font-medium text-slate-700 group-hover:text-blue-700">{meta.label}</span>
                 </button>
