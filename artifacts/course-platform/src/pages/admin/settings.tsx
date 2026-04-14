@@ -9,8 +9,6 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Chrome, Info } from "lucide-react";
 
-const GOOGLE_CREDS_KEY = "admin_google_oauth_creds";
-
 export default function AdminSettingsPage() {
   const { data: settings } = useGetAdminSettings({ query: { queryKey: getGetAdminSettingsQueryKey() } });
   const updateSettings = useUpdateAdminSettings();
@@ -34,15 +32,13 @@ export default function AdminSettingsPage() {
         razorpayEnabled: settings.razorpayEnabled, emailNotificationsEnabled: settings.emailNotificationsEnabled,
         commissionRate: settings.commissionRate,
       });
+      setGoogleForm({
+        enabled: (settings as Record<string, unknown>).googleSignInEnabled as boolean ?? false,
+        clientId: (settings as Record<string, unknown>).googleClientId as string ?? "",
+        clientSecret: (settings as Record<string, unknown>).googleClientSecret as string ?? "",
+      });
     }
   }, [settings]);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(GOOGLE_CREDS_KEY);
-      if (saved) setGoogleForm(JSON.parse(saved));
-    } catch {}
-  }, []);
 
   const handleSave = () => {
     updateSettings.mutate({ data: form }, {
@@ -52,8 +48,20 @@ export default function AdminSettingsPage() {
   };
 
   const handleSaveGoogle = () => {
-    localStorage.setItem(GOOGLE_CREDS_KEY, JSON.stringify(googleForm));
-    toast({ title: "Google credentials saved!" });
+    updateSettings.mutate({
+      data: {
+        googleSignInEnabled: googleForm.enabled,
+        googleClientId: googleForm.clientId,
+        googleClientSecret: googleForm.clientSecret,
+      } as Parameters<typeof updateSettings.mutate>[0]["data"],
+    }, {
+      onSuccess: () => {
+        toast({ title: "Google Sign-In settings saved!" });
+        queryClient.invalidateQueries({ queryKey: getGetAdminSettingsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: ["google-config"] });
+      },
+      onError: () => toast({ title: "Error saving Google settings", variant: "destructive" }),
+    });
   };
 
   return (
@@ -153,8 +161,8 @@ export default function AdminSettingsPage() {
               </div>
             </div>
 
-            <Button onClick={handleSaveGoogle} variant="outline" className="w-full border-border">
-              Save Google Settings
+            <Button onClick={handleSaveGoogle} disabled={updateSettings.isPending} variant="outline" className="w-full border-border">
+              {updateSettings.isPending ? "Saving..." : "Save Google Settings"}
             </Button>
           </CardContent>
         </Card>

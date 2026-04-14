@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { GoogleSignInButton, getGoogleConfig } from "@/components/google-sign-in-button";
+import { GoogleSignInButton, useGoogleConfig } from "@/components/google-sign-in-button";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 
 const formSchema = z.object({
@@ -30,7 +30,7 @@ export default function Register() {
   const { toast } = useToast();
   const registerMutation = useRegister();
   const queryClient = useQueryClient();
-  const googleConfig = getGoogleConfig();
+  const googleConfig = useGoogleConfig();
 
   const referralCodeFromUrl = useMemo(() => {
     const params = new URLSearchParams(searchString);
@@ -153,7 +153,7 @@ export default function Register() {
               </Button>
             </form>
           </Form>
-          {googleConfig && (
+          {googleConfig?.enabled && googleConfig?.clientId && (
             <div className="mt-4 space-y-3">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
@@ -176,7 +176,7 @@ export default function Register() {
       </Card>
     </div>
   );
-  if (googleConfig) {
+  if (googleConfig?.enabled && googleConfig?.clientId) {
     return <GoogleOAuthProvider clientId={googleConfig.clientId}>{card}</GoogleOAuthProvider>;
   }
   return card;

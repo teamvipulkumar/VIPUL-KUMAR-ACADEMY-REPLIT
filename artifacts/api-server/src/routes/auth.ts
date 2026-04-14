@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
 import { db } from "@workspace/db";
-import { usersTable } from "@workspace/db";
+import { usersTable, platformSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { signToken, requireAuth, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
@@ -209,6 +209,19 @@ router.post("/reset-password", async (req, res): Promise<void> => {
   const hashed = await bcrypt.hash(password, 10);
   await db.update(usersTable).set({ password: hashed, resetToken: null, resetTokenExpiresAt: null }).where(eq(usersTable.id, user.id));
   res.json({ message: "Password reset successfully" });
+});
+
+/* ── Public: returns whether Google Sign-In is enabled and the clientId ── */
+router.get("/google-config", async (_req, res): Promise<void> => {
+  const [settings] = await db.select({
+    googleSignInEnabled: platformSettingsTable.googleSignInEnabled,
+    googleClientId: platformSettingsTable.googleClientId,
+  }).from(platformSettingsTable).limit(1);
+  if (!settings || !settings.googleSignInEnabled || !settings.googleClientId?.trim()) {
+    res.json({ enabled: false });
+    return;
+  }
+  res.json({ enabled: true, clientId: settings.googleClientId.trim() });
 });
 
 /* ── Google OAuth Sign-In ── */

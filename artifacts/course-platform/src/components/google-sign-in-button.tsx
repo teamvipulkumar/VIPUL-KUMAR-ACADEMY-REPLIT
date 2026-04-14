@@ -1,24 +1,24 @@
 import { useGoogleLogin } from "@react-oauth/google";
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getGetMeQueryKey } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
 
-const GOOGLE_CREDS_KEY = "admin_google_oauth_creds";
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-export function getGoogleConfig(): { clientId: string } | null {
-  try {
-    const raw = localStorage.getItem(GOOGLE_CREDS_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed.enabled || !parsed.clientId?.trim()) return null;
-    return { clientId: parsed.clientId.trim() };
-  } catch {
-    return null;
-  }
+export function useGoogleConfig(): { enabled: boolean; clientId?: string } | null {
+  const { data } = useQuery({
+    queryKey: ["google-config"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/auth/google-config`);
+      if (!res.ok) return { enabled: false };
+      return res.json() as Promise<{ enabled: boolean; clientId?: string }>;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  return data ?? null;
 }
 
 interface GoogleSignInButtonProps {

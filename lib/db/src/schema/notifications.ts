@@ -26,6 +26,9 @@ export const platformSettingsTable = pgTable("platform_settings", {
   affiliateCookieDays: integer("affiliate_cookie_days").notNull().default(30),
   affiliateMinPayout: integer("affiliate_min_payout").notNull().default(500),
   payoutPeriodDays: integer("payout_period_days").notNull().default(7),
+  googleSignInEnabled: boolean("google_sign_in_enabled").notNull().default(false),
+  googleClientId: text("google_client_id"),
+  googleClientSecret: text("google_client_secret"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

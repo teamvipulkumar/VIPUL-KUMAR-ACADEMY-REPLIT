@@ -12,7 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { GoogleSignInButton, getGoogleConfig } from "@/components/google-sign-in-button";
+import { GoogleSignInButton, useGoogleConfig } from "@/components/google-sign-in-button";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 
 const formSchema = z.object({
@@ -28,7 +28,7 @@ export default function Login() {
   const { isAuthenticated } = useAuth();
   const [showPw, setShowPw] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const googleConfig = getGoogleConfig();
+  const googleConfig = useGoogleConfig();
 
   // If user is already authenticated (e.g. navigated to /login while logged in), redirect them
   useEffect(() => {
@@ -135,7 +135,7 @@ export default function Login() {
               </Button>
             </form>
           </Form>
-          {googleConfig && (
+          {googleConfig?.enabled && googleConfig?.clientId && (
             <div className="mt-4 space-y-3">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
@@ -158,7 +158,7 @@ export default function Login() {
       </Card>
     </div>
   );
-  if (googleConfig) {
+  if (googleConfig?.enabled && googleConfig?.clientId) {
     return <GoogleOAuthProvider clientId={googleConfig.clientId}>{card}</GoogleOAuthProvider>;
   }
   return card;

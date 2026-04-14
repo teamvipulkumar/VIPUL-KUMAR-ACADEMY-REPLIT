@@ -329,7 +329,7 @@ router.get("/settings", requireAdmin, async (req, res): Promise<void> => {
 });
 
 router.put("/settings", requireAdmin, async (req, res): Promise<void> => {
-  const { siteName, siteDescription, commissionRate, currency, stripeEnabled, razorpayEnabled, emailNotificationsEnabled } = req.body;
+  const { siteName, siteDescription, commissionRate, currency, stripeEnabled, razorpayEnabled, emailNotificationsEnabled, googleSignInEnabled, googleClientId, googleClientSecret } = req.body;
   const existing = await db.select().from(platformSettingsTable).limit(1);
   const updates: Record<string, unknown> = {};
   if (siteName !== undefined) updates.siteName = siteName;
@@ -339,6 +339,9 @@ router.put("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (stripeEnabled !== undefined) updates.stripeEnabled = stripeEnabled;
   if (razorpayEnabled !== undefined) updates.razorpayEnabled = razorpayEnabled;
   if (emailNotificationsEnabled !== undefined) updates.emailNotificationsEnabled = emailNotificationsEnabled;
+  if (googleSignInEnabled !== undefined) updates.googleSignInEnabled = googleSignInEnabled;
+  if (googleClientId !== undefined) updates.googleClientId = googleClientId;
+  if (googleClientSecret !== undefined) updates.googleClientSecret = googleClientSecret;
 
   if (existing.length === 0) {
     await db.insert(platformSettingsTable).values({});
