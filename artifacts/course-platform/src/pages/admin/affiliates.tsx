@@ -101,11 +101,30 @@ type AffSettings = {
   payoutPeriodDays: number;
 };
 
+type ScheduledPayout = {
+  affiliateId: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  panNumber: string | null;
+  kycStatus: string | null;
+  bank: { accountHolderName: string; accountNumber: string; ifscCode: string; bankName: string } | null;
+  totalEarned: number;
+  totalPaidOut: number;
+  unpaidAmount: number;
+  lastPayoutDate: string | null;
+  nextDueDate: string | null;
+  isDue: boolean;
+  payoutPeriodDays: number;
+  latestAction: { id: number; status: string; amount: number; note: string | null; date: string | null } | null;
+};
+
 /* ── Status helpers ── */
 const STATUS = {
   pending:  { label: "Pending",  cls: "text-amber-400 border-amber-400/30 bg-amber-400/10" },
   approved: { label: "Approved", cls: "text-green-400 border-green-400/30 bg-green-400/10" },
   rejected: { label: "Rejected", cls: "text-red-400  border-red-400/30  bg-red-400/10" },
+  hold:     { label: "On Hold",  cls: "text-blue-400  border-blue-400/30  bg-blue-400/10" },
   not_submitted: { label: "Not Submitted", cls: "text-muted-foreground border-border bg-card" },
 } as const;
 
@@ -442,127 +461,418 @@ function ApplicationsTab() {
 /* ══════════════════════════════════════════
    TAB 3 — Payouts
 ══════════════════════════════════════════ */
+function ScheduledPayoutCard({
+  payout, actionLoading, rejectState, onRejectStateChange, expanded, onToggleExpand, onAction,
+}: {
+  payout: ScheduledPayout;
+  actionLoading: string | null;
+  rejectState: { open: boolean; note: string };
+  onRejectStateChange: (s: { open: boolean; note: string }) => void;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  onAction: (affiliateId: number, action: "paid" | "hold" | "reject", note?: string) => void;
+}) {
+  const isHold = payout.latestAction?.status === "hold";
+  const isPaid = payout.latestAction?.status === "approved";
+  const isRejected = payout.latestAction?.status === "rejected";
+
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      {/* Header row */}
+      <div className="p-4 flex items-start gap-3">
+        <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${isPaid ? "bg-green-400" : isHold ? "bg-blue-400" : isRejected ? "bg-red-400" : payout.isDue ? "bg-amber-400" : "bg-muted-foreground/40"}`} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-semibold text-sm">{payout.name}</p>
+                {isPaid    && <Badge className="text-[10px] bg-green-500/10 text-green-400 border-green-500/20">Paid</Badge>}
+                {isHold    && <Badge className="text-[10px] bg-blue-500/10  text-blue-400  border-blue-500/20">On Hold</Badge>}
+                {isRejected && <Badge className="text-[10px] bg-red-500/10   text-red-400   border-red-500/20">Rejected</Badge>}
+                {!isPaid && !isHold && !isRejected && payout.isDue  && <Badge className="text-[10px] bg-amber-500/10 text-amber-400 border-amber-500/20">Due Now</Badge>}
+                {!isPaid && !isHold && !isRejected && !payout.isDue && <Badge className="text-[10px] bg-muted text-muted-foreground border-border">Upcoming</Badge>}
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">{payout.email}</p>
+            </div>
+            <div className="text-right flex-shrink-0">
+              <p className="text-lg font-bold text-green-400">{fmt(payout.unpaidAmount)}</p>
+              <p className="text-[10px] text-muted-foreground">unpaid</p>
+            </div>
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+            <span>Every {payout.payoutPeriodDays} day{payout.payoutPeriodDays !== 1 ? "s" : ""}</span>
+            {payout.lastPayoutDate && <span>Last paid: {fmtDate(payout.lastPayoutDate)}</span>}
+            {payout.nextDueDate    && <span>Next due: {fmtDate(payout.nextDueDate)}</span>}
+          </div>
+        </div>
+        <button onClick={onToggleExpand} className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0 mt-1">
+          {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+      </div>
+
+      {/* Expanded: full affiliate profile */}
+      {expanded && (
+        <div className="border-t border-border px-4 py-3 bg-background/40 space-y-3">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Affiliate Profile</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-xs">
+            <div><span className="text-muted-foreground">Name: </span><span className="font-medium">{payout.name}</span></div>
+            <div><span className="text-muted-foreground">Email: </span><span>{payout.email}</span></div>
+            <div><span className="text-muted-foreground">Phone: </span>
+              {payout.phone ? <span>{payout.phone}</span> : <span className="text-muted-foreground/60">Not provided</span>}
+            </div>
+            <div>
+              <span className="text-muted-foreground">PAN: </span>
+              {payout.panNumber
+                ? <><span className="font-mono tracking-widest">{payout.panNumber}</span>
+                    {payout.kycStatus && <span className={`ml-1.5 text-[10px] ${payout.kycStatus === "approved" ? "text-green-400" : "text-amber-400"}`}>({payout.kycStatus})</span>}
+                  </>
+                : <span className="text-muted-foreground/60">—</span>}
+            </div>
+          </div>
+
+          {payout.bank ? (
+            <div className="bg-card rounded-lg p-3 border border-border">
+              <p className="text-[10px] font-semibold text-muted-foreground mb-2">Bank Details</p>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+                <div><span className="text-muted-foreground">Holder: </span><span>{payout.bank.accountHolderName}</span></div>
+                <div><span className="text-muted-foreground">Bank: </span><span>{payout.bank.bankName}</span></div>
+                <div><span className="text-muted-foreground">A/C No: </span><span className="font-mono">{payout.bank.accountNumber}</span></div>
+                <div><span className="text-muted-foreground">IFSC: </span><span className="font-mono">{payout.bank.ifscCode}</span></div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-amber-400 flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5" />No bank details on file
+            </p>
+          )}
+
+          <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs pt-1 border-t border-border">
+            <div><span className="text-muted-foreground">Total Earned: </span><span className="font-medium">{fmt(payout.totalEarned)}</span></div>
+            <div><span className="text-muted-foreground">Paid Out: </span><span className="font-medium">{fmt(payout.totalPaidOut)}</span></div>
+            <div><span className="text-muted-foreground">Unpaid: </span><span className="text-green-400 font-bold">{fmt(payout.unpaidAmount)}</span></div>
+          </div>
+
+          {payout.latestAction?.note && (
+            <p className="text-xs text-muted-foreground"><span className="font-medium">Admin note: </span>{payout.latestAction.note}</p>
+          )}
+        </div>
+      )}
+
+      {/* Action bar — shown when not paid */}
+      {!isPaid && (
+        <div className="border-t border-border px-4 py-3 flex flex-wrap items-center gap-2 bg-card/30">
+          <Button onClick={() => onAction(payout.affiliateId, "paid")} disabled={!!actionLoading} size="sm"
+            className="bg-green-500 hover:bg-green-600 text-white gap-1.5 h-7 text-xs">
+            {actionLoading === `paid-${payout.affiliateId}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+            Mark as Paid
+          </Button>
+          {!isHold && (
+            <Button onClick={() => onAction(payout.affiliateId, "hold")} disabled={!!actionLoading} size="sm" variant="outline"
+              className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 gap-1.5 h-7 text-xs">
+              {actionLoading === `hold-${payout.affiliateId}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
+              Hold
+            </Button>
+          )}
+          <Button onClick={() => onRejectStateChange({ open: !rejectState.open, note: rejectState.note })}
+            disabled={!!actionLoading} size="sm" variant="outline"
+            className="border-red-500/30 text-red-400 hover:bg-red-500/10 gap-1.5 h-7 text-xs">
+            <XCircle className="w-3 h-3" />Reject
+          </Button>
+          {rejectState.open && (
+            <div className="w-full flex items-center gap-2 mt-1">
+              <Input value={rejectState.note} onChange={e => onRejectStateChange({ ...rejectState, note: e.target.value })}
+                placeholder="Rejection reason (required)..." className="bg-background border-red-500/30 h-7 text-xs flex-1" autoFocus />
+              <Button onClick={() => onAction(payout.affiliateId, "reject", rejectState.note)}
+                disabled={!!actionLoading || !rejectState.note.trim()} size="sm"
+                className="bg-red-500 hover:bg-red-600 text-white h-7 text-xs gap-1 flex-shrink-0">
+                {actionLoading === `reject-${payout.affiliateId}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
+                Confirm
+              </Button>
+              <button onClick={() => onRejectStateChange({ open: false, note: "" })} className="text-muted-foreground hover:text-foreground flex-shrink-0">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Paid footer */}
+      {isPaid && (
+        <div className="border-t border-border px-4 py-2 bg-green-500/5 flex items-center gap-2">
+          <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+          <p className="text-xs text-green-400 font-medium">Paid on {payout.latestAction?.date ? fmtDate(payout.latestAction.date) : "—"}</p>
+        </div>
+      )}
+
+      {/* Hold footer with option to still mark paid */}
+      {isHold && (
+        <div className="border-t border-border px-4 py-3 flex flex-wrap items-center gap-2 bg-blue-500/5">
+          <p className="text-xs text-blue-400 flex-1">
+            ⏸ On hold{payout.latestAction?.note ? `: ${payout.latestAction.note}` : ""}
+          </p>
+          <Button onClick={() => onAction(payout.affiliateId, "paid")} disabled={!!actionLoading} size="sm"
+            className="bg-green-500 hover:bg-green-600 text-white gap-1.5 h-7 text-xs">
+            {actionLoading === `paid-${payout.affiliateId}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+            Mark as Paid
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PayoutsTab() {
-  const [payouts, setPayouts] = useState<Payout[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [view, setView] = useState<"scheduled" | "requests">("scheduled");
+  const [scheduled, setScheduled] = useState<ScheduledPayout[]>([]);
+  const [requests, setRequests]   = useState<Payout[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [schedFilter, setSchedFilter] = useState<"all" | "due" | "hold">("all");
+  const [reqFilter, setReqFilter]     = useState<"all" | "pending" | "approved" | "hold" | "rejected">("all");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [rejectNote, setRejectNote] = useState<Record<number, string>>({});
+  const [rejectState, setRejectState]     = useState<Record<number, { open: boolean; note: string }>>({});
+  const [rejectNote, setRejectNote]       = useState<Record<number, string>>({});
+  const [expandedId, setExpandedId]       = useState<number | null>(null);
   const { toast } = useToast();
 
-  const load = useCallback(async () => {
+  const loadScheduled = useCallback(async () => {
     setLoading(true);
-    try {
-      const res = await apiFetch("/api/affiliate/admin/all-payouts");
-      if (res.ok) setPayouts(await res.json());
-    } finally { setLoading(false); }
+    try { const r = await apiFetch("/api/affiliate/admin/scheduled-payouts"); if (r.ok) setScheduled(await r.json()); }
+    finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  const loadRequests = useCallback(async () => {
+    setLoading(true);
+    try { const r = await apiFetch("/api/affiliate/admin/all-payouts"); if (r.ok) setRequests(await r.json()); }
+    finally { setLoading(false); }
+  }, []);
 
-  const doApprove = async (id: number) => {
+  useEffect(() => {
+    if (view === "scheduled") loadScheduled(); else loadRequests();
+  }, [view, loadScheduled, loadRequests]);
+
+  const doScheduledAction = async (affiliateId: number, action: "paid" | "hold" | "reject", note?: string) => {
+    setActionLoading(`${action}-${affiliateId}`);
+    try {
+      const r = await apiFetch(`/api/affiliate/admin/scheduled-payouts/${affiliateId}/action`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, note }),
+      });
+      if (r.ok) {
+        toast({ title: action === "paid" ? "Marked as Paid!" : action === "hold" ? "Put on Hold" : "Payout Rejected" });
+        loadScheduled();
+        setRejectState(s => ({ ...s, [affiliateId]: { open: false, note: "" } }));
+      } else {
+        const err = await r.json().catch(() => ({}));
+        toast({ title: (err as any).error ?? "Action failed", variant: "destructive" });
+      }
+    } finally { setActionLoading(null); }
+  };
+
+  const doApproveReq = async (id: number) => {
     setActionLoading(`approve-${id}`);
     try {
-      const res = await apiFetch(`/api/affiliate/admin/payouts/${id}/approve`, { method: "POST" });
-      if (res.ok) { toast({ title: "Payout approved" }); load(); }
+      const r = await apiFetch(`/api/affiliate/admin/payouts/${id}/approve`, { method: "POST" });
+      if (r.ok) { toast({ title: "Payout approved" }); loadRequests(); }
       else toast({ title: "Failed", variant: "destructive" });
     } finally { setActionLoading(null); }
   };
 
-  const doReject = async (id: number) => {
+  const doHoldReq = async (id: number) => {
+    setActionLoading(`hold-${id}`);
+    try {
+      const r = await apiFetch(`/api/affiliate/admin/payouts/${id}/hold`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: rejectNote[id] || "" }),
+      });
+      if (r.ok) { toast({ title: "Put on hold" }); loadRequests(); }
+      else toast({ title: "Failed", variant: "destructive" });
+    } finally { setActionLoading(null); }
+  };
+
+  const doRejectReq = async (id: number) => {
     setActionLoading(`reject-${id}`);
     try {
-      const res = await apiFetch(`/api/affiliate/admin/payouts/${id}/reject`, {
+      const r = await apiFetch(`/api/affiliate/admin/payouts/${id}/reject`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rejectionReason: rejectNote[id] || "Rejected by admin" }),
       });
-      if (res.ok) { toast({ title: "Payout rejected" }); load(); }
+      if (r.ok) { toast({ title: "Payout rejected" }); loadRequests(); }
       else toast({ title: "Failed", variant: "destructive" });
     } finally { setActionLoading(null); }
   };
 
-  const filtered = payouts.filter(p => filter === "all" || p.status === filter);
-  const pending = payouts.filter(p => p.status === "pending");
-  const totalPending = pending.reduce((s, p) => s + p.amount, 0);
+  /* Scheduled computed stats */
+  const dueNow  = scheduled.filter(p => p.isDue && p.latestAction?.status !== "hold" && p.latestAction?.status !== "approved");
+  const onHold  = scheduled.filter(p => p.latestAction?.status === "hold");
+  const totalDueAmt = dueNow.reduce((s, p) => s + p.unpaidAmount, 0);
+
+  const filteredScheduled = scheduled.filter(p => {
+    if (schedFilter === "due")  return p.isDue && p.latestAction?.status !== "hold" && p.latestAction?.status !== "approved";
+    if (schedFilter === "hold") return p.latestAction?.status === "hold";
+    return true;
+  });
+
+  /* Request stats */
+  const pendingReqs  = requests.filter(p => p.status === "pending");
+  const filteredReqs = requests.filter(p => reqFilter === "all" || p.status === reqFilter);
 
   return (
     <div className="space-y-4">
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">Pending Requests</p>
-          <p className="text-xl font-bold text-amber-400">{pending.length}</p>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">Pending Amount</p>
-          <p className="text-xl font-bold text-amber-400">{fmt(totalPending)}</p>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">Total Requests</p>
-          <p className="text-xl font-bold text-foreground">{payouts.length}</p>
-        </div>
-      </div>
-
-      {/* Filter */}
+      {/* View toggle */}
       <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5 w-fit">
-        {(["all", "pending", "approved", "rejected"] as const).map(f => (
-          <button key={f} onClick={() => setFilter(f)}
-            className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors ${filter === f ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
-            {f}
+        {[{ id: "scheduled", label: "Scheduled Payouts" }, { id: "requests", label: "Payout Requests" }].map(v => (
+          <button key={v.id} onClick={() => { setView(v.id as any); setLoading(true); }}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${view === v.id ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
+            {v.label}
           </button>
         ))}
       </div>
 
-      {loading ? (
-        <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-20 bg-card rounded animate-pulse" />)}</div>
-      ) : filtered.length === 0 ? (
-        <div className="bg-card border border-border rounded-xl py-12 text-center">
-          <CreditCard className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-          <p className="font-semibold">No payout requests</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map(p => (
-            <div key={p.id} className="bg-card border border-border rounded-xl overflow-hidden">
-              <div className="p-4 flex flex-wrap items-start gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <p className="font-semibold text-sm">{p.userName}</p>
-                    <StatusBadge status={p.status} />
-                  </div>
-                  <p className="text-xs text-muted-foreground">{p.userEmail} · Requested {fmtDate(p.requestedAt)}</p>
-                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                    <div><span className="text-muted-foreground">Amount: </span><span className="font-bold text-green-400">{fmt(p.amount)}</span></div>
-                    <div><span className="text-muted-foreground">Method: </span><span>{p.paymentMethod}</span></div>
-                    <div className="col-span-2"><span className="text-muted-foreground">Details: </span><span className="font-mono">{p.paymentDetails}</span></div>
-                    {p.bankName && <div><span className="text-muted-foreground">Bank: </span><span>{p.bankName}</span></div>}
-                    {p.rejectionReason && <div className="col-span-2 text-red-400"><span className="font-medium">Reason: </span>{p.rejectionReason}</div>}
+      {/* ── SCHEDULED VIEW ── */}
+      {view === "scheduled" && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground mb-1">Due Now</p>
+              <p className="text-xl font-bold text-amber-400">{dueNow.length}</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground mb-1">Total Due Amount</p>
+              <p className="text-xl font-bold text-amber-400">{fmt(totalDueAmt)}</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground mb-1">On Hold</p>
+              <p className="text-xl font-bold text-blue-400">{onHold.length}</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground mb-1">Total Affiliates</p>
+              <p className="text-xl font-bold text-foreground">{scheduled.length}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5 w-fit">
+            {([
+              { id: "all",  label: "All" },
+              { id: "due",  label: `Due Now${dueNow.length  > 0 ? ` (${dueNow.length})`  : ""}` },
+              { id: "hold", label: `On Hold${onHold.length  > 0 ? ` (${onHold.length})`  : ""}` },
+            ] as const).map(f => (
+              <button key={f.id} onClick={() => setSchedFilter(f.id)}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${schedFilter === f.id ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {loading ? (
+            <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-28 bg-card rounded-xl animate-pulse" />)}</div>
+          ) : filteredScheduled.length === 0 ? (
+            <div className="bg-card border border-border rounded-xl py-16 text-center">
+              <BadgeIndianRupee className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+              <p className="font-semibold">No payouts due</p>
+              <p className="text-sm text-muted-foreground mt-1">All affiliate earnings are up to date.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredScheduled.map(p => (
+                <ScheduledPayoutCard
+                  key={p.affiliateId}
+                  payout={p}
+                  actionLoading={actionLoading}
+                  rejectState={rejectState[p.affiliateId] ?? { open: false, note: "" }}
+                  onRejectStateChange={s => setRejectState(r => ({ ...r, [p.affiliateId]: s }))}
+                  expanded={expandedId === p.affiliateId}
+                  onToggleExpand={() => setExpandedId(e => e === p.affiliateId ? null : p.affiliateId)}
+                  onAction={doScheduledAction}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── REQUESTS VIEW ── */}
+      {view === "requests" && (
+        <>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground mb-1">Pending Requests</p>
+              <p className="text-xl font-bold text-amber-400">{pendingReqs.length}</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground mb-1">Pending Amount</p>
+              <p className="text-xl font-bold text-amber-400">{fmt(pendingReqs.reduce((s, p) => s + p.amount, 0))}</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground mb-1">Total Requests</p>
+              <p className="text-xl font-bold text-foreground">{requests.length}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5 w-fit">
+            {(["all", "pending", "approved", "hold", "rejected"] as const).map(f => (
+              <button key={f} onClick={() => setReqFilter(f)}
+                className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors ${reqFilter === f ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
+                {f}
+              </button>
+            ))}
+          </div>
+
+          {loading ? (
+            <div className="space-y-2">{[1, 2, 3].map(i => <div key={i} className="h-24 bg-card rounded animate-pulse" />)}</div>
+          ) : filteredReqs.length === 0 ? (
+            <div className="bg-card border border-border rounded-xl py-12 text-center">
+              <CreditCard className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+              <p className="font-semibold">No payout requests</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredReqs.map(p => (
+                <div key={p.id} className="bg-card border border-border rounded-xl overflow-hidden">
+                  <div className="p-4 flex flex-wrap items-start gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                        <p className="font-semibold text-sm">{p.userName}</p>
+                        <StatusBadge status={p.status} />
+                      </div>
+                      <p className="text-xs text-muted-foreground">{p.userEmail} · Requested {fmtDate(p.requestedAt)}</p>
+                      <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+                        <div><span className="text-muted-foreground">Amount: </span><span className="font-bold text-green-400">{fmt(p.amount)}</span></div>
+                        <div><span className="text-muted-foreground">Method: </span><span>{p.paymentMethod}</span></div>
+                        {(p as any).userPhone && <div><span className="text-muted-foreground">Phone: </span><span>{(p as any).userPhone}</span></div>}
+                        {(p as any).panNumber  && <div><span className="text-muted-foreground">PAN: </span><span className="font-mono tracking-widest">{(p as any).panNumber}</span></div>}
+                        {p.bankName && <div><span className="text-muted-foreground">Bank: </span><span>{p.bankName}</span></div>}
+                        {(p as any).accountHolderName && <div><span className="text-muted-foreground">A/C Holder: </span><span>{(p as any).accountHolderName}</span></div>}
+                        {p.accountNumber && <div><span className="text-muted-foreground">A/C No: </span><span className="font-mono">{p.accountNumber}</span></div>}
+                        {(p as any).ifscCode && <div><span className="text-muted-foreground">IFSC: </span><span className="font-mono">{(p as any).ifscCode}</span></div>}
+                        {p.rejectionReason && <div className="col-span-2 text-red-400"><span className="font-medium">Note: </span>{p.rejectionReason}</div>}
+                      </div>
+                    </div>
+                    {p.status === "pending" && (
+                      <div className="space-y-2 min-w-[190px]">
+                        <Input value={rejectNote[p.id] ?? ""} onChange={e => setRejectNote(r => ({ ...r, [p.id]: e.target.value }))}
+                          placeholder="Note (for hold/reject)" className="bg-background border-border h-7 text-xs" />
+                        <div className="flex gap-1.5 flex-wrap">
+                          <Button onClick={() => doApproveReq(p.id)} disabled={!!actionLoading} size="sm"
+                            className="bg-green-500 hover:bg-green-600 text-white gap-1 h-7 text-xs">
+                            {actionLoading === `approve-${p.id}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}Approve
+                          </Button>
+                          <Button onClick={() => doHoldReq(p.id)} disabled={!!actionLoading} size="sm" variant="outline"
+                            className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 gap-1 h-7 text-xs">
+                            {actionLoading === `hold-${p.id}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}Hold
+                          </Button>
+                          <Button onClick={() => doRejectReq(p.id)} disabled={!!actionLoading} size="sm" variant="outline"
+                            className="border-red-500/30 text-red-400 hover:bg-red-500/10 gap-1 h-7 text-xs">
+                            {actionLoading === `reject-${p.id}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}Reject
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-                {p.status === "pending" && (
-                  <div className="space-y-2 min-w-[180px]">
-                    <Input
-                      value={rejectNote[p.id] ?? ""}
-                      onChange={e => setRejectNote(r => ({ ...r, [p.id]: e.target.value }))}
-                      placeholder="Rejection reason (optional)"
-                      className="bg-background border-border h-7 text-xs"
-                    />
-                    <div className="flex gap-1.5">
-                      <Button onClick={() => doApprove(p.id)} disabled={!!actionLoading} size="sm"
-                        className="bg-green-500 hover:bg-green-600 text-white gap-1 h-7 text-xs">
-                        {actionLoading === `approve-${p.id}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}Approve
-                      </Button>
-                      <Button onClick={() => doReject(p.id)} disabled={!!actionLoading} size="sm" variant="outline"
-                        className="border-red-500/30 text-red-400 hover:bg-red-500/10 gap-1 h-7 text-xs">
-                        {actionLoading === `reject-${p.id}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}Reject
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -580,17 +580,23 @@ router.post("/admin/affiliates/:appId/commission", requireAdmin, async (req, res
 router.get("/admin/all-payouts", requireAdmin, async (req, res): Promise<void> => {
   const payouts = await db.select().from(payoutRequestsTable).orderBy(desc(payoutRequestsTable.requestedAt));
   const enriched = await Promise.all(payouts.map(async (p) => {
-    const [user] = await db.select({ name: usersTable.name, email: usersTable.email })
+    const [user] = await db.select({ name: usersTable.name, email: usersTable.email, phone: (usersTable as any).phone })
       .from(usersTable).where(eq(usersTable.id, p.userId)).limit(1);
     const [bank] = await db.select().from(affiliateBankDetailsTable)
       .where(eq(affiliateBankDetailsTable.userId, p.userId)).limit(1);
+    const [kyc] = await db.select({ panNumber: affiliateKycTable.panNumber })
+      .from(affiliateKycTable).where(eq(affiliateKycTable.userId, p.userId)).limit(1);
     return {
       ...p,
       amount: parseFloat(String(p.amount)),
       userName: user?.name ?? "Unknown",
       userEmail: user?.email ?? "",
+      userPhone: (user as any)?.phone ?? null,
+      panNumber: kyc?.panNumber ?? null,
       bankName: bank?.bankName ?? null,
       accountNumber: bank?.accountNumber ?? null,
+      ifscCode: bank?.ifscCode ?? null,
+      accountHolderName: bank?.accountHolderName ?? null,
     };
   }));
   res.json(enriched);
@@ -611,6 +617,138 @@ router.post("/admin/payouts/:id/reject", requireAdmin, async (req, res): Promise
     .set({ status: "rejected", rejectionReason: rejectionReason || "Rejected by admin", processedAt: new Date() })
     .where(eq(payoutRequestsTable.id, id));
   res.json({ message: "Payout rejected" });
+});
+
+router.post("/admin/payouts/:id/hold", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  const { note } = req.body;
+  await db.update(payoutRequestsTable)
+    .set({ status: "hold" as any, rejectionReason: note || null, processedAt: new Date() })
+    .where(eq(payoutRequestsTable.id, id));
+  res.json({ message: "Payout put on hold" });
+});
+
+/* ── Admin: scheduled payouts (auto-calculated per period) ── */
+router.get("/admin/scheduled-payouts", requireAdmin, async (req, res): Promise<void> => {
+  const [settings] = await db.select().from(platformSettingsTable).limit(1);
+  const payoutPeriodDays = settings?.payoutPeriodDays ?? 7;
+
+  const approvedApps = await db.select({ userId: affiliateApplicationsTable.userId })
+    .from(affiliateApplicationsTable)
+    .where(eq(affiliateApplicationsTable.status, "approved"));
+
+  const results = await Promise.all(approvedApps.map(async ({ userId }) => {
+    const [user] = await db.select({ name: usersTable.name, email: usersTable.email, phone: (usersTable as any).phone })
+      .from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (!user) return null;
+
+    const commissions = await db.select({ amount: referralsTable.commission })
+      .from(referralsTable)
+      .where(and(eq(referralsTable.referrerId, userId), eq(referralsTable.status, "purchase")));
+    const totalEarned = commissions.reduce((s, c) => s + parseFloat(String(c.amount ?? 0)), 0);
+
+    const approved = await db.select({ amount: payoutRequestsTable.amount })
+      .from(payoutRequestsTable)
+      .where(and(eq(payoutRequestsTable.userId, userId), eq(payoutRequestsTable.status, "approved")));
+    const totalPaidOut = approved.reduce((s, p) => s + parseFloat(String(p.amount)), 0);
+
+    const unpaidAmount = Math.max(0, totalEarned - totalPaidOut);
+    if (unpaidAmount <= 0) return null;
+
+    const [lastApproved] = await db.select({ processedAt: payoutRequestsTable.processedAt })
+      .from(payoutRequestsTable)
+      .where(and(eq(payoutRequestsTable.userId, userId), eq(payoutRequestsTable.status, "approved")))
+      .orderBy(desc(payoutRequestsTable.processedAt)).limit(1);
+    const lastPayoutDate = lastApproved?.processedAt ?? null;
+
+    let nextDueDate: Date | null = null;
+    if (lastPayoutDate) {
+      nextDueDate = new Date(lastPayoutDate);
+      nextDueDate.setDate(nextDueDate.getDate() + payoutPeriodDays);
+    }
+    const isDue = !nextDueDate || new Date() >= nextDueDate;
+
+    const [latestAction] = await db.select()
+      .from(payoutRequestsTable)
+      .where(eq(payoutRequestsTable.userId, userId))
+      .orderBy(desc(payoutRequestsTable.requestedAt)).limit(1);
+
+    const [kyc] = await db.select({ panNumber: affiliateKycTable.panNumber, status: affiliateKycTable.status })
+      .from(affiliateKycTable).where(eq(affiliateKycTable.userId, userId)).limit(1);
+
+    const [bank] = await db.select().from(affiliateBankDetailsTable)
+      .where(eq(affiliateBankDetailsTable.userId, userId)).limit(1);
+
+    return {
+      affiliateId: userId,
+      name: user.name,
+      email: user.email,
+      phone: (user as any).phone ?? null,
+      panNumber: kyc?.panNumber ?? null,
+      kycStatus: kyc?.status ?? null,
+      bank: bank ? {
+        accountHolderName: bank.accountHolderName,
+        accountNumber: bank.accountNumber,
+        ifscCode: bank.ifscCode,
+        bankName: bank.bankName,
+      } : null,
+      totalEarned,
+      totalPaidOut,
+      unpaidAmount,
+      lastPayoutDate: lastPayoutDate?.toISOString() ?? null,
+      nextDueDate: nextDueDate?.toISOString() ?? null,
+      isDue,
+      payoutPeriodDays,
+      latestAction: latestAction ? {
+        id: latestAction.id,
+        status: latestAction.status,
+        amount: parseFloat(String(latestAction.amount)),
+        note: latestAction.rejectionReason,
+        date: latestAction.requestedAt?.toISOString() ?? null,
+      } : null,
+    };
+  }));
+
+  res.json(results.filter(Boolean));
+});
+
+router.post("/admin/scheduled-payouts/:affiliateId/action", requireAdmin, async (req, res): Promise<void> => {
+  const affiliateId = parseInt(req.params.affiliateId);
+  const { action, note } = req.body;
+  if (!["paid", "hold", "reject"].includes(action)) {
+    res.status(400).json({ error: "Invalid action" }); return;
+  }
+
+  const commissions = await db.select({ amount: referralsTable.commission })
+    .from(referralsTable)
+    .where(and(eq(referralsTable.referrerId, affiliateId), eq(referralsTable.status, "purchase")));
+  const totalEarned = commissions.reduce((s, c) => s + parseFloat(String(c.amount ?? 0)), 0);
+
+  const approvedPayouts = await db.select({ amount: payoutRequestsTable.amount })
+    .from(payoutRequestsTable)
+    .where(and(eq(payoutRequestsTable.userId, affiliateId), eq(payoutRequestsTable.status, "approved")));
+  const totalPaidOut = approvedPayouts.reduce((s, p) => s + parseFloat(String(p.amount)), 0);
+
+  const unpaidAmount = Math.max(0, totalEarned - totalPaidOut);
+  if (unpaidAmount <= 0) { res.status(400).json({ error: "No unpaid amount for this affiliate" }); return; }
+
+  const [bank] = await db.select().from(affiliateBankDetailsTable)
+    .where(eq(affiliateBankDetailsTable.userId, affiliateId)).limit(1);
+
+  const status = action === "paid" ? "approved" : action === "hold" ? "hold" : "rejected";
+  await db.insert(payoutRequestsTable).values({
+    userId: affiliateId,
+    amount: unpaidAmount.toFixed(2) as any,
+    paymentMethod: bank ? "bank_transfer" : "admin_direct",
+    paymentDetails: bank
+      ? `${bank.bankName} · A/C ${bank.accountNumber} · ${bank.ifscCode}`
+      : "Direct admin payout",
+    status: status as any,
+    rejectionReason: (action === "reject" || action === "hold") && note ? note : null,
+    processedAt: action === "paid" ? new Date() : null,
+  });
+
+  res.json({ message: action === "paid" ? "Marked as paid" : action === "hold" ? "Put on hold" : "Rejected" });
 });
 
 /* ── Admin: all KYC submissions ── */
