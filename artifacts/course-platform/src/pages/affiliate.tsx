@@ -821,7 +821,7 @@ function CreativesTab({ creatives }: { creatives: any[] }) {
             <div className="mb-3">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wide">Primary Text / Ad Copy</p>
-                <button onClick={() => copy(c.content, `${c.id}-c`)} className="text-muted-foreground hover:text-foreground transition-colors">
+                <button onClick={() => copy(c.content, `${c.id}-c`)} className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                   {copied === `${c.id}-c` ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
                 </button>
               </div>
@@ -832,7 +832,7 @@ function CreativesTab({ creatives }: { creatives: any[] }) {
             <div className="mb-3">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wide">Headline</p>
-                <button onClick={() => copy(c.headline, `${c.id}-h`)} className="text-muted-foreground hover:text-foreground transition-colors">
+                <button onClick={() => copy(c.headline, `${c.id}-h`)} className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                   {copied === `${c.id}-h` ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
                 </button>
               </div>
