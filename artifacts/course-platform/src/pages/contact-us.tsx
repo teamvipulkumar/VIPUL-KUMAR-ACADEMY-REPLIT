@@ -9,9 +9,9 @@ const contactMethods = [
   {
     icon: Mail,
     title: "Email Us",
-    detail: "hello@vipulkumaracademy.com",
+    detail: "support@vipulkumaracademy.com",
     description: "For general enquiries and course questions.",
-    href: "mailto:hello@vipulkumaracademy.com",
+    href: "mailto:support@vipulkumaracademy.com",
   },
   {
     icon: MessageSquare,
@@ -23,9 +23,9 @@ const contactMethods = [
   {
     icon: Phone,
     title: "WhatsApp",
-    detail: "+91 98765 43210",
+    detail: "+15557485582",
     description: "Quick queries — Mon to Sat, 10am–6pm IST.",
-    href: "https://wa.me/919876543210",
+    href: "https://wa.me/15557485582",
   },
 ];
 
@@ -48,7 +48,7 @@ const faqs = [
   },
   {
     q: "Do you offer group or corporate pricing?",
-    a: "Yes! If you're looking to enrol your team or organisation, email us at hello@vipulkumaracademy.com and we'll put together a custom quote.",
+    a: "Yes! If you're looking to enrol your team or organisation, email us at support@vipulkumaracademy.com and we'll put together a custom quote.",
   },
 ];
 

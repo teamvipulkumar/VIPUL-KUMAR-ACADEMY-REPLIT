@@ -375,7 +375,7 @@ export function SiteFooter() {
     { icon: Twitter, label: "Twitter / X", href: "#", color: "hover:text-sky-400" },
     { icon: Linkedin, label: "LinkedIn", href: "#", color: "hover:text-blue-400" },
     { icon: Instagram, label: "Instagram", href: "#", color: "hover:text-pink-400" },
-    { icon: Mail, label: "Email", href: "mailto:hello@vipulkumaracademy.com", color: "hover:text-primary" },
+    { icon: Mail, label: "Email", href: "mailto:support@vipulkumaracademy.com", color: "hover:text-primary" },
   ];
 
   return (
