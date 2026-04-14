@@ -72,12 +72,18 @@ router.get("/users/:userId", requireAdmin, async (req, res): Promise<void> => {
   }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!user) { res.status(404).json({ error: "User not found" }); return; }
 
-  const [enrollCount] = await db.select({ count: count() }).from(enrollmentsTable).where(eq(enrollmentsTable.userId, userId));
   const [spentResult] = await db.select({ total: sum(paymentsTable.amount) }).from(paymentsTable).where(and(eq(paymentsTable.userId, userId), eq(paymentsTable.status, "completed")));
   const referrals = await db.select().from(referralsTable).where(eq(referralsTable.referrerId, userId));
   const affiliateEarnings = referrals.reduce((acc, r) => acc + parseFloat(String(r.commission ?? 0)), 0);
 
-  res.json({ ...user, enrollmentCount: enrollCount?.count ?? 0, totalSpent: parseFloat(String(spentResult?.total ?? 0)), affiliateEarnings });
+  const enrolledCourses = await db
+    .select({ id: coursesTable.id, title: coursesTable.title, enrolledAt: enrollmentsTable.enrolledAt })
+    .from(enrollmentsTable)
+    .innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id))
+    .where(eq(enrollmentsTable.userId, userId))
+    .orderBy(desc(enrollmentsTable.enrolledAt));
+
+  res.json({ ...user, enrollmentCount: enrolledCourses.length, totalSpent: parseFloat(String(spentResult?.total ?? 0)), affiliateEarnings, enrolledCourses });
 });
 
 router.post("/users", requireAdmin, async (req, res): Promise<void> => {
