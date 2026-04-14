@@ -34,16 +34,7 @@ const upload = multer({
   },
 });
 
-router.post("/image", (req, res, next) => {
-  const cookieToken = req.cookies?.token;
-  const authHeader = req.headers.authorization;
-  console.log("[upload] pre-auth: cookie token present?", !!cookieToken, "auth header?", !!authHeader, "content-type:", req.headers["content-type"]);
-  next();
-}, requireAuth, (req, res, next) => {
-  console.log("[upload] passed requireAuth, user:", (req as any).user?.email, "role:", (req as any).user?.role);
-  next();
-}, upload.single("image"), (req, res) => {
-  console.log("[upload] multer done, file:", req.file?.filename);
+router.post("/image", requireAuth, upload.single("image"), (req, res) => {
   if (!req.file) {
     res.status(400).json({ error: "No image file provided" });
     return;
