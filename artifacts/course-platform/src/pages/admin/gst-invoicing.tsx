@@ -84,6 +84,7 @@ interface GstInvoice {
   courseId: number;
   customerName: string;
   customerEmail: string;
+  customerMobile: string | null;
   customerGstin: string | null;
   customerAddress: string;
   customerState: string;
@@ -126,6 +127,28 @@ function fmt(n: number | string) {
   return "₹" + parseFloat(String(n)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function amountInWords(amount: number): string {
+  const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+    "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+  function toWords(n: number): string {
+    if (n === 0) return "";
+    if (n < 20) return ones[n] + " ";
+    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? " " + ones[n % 10] : "") + " ";
+    if (n < 1000) return ones[Math.floor(n / 100)] + " Hundred " + toWords(n % 100);
+    if (n < 100000) return toWords(Math.floor(n / 1000)) + "Thousand " + toWords(n % 1000);
+    if (n < 10000000) return toWords(Math.floor(n / 100000)) + "Lakh " + toWords(n % 100000);
+    return toWords(Math.floor(n / 10000000)) + "Crore " + toWords(n % 10000000);
+  }
+  const rupees = Math.floor(amount);
+  const paise = Math.round((amount - rupees) * 100);
+  let result = toWords(rupees).trim();
+  if (!result) result = "Zero";
+  result += " Rupees";
+  if (paise > 0) result += " and " + toWords(paise).trim() + " Paise";
+  return result + " Only";
+}
+
 function InvoicePrintModal({ invoice, settings, onClose }: {
   invoice: GstInvoice;
   settings: GstSettings | null;
@@ -133,138 +156,307 @@ function InvoicePrintModal({ invoice, settings, onClose }: {
 }) {
   const printRef = useRef<HTMLDivElement>(null);
 
-  function handlePrint() {
-    const content = printRef.current?.innerHTML ?? "";
-    const win = window.open("", "_blank");
-    if (!win) return;
-    win.document.write(`<!DOCTYPE html><html><head><title>Invoice ${invoice.invoiceNumber}</title>
-<style>
-  body { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #111; }
-  .inv-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #2563eb; padding-bottom: 16px; margin-bottom: 16px; }
-  .inv-title { font-size: 28px; font-weight: bold; color: #2563eb; }
-  .inv-meta { font-size: 13px; color: #555; }
-  .inv-section { margin-bottom: 14px; }
-  .inv-section h3 { font-size: 12px; text-transform: uppercase; color: #888; margin-bottom: 6px; }
-  .inv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { background: #f3f4f6; padding: 8px 12px; text-align: left; font-weight: 600; }
-  td { padding: 8px 12px; border-bottom: 1px solid #e5e7eb; }
-  .tax-row { background: #f9fafb; }
-  .total-row td { font-weight: bold; font-size: 15px; border-top: 2px solid #2563eb; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
-  .badge-blue { background: #dbeafe; color: #1d4ed8; }
-  .badge-green { background: #dcfce7; color: #166534; }
-  .footer { margin-top: 30px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #888; text-align: center; }
-</style></head><body>${content}</body></html>`);
-    win.document.close();
-    win.print();
-  }
-
   const base = parseFloat(invoice.baseAmount);
   const cgst = parseFloat(invoice.cgstAmount);
   const sgst = parseFloat(invoice.sgstAmount);
   const igst = parseFloat(invoice.igstAmount);
   const total = parseFloat(invoice.totalAmount);
+  const totalGst = cgst + sgst + igst;
+  const halfRate = invoice.gstRate / 2;
+  const invDate = new Date(invoice.createdAt);
+  const formattedDate = invDate.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+  const fy = `20${invoice.financialYear.slice(0, 2)}-${invoice.financialYear.slice(2)}`;
+
+  const companyInitials = (settings?.companyName || "VK").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  const placeOfSupply = invoice.customerState
+    ? `${invoice.customerState}${invoice.customerStateCode ? ` (${invoice.customerStateCode})` : ""}`
+    : "—";
+
+  function handlePrint() {
+    const content = printRef.current?.innerHTML ?? "";
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head>
+<title>Invoice ${invoice.invoiceNumber}</title>
+<meta charset="UTF-8"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; color: #1a1a2e; font-size: 13px; }
+  .page { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 0; }
+  .header-bar { background: #1e3a5f; color: white; padding: 22px 30px; display: flex; justify-content: space-between; align-items: center; }
+  .company-logo { width: 50px; height: 50px; background: #3b82f6; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900; color: white; letter-spacing: 1px; flex-shrink: 0; }
+  .company-info { margin-left: 14px; flex: 1; }
+  .company-name { font-size: 18px; font-weight: 700; letter-spacing: 0.3px; }
+  .company-detail { font-size: 11px; color: #93c5fd; margin-top: 2px; }
+  .inv-badge { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; padding: 10px 20px; text-align: right; }
+  .inv-badge-title { font-size: 20px; font-weight: 800; letter-spacing: 2px; color: #bfdbfe; }
+  .inv-badge-sub { font-size: 11px; color: #93c5fd; margin-top: 3px; }
+  .body-section { padding: 24px 30px; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .card { background: #f8faff; border: 1px solid #dbeafe; border-radius: 8px; padding: 16px; }
+  .card-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #6b7280; font-weight: 700; margin-bottom: 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }
+  .field-row { display: flex; margin-bottom: 5px; }
+  .field-label { font-size: 11px; color: #6b7280; width: 100px; flex-shrink: 0; }
+  .field-value { font-size: 12px; color: #111827; font-weight: 500; }
+  .bill-to-name { font-size: 15px; font-weight: 700; color: #1e3a5f; margin-bottom: 8px; }
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #1e3a5f; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .items-table th { background: #1e3a5f; color: white; padding: 10px 12px; text-align: left; font-weight: 600; font-size: 11px; letter-spacing: 0.3px; }
+  .items-table th.r, .items-table td.r { text-align: right; }
+  .items-table td { padding: 12px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  .items-table tr:nth-child(even) td { background: #f9fafb; }
+  .item-name { font-weight: 600; color: #1a1a2e; }
+  .item-sub { font-size: 10px; color: #6b7280; margin-top: 2px; }
+  .gst-table { margin-top: 16px; }
+  .gst-table th { background: #1e3a5f; color: white; padding: 8px 12px; font-size: 11px; text-align: center; }
+  .gst-table td { padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 12px; }
+  .gst-table td.l { text-align: left; }
+  .gst-table tr:nth-child(even) td { background: #f9fafb; }
+  .total-section { background: #1e3a5f; color: white; border-radius: 8px; padding: 16px 20px; margin-top: 16px; display: flex; justify-content: space-between; align-items: center; }
+  .total-label { font-size: 13px; font-weight: 600; color: #93c5fd; }
+  .total-amount { font-size: 26px; font-weight: 800; color: white; }
+  .words-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px 14px; margin-top: 12px; font-size: 11px; color: #1e40af; }
+  .words-label { font-weight: 700; margin-right: 6px; }
+  .footer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+  .note-box { font-size: 11px; color: #6b7280; line-height: 1.6; }
+  .sig-box { text-align: right; }
+  .sig-line { border-top: 1px solid #9ca3af; margin-top: 40px; padding-top: 6px; font-size: 11px; color: #6b7280; }
+  .stamp-box { border: 1px dashed #9ca3af; border-radius: 4px; height: 60px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #9ca3af; margin-bottom: 8px; }
+  .page-footer { background: #f3f4f6; border-top: 2px solid #1e3a5f; padding: 10px 30px; text-align: center; font-size: 10px; color: #6b7280; display: flex; justify-content: space-between; }
+  .supply-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; }
+  .badge-intra { background: #dcfce7; color: #166534; }
+  .badge-inter { background: #dbeafe; color: #1d4ed8; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head><body>
+<div class="page">${content}</div>
+</body></html>`);
+    win.document.close();
+    setTimeout(() => win.print(), 500);
+  }
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" /> Tax Invoice — {invoice.invoiceNumber}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="flex gap-2 mb-4">
-          <Button onClick={handlePrint} className="flex items-center gap-1">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-blue-700" />
+            <span className="font-bold text-gray-800">{invoice.invoiceNumber}</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${invoice.isInterstate ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>
+              {invoice.isInterstate ? "Interstate · IGST" : "Intra-state · CGST+SGST"}
+            </span>
+          </div>
+          <Button onClick={handlePrint} className="bg-blue-700 hover:bg-blue-800 text-white gap-2">
             <Printer className="h-4 w-4" /> Print / Save PDF
           </Button>
         </div>
-        <div ref={printRef} className="bg-white text-black p-6 rounded border">
-          <div className="inv-header flex justify-between items-start border-b-2 border-blue-600 pb-4 mb-4">
-            <div>
-              <div className="inv-title text-3xl font-bold text-blue-700">TAX INVOICE</div>
-              <div className="text-sm text-gray-500 mt-1">Original for Recipient</div>
+
+        {/* Invoice preview */}
+        <div ref={printRef} style={{ fontFamily: "'Segoe UI', Arial, sans-serif", background: "#fff", color: "#1a1a2e" }}>
+          {/* Header */}
+          <div style={{ background: "#1e3a5f", color: "white", padding: "22px 30px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <div style={{ width: 50, height: 50, background: "#3b82f6", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 900, color: "white", flexShrink: 0 }}>
+                {companyInitials}
+              </div>
+              <div style={{ marginLeft: 14 }}>
+                <div style={{ fontSize: 18, fontWeight: 700 }}>{settings?.companyName || "Your Company"}</div>
+                {settings?.gstin && <div style={{ fontSize: 11, color: "#93c5fd", marginTop: 2 }}>GSTIN: {settings.gstin}</div>}
+                <div style={{ fontSize: 11, color: "#93c5fd", marginTop: 1 }}>
+                  {[settings?.addressLine1, settings?.city, settings?.state].filter(Boolean).join(", ")}
+                </div>
+                {(settings?.email || settings?.phone) && (
+                  <div style={{ fontSize: 11, color: "#93c5fd", marginTop: 1 }}>
+                    {[settings?.email, settings?.phone].filter(Boolean).join(" · ")}
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="text-right">
-              {settings?.companyName && <div className="font-bold text-lg">{settings.companyName}</div>}
-              {settings?.gstin && <div className="text-sm">GSTIN: {settings.gstin}</div>}
-              {settings?.addressLine1 && <div className="text-sm">{settings.addressLine1}</div>}
-              {settings?.addressLine2 && <div className="text-sm">{settings.addressLine2}</div>}
-              {(settings?.city || settings?.state) && <div className="text-sm">{[settings.city, settings.state, settings.pincode].filter(Boolean).join(", ")}</div>}
-              {settings?.email && <div className="text-sm">{settings.email}</div>}
-              {settings?.phone && <div className="text-sm">{settings.phone}</div>}
+            <div style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.25)", borderRadius: 8, padding: "12px 22px", textAlign: "right" }}>
+              <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: 2, color: "#bfdbfe" }}>TAX INVOICE</div>
+              <div style={{ fontSize: 11, color: "#93c5fd", marginTop: 4 }}>Original for Recipient</div>
             </div>
           </div>
 
-          <div className="inv-grid grid grid-cols-2 gap-6 mb-5">
-            <div>
-              <div className="text-xs uppercase text-gray-400 font-semibold mb-2">Bill To</div>
-              <div className="font-semibold">{invoice.customerName}</div>
-              <div className="text-sm">{invoice.customerEmail}</div>
-              {invoice.customerGstin && <div className="text-sm">GSTIN: {invoice.customerGstin}</div>}
-              {invoice.customerAddress && <div className="text-sm">{invoice.customerAddress}</div>}
-              {invoice.customerState && <div className="text-sm">{invoice.customerState}</div>}
+          <div style={{ padding: "24px 30px" }}>
+            {/* Bill To + Invoice Details */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+              {/* Bill To */}
+              <div style={{ background: "#f8faff", border: "1px solid #dbeafe", borderRadius: 8, padding: 16 }}>
+                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1, color: "#6b7280", fontWeight: 700, marginBottom: 10, borderBottom: "1px solid #e5e7eb", paddingBottom: 6 }}>Bill To</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#1e3a5f", marginBottom: 10 }}>{invoice.customerName || "—"}</div>
+                <div style={{ display: "flex", marginBottom: 5 }}>
+                  <span style={{ fontSize: 11, color: "#6b7280", width: 80, flexShrink: 0 }}>Email</span>
+                  <span style={{ fontSize: 12, color: "#111827", fontWeight: 500 }}>{invoice.customerEmail || "—"}</span>
+                </div>
+                {invoice.customerMobile && (
+                  <div style={{ display: "flex", marginBottom: 5 }}>
+                    <span style={{ fontSize: 11, color: "#6b7280", width: 80, flexShrink: 0 }}>Mobile</span>
+                    <span style={{ fontSize: 12, color: "#111827", fontWeight: 500 }}>{invoice.customerMobile}</span>
+                  </div>
+                )}
+                <div style={{ display: "flex", marginBottom: 5 }}>
+                  <span style={{ fontSize: 11, color: "#6b7280", width: 80, flexShrink: 0 }}>State</span>
+                  <span style={{ fontSize: 12, color: "#111827", fontWeight: 500 }}>{placeOfSupply}</span>
+                </div>
+                {invoice.customerGstin && (
+                  <div style={{ display: "flex", marginBottom: 5 }}>
+                    <span style={{ fontSize: 11, color: "#6b7280", width: 80, flexShrink: 0 }}>GSTIN</span>
+                    <span style={{ fontSize: 12, color: "#111827", fontWeight: 600, fontFamily: "monospace" }}>{invoice.customerGstin}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Invoice Details */}
+              <div style={{ background: "#f8faff", border: "1px solid #dbeafe", borderRadius: 8, padding: 16 }}>
+                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1, color: "#6b7280", fontWeight: 700, marginBottom: 10, borderBottom: "1px solid #e5e7eb", paddingBottom: 6 }}>Invoice Details</div>
+                {[
+                  ["Invoice No.", invoice.invoiceNumber],
+                  ["Invoice Date", formattedDate],
+                  ["Financial Year", fy],
+                  ["Place of Supply", placeOfSupply],
+                  ["Payment Mode", (invoice.gateway || "—").toUpperCase()],
+                  ["Supply Type", invoice.isInterstate ? "Inter-State" : "Intra-State"],
+                ].map(([label, value]) => (
+                  <div key={label} style={{ display: "flex", marginBottom: 5 }}>
+                    <span style={{ fontSize: 11, color: "#6b7280", width: 110, flexShrink: 0 }}>{label}</span>
+                    <span style={{ fontSize: 12, color: "#111827", fontWeight: label === "Invoice No." ? 700 : 500, fontFamily: label === "Invoice No." ? "monospace" : "inherit" }}>{value}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="text-right">
-              <div className="text-xs uppercase text-gray-400 font-semibold mb-2">Invoice Details</div>
-              <div className="text-sm"><span className="text-gray-500">Invoice No:</span> <strong>{invoice.invoiceNumber}</strong></div>
-              <div className="text-sm"><span className="text-gray-500">Date:</span> {new Date(invoice.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}</div>
-              <div className="text-sm"><span className="text-gray-500">FY:</span> 20{invoice.financialYear.slice(0, 2)}-20{invoice.financialYear.slice(2)}</div>
-              <div className="text-sm"><span className="text-gray-500">Gateway:</span> {invoice.gateway || "—"}</div>
-              <div className="mt-1">
-                <span className={`badge text-xs px-2 py-0.5 rounded font-semibold ${invoice.isInterstate ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>
-                  {invoice.isInterstate ? "Interstate (IGST)" : "Intra-state (CGST+SGST)"}
-                </span>
+
+            {/* Items Table */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: "#1e3a5f", marginBottom: 8 }}>Items</div>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr>
+                    {["#", "Description", "HSN/SAC", "Qty", "Rate (Excl. Tax)", "Taxable Amt"].map((h, i) => (
+                      <th key={h} style={{ background: "#1e3a5f", color: "white", padding: "10px 12px", textAlign: i >= 3 ? "right" : "left", fontWeight: 600, fontSize: 11, letterSpacing: 0.3 }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: "12px", borderBottom: "1px solid #e5e7eb" }}>1</td>
+                    <td style={{ padding: "12px", borderBottom: "1px solid #e5e7eb" }}>
+                      <div style={{ fontWeight: 600, color: "#1a1a2e" }}>{invoice.courseTitle}</div>
+                      <div style={{ fontSize: 10, color: "#6b7280", marginTop: 2 }}>Online Educational Course — Digital Service</div>
+                    </td>
+                    <td style={{ padding: "12px", borderBottom: "1px solid #e5e7eb", fontFamily: "monospace" }}>999294</td>
+                    <td style={{ padding: "12px", borderBottom: "1px solid #e5e7eb", textAlign: "right" }}>1</td>
+                    <td style={{ padding: "12px", borderBottom: "1px solid #e5e7eb", textAlign: "right" }}>{fmt(base)}</td>
+                    <td style={{ padding: "12px", borderBottom: "1px solid #e5e7eb", textAlign: "right", fontWeight: 600 }}>{fmt(base)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* GST Breakup */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: "#1e3a5f", marginBottom: 8 }}>GST Breakup</div>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr>
+                    <th style={{ background: "#1e3a5f", color: "white", padding: "8px 12px", textAlign: "left", fontSize: 11 }}>HSN/SAC</th>
+                    <th style={{ background: "#1e3a5f", color: "white", padding: "8px 12px", textAlign: "right", fontSize: 11 }}>Taxable Value</th>
+                    {!invoice.isInterstate ? (
+                      <Fragment>
+                        <th style={{ background: "#1e3a5f", color: "white", padding: "8px 12px", textAlign: "center", fontSize: 11 }}>CGST Rate</th>
+                        <th style={{ background: "#1e3a5f", color: "white", padding: "8px 12px", textAlign: "right", fontSize: 11 }}>CGST Amt</th>
+                        <th style={{ background: "#1e3a5f", color: "white", padding: "8px 12px", textAlign: "center", fontSize: 11 }}>SGST Rate</th>
+                        <th style={{ background: "#1e3a5f", color: "white", padding: "8px 12px", textAlign: "right", fontSize: 11 }}>SGST Amt</th>
+                      </Fragment>
+                    ) : (
+                      <Fragment>
+                        <th style={{ background: "#1e3a5f", color: "white", padding: "8px 12px", textAlign: "center", fontSize: 11 }}>IGST Rate</th>
+                        <th style={{ background: "#1e3a5f", color: "white", padding: "8px 12px", textAlign: "right", fontSize: 11 }}>IGST Amt</th>
+                      </Fragment>
+                    )}
+                    <th style={{ background: "#1e3a5f", color: "white", padding: "8px 12px", textAlign: "right", fontSize: 11 }}>Total Tax</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", fontFamily: "monospace" }}>999294</td>
+                    <td style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", textAlign: "right" }}>{fmt(base)}</td>
+                    {!invoice.isInterstate ? (
+                      <Fragment>
+                        <td style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", textAlign: "center" }}>{halfRate}%</td>
+                        <td style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", textAlign: "right" }}>{fmt(cgst)}</td>
+                        <td style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", textAlign: "center" }}>{halfRate}%</td>
+                        <td style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", textAlign: "right" }}>{fmt(sgst)}</td>
+                      </Fragment>
+                    ) : (
+                      <Fragment>
+                        <td style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", textAlign: "center" }}>{invoice.gstRate}%</td>
+                        <td style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", textAlign: "right" }}>{fmt(igst)}</td>
+                      </Fragment>
+                    )}
+                    <td style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", textAlign: "right", fontWeight: 700 }}>{fmt(totalGst)}</td>
+                  </tr>
+                  {/* Summary row */}
+                  <tr style={{ background: "#f0f9ff" }}>
+                    <td colSpan={2} style={{ padding: "8px 12px", fontWeight: 700, fontSize: 12, color: "#1e3a5f" }}>Total</td>
+                    {!invoice.isInterstate ? (
+                      <Fragment>
+                        <td colSpan={2} style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700 }}>{fmt(cgst)}</td>
+                        <td colSpan={2} style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700 }}>{fmt(sgst)}</td>
+                      </Fragment>
+                    ) : (
+                      <td colSpan={2} style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700 }}>{fmt(igst)}</td>
+                    )}
+                    <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 800, color: "#1e3a5f" }}>{fmt(totalGst)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Grand Total */}
+            <div style={{ background: "#1e3a5f", color: "white", borderRadius: 8, padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 12, color: "#93c5fd", marginBottom: 2 }}>Taxable Value</div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{fmt(base)}</div>
+                <div style={{ fontSize: 11, color: "#93c5fd", marginTop: 4 }}>Total GST ({invoice.gstRate}%): {fmt(totalGst)}</div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 13, color: "#93c5fd", fontWeight: 600 }}>GRAND TOTAL (INR)</div>
+                <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: 1 }}>{fmt(total)}</div>
+              </div>
+            </div>
+
+            {/* Amount in words */}
+            <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 6, padding: "10px 14px", marginBottom: 20, fontSize: 11, color: "#1e40af" }}>
+              <span style={{ fontWeight: 700 }}>Amount in Words: </span>{amountInWords(total)}
+            </div>
+
+            {/* Footer: Notes + Signature */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+              <div style={{ fontSize: 11, color: "#6b7280", lineHeight: 1.7 }}>
+                <div style={{ fontWeight: 700, color: "#374151", marginBottom: 6 }}>Terms & Notes</div>
+                <div>1. This is a computer-generated invoice and does not require a physical signature.</div>
+                <div>2. SAC Code: 999294 — Online Educational Services.</div>
+                <div>3. All amounts are in Indian Rupees (INR).</div>
+                {invoice.isInterstate
+                  ? <div>4. IGST applicable (Inter-State supply).</div>
+                  : <div>4. CGST + SGST applicable (Intra-State supply).</div>}
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ border: "1px dashed #9ca3af", borderRadius: 4, height: 56, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#9ca3af", marginBottom: 8 }}>Seal / Stamp</div>
+                <div style={{ borderTop: "1px solid #9ca3af", paddingTop: 6, fontSize: 11, color: "#6b7280" }}>
+                  Authorised Signatory<br />
+                  <span style={{ fontWeight: 700, color: "#1e3a5f" }}>{settings?.companyName || ""}</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <table className="w-full text-sm border-collapse mb-4">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="p-2 text-left">#</th>
-                <th className="p-2 text-left">Description</th>
-                <th className="p-2 text-right">Taxable Amount</th>
-                {!invoice.isInterstate && <Fragment>
-                  <th className="p-2 text-right">CGST ({invoice.gstRate / 2}%)</th>
-                  <th className="p-2 text-right">SGST ({invoice.gstRate / 2}%)</th>
-                </Fragment>}
-                {invoice.isInterstate && <th className="p-2 text-right">IGST ({invoice.gstRate}%)</th>}
-                <th className="p-2 text-right">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="p-2 border-b">1</td>
-                <td className="p-2 border-b">
-                  <div className="font-medium">{invoice.courseTitle}</div>
-                  <div className="text-xs text-gray-500">Online Course — HSN: 999294</div>
-                </td>
-                <td className="p-2 border-b text-right">{fmt(base)}</td>
-                {!invoice.isInterstate && <Fragment>
-                  <td className="p-2 border-b text-right">{fmt(cgst)}</td>
-                  <td className="p-2 border-b text-right">{fmt(sgst)}</td>
-                </Fragment>}
-                {invoice.isInterstate && <td className="p-2 border-b text-right">{fmt(igst)}</td>}
-                <td className="p-2 border-b text-right font-semibold">{fmt(total)}</td>
-              </tr>
-            </tbody>
-            <tfoot>
-              <tr className="bg-gray-50">
-                <td colSpan={invoice.isInterstate ? 2 : 2} className="p-2 text-right font-semibold text-sm" />
-                <td className="p-2 text-right font-semibold">{fmt(base)}</td>
-                {!invoice.isInterstate && <Fragment>
-                  <td className="p-2 text-right font-semibold">{fmt(cgst)}</td>
-                  <td className="p-2 text-right font-semibold">{fmt(sgst)}</td>
-                </Fragment>}
-                {invoice.isInterstate && <td className="p-2 text-right font-semibold">{fmt(igst)}</td>}
-                <td className="p-2 text-right font-bold text-base">{fmt(total)}</td>
-              </tr>
-            </tfoot>
-          </table>
-
-          <div className="text-xs text-gray-500 mt-4 border-t pt-4 text-center">
-            This is a computer-generated invoice and does not require a physical signature. &nbsp;|&nbsp; SAC Code: 999294 (Online Educational Services)
+          {/* Page footer */}
+          <div style={{ background: "#f3f4f6", borderTop: "2px solid #1e3a5f", padding: "8px 30px", display: "flex", justifyContent: "space-between", fontSize: 10, color: "#6b7280" }}>
+            <span>{settings?.companyName} {settings?.gstin ? `| GSTIN: ${settings.gstin}` : ""}</span>
+            <span>Invoice: {invoice.invoiceNumber} | FY {fy}</span>
+            <span>Generated on {new Date().toLocaleDateString("en-IN")}</span>
           </div>
         </div>
       </DialogContent>

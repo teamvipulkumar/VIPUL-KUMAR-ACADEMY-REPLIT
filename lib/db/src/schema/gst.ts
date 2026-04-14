@@ -29,6 +29,7 @@ export const gstInvoicesTable = pgTable("gst_invoices", {
   courseId: integer("course_id").references(() => coursesTable.id, { onDelete: "set null" }),
   customerName: text("customer_name").notNull().default(""),
   customerEmail: text("customer_email").notNull().default(""),
+  customerMobile: text("customer_mobile"),
   customerGstin: text("customer_gstin"),
   customerAddress: text("customer_address").notNull().default(""),
   customerState: text("customer_state").notNull().default(""),

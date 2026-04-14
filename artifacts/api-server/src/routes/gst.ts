@@ -17,6 +17,19 @@ function getFinancialYear(date: Date): string {
     : `${String(y - 1).slice(2)}${String(y).slice(2)}`;
 }
 
+const STATE_CODE_MAP: Record<string, string> = {
+  "Andhra Pradesh": "37", "Arunachal Pradesh": "12", "Assam": "18", "Bihar": "10",
+  "Chhattisgarh": "22", "Goa": "30", "Gujarat": "24", "Haryana": "06",
+  "Himachal Pradesh": "02", "Jharkhand": "20", "Karnataka": "29", "Kerala": "32",
+  "Madhya Pradesh": "23", "Maharashtra": "27", "Manipur": "14", "Meghalaya": "17",
+  "Mizoram": "15", "Nagaland": "13", "Odisha": "21", "Punjab": "03",
+  "Rajasthan": "08", "Sikkim": "11", "Tamil Nadu": "33", "Telangana": "36",
+  "Tripura": "16", "Uttar Pradesh": "09", "Uttarakhand": "05", "West Bengal": "19",
+  "Delhi": "07", "Jammu & Kashmir": "01", "Ladakh": "38", "Chandigarh": "04",
+  "Puducherry": "34", "Lakshadweep": "31", "Andaman & Nicobar": "35",
+  "Dadra & Nagar Haveli": "26", "Daman & Diu": "25",
+};
+
 async function getNextInvoiceNumber(prefix: string, fy: string): Promise<string> {
   const pattern = `${prefix}-${fy}-%`;
   const [row] = await db
@@ -39,7 +52,7 @@ export async function generateGstInvoice(paymentId: number): Promise<void> {
     const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.id, paymentId)).limit(1);
     if (!payment || payment.status !== "completed") return;
 
-    const [user] = await db.select({ name: usersTable.name, email: usersTable.email })
+    const [user] = await db.select({ name: usersTable.name, email: usersTable.email, phone: usersTable.phone })
       .from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
     const [course] = await db.select({ title: coursesTable.title })
       .from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
@@ -47,6 +60,7 @@ export async function generateGstInvoice(paymentId: number): Promise<void> {
     const [settings] = await db.select().from(gstCompanySettingsTable).limit(1);
     const prefix = settings?.invoicePrefix ?? "INV";
     const gstRate = settings?.gstRate ?? 18;
+    const companyState = settings?.state ?? "";
     const companyStateCode = settings?.stateCode ?? "";
 
     const createdAt = payment.createdAt ?? new Date();
@@ -57,8 +71,15 @@ export async function generateGstInvoice(paymentId: number): Promise<void> {
     const baseAmount = parseFloat((total * 100 / (100 + gstRate)).toFixed(2));
     const gstAmount = parseFloat((total - baseAmount).toFixed(2));
 
-    const customerStateCode = "";
-    const isInterstate = companyStateCode !== "" && customerStateCode !== companyStateCode;
+    // Use billing fields from payment, fall back to user record
+    const customerName = payment.billingName || user?.name || "";
+    const customerEmail = payment.billingEmail || user?.email || "";
+    const customerMobile = payment.billingMobile || user?.phone || null;
+    const customerState = payment.billingState || "";
+    const customerStateCode = STATE_CODE_MAP[customerState] ?? "";
+
+    // Interstate if company state is set and customer state differs
+    const isInterstate = companyState !== "" && customerState !== "" && customerState !== companyState;
     const cgst = isInterstate ? 0 : parseFloat((gstAmount / 2).toFixed(2));
     const sgst = isInterstate ? 0 : parseFloat((gstAmount / 2).toFixed(2));
     const igst = isInterstate ? gstAmount : 0;
@@ -68,11 +89,12 @@ export async function generateGstInvoice(paymentId: number): Promise<void> {
       paymentId: payment.id,
       userId: payment.userId,
       courseId: payment.courseId,
-      customerName: user?.name ?? "",
-      customerEmail: user?.email ?? "",
+      customerName,
+      customerEmail,
+      customerMobile,
       customerGstin: null,
       customerAddress: "",
-      customerState: "",
+      customerState,
       customerStateCode,
       courseTitle: course?.title ?? "",
       baseAmount: String(baseAmount),

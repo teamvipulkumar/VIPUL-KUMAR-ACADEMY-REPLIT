@@ -117,11 +117,13 @@ async function recordAffiliateCommission(
 
 router.post("/checkout", requireAuth, async (req, res): Promise<void> => {
   const authedReq = req as AuthedRequest;
-  const { courseId, couponCode, gateway, affiliateRef } = req.body;
+  const { courseId, couponCode, gateway, affiliateRef, state, mobile } = req.body;
   if (!courseId || !gateway) { res.status(400).json({ error: "courseId and gateway are required" }); return; }
 
   const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, courseId)).limit(1);
   if (!course) { res.status(404).json({ error: "Course not found" }); return; }
+
+  const [user] = await db.select({ name: usersTable.name, email: usersTable.email, phone: usersTable.phone }).from(usersTable).where(eq(usersTable.id, authedReq.user.userId)).limit(1);
 
   let amount = parseFloat(course.price);
 
@@ -147,6 +149,10 @@ router.post("/checkout", requireAuth, async (req, res): Promise<void> => {
     sessionId,
     couponCode: couponCode || null,
     affiliateRef: affiliateRef || null,
+    billingName: user?.name || null,
+    billingEmail: user?.email || null,
+    billingMobile: mobile?.trim() || user?.phone || null,
+    billingState: state || null,
   });
 
   res.json({ sessionId, amount, currency: "INR", gateway, redirectUrl: null, razorpayOrderId: null, razorpayKey: null });
@@ -265,6 +271,10 @@ router.post("/checkout/guest", async (req, res): Promise<void> => {
     sessionId, paymentId: `sim_${nanoid(12)}`,
     couponCode: couponCode || null,
     affiliateRef: affiliateRef || null,
+    billingName: fullName?.trim() || null,
+    billingEmail: email?.toLowerCase().trim() || null,
+    billingMobile: mobile?.trim() || null,
+    billingState: state || null,
   }).returning({ id: paymentsTable.id });
   if (newPayment) generateGstInvoice(newPayment.id).catch(() => {});
 
@@ -382,6 +392,10 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
     sessionId, gatewayOrderId: cfOrderId,
     couponCode: couponCode || null,
     affiliateRef: affiliateRef || null,
+    billingName: fullName?.trim() || null,
+    billingEmail: email?.toLowerCase().trim() || null,
+    billingMobile: mobile?.trim() || null,
+    billingState: state || null,
   });
 
   // Auto-login
@@ -636,6 +650,10 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
     sessionId, gatewayOrderId: orderId,
     couponCode: couponCode || null,
     affiliateRef: affiliateRef || null,
+    billingName: fullName?.trim() || null,
+    billingEmail: email?.toLowerCase().trim() || null,
+    billingMobile: mobile?.trim() || null,
+    billingState: state || null,
   });
 
   // Auto-login
