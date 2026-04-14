@@ -819,7 +819,12 @@ function CreativesTab({ creatives }: { creatives: any[] }) {
           )}
           {c.content && (
             <div className="mb-3">
-              <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wide mb-1">Primary Text / Ad Copy</p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wide">Primary Text / Ad Copy</p>
+                <button onClick={() => copy(c.content, c.id)} className="text-muted-foreground hover:text-foreground transition-colors">
+                  {copied === c.id ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                </button>
+              </div>
               <p className="text-xs text-muted-foreground bg-background border border-border rounded-lg p-2.5 line-clamp-3">{c.content}</p>
             </div>
           )}
@@ -844,11 +849,6 @@ function CreativesTab({ creatives }: { creatives: any[] }) {
                   <Download className="w-3 h-3" />Download
                 </Button>
               </a>
-            )}
-            {c.content && (
-              <Button variant="outline" size="sm" className="flex-1 gap-1.5 border-border text-xs" onClick={() => copy(c.content, c.id)}>
-                {copied === c.id ? <><Check className="w-3 h-3 text-green-400" />Copied</> : <><Copy className="w-3 h-3" />Copy</>}
-              </Button>
             )}
           </div>
         </div>
