@@ -12,6 +12,7 @@ import notificationsRouter from "./notifications";
 import analyticsRouter from "./analytics";
 import uploadRouter from "./upload";
 import crmRouter from "./crm";
+import gstRouter from "./gst";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use("/notifications", notificationsRouter);
 router.use("/analytics", analyticsRouter);
 router.use("/upload", uploadRouter);
 router.use("/admin/crm", crmRouter);
+router.use("/admin/gst", gstRouter);
 
 export default router;

@@ -13,6 +13,7 @@ import { requireAuth, signToken, verifyToken, type JwtPayload } from "../middlew
 import type { Request } from "express";
 import { triggerAutomation } from "./crm";
 import { sendFbEvent } from "../lib/facebook-pixel";
+import { generateGstInvoice } from "./gst";
 
 const router = Router();
 type AuthedRequest = Request & { user: JwtPayload };
@@ -160,6 +161,7 @@ router.post("/verify", requireAuth, async (req, res): Promise<void> => {
   if (!payment) { res.status(404).json({ error: "Payment session not found" }); return; }
 
   await db.update(paymentsTable).set({ status: "completed", paymentId: `sim_${nanoid(12)}` }).where(eq(paymentsTable.id, payment.id));
+  generateGstInvoice(payment.id).catch(() => {});
 
   const existing = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, authedReq.user.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
   let enrollmentId: number | null = null;
@@ -256,14 +258,15 @@ router.post("/checkout/guest", async (req, res): Promise<void> => {
 
   // Payment + Enrollment
   const sessionId = nanoid(32);
-  await db.insert(paymentsTable).values({
+  const [newPayment] = await db.insert(paymentsTable).values({
     userId, courseId: parseInt(courseId),
     amount: String(amount.toFixed(2)), currency: "INR",
     status: "completed", gateway,
     sessionId, paymentId: `sim_${nanoid(12)}`,
     couponCode: couponCode || null,
     affiliateRef: affiliateRef || null,
-  });
+  }).returning({ id: paymentsTable.id });
+  if (newPayment) generateGstInvoice(newPayment.id).catch(() => {});
 
   const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, userId), eq(enrollmentsTable.courseId, parseInt(courseId)))).limit(1);
   if (!existing) {
@@ -427,6 +430,7 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
     const status: string = order.order_status ?? "";
     if (status === "PAID") {
       await db.update(paymentsTable).set({ status: "completed", paymentId: order.cf_order_id ? String(order.cf_order_id) : `cf_${nanoid(12)}` }).where(eq(paymentsTable.id, payment.id));
+      generateGstInvoice(payment.id).catch(() => {});
 
       // Enroll
       const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
@@ -502,6 +506,7 @@ router.post("/cashfree/webhook", async (req, res): Promise<void> => {
     : `cf_wh_${nanoid(10)}`;
 
   await db.update(paymentsTable).set({ status: "completed", paymentId: cfPaymentId }).where(eq(paymentsTable.id, payment.id));
+  generateGstInvoice(payment.id).catch(() => {});
 
   const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
   if (!existing) {
@@ -690,6 +695,7 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
     if (resultStatus === "TXN_SUCCESS") {
       const txnId: string = result.body?.txnId ?? `ptm_${nanoid(12)}`;
       await db.update(paymentsTable).set({ status: "completed", paymentId: txnId }).where(eq(paymentsTable.id, payment.id));
+      generateGstInvoice(payment.id).catch(() => {});
 
       const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
       if (!existing) {
@@ -738,6 +744,7 @@ router.post("/paytm/webhook", async (req, res): Promise<void> => {
 
   const txnId: string = event?.TXNID ?? `ptm_wh_${nanoid(10)}`;
   await db.update(paymentsTable).set({ status: "completed", paymentId: txnId }).where(eq(paymentsTable.id, payment.id));
+  generateGstInvoice(payment.id).catch(() => {});
 
   const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
   if (!existing) {
