@@ -249,6 +249,12 @@ function GatewayCard({ gw, onSave, onRemove, onTest }: {
                   {showSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
               </div>
+              {isMasked(form.secretKey) && (
+                <p className="text-[10px] text-muted-foreground/70">Key saved securely. Click the field to replace it with a new value.</p>
+              )}
+              {!isMasked(form.secretKey) && form.secretKey === "" && (
+                <p className="text-[10px] text-amber-400">Field cleared — paste your {gw.secretLabel.toLowerCase()} to update it, or leave blank to keep the saved key.</p>
+              )}
               {!isMasked(form.secretKey) && form.secretKey && form.apiKey && form.secretKey === form.apiKey && (
                 <p className="text-[10px] text-red-400 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" /> {gw.secretLabel} must be different from {gw.keyLabel}

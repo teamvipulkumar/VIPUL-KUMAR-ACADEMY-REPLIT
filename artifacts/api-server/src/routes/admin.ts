@@ -489,9 +489,11 @@ router.put("/payment-gateways/:name", requireAdmin, async (req, res): Promise<vo
       updatedAt: new Date(),
     };
     const isBulletMask = (v: string | undefined) => typeof v === "string" && v.length > 0 && /^•+$/.test(v);
-    if (!isBulletMask(apiKey) && apiKey !== "") update.apiKey = apiKey;
-    if (!isBulletMask(secretKey) && secretKey !== "") update.secretKey = secretKey;
-    if (webhookSecret !== undefined && !isBulletMask(webhookSecret)) update.webhookSecret = webhookSecret || null;
+    const trimmedApiKey = typeof apiKey === "string" ? apiKey.trim() : apiKey;
+    const trimmedSecretKey = typeof secretKey === "string" ? secretKey.trim() : secretKey;
+    if (!isBulletMask(trimmedApiKey) && trimmedApiKey !== "") update.apiKey = trimmedApiKey;
+    if (!isBulletMask(trimmedSecretKey) && trimmedSecretKey !== "") update.secretKey = trimmedSecretKey;
+    if (webhookSecret !== undefined && !isBulletMask(webhookSecret)) update.webhookSecret = webhookSecret?.trim() || null;
     const [updated] = await db.update(paymentGatewaysTable).set(update).where(eq(paymentGatewaysTable.name, name)).returning();
     res.json({ ...updated, secretKey: maskValue(updated.secretKey), webhookSecret: maskValue(updated.webhookSecret) });
   } else {
