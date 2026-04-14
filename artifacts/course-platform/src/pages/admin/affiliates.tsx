@@ -1287,11 +1287,14 @@ function KycTab() {
 /* ══════════════════════════════════════════
    TAB 5 — Creatives
 ══════════════════════════════════════════ */
+const BLANK_FORM = { title: "", type: "text" as Creative["type"], url: "", content: "", description: "" };
+
 function CreativesTab() {
   const [creatives, setCreatives] = useState<Creative[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: "", type: "text" as Creative["type"], url: "", content: "", description: "" });
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState(BLANK_FORM);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -1305,16 +1308,33 @@ function CreativesTab() {
 
   useEffect(() => { load(); }, [load]);
 
+  const openNew = () => {
+    setEditingId(null);
+    setForm(BLANK_FORM);
+    setShowForm(true);
+  };
+
+  const startEdit = (c: Creative) => {
+    setEditingId(c.id);
+    setForm({ title: c.title, type: c.type, url: c.url ?? "", content: c.content ?? "", description: c.description ?? "" });
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const cancel = () => { setShowForm(false); setEditingId(null); setForm(BLANK_FORM); };
+
   const save = async () => {
     if (!form.title || !form.type) { toast({ title: "Title and type required", variant: "destructive" }); return; }
     setSaving(true);
     try {
-      const res = await apiFetch("/api/affiliate/admin/creatives", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (res.ok) { toast({ title: "Creative added" }); setShowForm(false); setForm({ title: "", type: "text", url: "", content: "", description: "" }); load(); }
-      else toast({ title: "Failed to add creative", variant: "destructive" });
+      const url = editingId ? `/api/affiliate/admin/creatives/${editingId}` : "/api/affiliate/admin/creatives";
+      const method = editingId ? "PUT" : "POST";
+      const res = await apiFetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (res.ok) {
+        toast({ title: editingId ? "Creative updated" : "Creative added" });
+        cancel();
+        load();
+      } else toast({ title: "Failed to save creative", variant: "destructive" });
     } finally { setSaving(false); }
   };
 
@@ -1330,14 +1350,14 @@ function CreativesTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Promotional materials available to affiliates for download.</p>
-        <Button onClick={() => setShowForm(s => !s)} size="sm" className="gap-1.5">
+        <Button onClick={openNew} size="sm" className="gap-1.5">
           <Plus className="w-3.5 h-3.5" />Add Creative
         </Button>
       </div>
 
       {showForm && (
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <p className="font-semibold text-sm">New Creative</p>
+          <p className="font-semibold text-sm">{editingId ? "Edit Creative" : "New Creative"}</p>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Title *</Label>
@@ -1378,9 +1398,10 @@ function CreativesTab() {
           </div>
           <div className="flex gap-2">
             <Button onClick={save} disabled={saving} size="sm" className="gap-1.5">
-              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}Save
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              {editingId ? "Update" : "Save"}
             </Button>
-            <Button onClick={() => setShowForm(false)} variant="outline" size="sm">Cancel</Button>
+            <Button onClick={cancel} variant="outline" size="sm">Cancel</Button>
           </div>
         </div>
       )}
@@ -1409,9 +1430,14 @@ function CreativesTab() {
                   <td className="px-3 py-3 text-sm text-muted-foreground max-w-[200px] truncate">{c.content ?? c.url ?? "—"}</td>
                   <td className="px-3 py-3 text-xs text-muted-foreground">{fmtDate(c.createdAt)}</td>
                   <td className="px-3 py-3">
-                    <button onClick={() => del(c.id)} className="text-muted-foreground hover:text-red-400 transition-colors">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => startEdit(c)} className="text-muted-foreground hover:text-primary transition-colors">
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => del(c.id)} className="text-muted-foreground hover:text-red-400 transition-colors">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

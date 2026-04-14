@@ -488,6 +488,18 @@ router.post("/admin/creatives", requireAdmin, async (req, res): Promise<void> =>
   res.json(creative);
 });
 
+router.put("/admin/creatives/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  const { title, type, url, content, description } = req.body;
+  if (!title || !type) { res.status(400).json({ error: "title and type are required" }); return; }
+  const [updated] = await db.update(affiliateCreativesTable)
+    .set({ title, type, url: url || null, content: content || null, description: description || null })
+    .where(eq(affiliateCreativesTable.id, id))
+    .returning();
+  if (!updated) { res.status(404).json({ error: "Creative not found" }); return; }
+  res.json(updated);
+});
+
 router.delete("/admin/creatives/:id", requireAdmin, async (req, res): Promise<void> => {
   await db.delete(affiliateCreativesTable).where(eq(affiliateCreativesTable.id, parseInt(req.params.id)));
   res.json({ message: "Creative deleted" });
