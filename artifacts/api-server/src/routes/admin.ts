@@ -329,7 +329,7 @@ router.get("/settings", requireAdmin, async (req, res): Promise<void> => {
 });
 
 router.put("/settings", requireAdmin, async (req, res): Promise<void> => {
-  const { siteName, siteDescription, commissionRate, currency, stripeEnabled, razorpayEnabled, emailNotificationsEnabled, googleSignInEnabled, googleClientId, googleClientSecret } = req.body;
+  const { siteName, siteDescription, commissionRate, currency, stripeEnabled, razorpayEnabled, emailNotificationsEnabled, googleSignInEnabled, googleClientId, googleClientSecret, maintenanceMode, maintenanceMessage } = req.body;
   const existing = await db.select().from(platformSettingsTable).limit(1);
   const updates: Record<string, unknown> = {};
   if (siteName !== undefined) updates.siteName = siteName;
@@ -342,6 +342,8 @@ router.put("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (googleSignInEnabled !== undefined) updates.googleSignInEnabled = googleSignInEnabled;
   if (googleClientId !== undefined) updates.googleClientId = googleClientId;
   if (googleClientSecret !== undefined) updates.googleClientSecret = googleClientSecret;
+  if (maintenanceMode !== undefined) updates.maintenanceMode = maintenanceMode;
+  if (maintenanceMessage !== undefined) updates.maintenanceMessage = maintenanceMessage;
 
   if (existing.length === 0) {
     await db.insert(platformSettingsTable).values({});
@@ -538,6 +540,16 @@ router.get("/payment-gateways/:name/test", requireAdmin, async (req, res): Promi
   } catch (err: unknown) {
     res.status(400).json({ error: (err as Error).message });
   }
+});
+
+/* ── Public: maintenance status (no auth required) ── */
+router.get("/public/maintenance", async (_req, res): Promise<void> => {
+  const settings = await db.select({
+    maintenanceMode: platformSettingsTable.maintenanceMode,
+    maintenanceMessage: platformSettingsTable.maintenanceMessage,
+  }).from(platformSettingsTable).limit(1);
+  if (settings.length === 0) { res.json({ maintenanceMode: false, maintenanceMessage: null }); return; }
+  res.json(settings[0]);
 });
 
 export default router;

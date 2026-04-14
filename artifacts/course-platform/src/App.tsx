@@ -92,6 +92,7 @@ import AboutUsPage from "@/pages/about-us";
 import CareersPage from "@/pages/careers";
 import ContactUsPage from "@/pages/contact-us";
 import HelpCenterPage from "@/pages/help-center";
+import { MaintenanceOverlay } from "@/components/maintenance-overlay";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -150,6 +151,7 @@ function App() {
       <AuthProvider>
         <TooltipProvider>
           <RefTracker />
+          <MaintenanceOverlay />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Router />
           </WouterRouter>

@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Chrome, Info } from "lucide-react";
+import { Eye, EyeOff, Chrome, Info, Construction } from "lucide-react";
 
 export default function AdminSettingsPage() {
   const { data: settings } = useGetAdminSettings({ query: { queryKey: getGetAdminSettingsQueryKey() } });
@@ -20,6 +21,8 @@ export default function AdminSettingsPage() {
     stripeEnabled: true, razorpayEnabled: false, emailNotificationsEnabled: true,
     commissionRate: 20,
   });
+  const [maintenanceForm, setMaintenanceForm] = useState({ maintenanceMode: false, maintenanceMessage: "" });
+  const [maintenanceSaving, setMaintenanceSaving] = useState(false);
 
   const [googleForm, setGoogleForm] = useState({ clientId: "", clientSecret: "", enabled: false });
   const [showSecret, setShowSecret] = useState(false);
@@ -31,6 +34,10 @@ export default function AdminSettingsPage() {
         currency: settings.currency, stripeEnabled: settings.stripeEnabled,
         razorpayEnabled: settings.razorpayEnabled, emailNotificationsEnabled: settings.emailNotificationsEnabled,
         commissionRate: settings.commissionRate,
+      });
+      setMaintenanceForm({
+        maintenanceMode: (settings as Record<string, unknown>).maintenanceMode as boolean ?? false,
+        maintenanceMessage: (settings as Record<string, unknown>).maintenanceMessage as string ?? "",
       });
       setGoogleForm({
         enabled: (settings as Record<string, unknown>).googleSignInEnabled as boolean ?? false,
@@ -44,6 +51,23 @@ export default function AdminSettingsPage() {
     updateSettings.mutate({ data: form }, {
       onSuccess: () => { toast({ title: "Settings saved!" }); queryClient.invalidateQueries({ queryKey: getGetAdminSettingsQueryKey() }); },
       onError: () => toast({ title: "Error saving settings", variant: "destructive" }),
+    });
+  };
+
+  const handleSaveMaintenance = async () => {
+    setMaintenanceSaving(true);
+    updateSettings.mutate({
+      data: {
+        maintenanceMode: maintenanceForm.maintenanceMode,
+        maintenanceMessage: maintenanceForm.maintenanceMessage,
+      } as Parameters<typeof updateSettings.mutate>[0]["data"],
+    }, {
+      onSuccess: () => {
+        toast({ title: maintenanceForm.maintenanceMode ? "Maintenance mode enabled" : "Maintenance mode disabled" });
+        queryClient.invalidateQueries({ queryKey: getGetAdminSettingsQueryKey() });
+        setMaintenanceSaving(false);
+      },
+      onError: () => { toast({ title: "Error saving maintenance settings", variant: "destructive" }); setMaintenanceSaving(false); },
     });
   };
 
@@ -108,6 +132,50 @@ export default function AdminSettingsPage() {
         <Button onClick={handleSave} disabled={updateSettings.isPending} className="w-full">
           {updateSettings.isPending ? "Saving..." : "Save Settings"}
         </Button>
+
+        {/* Maintenance Mode */}
+        <Card className={`border-2 ${maintenanceForm.maintenanceMode ? "bg-amber-500/5 border-amber-500/40" : "bg-card border-border"}`}>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Construction className={`w-4 h-4 ${maintenanceForm.maintenanceMode ? "text-amber-400" : "text-muted-foreground"}`} />
+              Maintenance Mode
+              {maintenanceForm.maintenanceMode && (
+                <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-400 border border-amber-400/30">Active</span>
+              )}
+            </CardTitle>
+            <CardDescription>When enabled, visitors see a maintenance page. Admins can still access the site.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Enable Maintenance Mode</p>
+                <p className="text-xs text-muted-foreground">The website will be blocked for all non-admin users</p>
+              </div>
+              <Switch
+                checked={maintenanceForm.maintenanceMode}
+                onCheckedChange={v => setMaintenanceForm(f => ({ ...f, maintenanceMode: v }))}
+              />
+            </div>
+            <div>
+              <Label className="text-sm mb-1.5 block">Maintenance Message <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Textarea
+                value={maintenanceForm.maintenanceMessage}
+                onChange={e => setMaintenanceForm(f => ({ ...f, maintenanceMessage: e.target.value }))}
+                placeholder="We're performing scheduled maintenance. We'll be back shortly!"
+                className="bg-background border-border resize-none h-20 text-sm"
+              />
+            </div>
+            {maintenanceForm.maintenanceMode && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+                <Construction className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                <span>Maintenance mode is <strong>ON</strong>. All visitors (except admins) will see the maintenance screen until you turn this off.</span>
+              </div>
+            )}
+            <Button onClick={handleSaveMaintenance} disabled={maintenanceSaving} variant={maintenanceForm.maintenanceMode ? "default" : "outline"} className={`w-full border-border ${maintenanceForm.maintenanceMode ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}`}>
+              {maintenanceSaving ? "Saving..." : maintenanceForm.maintenanceMode ? "Save & Keep Maintenance Active" : "Save Maintenance Settings"}
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Social Login */}
         <Card className="bg-card border-border">

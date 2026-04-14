@@ -29,6 +29,8 @@ export const platformSettingsTable = pgTable("platform_settings", {
   googleSignInEnabled: boolean("google_sign_in_enabled").notNull().default(false),
   googleClientId: text("google_client_id"),
   googleClientSecret: text("google_client_secret"),
+  maintenanceMode: boolean("maintenance_mode").notNull().default(false),
+  maintenanceMessage: text("maintenance_message"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
