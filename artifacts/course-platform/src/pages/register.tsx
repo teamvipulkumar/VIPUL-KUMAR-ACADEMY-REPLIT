@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { GoogleSignInButton, getGoogleConfig } from "@/components/google-sign-in-button";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -62,7 +63,7 @@ export default function Register() {
     });
   }
 
-  return (
+  const card = (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-background">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
@@ -175,4 +176,8 @@ export default function Register() {
       </Card>
     </div>
   );
+  if (googleConfig) {
+    return <GoogleOAuthProvider clientId={googleConfig.clientId}>{card}</GoogleOAuthProvider>;
+  }
+  return card;
 }

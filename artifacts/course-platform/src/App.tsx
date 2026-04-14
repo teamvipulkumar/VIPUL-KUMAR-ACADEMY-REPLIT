@@ -8,8 +8,6 @@ import { ThemeProvider } from "@/lib/theme-context";
 import { AppLayout } from "@/components/layout/app-layout";
 import { AdminLayout } from "@/components/layout/admin-layout";
 import NotFound from "@/pages/not-found";
-import { GoogleOAuthProvider } from "@react-oauth/google";
-import { getGoogleConfig } from "@/components/google-sign-in-button";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -137,7 +135,7 @@ function Router() {
   );
 }
 
-function AppInner() {
+function App() {
   return (
     <ThemeProvider>
     <QueryClientProvider client={queryClient}>
@@ -153,18 +151,6 @@ function AppInner() {
     </QueryClientProvider>
     </ThemeProvider>
   );
-}
-
-function App() {
-  const googleConfig = getGoogleConfig();
-  if (googleConfig) {
-    return (
-      <GoogleOAuthProvider clientId={googleConfig.clientId}>
-        <AppInner />
-      </GoogleOAuthProvider>
-    );
-  }
-  return <AppInner />;
 }
 
 export default App;

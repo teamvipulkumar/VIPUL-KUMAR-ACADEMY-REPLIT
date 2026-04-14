@@ -13,6 +13,7 @@ import { useState, useEffect } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { GoogleSignInButton, getGoogleConfig } from "@/components/google-sign-in-button";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -59,7 +60,7 @@ export default function Login() {
     });
   }
 
-  return (
+  const card = (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 bg-background">
       <Card className="w-full max-w-md bg-card border-border">
         <CardHeader className="space-y-1 text-center">
@@ -157,4 +158,8 @@ export default function Login() {
       </Card>
     </div>
   );
+  if (googleConfig) {
+    return <GoogleOAuthProvider clientId={googleConfig.clientId}>{card}</GoogleOAuthProvider>;
+  }
+  return card;
 }
