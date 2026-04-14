@@ -88,6 +88,10 @@ import PrivacyPolicyPage from "@/pages/privacy-policy";
 import TermsOfServicePage from "@/pages/terms-of-service";
 import CookiePolicyPage from "@/pages/cookie-policy";
 import RefundPolicyPage from "@/pages/refund-policy";
+import AboutUsPage from "@/pages/about-us";
+import CareersPage from "@/pages/careers";
+import ContactUsPage from "@/pages/contact-us";
+import HelpCenterPage from "@/pages/help-center";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -112,6 +116,10 @@ function Router() {
       <Route path="/terms-of-service" component={() => <AppLayout><TermsOfServicePage /></AppLayout>} />
       <Route path="/cookie-policy" component={() => <AppLayout><CookiePolicyPage /></AppLayout>} />
       <Route path="/refund-policy" component={() => <AppLayout><RefundPolicyPage /></AppLayout>} />
+      <Route path="/about-us" component={() => <AppLayout><AboutUsPage /></AppLayout>} />
+      <Route path="/careers" component={() => <AppLayout><CareersPage /></AppLayout>} />
+      <Route path="/contact-us" component={() => <AppLayout><ContactUsPage /></AppLayout>} />
+      <Route path="/help-center" component={() => <AppLayout><HelpCenterPage /></AppLayout>} />
 
       <Route path="/admin" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminDashboard /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/courses" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminCoursesPage /></AdminLayout></ProtectedRoute>} />

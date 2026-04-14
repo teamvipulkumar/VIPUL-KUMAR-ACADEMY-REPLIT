@@ -357,11 +357,10 @@ export function SiteFooter() {
       { label: "Affiliate Program", href: "/affiliate" },
     ],
     company: [
-      { label: "About Us", href: "#" },
-      { label: "Blog", href: "#" },
-      { label: "Careers", href: "#" },
-      { label: "Contact Us", href: "mailto:hello@vipulkumaracademy.com" },
-      { label: "Help Center", href: "#" },
+      { label: "About Us", href: "/about-us" },
+      { label: "Careers", href: "/careers" },
+      { label: "Contact Us", href: "/contact-us" },
+      { label: "Help Center", href: "/help-center" },
     ],
     legal: [
       { label: "Privacy Policy", href: "/privacy-policy" },
@@ -434,13 +433,9 @@ export function SiteFooter() {
             <ul className="space-y-2.5">
               {footerNav.company.map(item => (
                 <li key={item.label}>
-                  <a
-                    href={item.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
-                    {...(item.href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                  >
+                  <Link href={item.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                     {item.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
