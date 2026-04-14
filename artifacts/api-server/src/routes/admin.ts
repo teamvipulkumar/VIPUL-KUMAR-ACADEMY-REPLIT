@@ -43,18 +43,38 @@ router.get("/users/export", requireAdmin, async (req, res): Promise<void> => {
     referralCode: usersTable.referralCode, createdAt: usersTable.createdAt,
   }).from(usersTable).orderBy(desc(usersTable.createdAt));
 
+  const allEnrollments = await db
+    .select({ userId: enrollmentsTable.userId, courseTitle: coursesTable.title, enrolledAt: enrollmentsTable.enrolledAt })
+    .from(enrollmentsTable)
+    .innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id));
+
+  const enrollMap = new Map<number, Array<{ title: string; enrolledAt: Date }>>();
+  for (const e of allEnrollments) {
+    if (!enrollMap.has(e.userId)) enrollMap.set(e.userId, []);
+    enrollMap.get(e.userId)!.push({ title: e.courseTitle, enrolledAt: new Date(e.enrolledAt) });
+  }
+
   const escape = (v: unknown) => {
     const s = v == null ? "" : String(v);
     return `"${s.replace(/"/g, '""')}"`;
   };
-  const header = ["ID", "Name", "Email", "Role", "Status", "Phone", "Referral Code", "Joined Date"];
-  const rows = users.map(u => [
-    u.id, u.name, u.email, u.role,
-    u.isBanned ? "banned" : "active",
-    u.phone ?? "",
-    u.referralCode ?? "",
-    new Date(u.createdAt).toISOString().split("T")[0],
-  ].map(escape).join(","));
+
+  const header = ["ID", "Name", "Email", "Role", "Status", "Phone", "Referral Code", "Joined Date", "Enrolled Courses", "Enrollment Count", "Enrollment Dates"];
+  const rows = users.map(u => {
+    const courses = enrollMap.get(u.id) ?? [];
+    const titles = courses.map(c => c.title).join(" | ");
+    const dates = courses.map(c => c.enrolledAt.toISOString().split("T")[0]).join(" | ");
+    return [
+      u.id, u.name, u.email, u.role,
+      u.isBanned ? "banned" : "active",
+      u.phone ?? "",
+      u.referralCode ?? "",
+      new Date(u.createdAt).toISOString().split("T")[0],
+      titles,
+      courses.length,
+      dates,
+    ].map(escape).join(",");
+  });
 
   const csv = [header.join(","), ...rows].join("\n");
   res.setHeader("Content-Type", "text/csv");
