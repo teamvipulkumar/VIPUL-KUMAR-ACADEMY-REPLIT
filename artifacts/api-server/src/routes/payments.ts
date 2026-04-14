@@ -591,12 +591,13 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
   const orderId = `PT_${nanoid(14)}`;
   const host = gw.isTestMode ? "https://securegw-stage.paytm.in" : "https://securegw.paytm.in";
 
-  const txnBody = {
+  const origin = `${req.protocol}://${req.get("host")}`;
+  const txnBody: Record<string, unknown> = {
     requestType: "Payment",
     mid,
     websiteName: gw.isTestMode ? "WEBSTAGING" : "DEFAULT",
     orderId,
-    callbackUrl: "",
+    callbackUrl: `${origin}/api/payments/paytm/callback`,
     txnAmount: { value: amount.toFixed(2), currency: "INR" },
     userInfo: { custId: `uid_${userId}` },
   };
@@ -725,6 +726,12 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
   } catch (err: unknown) {
     res.status(500).json({ error: (err as Error).message });
   }
+});
+
+// ── Paytm: Callback (redirect after payment on Paytm page) ───────────────────
+router.post("/paytm/callback", async (req, res): Promise<void> => {
+  const orderId = req.body?.ORDERID;
+  res.redirect(`/payment-verify?gateway=paytm&order_id=${encodeURIComponent(orderId || "")}`);
 });
 
 // ── Paytm: Webhook (server-to-server payment notification) ────────────────────
