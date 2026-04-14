@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import {
   gstCompanySettingsTable, gstInvoicesTable, paymentsTable, usersTable, coursesTable,
 } from "@workspace/db";
-import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
+import { eq, desc, and, gte, lte, like, count } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth";
 
 const router = Router();
@@ -19,10 +19,11 @@ function getFinancialYear(date: Date): string {
 
 async function getNextInvoiceNumber(prefix: string, fy: string): Promise<string> {
   const pattern = `${prefix}-${fy}-%`;
-  const [row] = await db.execute(
-    sql`SELECT COUNT(*) as cnt FROM gst_invoices WHERE invoice_number LIKE ${pattern}`
-  ) as unknown as [{ cnt: string }];
-  const seq = (parseInt(row?.cnt ?? "0") + 1).toString().padStart(4, "0");
+  const [row] = await db
+    .select({ cnt: count() })
+    .from(gstInvoicesTable)
+    .where(like(gstInvoicesTable.invoiceNumber, pattern));
+  const seq = ((row?.cnt ?? 0) + 1).toString().padStart(4, "0");
   return `${prefix}-${fy}-${seq}`;
 }
 
