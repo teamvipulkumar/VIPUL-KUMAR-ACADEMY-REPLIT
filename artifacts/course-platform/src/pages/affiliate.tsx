@@ -843,14 +843,14 @@ function CreativesTab({ creatives }: { creatives: any[] }) {
           <div className="flex gap-2">
             {c.url && c.type === "link" && (
               <a href={c.url} target="_blank" rel="noopener noreferrer" className="flex-1">
-                <Button variant="outline" size="sm" className="w-full gap-1.5 border-border text-xs">
+                <Button variant="outline" size="sm" className="w-full gap-1.5 border-border text-xs cursor-pointer">
                   <ArrowUpRight className="w-3 h-3" />Open Link
                 </Button>
               </a>
             )}
             {c.url && c.type !== "link" && (
               <a href={c.url} download className="flex-1">
-                <Button variant="outline" size="sm" className="w-full gap-1.5 border-border text-xs">
+                <Button variant="outline" size="sm" className="w-full gap-1.5 border-border text-xs cursor-pointer">
                   <Download className="w-3 h-3" />Download
                 </Button>
               </a>
