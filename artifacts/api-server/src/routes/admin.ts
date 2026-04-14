@@ -35,6 +35,33 @@ router.get("/users", requireAdmin, async (req, res): Promise<void> => {
   res.json({ users, total: totalResult[0]?.count ?? 0, limit: parseInt(limit), offset: parseInt(offset) });
 });
 
+router.get("/users/export", requireAdmin, async (req, res): Promise<void> => {
+  const users = await db.select({
+    id: usersTable.id, name: usersTable.name, email: usersTable.email,
+    role: usersTable.role, isBanned: usersTable.isBanned,
+    phone: (usersTable as any).phone,
+    referralCode: usersTable.referralCode, createdAt: usersTable.createdAt,
+  }).from(usersTable).orderBy(desc(usersTable.createdAt));
+
+  const escape = (v: unknown) => {
+    const s = v == null ? "" : String(v);
+    return `"${s.replace(/"/g, '""')}"`;
+  };
+  const header = ["ID", "Name", "Email", "Role", "Status", "Phone", "Referral Code", "Joined Date"];
+  const rows = users.map(u => [
+    u.id, u.name, u.email, u.role,
+    u.isBanned ? "banned" : "active",
+    u.phone ?? "",
+    u.referralCode ?? "",
+    new Date(u.createdAt).toISOString().split("T")[0],
+  ].map(escape).join(","));
+
+  const csv = [header.join(","), ...rows].join("\n");
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", `attachment; filename="users-${new Date().toISOString().split("T")[0]}.csv"`);
+  res.send(csv);
+});
+
 router.get("/users/:userId", requireAdmin, async (req, res): Promise<void> => {
   const userId = parseInt(req.params.userId);
   const [user] = await db.select({
@@ -100,34 +127,6 @@ router.post("/users/:userId/ban", requireAdmin, async (req, res): Promise<void> 
   const { banned } = req.body;
   await db.update(usersTable).set({ isBanned: banned }).where(eq(usersTable.id, userId));
   res.json({ message: `User ${banned ? "banned" : "unbanned"}` });
-});
-
-// ── Export users as CSV ───────────────────────────────────────────────────────
-router.get("/users/export", requireAdmin, async (req, res): Promise<void> => {
-  const users = await db.select({
-    id: usersTable.id, name: usersTable.name, email: usersTable.email,
-    role: usersTable.role, isBanned: usersTable.isBanned,
-    phone: (usersTable as any).phone,
-    referralCode: usersTable.referralCode, createdAt: usersTable.createdAt,
-  }).from(usersTable).orderBy(desc(usersTable.createdAt));
-
-  const escape = (v: unknown) => {
-    const s = v == null ? "" : String(v);
-    return `"${s.replace(/"/g, '""')}"`;
-  };
-  const header = ["ID", "Name", "Email", "Role", "Status", "Phone", "Referral Code", "Joined Date"];
-  const rows = users.map(u => [
-    u.id, u.name, u.email, u.role,
-    u.isBanned ? "banned" : "active",
-    u.phone ?? "",
-    u.referralCode ?? "",
-    new Date(u.createdAt).toISOString().split("T")[0],
-  ].map(escape).join(","));
-
-  const csv = [header.join(","), ...rows].join("\n");
-  res.setHeader("Content-Type", "text/csv");
-  res.setHeader("Content-Disposition", `attachment; filename="users-${new Date().toISOString().split("T")[0]}.csv"`);
-  res.send(csv);
 });
 
 // ── Import users from CSV/JSON ────────────────────────────────────────────────
