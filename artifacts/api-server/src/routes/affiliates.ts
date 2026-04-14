@@ -576,9 +576,21 @@ router.post("/admin/affiliates/:appId/commission", requireAdmin, async (req, res
   res.json({ message: "Commission updated" });
 });
 
+type PayoutStatus = "pending" | "approved" | "rejected" | "hold";
+const PAYOUT_STATUSES: PayoutStatus[] = ["pending", "approved", "rejected", "hold"];
+
+function isPayoutStatus(s: unknown): s is PayoutStatus {
+  return typeof s === "string" && (PAYOUT_STATUSES as string[]).includes(s);
+}
+
 /* ── Admin: all payout requests ── */
 router.get("/admin/all-payouts", requireAdmin, async (req, res): Promise<void> => {
-  const payouts = await db.select().from(payoutRequestsTable).orderBy(desc(payoutRequestsTable.requestedAt));
+  const rawStatus = req.query.status;
+  const statusFilter = isPayoutStatus(rawStatus) ? rawStatus : undefined;
+  const baseQuery = db.select().from(payoutRequestsTable);
+  const payouts = await (statusFilter
+    ? baseQuery.where(eq(payoutRequestsTable.status, statusFilter)).orderBy(desc(payoutRequestsTable.processedAt))
+    : baseQuery.orderBy(desc(payoutRequestsTable.requestedAt)));
   const enriched = await Promise.all(payouts.map(async (p) => {
     const [user] = await db.select({ name: usersTable.name, email: usersTable.email, phone: (usersTable as any).phone })
       .from(usersTable).where(eq(usersTable.id, p.userId)).limit(1);

@@ -730,12 +730,14 @@ function ScheduledPayoutCard({
 }
 
 function PayoutsTab() {
-  const [view, setView] = useState<"scheduled" | "requests">("scheduled");
+  const [view, setView] = useState<"scheduled" | "requests" | "paid">("scheduled");
   const [scheduled, setScheduled] = useState<ScheduledPayout[]>([]);
   const [requests, setRequests]   = useState<Payout[]>([]);
+  const [paid, setPaid]           = useState<Payout[]>([]);
   const [loading, setLoading]     = useState(true);
   const [schedFilter, setSchedFilter] = useState<"all" | "due" | "hold">("all");
   const [reqFilter, setReqFilter]     = useState<"all" | "pending" | "approved" | "hold" | "rejected">("all");
+  const [paidSearch, setPaidSearch]   = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [rejectState, setRejectState]     = useState<Record<number, { open: boolean; note: string }>>({});
   const [rejectNote, setRejectNote]       = useState<Record<number, string>>({});
@@ -754,9 +756,17 @@ function PayoutsTab() {
     finally { setLoading(false); }
   }, []);
 
+  const loadPaid = useCallback(async () => {
+    setLoading(true);
+    try { const r = await apiFetch("/api/affiliate/admin/all-payouts?status=approved"); if (r.ok) setPaid(await r.json()); }
+    finally { setLoading(false); }
+  }, []);
+
   useEffect(() => {
-    if (view === "scheduled") loadScheduled(); else loadRequests();
-  }, [view, loadScheduled, loadRequests]);
+    if (view === "scheduled") loadScheduled();
+    else if (view === "requests") loadRequests();
+    else loadPaid();
+  }, [view, loadScheduled, loadRequests, loadPaid]);
 
   const doScheduledAction = async (affiliateId: number, action: "paid" | "hold" | "reject", note?: string) => {
     setActionLoading(`${action}-${affiliateId}`);
@@ -840,7 +850,11 @@ function PayoutsTab() {
 
       {/* View toggle */}
       <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5 w-fit">
-        {[{ id: "scheduled", label: "Scheduled Payouts" }, { id: "requests", label: "Payout Requests" }].map(v => (
+        {[
+          { id: "scheduled", label: "Scheduled Payouts" },
+          { id: "requests",  label: "Payout Requests"  },
+          { id: "paid",      label: "Paid"             },
+        ].map(v => (
           <button key={v.id} onClick={() => { setView(v.id as any); setLoading(true); }}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${view === v.id ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
             {v.label}
@@ -993,6 +1007,75 @@ function PayoutsTab() {
           )}
         </>
       )}
+
+      {/* ── PAID VIEW ── */}
+      {view === "paid" && (() => {
+        const q = paidSearch.toLowerCase();
+        const filtered = paid.filter(p =>
+          p.userName.toLowerCase().includes(q) || p.userEmail.toLowerCase().includes(q)
+        );
+        const totalAmt = paid.reduce((s, p) => s + p.amount, 0);
+        return (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-card border border-border rounded-xl p-4">
+                <p className="text-xs text-muted-foreground mb-1">Total Paid Payouts</p>
+                <p className="text-xl font-bold text-green-400">{paid.length}</p>
+              </div>
+              <div className="bg-card border border-border rounded-xl p-4">
+                <p className="text-xs text-muted-foreground mb-1">Total Amount Paid Out</p>
+                <p className="text-xl font-bold text-green-400">{fmt(totalAmt)}</p>
+              </div>
+            </div>
+
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                value={paidSearch}
+                onChange={e => setPaidSearch(e.target.value)}
+                placeholder="Search by name or email…"
+                className="pl-8 bg-card border-border h-8 text-xs"
+              />
+            </div>
+
+            {loading ? (
+              <div className="space-y-2">{[1, 2, 3].map(i => <div key={i} className="h-14 bg-card rounded animate-pulse" />)}</div>
+            ) : filtered.length === 0 ? (
+              <div className="bg-card border border-border rounded-xl py-16 text-center">
+                <CheckCircle2 className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                <p className="font-semibold">No paid payouts yet</p>
+                <p className="text-sm text-muted-foreground mt-1">Approved payouts will appear here.</p>
+              </div>
+            ) : (
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border text-muted-foreground">
+                      <th className="px-4 py-2.5 text-left font-medium">Affiliate</th>
+                      <th className="px-4 py-2.5 text-left font-medium">Method</th>
+                      <th className="px-4 py-2.5 text-right font-medium">Amount</th>
+                      <th className="px-4 py-2.5 text-right font-medium">Processed</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((p, i) => (
+                      <tr key={p.id} className={`border-b border-border last:border-0 ${i % 2 === 0 ? "" : "bg-muted/20"}`}>
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-foreground">{p.userName}</p>
+                          <p className="text-muted-foreground">{p.userEmail}</p>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground capitalize">{p.paymentMethod.replace(/_/g, " ")}</td>
+                        <td className="px-4 py-3 text-right font-bold text-green-400">{fmt(p.amount)}</td>
+                        <td className="px-4 py-3 text-right text-muted-foreground">{p.processedAt ? fmtDate(p.processedAt) : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 }
