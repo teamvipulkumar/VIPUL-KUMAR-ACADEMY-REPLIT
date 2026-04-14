@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import {
   Users, DollarSign, Clock, CheckCircle2, XCircle, AlertCircle,
-  Search, ChevronDown, ChevronUp, MessageSquare, ShieldCheck,
+  Search, Eye, MessageSquare, ShieldCheck,
   Ban, RotateCcw, Percent, Loader2, Plus, Trash2, Download,
   Settings, FileText, CreditCard, BadgeIndianRupee, BarChart3,
   Shield, Image, Edit2, Save, X, Calendar
@@ -462,15 +462,99 @@ function ApplicationsTab() {
 /* ══════════════════════════════════════════
    TAB 3 — Payouts
 ══════════════════════════════════════════ */
+function AffiliateProfileModal({ payout, onClose }: { payout: ScheduledPayout; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Modal header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div>
+            <p className="font-semibold text-sm">{payout.name}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{payout.email}</p>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Modal body */}
+        <div className="px-5 py-4 space-y-4">
+          {/* Earnings summary */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-background rounded-lg p-3 text-center">
+              <p className="text-[10px] text-muted-foreground mb-0.5">Total Earned</p>
+              <p className="text-sm font-bold text-foreground">{fmt(payout.totalEarned)}</p>
+            </div>
+            <div className="bg-background rounded-lg p-3 text-center">
+              <p className="text-[10px] text-muted-foreground mb-0.5">Paid Out</p>
+              <p className="text-sm font-bold text-foreground">{fmt(payout.totalPaidOut)}</p>
+            </div>
+            <div className="bg-background rounded-lg p-3 text-center">
+              <p className="text-[10px] text-muted-foreground mb-0.5">Unpaid</p>
+              <p className="text-sm font-bold text-green-400">{fmt(payout.unpaidAmount)}</p>
+            </div>
+          </div>
+
+          {/* Profile details */}
+          <div>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Profile</p>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
+              <div><span className="text-muted-foreground">Phone: </span>
+                {payout.phone ? <span>{payout.phone}</span> : <span className="text-muted-foreground/50">Not provided</span>}
+              </div>
+              <div>
+                <span className="text-muted-foreground">PAN: </span>
+                {payout.panNumber
+                  ? <><span className="font-mono tracking-widest">{payout.panNumber}</span>
+                      {payout.kycStatus && <span className={`ml-1.5 text-[10px] ${payout.kycStatus === "approved" ? "text-green-400" : "text-amber-400"}`}>({payout.kycStatus})</span>}
+                    </>
+                  : <span className="text-muted-foreground/50">—</span>}
+              </div>
+              <div><span className="text-muted-foreground">Period: </span><span>Every {payout.payoutPeriodDays} day{payout.payoutPeriodDays !== 1 ? "s" : ""}</span></div>
+              {payout.lastPayoutDate && <div><span className="text-muted-foreground">Last paid: </span><span>{fmtDate(payout.lastPayoutDate)}</span></div>}
+              {payout.nextDueDate    && <div><span className="text-muted-foreground">Next due: </span><span>{fmtDate(payout.nextDueDate)}</span></div>}
+            </div>
+          </div>
+
+          {/* Bank details */}
+          {payout.bank ? (
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Bank Details</p>
+              <div className="bg-background rounded-lg p-3 grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
+                <div><span className="text-muted-foreground">Holder: </span><span>{payout.bank.accountHolderName}</span></div>
+                <div><span className="text-muted-foreground">Bank: </span><span>{payout.bank.bankName}</span></div>
+                <div><span className="text-muted-foreground">A/C No: </span><span className="font-mono">{payout.bank.accountNumber}</span></div>
+                <div><span className="text-muted-foreground">IFSC: </span><span className="font-mono">{payout.bank.ifscCode}</span></div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-amber-400 flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5" />No bank details on file
+            </p>
+          )}
+
+          {payout.latestAction?.note && (
+            <p className="text-xs text-muted-foreground border-t border-border pt-3">
+              <span className="font-medium">Admin note: </span>{payout.latestAction.note}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ScheduledPayoutCard({
-  payout, actionLoading, rejectState, onRejectStateChange, expanded, onToggleExpand, onAction,
+  payout, actionLoading, rejectState, onRejectStateChange, onView, onAction,
 }: {
   payout: ScheduledPayout;
   actionLoading: string | null;
   rejectState: { open: boolean; note: string };
   onRejectStateChange: (s: { open: boolean; note: string }) => void;
-  expanded: boolean;
-  onToggleExpand: () => void;
+  onView: () => void;
   onAction: (affiliateId: number, action: "paid" | "hold" | "reject", note?: string) => void;
 }) {
   const isHold = payout.latestAction?.status === "hold";
@@ -495,9 +579,15 @@ function ScheduledPayoutCard({
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">{payout.email}</p>
             </div>
-            <div className="text-right flex-shrink-0">
-              <p className="text-lg font-bold text-green-400">{fmt(payout.unpaidAmount)}</p>
-              <p className="text-[10px] text-muted-foreground">unpaid</p>
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="text-right">
+                <p className="text-lg font-bold text-green-400">{fmt(payout.unpaidAmount)}</p>
+                <p className="text-[10px] text-muted-foreground">unpaid</p>
+              </div>
+              <Button onClick={onView} size="sm" variant="outline"
+                className="h-7 text-xs px-2.5 gap-1 border-border text-muted-foreground hover:text-foreground">
+                <Eye className="w-3 h-3" />View
+              </Button>
             </div>
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
@@ -506,58 +596,7 @@ function ScheduledPayoutCard({
             {payout.nextDueDate    && <span>Next due: {fmtDate(payout.nextDueDate)}</span>}
           </div>
         </div>
-        <button onClick={onToggleExpand} className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0 mt-1">
-          {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
       </div>
-
-      {/* Expanded: full affiliate profile */}
-      {expanded && (
-        <div className="border-t border-border px-4 py-3 bg-background/40 space-y-3">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Affiliate Profile</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-xs">
-            <div><span className="text-muted-foreground">Name: </span><span className="font-medium">{payout.name}</span></div>
-            <div><span className="text-muted-foreground">Email: </span><span>{payout.email}</span></div>
-            <div><span className="text-muted-foreground">Phone: </span>
-              {payout.phone ? <span>{payout.phone}</span> : <span className="text-muted-foreground/60">Not provided</span>}
-            </div>
-            <div>
-              <span className="text-muted-foreground">PAN: </span>
-              {payout.panNumber
-                ? <><span className="font-mono tracking-widest">{payout.panNumber}</span>
-                    {payout.kycStatus && <span className={`ml-1.5 text-[10px] ${payout.kycStatus === "approved" ? "text-green-400" : "text-amber-400"}`}>({payout.kycStatus})</span>}
-                  </>
-                : <span className="text-muted-foreground/60">—</span>}
-            </div>
-          </div>
-
-          {payout.bank ? (
-            <div className="bg-card rounded-lg p-3 border border-border">
-              <p className="text-[10px] font-semibold text-muted-foreground mb-2">Bank Details</p>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
-                <div><span className="text-muted-foreground">Holder: </span><span>{payout.bank.accountHolderName}</span></div>
-                <div><span className="text-muted-foreground">Bank: </span><span>{payout.bank.bankName}</span></div>
-                <div><span className="text-muted-foreground">A/C No: </span><span className="font-mono">{payout.bank.accountNumber}</span></div>
-                <div><span className="text-muted-foreground">IFSC: </span><span className="font-mono">{payout.bank.ifscCode}</span></div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-xs text-amber-400 flex items-center gap-1.5">
-              <AlertCircle className="w-3.5 h-3.5" />No bank details on file
-            </p>
-          )}
-
-          <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs pt-1 border-t border-border">
-            <div><span className="text-muted-foreground">Total Earned: </span><span className="font-medium">{fmt(payout.totalEarned)}</span></div>
-            <div><span className="text-muted-foreground">Paid Out: </span><span className="font-medium">{fmt(payout.totalPaidOut)}</span></div>
-            <div><span className="text-muted-foreground">Unpaid: </span><span className="text-green-400 font-bold">{fmt(payout.unpaidAmount)}</span></div>
-          </div>
-
-          {payout.latestAction?.note && (
-            <p className="text-xs text-muted-foreground"><span className="font-medium">Admin note: </span>{payout.latestAction.note}</p>
-          )}
-        </div>
-      )}
 
       {/* Action bar — shown when not paid */}
       {!isPaid && (
@@ -632,7 +671,7 @@ function PayoutsTab() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [rejectState, setRejectState]     = useState<Record<number, { open: boolean; note: string }>>({});
   const [rejectNote, setRejectNote]       = useState<Record<number, string>>({});
-  const [expandedId, setExpandedId]       = useState<number | null>(null);
+  const [viewPayout, setViewPayout]       = useState<ScheduledPayout | null>(null);
   const { toast } = useToast();
 
   const loadScheduled = useCallback(async () => {
@@ -719,6 +758,9 @@ function PayoutsTab() {
 
   return (
     <div className="space-y-4">
+      {/* Affiliate profile modal */}
+      {viewPayout && <AffiliateProfileModal payout={viewPayout} onClose={() => setViewPayout(null)} />}
+
       {/* View toggle */}
       <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5 w-fit">
         {[{ id: "scheduled", label: "Scheduled Payouts" }, { id: "requests", label: "Payout Requests" }].map(v => (
@@ -781,8 +823,7 @@ function PayoutsTab() {
                   actionLoading={actionLoading}
                   rejectState={rejectState[p.affiliateId] ?? { open: false, note: "" }}
                   onRejectStateChange={s => setRejectState(r => ({ ...r, [p.affiliateId]: s }))}
-                  expanded={expandedId === p.affiliateId}
-                  onToggleExpand={() => setExpandedId(e => e === p.affiliateId ? null : p.affiliateId)}
+                  onView={() => setViewPayout(p)}
                   onAction={doScheduledAction}
                 />
               ))}
