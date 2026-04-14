@@ -133,7 +133,7 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
     <Dialog open={open} onOpenChange={v => { if (!v) { onClose(); resetDialog(); } }}>
       <DialogContent className="sm:max-w-2xl bg-[#0d1424] border-white/10 max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Upload className="w-4 h-4 text-primary" />Import Users</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><Download className="w-4 h-4 text-primary" />Import Users</DialogTitle>
           <DialogDescription>Upload a CSV file to bulk-create users. Maximum 500 rows per import.</DialogDescription>
         </DialogHeader>
 
@@ -172,7 +172,7 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
                   </div>
                 ) : (
                   <>
-                    <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                    <Download className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
                     <p className="text-sm font-medium text-foreground">Drop your CSV here or click to browse</p>
                     <p className="text-xs text-muted-foreground mt-1">Supports .csv files up to 500 rows</p>
                   </>
@@ -274,12 +274,12 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
           </Button>
           {!result && (
             <Button onClick={handleImport} disabled={loading || rows.length === 0} className="bg-primary gap-2">
-              {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Importing...</> : <><Upload className="w-4 h-4" />Import {rows.length > 0 ? `${rows.length} Users` : "Users"}</>}
+              {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Importing...</> : <><Download className="w-4 h-4" />Import {rows.length > 0 ? `${rows.length} Users` : "Users"}</>}
             </Button>
           )}
           {result && (
             <Button onClick={() => { resetDialog(); }} variant="outline" className="border-white/10 gap-2">
-              <Upload className="w-4 h-4" />Import Another File
+              <Download className="w-4 h-4" />Import Another File
             </Button>
           )}
         </DialogFooter>
