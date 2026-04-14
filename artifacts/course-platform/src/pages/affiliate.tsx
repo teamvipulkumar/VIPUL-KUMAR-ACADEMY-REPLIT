@@ -825,7 +825,7 @@ function CreativesTab({ creatives }: { creatives: any[] }) {
             {c.url && c.type === "link" && (
               <a href={c.url} target="_blank" rel="noopener noreferrer" className="flex-1">
                 <Button variant="outline" size="sm" className="w-full gap-1.5 border-border text-xs">
-                  <Download className="w-3 h-3" />Open Link
+                  <ArrowUpRight className="w-3 h-3" />Open Link
                 </Button>
               </a>
             )}
