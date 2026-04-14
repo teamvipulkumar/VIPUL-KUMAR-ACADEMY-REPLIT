@@ -242,7 +242,10 @@ function GatewayCard({ gw, onSave, onRemove, onTest }: {
                   onFocus={e => { if (isMasked(e.target.value)) setForm(f => ({ ...f, secretKey: "" })); }}
                   className={`bg-card pr-9 font-mono text-xs ${!isMasked(form.secretKey) && form.secretKey && form.apiKey && form.secretKey === form.apiKey ? "border-red-500 focus-visible:ring-red-500" : "border-border"}`}
                 />
-                <button type="button" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowSecret(v => !v)}>
+                <button type="button" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => {
+                  if (!showSecret && isMasked(form.secretKey)) setForm(f => ({ ...f, secretKey: "" }));
+                  setShowSecret(v => !v);
+                }}>
                   {showSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
               </div>
@@ -268,7 +271,10 @@ function GatewayCard({ gw, onSave, onRemove, onTest }: {
                 onFocus={e => { if (isMasked(e.target.value)) setForm(f => ({ ...f, webhookSecret: "" })); }}
                 className="bg-card border-border pr-9 font-mono text-xs"
               />
-              <button type="button" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowWebhook(v => !v)}>
+              <button type="button" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => {
+                if (!showWebhook && isMasked(form.webhookSecret)) setForm(f => ({ ...f, webhookSecret: "" }));
+                setShowWebhook(v => !v);
+              }}>
                 {showWebhook ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               </button>
             </div>
