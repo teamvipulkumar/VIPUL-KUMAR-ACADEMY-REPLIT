@@ -517,18 +517,8 @@ router.post("/cashfree/webhook", async (req, res): Promise<void> => {
   res.json({ received: true });
 });
 
-// ── Paytm Checksum Helper (official algorithm) ────────────────────────────────
-function generatePaytmChecksum(params: string, key: string): string {
-  const salt = crypto.randomBytes(4).toString("hex");
-  const finalString = params + "|" + salt;
-  const hash = crypto.createHash("sha256").update(finalString).digest("hex");
-  const hashString = hash + salt;
-  const iv = "@@@@&&&&####$$$$";
-  const cipher = crypto.createCipheriv("aes-128-cbc", key, iv);
-  let encrypted = cipher.update(hashString, "binary", "base64");
-  encrypted += cipher.final("base64");
-  return encrypted;
-}
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const PaytmChecksum = require("paytmchecksum");
 
 // ── Paytm: Create Order + Pre-register User ──────────────────────────────────
 router.post("/paytm/create-order", async (req, res): Promise<void> => {
@@ -602,7 +592,7 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
     userInfo: { custId: `uid_${userId}` },
   };
 
-  const signature = generatePaytmChecksum(JSON.stringify(txnBody), merchantKey);
+  const signature = await PaytmChecksum.generateSignature(JSON.stringify(txnBody), merchantKey);
 
   let txnToken: string;
   try {
@@ -611,7 +601,6 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
       body: txnBody,
     };
     console.log("[paytm create-order] host:", host, "mid:", mid, "orderId:", orderId);
-    console.log("[paytm create-order] body:", JSON.stringify(txnBody));
     const r = await fetch(
       `${host}/theia/api/v1/initiateTransaction?mid=${encodeURIComponent(mid)}&orderId=${encodeURIComponent(orderId)}`,
       {
@@ -682,7 +671,7 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
   const host = gw.isTestMode ? "https://securegw-stage.paytm.in" : "https://securegw.paytm.in";
 
   const statusBody = { mid, orderId };
-  const statusSignature = generatePaytmChecksum(JSON.stringify(statusBody), merchantKey);
+  const statusSignature = await PaytmChecksum.generateSignature(JSON.stringify(statusBody), merchantKey);
 
   try {
     const r = await fetch(`${host}/v3/order/status`, {
