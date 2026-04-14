@@ -81,6 +81,7 @@ type KycRecord = {
   reviewedAt: string | null;
   userName: string;
   userEmail: string;
+  userPhone: string | null;
 };
 
 type Creative = {
@@ -885,6 +886,7 @@ function KycTab() {
   const [records, setRecords] = useState<KycRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [search, setSearch] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState<Record<number, string>>({});
   const [expandedPhoto, setExpandedPhoto] = useState<string | null>(null);
@@ -916,7 +918,16 @@ function KycTab() {
     } finally { setActionLoading(null); }
   };
 
-  const filtered = records.filter(r => filter === "all" || r.status === filter);
+  const q = search.trim().toLowerCase();
+  const filtered = records.filter(r => {
+    const statusMatch = filter === "all" || r.status === filter;
+    const searchMatch = !q ||
+      r.userName.toLowerCase().includes(q) ||
+      r.userEmail.toLowerCase().includes(q) ||
+      (r.userPhone ?? "").toLowerCase().includes(q) ||
+      (r.panNumber ?? "").toLowerCase().includes(q);
+    return statusMatch && searchMatch;
+  });
   const pendingCount = records.filter(r => r.status === "pending").length;
 
   return (
@@ -939,6 +950,22 @@ function KycTab() {
         </div>
       )}
 
+      {/* Search bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search by name, email, phone or PAN number…"
+          className="bg-card border-border h-9 text-sm pl-9 pr-8"
+        />
+        {search && (
+          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5">
           {(["all", "pending", "approved", "rejected"] as const).map(f => (
@@ -950,6 +977,9 @@ function KycTab() {
         </div>
         {pendingCount > 0 && (
           <span className="text-xs text-amber-400 font-medium">{pendingCount} pending review</span>
+        )}
+        {q && (
+          <span className="text-xs text-muted-foreground">{filtered.length} result{filtered.length !== 1 ? "s" : ""} for "<span className="text-foreground">{search}</span>"</span>
         )}
       </div>
 
@@ -977,6 +1007,7 @@ function KycTab() {
                     <td className="px-3 py-2.5">
                       <p className="text-sm font-medium text-foreground leading-tight">{r.userName}</p>
                       <p className="text-[11px] text-muted-foreground">{r.userEmail}</p>
+                      {r.userPhone && <p className="text-[11px] text-muted-foreground">{r.userPhone}</p>}
                     </td>
                     <td className="px-3 py-2.5 text-sm text-foreground max-w-[160px] truncate" title={r.idProofName ?? ""}>
                       {r.idProofName ?? <span className="text-muted-foreground">—</span>}

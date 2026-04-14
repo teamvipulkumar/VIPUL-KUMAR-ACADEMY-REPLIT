@@ -755,9 +755,14 @@ router.post("/admin/scheduled-payouts/:affiliateId/action", requireAdmin, async 
 router.get("/admin/all-kyc", requireAdmin, async (req, res): Promise<void> => {
   const submissions = await db.select().from(affiliateKycTable).orderBy(desc(affiliateKycTable.submittedAt));
   const enriched = await Promise.all(submissions.map(async (k) => {
-    const [user] = await db.select({ name: usersTable.name, email: usersTable.email })
+    const [user] = await db.select({ name: usersTable.name, email: usersTable.email, phone: (usersTable as any).phone })
       .from(usersTable).where(eq(usersTable.id, k.userId)).limit(1);
-    return { ...k, userName: user?.name ?? "Unknown", userEmail: user?.email ?? "" };
+    return {
+      ...k,
+      userName: user?.name ?? "Unknown",
+      userEmail: user?.email ?? "",
+      userPhone: (user as any)?.phone ?? null,
+    };
   }));
   res.json(enriched);
 });
