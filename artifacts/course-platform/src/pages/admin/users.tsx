@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   useAdminListUsers, getAdminListUsersQueryKey,
   useAdminGetUser, getAdminGetUserQueryKey,
@@ -76,13 +76,25 @@ Jane Doe,jane@example.com,Password@123,student
 John Smith,john@example.com,Password@123,affiliate`;
 
 // ── Import Users Dialog ───────────────────────────────────────────────────────
+type Course = { id: number; title: string };
+
 function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClose: () => void; onSuccess: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [rows, setRows] = useState<CsvRow[]>([]);
   const [fileName, setFileName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ created: number; errors: Array<{ row: number; email: string; error: string }>; total: number } | null>(null);
+  const [result, setResult] = useState<{ created: number; enrolled: number; errors: Array<{ row: number; email: string; error: string }>; total: number } | null>(null);
+  const [enrollCourseId, setEnrollCourseId] = useState<string>("none");
+  const [courses, setCourses] = useState<Course[]>([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!open) return;
+    fetch(`${API_BASE}/api/admin/courses`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.courses) setCourses(d.courses); })
+      .catch(() => {});
+  }, [open]);
 
   const handleFile = (file: File) => {
     setFileName(file.name);
@@ -102,17 +114,20 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
     if (!rows.length) return;
     setLoading(true);
     try {
+      const body: Record<string, unknown> = { users: rows };
+      if (enrollCourseId !== "none") body.enrollCourseId = parseInt(enrollCourseId);
       const res = await fetch(`${API_BASE}/api/admin/users/import`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ users: rows }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Import failed");
       setResult(data);
       if (data.created > 0) onSuccess();
-      toast({ title: `Imported ${data.created} of ${data.total} users` });
+      const enrollMsg = data.enrolled > 0 ? `, ${data.enrolled} enrolled` : "";
+      toast({ title: `Imported ${data.created} of ${data.total} users${enrollMsg}` });
     } catch (err: unknown) {
       toast({ title: "Import failed", description: (err as Error).message, variant: "destructive" });
     } finally {
@@ -127,7 +142,7 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
     URL.revokeObjectURL(url);
   };
 
-  const resetDialog = () => { setRows([]); setFileName(""); setResult(null); };
+  const resetDialog = () => { setRows([]); setFileName(""); setResult(null); setEnrollCourseId("none"); };
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) { onClose(); resetDialog(); } }}>
@@ -152,6 +167,26 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
                 <Button variant="outline" size="sm" className="border-primary/30 text-primary hover:bg-primary/10 flex-shrink-0 gap-1.5 cursor-pointer" onClick={handleDownloadTemplate}>
                   <Download className="w-3.5 h-3.5" />Template
                 </Button>
+              </div>
+
+              {/* Enroll in course */}
+              <div className="flex items-center gap-3 p-3 bg-card/50 border border-border rounded-xl">
+                <BookOpen className="w-4 h-4 text-primary flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-foreground">Auto-enroll in a course <span className="text-muted-foreground font-normal">(optional)</span></p>
+                  <p className="text-[11px] text-muted-foreground">All successfully created users will be enrolled immediately</p>
+                </div>
+                <Select value={enrollCourseId} onValueChange={setEnrollCourseId}>
+                  <SelectTrigger className="bg-card border-border w-48 flex-shrink-0 text-xs h-8">
+                    <SelectValue placeholder="No course" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No enrollment</SelectItem>
+                    {courses.map(c => (
+                      <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Drop zone */}
@@ -229,11 +264,17 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
           ) : (
             /* Results */
             <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-3">
+              <div className={`grid gap-3 ${result.enrolled > 0 ? "grid-cols-4" : "grid-cols-3"}`}>
                 <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-center">
                   <p className="text-2xl font-bold text-green-400">{result.created}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">Created</p>
                 </div>
+                {result.enrolled > 0 && (
+                  <div className="p-3 bg-primary/10 border border-primary/20 rounded-xl text-center">
+                    <p className="text-2xl font-bold text-primary">{result.enrolled}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Enrolled</p>
+                  </div>
+                )}
                 <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
                   <p className="text-2xl font-bold text-red-400">{result.errors.length}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">Errors</p>

@@ -132,11 +132,18 @@ router.post("/users/:userId/ban", requireAdmin, async (req, res): Promise<void> 
 // ── Import users from CSV/JSON ────────────────────────────────────────────────
 router.post("/users/import", requireAdmin, async (req, res): Promise<void> => {
   const rows: Array<{ name: string; email: string; password: string; role?: string }> = req.body?.users;
+  const enrollCourseId: number | null = req.body?.enrollCourseId ? parseInt(req.body.enrollCourseId) : null;
+
   if (!Array.isArray(rows) || rows.length === 0) {
     res.status(400).json({ error: "Provide a non-empty users array" }); return;
   }
   if (rows.length > 500) {
     res.status(400).json({ error: "Maximum 500 users per import" }); return;
+  }
+
+  if (enrollCourseId) {
+    const [course] = await db.select({ id: coursesTable.id }).from(coursesTable).where(eq(coursesTable.id, enrollCourseId)).limit(1);
+    if (!course) { res.status(404).json({ error: "Course not found" }); return; }
   }
 
   const created: number[] = [];
@@ -161,7 +168,18 @@ router.post("/users/import", requireAdmin, async (req, res): Promise<void> => {
     }
   }
 
-  res.json({ created: created.length, errors, total: rows.length });
+  let enrolled = 0;
+  if (enrollCourseId && created.length > 0) {
+    const enrollValues = created.map(userId => ({ userId, courseId: enrollCourseId }));
+    try {
+      await db.insert(enrollmentsTable).values(enrollValues).onConflictDoNothing();
+      enrolled = created.length;
+    } catch {
+      // enrollment step failed silently — users were still created
+    }
+  }
+
+  res.json({ created: created.length, enrolled, errors, total: rows.length });
 });
 
 router.get("/analytics", requireAdmin, async (req, res): Promise<void> => {
