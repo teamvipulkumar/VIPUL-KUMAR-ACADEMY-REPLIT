@@ -473,6 +473,11 @@ export default function AdminUsersPage() {
                           <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
                             <Mail className="w-3 h-3 flex-shrink-0" />{u.email}
                           </p>
+                          {(u as { phone?: string | null }).phone && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Phone className="w-3 h-3 flex-shrink-0" />{(u as { phone?: string | null }).phone}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </td>
