@@ -24,6 +24,7 @@ const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 type User = {
   id: number; name: string; email: string; role: string;
   isBanned: boolean; createdAt: string; avatarUrl?: string | null; referralCode?: string | null;
+  phone?: string | null;
 };
 
 const roleColors: Record<string, string> = {
@@ -121,7 +122,7 @@ function AddUserDialog({ open, onClose, onSuccess }: { open: boolean; onClose: (
 
 // ── Edit User Dialog ──────────────────────────────────────────────────────────
 function EditUserDialog({ user, onClose, onSuccess }: { user: User; onClose: () => void; onSuccess: () => void }) {
-  const [form, setForm] = useState({ name: user.name, email: user.email, role: user.role, password: "" });
+  const [form, setForm] = useState({ name: user.name, email: user.email, role: user.role, password: "", phone: user.phone ?? "" });
   const updateUser = useAdminUpdateUser();
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -138,6 +139,7 @@ function EditUserDialog({ user, onClose, onSuccess }: { user: User; onClose: () 
           name: form.name,
           email: form.email,
           role: form.role,
+          phone: form.phone,
           ...(form.password ? { password: form.password } : {}),
         }),
       });
@@ -179,6 +181,18 @@ function EditUserDialog({ user, onClose, onSuccess }: { user: User; onClose: () 
                 <SelectItem value="admin">Admin</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Mobile Number</Label>
+            <Input
+              type="tel"
+              inputMode="numeric"
+              maxLength={10}
+              placeholder="10-digit mobile number"
+              value={form.phone}
+              onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
+              className="bg-card border-border"
+            />
           </div>
           <div className="space-y-1.5">
             <Label className="flex items-center gap-1.5"><Lock className="w-3 h-3" />New Password <span className="text-muted-foreground text-xs">(leave blank to keep current)</span></Label>

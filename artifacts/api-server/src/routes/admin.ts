@@ -20,6 +20,7 @@ router.get("/users", requireAdmin, async (req, res): Promise<void> => {
     id: usersTable.id, email: usersTable.email, name: usersTable.name,
     role: usersTable.role, avatarUrl: usersTable.avatarUrl, referralCode: usersTable.referralCode,
     isBanned: usersTable.isBanned, createdAt: usersTable.createdAt,
+    phone: (usersTable as any).phone,
   }).from(usersTable).$dynamic();
 
   const conditions = [];
@@ -40,6 +41,7 @@ router.get("/users/:userId", requireAdmin, async (req, res): Promise<void> => {
     id: usersTable.id, email: usersTable.email, name: usersTable.name,
     role: usersTable.role, avatarUrl: usersTable.avatarUrl, referralCode: usersTable.referralCode,
     isBanned: usersTable.isBanned, createdAt: usersTable.createdAt,
+    phone: (usersTable as any).phone,
   }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!user) { res.status(404).json({ error: "User not found" }); return; }
 
@@ -68,13 +70,14 @@ router.post("/users", requireAdmin, async (req, res): Promise<void> => {
 
 router.put("/users/:userId", requireAdmin, async (req, res): Promise<void> => {
   const userId = parseInt(req.params.userId);
-  const { name, email, role, isBanned, password } = req.body;
+  const { name, email, role, isBanned, password, phone } = req.body;
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.name = name;
   if (email !== undefined) updates.email = email.toLowerCase();
   if (role !== undefined) updates.role = role;
   if (isBanned !== undefined) updates.isBanned = isBanned;
   if (password !== undefined && password.length > 0) updates.password = await bcrypt.hash(password, 10);
+  if (phone !== undefined) updates.phone = phone.trim() || null;
   const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, userId)).returning({
     id: usersTable.id, email: usersTable.email, name: usersTable.name,
     role: usersTable.role, avatarUrl: usersTable.avatarUrl, referralCode: usersTable.referralCode,
