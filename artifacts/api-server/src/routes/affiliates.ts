@@ -837,19 +837,20 @@ router.get("/admin/sales", requireAdmin, async (req, res): Promise<void> => {
   // All completed payments attributed to an affiliate
   const rows = await db
     .select({
-      orderId:             paymentsTable.id,
-      buyerUserId:         paymentsTable.userId,
-      courseId:            paymentsTable.courseId,
-      amount:              paymentsTable.amount,
-      gateway:             paymentsTable.gateway,
-      affiliateRef:        paymentsTable.affiliateRef,
-      buyerName:           paymentsTable.billingName,
-      buyerEmail:          paymentsTable.billingEmail,
-      courseTitle:         coursesTable.title,
-      affiliateName:       usersTable.name,
-      affiliateEmail:      usersTable.email,
+      orderId:               paymentsTable.id,
+      buyerUserId:           paymentsTable.userId,
+      courseId:              paymentsTable.courseId,
+      amount:                paymentsTable.amount,
+      gateway:               paymentsTable.gateway,
+      affiliateRef:          paymentsTable.affiliateRef,
+      buyerName:             paymentsTable.billingName,
+      buyerEmail:            paymentsTable.billingEmail,
+      courseTitle:           coursesTable.title,
+      affiliateUserId:       usersTable.id,
+      affiliateName:         usersTable.name,
+      affiliateEmail:        usersTable.email,
       affiliateReferralCode: usersTable.referralCode,
-      createdAt:           paymentsTable.createdAt,
+      createdAt:             paymentsTable.createdAt,
     })
     .from(paymentsTable)
     .leftJoin(coursesTable, eq(paymentsTable.courseId, coursesTable.id))
@@ -869,6 +870,7 @@ router.get("/admin/sales", requireAdmin, async (req, res): Promise<void> => {
     ...r,
     amount: parseFloat(String(r.amount)),
     commission: commMap.get(`${r.buyerUserId}-${r.courseId}`) ?? null,
+    isSelfReferral: r.buyerUserId != null && r.affiliateUserId != null && r.buyerUserId === r.affiliateUserId,
   })));
 });
 

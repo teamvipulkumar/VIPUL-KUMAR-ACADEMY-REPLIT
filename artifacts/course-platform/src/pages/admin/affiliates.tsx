@@ -1452,8 +1452,11 @@ function CreativesTab() {
 /* ── Sales Tab ── */
 type AffiliateSale = {
   orderId: number;
+  buyerUserId: number | null;
+  affiliateUserId: number | null;
   amount: number;
   commission: number | null;
+  isSelfReferral: boolean;
   gateway: string;
   affiliateRef: string | null;
   buyerName: string | null;
@@ -1520,13 +1523,15 @@ function SalesTab() {
 
   const totalSales = filtered.reduce((a, s) => a + s.amount, 0);
   const totalComm  = filtered.reduce((a, s) => a + (s.commission ?? 0), 0);
+  const selfReferralCount = filtered.filter(s => s.isSelfReferral).length;
 
   const affiliateGroups = Array.from(
     filtered.reduce((map, s) => {
       const key = s.affiliateRef ?? "unknown";
       if (!map.has(key)) map.set(key, { name: s.affiliateName, email: s.affiliateEmail, ref: s.affiliateRef, count: 0, revenue: 0, commission: 0 });
       const g = map.get(key)!;
-      g.count++; g.revenue += s.amount; g.commission += s.commission ?? 0;
+      g.count++;
+      if (!s.isSelfReferral) { g.revenue += s.amount; g.commission += s.commission ?? 0; }
       return map;
     }, new Map<string, { name: string | null; email: string | null; ref: string | null; count: number; revenue: number; commission: number }>())
     .values()
@@ -1541,7 +1546,7 @@ function SalesTab() {
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Total Orders", value: filtered.length.toString() },
+          { label: "Total Orders", value: filtered.length.toString(), sub: selfReferralCount > 0 ? `${selfReferralCount} self-referral${selfReferralCount > 1 ? "s" : ""}` : null },
           { label: "Total Revenue", value: fmt(totalSales) },
           { label: "Total Commission", value: fmt(totalComm) },
           { label: "Active Affiliates", value: affiliateGroups.length.toString() },
@@ -1549,6 +1554,7 @@ function SalesTab() {
           <div key={c.label} className="bg-card border border-border rounded-xl p-4">
             <p className="text-xs text-muted-foreground mb-1">{c.label}</p>
             <p className="text-xl font-bold text-foreground">{c.value}</p>
+            {"sub" in c && c.sub && <p className="text-[10px] text-amber-500 mt-0.5">{c.sub}</p>}
           </div>
         ))}
       </div>
@@ -1668,8 +1674,16 @@ function SalesTab() {
                       </td>
                       <td className="px-4 py-3 text-xs text-foreground max-w-[140px] truncate">{s.courseTitle ?? "—"}</td>
                       <td className="px-4 py-3 text-right font-semibold text-foreground">{fmt(s.amount)}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-green-400">
-                        {s.commission != null ? fmt(s.commission) : <span className="text-muted-foreground">—</span>}
+                      <td className="px-4 py-3 text-right">
+                        {s.isSelfReferral ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/15 text-amber-500 border border-amber-500/25 whitespace-nowrap">
+                            Self-referral
+                          </span>
+                        ) : s.commission != null ? (
+                          <span className="font-semibold text-green-400">{fmt(s.commission)}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
