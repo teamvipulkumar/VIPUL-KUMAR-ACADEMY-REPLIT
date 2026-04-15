@@ -19,9 +19,9 @@ const FEATURES = [
 ];
 
 const TESTIMONIALS = [
-  { name: "Marcus T.", role: "Affiliate Marketer", text: "I finally understood how to build a proper funnel, craft compelling offers, and drive targeted traffic. The step-by-step structure made every concept click.", stars: 5 },
+  { name: "Arjun M.", role: "Affiliate Marketer", text: "I finally understood how to build a proper funnel, craft compelling offers, and drive targeted traffic. The step-by-step structure made every concept click.", stars: 5 },
   { name: "Priya S.", role: "E-commerce Founder", text: "The course taught me product research, supplier negotiation, and how to set up a store that converts. Skills I could immediately put into practice.", stars: 5 },
-  { name: "James K.", role: "Dropshipper", text: "Learned how to analyse winning products, manage ad creatives, and build reliable supplier relationships. It changed how I think about the whole business.", stars: 5 },
+  { name: "Rohan K.", role: "Dropshipper", text: "Learned how to analyse winning products, manage ad creatives, and build reliable supplier relationships. It changed how I think about the whole business.", stars: 5 },
 ];
 
 const levelColors: Record<string, string> = {
