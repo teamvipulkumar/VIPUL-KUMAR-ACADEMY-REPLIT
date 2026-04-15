@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import {
   Search, BadgeIndianRupee, ShoppingCart, Clock, RefreshCw, Upload,
-  User, BookOpen, Calendar, CreditCard, Tag, Hash, Mail, AlertTriangle, RotateCcw, Phone, MapPin
+  User, BookOpen, Calendar, CreditCard, Tag, Hash, Mail, AlertTriangle, RotateCcw, Phone, MapPin, Trash2
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
@@ -268,6 +268,8 @@ export default function AdminOrdersPage() {
   const [gateway, setGateway] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [refundingOrder, setRefundingOrder] = useState<Order | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Order | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
 
   const fetchOrders = async () => {
@@ -296,6 +298,24 @@ export default function AdminOrdersPage() {
   const handleSearch = (v: string) => {
     setSearch(v);
     setTimeout(() => setDebouncedSearch(v), 400);
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/orders/${deleteTarget.id}`, {
+        method: "DELETE", credentials: "include",
+      });
+      if (!res.ok) throw new Error();
+      toast({ title: `Order #${deleteTarget.id} deleted permanently` });
+      setDeleteTarget(null);
+      fetchOrders();
+    } catch {
+      toast({ title: "Failed to delete order", variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   // Called after a successful refund — update local state immediately, reset filter to show all
@@ -483,6 +503,15 @@ export default function AdminOrdersPage() {
                             <RotateCcw className="w-3 h-3" />Refunded
                           </span>
                         )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                          onClick={() => setDeleteTarget(order)}
+                          title="Delete order"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -514,6 +543,57 @@ export default function AdminOrdersPage() {
           onClose={() => setRefundingOrder(null)}
           onConfirmed={() => handleRefundCompleted(refundingOrder.id)}
         />
+      )}
+
+      {/* Delete order confirmation */}
+      {deleteTarget && (
+        <Dialog open onOpenChange={() => setDeleteTarget(null)}>
+          <DialogContent className="sm:max-w-md bg-[#0d1424] border-white/10">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-400">
+                <Trash2 className="w-4 h-4" /> Delete Order #{deleteTarget.id}
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground text-sm pt-1">
+                This will permanently remove the order record.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-1">
+              <div className="rounded-xl bg-card/60 border border-border p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Customer</span>
+                  <span className="font-medium text-foreground">{deleteTarget.userName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Course</span>
+                  <span className="font-medium text-foreground max-w-[55%] truncate text-right">{deleteTarget.courseTitle}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Amount</span>
+                  <span className="font-bold text-foreground">{formatAmount(deleteTarget.amount, deleteTarget.currency)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Status</span>
+                  <Badge className={`text-xs ${(statusConfig[deleteTarget.status] ?? { className: "" }).className}`}>
+                    {(statusConfig[deleteTarget.status] ?? { label: deleteTarget.status }).label}
+                  </Badge>
+                </div>
+              </div>
+              {deleteTarget.status === "completed" && (
+                <div className="flex gap-2 items-start p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                  <span>This is a completed order. Deleting it will also revoke the student's course access and remove their progress.</span>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground text-center">This action cannot be undone.</p>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" className="border-white/10" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
+              <Button variant="destructive" onClick={handleDeleteOrder} disabled={deleting}>
+                {deleting ? "Deleting…" : "Delete Order"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

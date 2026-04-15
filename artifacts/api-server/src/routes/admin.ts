@@ -553,6 +553,30 @@ router.post("/orders/:orderId/refund", requireAdmin, async (req, res): Promise<v
   res.json({ message: "Refund processed. User has been unenrolled from the course." });
 });
 
+router.delete("/orders/:orderId", requireAdmin, async (req, res): Promise<void> => {
+  const orderId = parseInt(req.params.orderId);
+  if (isNaN(orderId)) { res.status(400).json({ error: "Invalid order id" }); return; }
+  const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.id, orderId)).limit(1);
+  if (!payment) { res.status(404).json({ error: "Order not found" }); return; }
+
+  // If order was completed, revoke enrollment and lesson progress
+  if (payment.status === "completed") {
+    const courseModules = await db.select({ id: modulesTable.id }).from(modulesTable).where(eq(modulesTable.courseId, payment.courseId));
+    for (const mod of courseModules) {
+      const modLessons = await db.select({ id: lessonsTable.id }).from(lessonsTable).where(eq(lessonsTable.moduleId, mod.id));
+      for (const lesson of modLessons) {
+        await db.delete(lessonCompletionsTable).where(and(eq(lessonCompletionsTable.userId, payment.userId), eq(lessonCompletionsTable.lessonId, lesson.id)));
+      }
+    }
+    await db.delete(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId)));
+  }
+
+  // Delete payment (GST invoice paymentId auto-nulled via SET NULL FK)
+  await db.delete(paymentsTable).where(eq(paymentsTable.id, orderId));
+
+  res.json({ success: true });
+});
+
 // ── Payment Gateways ──────────────────────────────────────────────────────────
 const SUPPORTED_GATEWAYS = [
   { name: "stripe", displayName: "Stripe", keyLabel: "Publishable Key", secretLabel: "Secret Key", supportedCountries: "Global" },
