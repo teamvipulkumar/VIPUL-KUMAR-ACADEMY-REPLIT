@@ -628,6 +628,12 @@ export default function CheckoutPage() {
     if (!/^\S+@\S+\.\S+$/.test(form.email)) {
       toast({ title: "Please enter a valid email address", variant: "destructive" }); return;
     }
+    if (!form.mobile || form.mobile.replace(/\D/g, "").length < 10) {
+      toast({ title: "Please enter a valid 10-digit mobile number", variant: "destructive" }); return;
+    }
+    if (!form.state) {
+      toast({ title: "Please select your state", variant: "destructive" }); return;
+    }
     // Real Cashfree — redirect to hosted checkout (no simulation modal)
     if (gateway === "cashfree") {
       handleCashfreePayment();
@@ -784,7 +790,7 @@ export default function CheckoutPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div className="space-y-1.5">
-                      <Label htmlFor="mobile">Mobile Number</Label>
+                      <Label htmlFor="mobile">Mobile Number <span className="text-red-400">*</span></Label>
                       <div className="flex">
                         <span className="inline-flex items-center px-3 border border-r-0 border-border bg-card rounded-l-md text-xs text-muted-foreground">+91</span>
                         <Input
@@ -794,16 +800,18 @@ export default function CheckoutPage() {
                           value={form.mobile}
                           onChange={e => setForm(f => ({ ...f, mobile: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
                           className="bg-background border-border rounded-l-none"
+                          required
                         />
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="state">State</Label>
+                      <Label htmlFor="state">State <span className="text-red-400">*</span></Label>
                       <select
                         id="state"
                         value={form.state}
                         onChange={e => setForm(f => ({ ...f, state: e.target.value }))}
                         className="w-full h-10 px-3 rounded-md border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        required
                       >
                         <option value="">Select state</option>
                         {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
