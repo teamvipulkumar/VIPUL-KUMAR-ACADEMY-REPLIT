@@ -19,9 +19,9 @@ const FEATURES = [
 ];
 
 const TESTIMONIALS = [
-  { name: "Marcus T.", role: "Affiliate Marketer", text: "Made my first ₹10L in 60 days after finishing the affiliate course. The step-by-step structure is unlike anything else out there.", stars: 5 },
-  { name: "Priya S.", role: "E-commerce Founder", text: "Went from ₹0 to ₹2.5L/month in 4 months using the e-commerce blueprint. Worth every penny.", stars: 5 },
-  { name: "James K.", role: "Dropshipper", text: "Finally found a course that doesn't hold back the real numbers. Applied the supplier strategy and landed a 60% margin product.", stars: 5 },
+  { name: "Marcus T.", role: "Affiliate Marketer", text: "I finally understood how to build a proper funnel, craft compelling offers, and drive targeted traffic. The step-by-step structure made every concept click.", stars: 5 },
+  { name: "Priya S.", role: "E-commerce Founder", text: "The course taught me product research, supplier negotiation, and how to set up a store that converts. Skills I could immediately put into practice.", stars: 5 },
+  { name: "James K.", role: "Dropshipper", text: "Learned how to analyse winning products, manage ad creatives, and build reliable supplier relationships. It changed how I think about the whole business.", stars: 5 },
 ];
 
 const levelColors: Record<string, string> = {
