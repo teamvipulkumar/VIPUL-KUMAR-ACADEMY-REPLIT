@@ -970,7 +970,7 @@ export default function AdminGstInvoicingPage() {
                     placeholder="1"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Next invoice will be: <span className="font-mono font-semibold text-gray-800">{settings.invoicePrefix || "INV"}-{String(settings.nextInvoiceSeq).padStart(4, "0")}</span>
+                    Next invoice will be: <span className="font-mono font-semibold text-gray-800">{settings.invoicePrefix || "INV"}-{settings.nextInvoiceSeq}</span>
                   </p>
                 </div>
                 <div>

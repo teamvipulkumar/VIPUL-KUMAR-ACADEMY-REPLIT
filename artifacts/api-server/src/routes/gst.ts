@@ -68,7 +68,7 @@ export async function generateGstInvoice(paymentId: number): Promise<void> {
       companyState = settings.state ?? "";
       companyStateCode = settings.stateCode ?? "";
       const seq = settings.nextInvoiceSeq ?? 1;
-      invoiceNumber = `${prefix}-${String(seq).padStart(4, "0")}`;
+      invoiceNumber = `${prefix}-${seq}`;
       await tx.update(gstCompanySettingsTable)
         .set({ nextInvoiceSeq: seq + 1 })
         .where(eq(gstCompanySettingsTable.id, settings.id));
