@@ -1002,6 +1002,7 @@ export default function AdminGstInvoicingPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Invoice No</TableHead>
+                  <TableHead>Order No</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Course</TableHead>
@@ -1014,14 +1015,15 @@ export default function AdminGstInvoicingPage() {
               </TableHeader>
               <TableBody>
                 {invLoading ? (
-                  <TableRow><TableCell colSpan={9} className="text-center py-10 text-muted-foreground">Loading…</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={10} className="text-center py-10 text-muted-foreground">Loading…</TableCell></TableRow>
                 ) : invoices.length === 0 ? (
-                  <TableRow><TableCell colSpan={9} className="text-center py-10 text-muted-foreground">No invoices found. Click "Generate Missing" to create invoices for existing completed payments.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={10} className="text-center py-10 text-muted-foreground">No invoices found. Click "Generate Missing" to create invoices for existing completed payments.</TableCell></TableRow>
                 ) : invoices.map(inv => {
                   const gst = parseFloat(inv.cgstAmount) + parseFloat(inv.sgstAmount) + parseFloat(inv.igstAmount);
                   return (
                     <TableRow key={inv.id}>
                       <TableCell className="font-mono text-sm font-semibold text-blue-400">{inv.invoiceNumber}</TableCell>
+                      <TableCell className="font-mono text-sm text-muted-foreground">#{inv.paymentId}</TableCell>
                       <TableCell className="text-sm">{new Date(inv.createdAt).toLocaleDateString("en-IN")}</TableCell>
                       <TableCell>
                         <div className="font-medium text-sm">{inv.customerName}</div>
