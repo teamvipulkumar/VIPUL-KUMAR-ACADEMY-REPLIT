@@ -150,6 +150,227 @@ function amountInWords(amount: number): string {
   return result + " Only";
 }
 
+async function generateInvoicePdfDirect(invoice: GstInvoice, s: GstSettings | null) {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
+
+  const W = 210, H = 297, ML = 10, MR = 10, CW = 190;
+  const base = parseFloat(invoice.baseAmount);
+  const cgst = parseFloat(invoice.cgstAmount);
+  const sgst = parseFloat(invoice.sgstAmount);
+  const igst = parseFloat(invoice.igstAmount);
+  const total = parseFloat(invoice.totalAmount);
+  const totalGst = cgst + sgst + igst;
+  const halfRate = invoice.gstRate / 2;
+  const formattedDate = new Date(invoice.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+  const fy = `20${invoice.financialYear.slice(0, 2)}-${invoice.financialYear.slice(2)}`;
+  const companyName = s?.companyName || "Your Company";
+  const companyInitials = companyName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+  const placeOfSupply = invoice.customerState
+    ? `${invoice.customerState}${invoice.customerStateCode ? ` (${invoice.customerStateCode})` : ""}` : "—";
+  const fc = (n: number) => "₹" + n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+
+  // ── HEADER BAR ────────────────────────────────────────────────────────────
+  const headerH = 36;
+  doc.setFillColor(30, 58, 95);
+  doc.rect(0, 0, W, headerH, "F");
+
+  doc.setFillColor(59, 130, 246);
+  doc.roundedRect(ML, 5, 18, 18, 2, 2, "F");
+  doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(255, 255, 255);
+  doc.text(companyInitials, ML + 9, 16.5, { align: "center" });
+
+  doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.setTextColor(255, 255, 255);
+  doc.text(companyName, ML + 22, 13);
+
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(147, 197, 253);
+  let subY = 18;
+  if (s?.gstin) { doc.text(`GSTIN: ${s.gstin}`, ML + 22, subY); subY += 4; }
+  const addrLine = [s?.addressLine1, s?.city, s?.state].filter(Boolean).join(", ");
+  if (addrLine) { doc.text(addrLine, ML + 22, subY); subY += 4; }
+  const contactLine = [s?.email, s?.phone].filter(Boolean).join(" · ");
+  if (contactLine) { doc.text(contactLine, ML + 22, subY); }
+
+  doc.setDrawColor(255, 255, 255); doc.setLineWidth(0.4);
+  doc.roundedRect(148, 5, 52, 22, 2, 2, "D");
+  doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.setTextColor(191, 219, 254);
+  doc.text("TAX INVOICE", 174, 15, { align: "center" });
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(147, 197, 253);
+  doc.text("Original for Recipient", 174, 22, { align: "center" });
+
+  let y = headerH + 6;
+
+  // ── BILL TO + INVOICE DETAILS ─────────────────────────────────────────────
+  const colW = CW / 2 - 2;
+  const cardH = 54;
+
+  doc.setFillColor(248, 250, 255); doc.setDrawColor(219, 234, 254); doc.setLineWidth(0.3);
+  doc.rect(ML, y, colW, cardH, "FD");
+  doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(107, 114, 128);
+  doc.text("BILL TO", ML + 4, y + 6);
+  doc.setDrawColor(229, 231, 235); doc.setLineWidth(0.2);
+  doc.line(ML + 4, y + 8, ML + colW - 4, y + 8);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(30, 58, 95);
+  doc.text(invoice.customerName || "—", ML + 4, y + 15);
+
+  const billRows: [string, string][] = [
+    ["Email", invoice.customerEmail || "—"],
+    ...(invoice.customerMobile ? [["Mobile", invoice.customerMobile] as [string, string]] : []),
+    ["State", placeOfSupply],
+    ...(invoice.customerGstin ? [["GSTIN", invoice.customerGstin] as [string, string]] : []),
+  ];
+  let billY = y + 22;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+  for (const [label, value] of billRows) {
+    doc.setTextColor(107, 114, 128); doc.text(label, ML + 4, billY);
+    doc.setTextColor(17, 24, 39); doc.text(String(value), ML + 22, billY);
+    billY += 5.5;
+  }
+
+  const rightX = ML + colW + 4;
+  doc.setFillColor(248, 250, 255); doc.setDrawColor(219, 234, 254); doc.setLineWidth(0.3);
+  doc.rect(rightX, y, colW, cardH, "FD");
+  doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(107, 114, 128);
+  doc.text("INVOICE DETAILS", rightX + 4, y + 6);
+  doc.setDrawColor(229, 231, 235); doc.setLineWidth(0.2);
+  doc.line(rightX + 4, y + 8, rightX + colW - 4, y + 8);
+
+  const detRows: [string, string][] = [
+    ["Invoice No.", invoice.invoiceNumber], ["Invoice Date", formattedDate],
+    ["Financial Year", fy], ["Place of Supply", placeOfSupply],
+    ["Payment Mode", (invoice.gateway || "—").toUpperCase()],
+    ["Supply Type", invoice.isInterstate ? "Inter-State" : "Intra-State"],
+  ];
+  let detY = y + 14;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+  for (const [label, value] of detRows) {
+    doc.setTextColor(107, 114, 128); doc.text(label, rightX + 4, detY);
+    doc.setFont("helvetica", "bold"); doc.setTextColor(17, 24, 39); doc.text(String(value), rightX + 30, detY);
+    doc.setFont("helvetica", "normal"); detY += 6;
+  }
+
+  y += cardH + 6;
+
+  // ── ITEMS TABLE ───────────────────────────────────────────────────────────
+  doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(30, 58, 95);
+  doc.text("ITEMS", ML, y); y += 2;
+  autoTable(doc, {
+    startY: y, margin: { left: ML, right: MR },
+    head: [["#", "Description", "HSN/SAC", "Qty", "Rate (Excl. Tax)", "Taxable Amt"]],
+    body: [["1", invoice.courseTitle + "\nOnline Educational Course — Digital Service", "999294", "1", fc(base), fc(base)]],
+    headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 9 },
+    columnStyles: {
+      0: { cellWidth: 8, halign: "center" }, 1: { cellWidth: "auto" },
+      2: { cellWidth: 20, halign: "center" }, 3: { cellWidth: 10, halign: "right" },
+      4: { cellWidth: 32, halign: "right" }, 5: { cellWidth: 28, halign: "right", fontStyle: "bold" },
+    },
+    styles: { fontSize: 9, cellPadding: 3 }, alternateRowStyles: { fillColor: [249, 250, 251] },
+  });
+  y = (doc as any).lastAutoTable.finalY + 6;
+
+  // ── GST BREAKUP TABLE ─────────────────────────────────────────────────────
+  doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(30, 58, 95);
+  doc.text("GST BREAKUP", ML, y); y += 2;
+  if (invoice.isInterstate) {
+    autoTable(doc, {
+      startY: y, margin: { left: ML, right: MR },
+      head: [["HSN/SAC", "Taxable Value", "IGST Rate", "IGST Amt", "Total Tax"]],
+      body: [
+        ["999294", fc(base), `${invoice.gstRate}%`, fc(igst), fc(totalGst)],
+        [{ content: "Total", styles: { fontStyle: "bold" } }, "", "", { content: fc(igst), styles: { fontStyle: "bold" } }, { content: fc(totalGst), styles: { fontStyle: "bold", textColor: [30, 58, 95] as any } }],
+      ],
+      headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 9 },
+      columnStyles: { 0: { halign: "left" }, 1: { halign: "right" }, 2: { halign: "center" }, 3: { halign: "right" }, 4: { halign: "right" } },
+      styles: { fontSize: 9, cellPadding: 3 }, alternateRowStyles: { fillColor: [249, 250, 251] },
+    });
+  } else {
+    autoTable(doc, {
+      startY: y, margin: { left: ML, right: MR },
+      head: [["HSN/SAC", "Taxable Value", `CGST (${halfRate}%)`, "CGST Amt", `SGST (${halfRate}%)`, "SGST Amt", "Total Tax"]],
+      body: [
+        ["999294", fc(base), `${halfRate}%`, fc(cgst), `${halfRate}%`, fc(sgst), fc(totalGst)],
+        [{ content: "Total", styles: { fontStyle: "bold" } }, "", "", { content: fc(cgst), styles: { fontStyle: "bold" } }, "", { content: fc(sgst), styles: { fontStyle: "bold" } }, { content: fc(totalGst), styles: { fontStyle: "bold", textColor: [30, 58, 95] as any } }],
+      ],
+      headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 9 },
+      columnStyles: { 0: { halign: "left" }, 1: { halign: "right" }, 2: { halign: "center" }, 3: { halign: "right" }, 4: { halign: "center" }, 5: { halign: "right" }, 6: { halign: "right" } },
+      styles: { fontSize: 9, cellPadding: 3 }, alternateRowStyles: { fillColor: [249, 250, 251] },
+    });
+  }
+  y = (doc as any).lastAutoTable.finalY + 6;
+
+  // ── GRAND TOTAL ───────────────────────────────────────────────────────────
+  doc.setFillColor(30, 58, 95);
+  doc.roundedRect(ML, y, CW, 22, 2, 2, "F");
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(147, 197, 253);
+  doc.text("Taxable Value", ML + 6, y + 7);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(255, 255, 255);
+  doc.text(fc(base), ML + 6, y + 14);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(147, 197, 253);
+  doc.text(`Total GST (${invoice.gstRate}%): ${fc(totalGst)}`, ML + 6, y + 20);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(147, 197, 253);
+  doc.text("GRAND TOTAL (INR)", ML + CW - 6, y + 7, { align: "right" });
+  doc.setFont("helvetica", "bold"); doc.setFontSize(20); doc.setTextColor(255, 255, 255);
+  doc.text(fc(total), ML + CW - 6, y + 20, { align: "right" });
+  y += 28;
+
+  // ── AMOUNT IN WORDS ───────────────────────────────────────────────────────
+  doc.setFillColor(239, 246, 255); doc.setDrawColor(191, 219, 254); doc.setLineWidth(0.3);
+  doc.rect(ML, y, CW, 10, "FD");
+  doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(30, 64, 175);
+  const wordsLabel = "Amount in Words:  ";
+  doc.text(wordsLabel, ML + 5, y + 6.5);
+  doc.setFont("helvetica", "normal");
+  doc.text(amountInWords(total), ML + 5 + doc.getTextWidth(wordsLabel), y + 6.5);
+  y += 16;
+
+  // ── TERMS + SIGNATURE ─────────────────────────────────────────────────────
+  const termsW = CW * 0.56;
+  const sigW = CW * 0.38;
+  const sigX = ML + CW - sigW;
+
+  doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(55, 65, 81);
+  doc.text("Terms & Notes", ML, y);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(107, 114, 128);
+  const terms = [
+    "1. This is a computer-generated invoice and does not require a physical signature.",
+    "2. SAC Code: 999294 — Online Educational Services.",
+    "3. All amounts are in Indian Rupees (INR).",
+    invoice.isInterstate ? "4. IGST applicable (Inter-State supply)." : "4. CGST + SGST applicable (Intra-State supply).",
+  ];
+  let termsY = y + 6;
+  for (const t of terms) {
+    const lines = doc.splitTextToSize(t, termsW - 4);
+    doc.text(lines, ML, termsY); termsY += lines.length * 4.5;
+  }
+
+  doc.setDrawColor(156, 163, 175); doc.setLineWidth(0.3); doc.setLineDashPattern([2, 2], 0);
+  doc.rect(sigX, y, sigW, 18, "D"); doc.setLineDashPattern([], 0);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(156, 163, 175);
+  doc.text("Seal / Stamp", sigX + sigW / 2, y + 10, { align: "center" });
+  const sigLineY = y + 26;
+  doc.setDrawColor(156, 163, 175); doc.line(sigX, sigLineY, sigX + sigW, sigLineY);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(107, 114, 128);
+  doc.text("Authorised Signatory", sigX + sigW / 2, sigLineY + 4, { align: "center" });
+  doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(30, 58, 95);
+  doc.text(companyName, sigX + sigW / 2, sigLineY + 9, { align: "center" });
+
+  // ── PAGE FOOTER ───────────────────────────────────────────────────────────
+  doc.setFillColor(243, 244, 246);
+  doc.rect(0, H - 14, W, 14, "F");
+  doc.setDrawColor(30, 58, 95); doc.setLineWidth(0.8);
+  doc.line(0, H - 14, W, H - 14);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(107, 114, 128);
+  doc.text(`${companyName}${s?.gstin ? ` | GSTIN: ${s.gstin}` : ""}`, ML, H - 7);
+  doc.text(`Invoice: ${invoice.invoiceNumber} | FY ${fy}`, W / 2, H - 7, { align: "center" });
+  doc.text(`Generated on ${new Date().toLocaleDateString("en-IN")}`, W - MR, H - 7, { align: "right" });
+
+  doc.save(`${invoice.invoiceNumber}.pdf`);
+}
+
 function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
   invoice: GstInvoice;
   settings: GstSettings | null;
@@ -521,8 +742,6 @@ export default function AdminGstInvoicingPage() {
   const [generating, setGenerating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<GstInvoice | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [downloadingInvoice, setDownloadingInvoice] = useState<GstInvoice | null>(null);
-  const [downloadSettings, setDownloadSettings] = useState<GstSettings | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
   // Monthly summary state
@@ -669,11 +888,9 @@ export default function AdminGstInvoicingPage() {
     try {
       const res = await fetch(`${API_BASE}/api/admin/gst/invoices/${inv.id}`, { credentials: "include" });
       const data = await res.json();
-      setDownloadSettings(data.settings ?? settings);
-      setDownloadingInvoice(data.invoice ?? inv);
+      await generateInvoicePdfDirect(data.invoice ?? inv, data.settings ?? settings);
     } catch {
-      setDownloadSettings(settings);
-      setDownloadingInvoice(inv);
+      await generateInvoicePdfDirect(inv, settings);
     } finally {
       setDownloadingId(null);
     }
@@ -1113,16 +1330,6 @@ export default function AdminGstInvoicingPage() {
           invoice={selectedInvoice}
           settings={invoiceSettings ?? settings}
           onClose={() => setSelectedInvoice(null)}
-        />
-      )}
-
-      {/* Invoice print modal (auto-download PDF) */}
-      {downloadingInvoice && (
-        <InvoicePrintModal
-          invoice={downloadingInvoice}
-          settings={downloadSettings ?? settings}
-          onClose={() => { setDownloadingInvoice(null); setDownloadSettings(null); }}
-          autoPrint
         />
       )}
 
