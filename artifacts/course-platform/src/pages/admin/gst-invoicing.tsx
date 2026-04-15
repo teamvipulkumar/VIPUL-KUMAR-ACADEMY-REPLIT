@@ -691,7 +691,7 @@ export default function AdminGstInvoicingPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b">
+      <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 mb-2 flex-wrap">
         {[
           { id: "invoices", label: "Invoices", icon: FileText },
           { id: "monthly", label: "Monthly Summary", icon: BarChart3 },
@@ -701,7 +701,9 @@ export default function AdminGstInvoicingPage() {
           <button
             key={t.id}
             onClick={() => setTab(t.id as Tab)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === t.id ? "border-blue-500 text-blue-400" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+              tab === t.id ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground hover:bg-background"
+            }`}
           >
             <t.icon className="h-4 w-4" /> {t.label}
           </button>
