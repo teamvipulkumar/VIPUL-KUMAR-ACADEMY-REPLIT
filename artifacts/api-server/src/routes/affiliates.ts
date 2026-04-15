@@ -6,7 +6,7 @@ import {
   affiliateBankDetailsTable, affiliateCreativesTable, affiliatePixelTable,
   coursesTable, paymentsTable,
 } from "@workspace/db";
-import { eq, and, sum, count, sql, desc, gte, lt, ne } from "drizzle-orm";
+import { eq, and, sum, count, sql, desc, gte, lt, ne, isNotNull } from "drizzle-orm";
 import { requireAuth, requireAdmin, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import crypto from "crypto";
@@ -830,6 +830,46 @@ router.post("/admin/settings", requireAdmin, async (req, res): Promise<void> => 
     await db.insert(platformSettingsTable).values({ siteName: "Vipul Kumar Academy", siteDescription: "", ...updates });
   }
   res.json({ message: "Settings saved" });
+});
+
+// ── Admin: Affiliate Sales ────────────────────────────────────────────────────
+router.get("/admin/sales", requireAdmin, async (req, res): Promise<void> => {
+  // All completed payments attributed to an affiliate
+  const rows = await db
+    .select({
+      orderId:             paymentsTable.id,
+      buyerUserId:         paymentsTable.userId,
+      courseId:            paymentsTable.courseId,
+      amount:              paymentsTable.amount,
+      gateway:             paymentsTable.gateway,
+      affiliateRef:        paymentsTable.affiliateRef,
+      buyerName:           paymentsTable.billingName,
+      buyerEmail:          paymentsTable.billingEmail,
+      courseTitle:         coursesTable.title,
+      affiliateName:       usersTable.name,
+      affiliateEmail:      usersTable.email,
+      affiliateReferralCode: usersTable.referralCode,
+      createdAt:           paymentsTable.createdAt,
+    })
+    .from(paymentsTable)
+    .leftJoin(coursesTable, eq(paymentsTable.courseId, coursesTable.id))
+    .leftJoin(usersTable, eq(usersTable.referralCode, paymentsTable.affiliateRef))
+    .where(and(eq(paymentsTable.status, "completed"), isNotNull(paymentsTable.affiliateRef)))
+    .orderBy(desc(paymentsTable.createdAt));
+
+  // Fetch commissions in one query and map by (referredUserId, courseId)
+  const commissions = await db
+    .select({ referredUserId: referralsTable.referredUserId, courseId: referralsTable.courseId, commission: referralsTable.commission })
+    .from(referralsTable)
+    .where(eq(referralsTable.status, "purchase"));
+
+  const commMap = new Map(commissions.map(c => [`${c.referredUserId}-${c.courseId}`, parseFloat(String(c.commission ?? 0))]));
+
+  res.json(rows.map(r => ({
+    ...r,
+    amount: parseFloat(String(r.amount)),
+    commission: commMap.get(`${r.buyerUserId}-${r.courseId}`) ?? null,
+  })));
 });
 
 export default router;

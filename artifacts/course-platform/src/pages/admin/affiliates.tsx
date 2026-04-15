@@ -1449,6 +1449,186 @@ function CreativesTab() {
 /* ══════════════════════════════════════════
    TAB 6 — Settings
 ══════════════════════════════════════════ */
+/* ── Sales Tab ── */
+type AffiliateSale = {
+  orderId: number;
+  amount: number;
+  commission: number | null;
+  gateway: string;
+  affiliateRef: string | null;
+  buyerName: string | null;
+  buyerEmail: string | null;
+  courseTitle: string | null;
+  affiliateName: string | null;
+  affiliateEmail: string | null;
+  affiliateReferralCode: string | null;
+  createdAt: string;
+};
+
+function SalesTab() {
+  const { toast } = useToast();
+  const [sales, setSales] = useState<AffiliateSale[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    apiFetch("/api/affiliates/admin/sales")
+      .then(r => r.json())
+      .then(data => setSales(Array.isArray(data) ? data : []))
+      .catch(() => toast({ title: "Failed to load affiliate sales", variant: "destructive" }))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const fmt = (v: number) => "₹" + v.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const filtered = sales.filter(s => {
+    const q = search.toLowerCase();
+    return !q || [s.buyerName, s.buyerEmail, s.affiliateName, s.affiliateEmail, s.affiliateRef, s.courseTitle, String(s.orderId)]
+      .some(v => v?.toLowerCase().includes(q));
+  });
+
+  const totalSales = filtered.reduce((a, s) => a + s.amount, 0);
+  const totalComm  = filtered.reduce((a, s) => a + (s.commission ?? 0), 0);
+
+  const affiliateGroups = Array.from(
+    filtered.reduce((map, s) => {
+      const key = s.affiliateRef ?? "unknown";
+      if (!map.has(key)) map.set(key, { name: s.affiliateName, email: s.affiliateEmail, ref: s.affiliateRef, count: 0, revenue: 0, commission: 0 });
+      const g = map.get(key)!;
+      g.count++; g.revenue += s.amount; g.commission += s.commission ?? 0;
+      return map;
+    }, new Map<string, { name: string | null; email: string | null; ref: string | null; count: number; revenue: number; commission: number }>())
+    .values()
+  ).sort((a, b) => b.revenue - a.revenue);
+
+  const initials = (name: string | null) => (name ?? "?").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+
+  if (loading) return <div className="py-16 text-center text-muted-foreground">Loading sales…</div>;
+
+  return (
+    <div className="space-y-6">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: "Total Orders", value: filtered.length.toString() },
+          { label: "Total Revenue", value: fmt(totalSales) },
+          { label: "Total Commission", value: fmt(totalComm) },
+          { label: "Active Affiliates", value: affiliateGroups.length.toString() },
+        ].map(c => (
+          <div key={c.label} className="bg-card border border-border rounded-xl p-4">
+            <p className="text-xs text-muted-foreground mb-1">{c.label}</p>
+            <p className="text-xl font-bold text-foreground">{c.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Affiliate leaderboard */}
+      {affiliateGroups.length > 0 && (
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-border text-sm font-semibold text-foreground">Affiliate Leaderboard</div>
+          <div className="divide-y divide-border">
+            {affiliateGroups.map((g, i) => (
+              <div key={g.ref ?? i} className="flex items-center gap-3 px-4 py-3">
+                <div className="w-6 text-xs text-muted-foreground font-mono text-center">{i + 1}</div>
+                <div className="w-9 h-9 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-sm flex-shrink-0">
+                  {initials(g.name)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">{g.name ?? "—"}</p>
+                  <p className="text-xs text-muted-foreground truncate">{g.email} · <span className="font-mono">{g.ref}</span></p>
+                </div>
+                <div className="text-right hidden sm:block">
+                  <p className="text-sm font-semibold text-foreground">{fmt(g.revenue)}</p>
+                  <p className="text-xs text-muted-foreground">{g.count} order{g.count !== 1 ? "s" : ""}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-green-400">{fmt(g.commission)}</p>
+                  <p className="text-xs text-muted-foreground">commission</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Search + table */}
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            placeholder="Search by buyer, affiliate, course, order…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 text-sm border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className="py-12 text-center text-muted-foreground text-sm">
+            {search ? "No matching sales found." : "No affiliate-attributed sales yet."}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-muted/40 border-b border-border">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Order</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Date</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Buyer</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Course</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Sale ₹</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Commission</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Affiliate</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Gateway</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filtered.map(s => (
+                    <tr key={s.orderId} className="hover:bg-muted/20 transition-colors">
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">#{s.orderId}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(s.createdAt).toLocaleDateString("en-IN")}
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-foreground truncate max-w-[130px]">{s.buyerName || "—"}</p>
+                        <p className="text-xs text-muted-foreground truncate max-w-[130px]">{s.buyerEmail}</p>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-foreground max-w-[140px] truncate">{s.courseTitle ?? "—"}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-foreground">{fmt(s.amount)}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-green-400">
+                        {s.commission != null ? fmt(s.commission) : <span className="text-muted-foreground">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs flex-shrink-0">
+                            {initials(s.affiliateName)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-foreground truncate max-w-[110px]">{s.affiliateName ?? s.affiliateRef ?? "—"}</p>
+                            <p className="text-xs text-muted-foreground font-mono">{s.affiliateRef}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground uppercase font-medium">{s.gateway}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-4 py-2 border-t border-border text-xs text-muted-foreground bg-muted/20">
+              {filtered.length} sale{filtered.length !== 1 ? "s" : ""}
+              {search && ` matching "${search}"`}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function SettingsTab() {
   const [settings, setSettings] = useState<AffSettings>({ commissionRate: 20, affiliateEnabled: true, affiliateCookieDays: 30, affiliateMinPayout: 500, payoutPeriodDays: 7 });
   const [loading, setLoading] = useState(true);
@@ -1594,7 +1774,8 @@ function SettingsTab() {
 const TABS = [
   { id: "overview",      label: "Overview",      icon: <BarChart3 className="w-3.5 h-3.5" /> },
   { id: "applications",  label: "Applications",  icon: <FileText className="w-3.5 h-3.5" /> },
-  { id: "payouts",       label: "Payouts",        icon: <BadgeIndianRupee className="w-3.5 h-3.5" /> },
+  { id: "sales",         label: "Sales",          icon: <BadgeIndianRupee className="w-3.5 h-3.5" /> },
+  { id: "payouts",       label: "Payouts",        icon: <CreditCard className="w-3.5 h-3.5" /> },
   { id: "kyc",          label: "KYC",            icon: <Shield className="w-3.5 h-3.5" /> },
   { id: "creatives",     label: "Creatives",      icon: <Image className="w-3.5 h-3.5" /> },
   { id: "settings",      label: "Settings",       icon: <Settings className="w-3.5 h-3.5" /> },
@@ -1633,6 +1814,7 @@ export default function AdminAffiliatesPage() {
       {/* Content */}
       {tab === "overview"     && <OverviewTab />}
       {tab === "applications" && <ApplicationsTab />}
+      {tab === "sales"        && <SalesTab />}
       {tab === "payouts"      && <PayoutsTab />}
       {tab === "kyc"          && <KycTab />}
       {tab === "creatives"    && <CreativesTab />}
