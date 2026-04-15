@@ -321,7 +321,7 @@ router.get("/summary/state", requireAdmin, async (req, res): Promise<void> => {
     .map(s => ({ ...s, taxable: parseFloat(s.taxable.toFixed(2)), cgst: parseFloat(s.cgst.toFixed(2)), sgst: parseFloat(s.sgst.toFixed(2)), igst: parseFloat(s.igst.toFixed(2)), total: parseFloat(s.total.toFixed(2)) }))
     .sort((a, b) => b.total - a.total);
 
-  res.json({ year: y, states: result });
+  res.json({ fy, states: result });
 });
 
 export default router;

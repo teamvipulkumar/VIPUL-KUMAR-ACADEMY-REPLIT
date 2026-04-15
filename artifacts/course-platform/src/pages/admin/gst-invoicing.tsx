@@ -1141,10 +1141,10 @@ export default function AdminGstInvoicingPage() {
               <SelectContent>{fyYears.map(y => <SelectItem key={y.value} value={y.value}>{y.label}</SelectItem>)}</SelectContent>
             </Select>
             <Label className="font-medium">Month</Label>
-            <Select value={stateMonth} onValueChange={setStateMonth}>
+            <Select value={stateMonth || "all"} onValueChange={v => setStateMonth(v === "all" ? "" : v)}>
               <SelectTrigger className="w-36"><SelectValue placeholder="All Months" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Months</SelectItem>
+                <SelectItem value="all">All Months</SelectItem>
                 {fyMonths.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
               </SelectContent>
             </Select>
