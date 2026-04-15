@@ -273,13 +273,35 @@ router.get("/summary/monthly", requireAdmin, async (req, res): Promise<void> => 
 
 // ── State-wise report ─────────────────────────────────────────────────────────
 router.get("/summary/state", requireAdmin, async (req, res): Promise<void> => {
-  const { year } = req.query as Record<string, string>;
-  const y = parseInt(year ?? String(new Date().getFullYear()));
+  const { fy, month } = req.query as Record<string, string>;
+
+  // Resolve date range from Indian FY (e.g. "2025-26") + optional FY month (1=Apr … 12=Mar)
+  let startDate: Date;
+  let endDate: Date;
+
+  const fyStart = fy ? parseInt(fy.split("-")[0]) : (() => {
+    const now = new Date();
+    return now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  })();
+
+  const fyMonth = month ? parseInt(month) : null; // 1=Apr, 2=May … 9=Dec, 10=Jan, 11=Feb, 12=Mar
+
+  if (fyMonth) {
+    // Convert FY month to calendar month (0-indexed) and year
+    const calMonth = fyMonth <= 9 ? 3 + (fyMonth - 1) : fyMonth - 10;
+    const calYear  = fyMonth <= 9 ? fyStart : fyStart + 1;
+    startDate = new Date(calYear, calMonth, 1);
+    endDate   = new Date(calYear, calMonth + 1, 1);
+  } else {
+    // Full FY: April 1 of fyStart → April 1 of fyStart+1
+    startDate = new Date(fyStart, 3, 1);
+    endDate   = new Date(fyStart + 1, 3, 1);
+  }
 
   const invoices = await db.select().from(gstInvoicesTable)
     .where(and(
-      gte(gstInvoicesTable.createdAt, new Date(y, 0, 1)),
-      lte(gstInvoicesTable.createdAt, new Date(y + 1, 0, 1))
+      gte(gstInvoicesTable.createdAt, startDate),
+      lte(gstInvoicesTable.createdAt, endDate)
     ));
 
   const stateMap = new Map<string, { state: string; count: number; taxable: number; cgst: number; sgst: number; igst: number; total: number }>();

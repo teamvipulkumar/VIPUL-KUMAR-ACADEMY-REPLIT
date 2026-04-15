@@ -487,7 +487,12 @@ export default function AdminGstInvoicingPage() {
 
   // State-wise state
   const [statewise, setStatewise] = useState<StateData[]>([]);
-  const [stateYear, setStateYear] = useState(String(new Date().getFullYear()));
+  const [stateMonth, setStateMonth] = useState("");
+  const [stateYear, setStateYear] = useState(() => {
+    const now = new Date();
+    const s = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    return `${s}-${String(s + 1).slice(2)}`;
+  });
   const [stateLoading, setStateLoading] = useState(false);
 
   // Settings state
@@ -533,7 +538,9 @@ export default function AdminGstInvoicingPage() {
   async function loadStatewise() {
     setStateLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/admin/gst/summary/state?year=${stateYear}`, { credentials: "include" });
+      const params = new URLSearchParams({ fy: stateYear });
+      if (stateMonth) params.set("month", stateMonth);
+      const res = await fetch(`${API_BASE}/api/admin/gst/summary/state?${params}`, { credentials: "include" });
       const data = await res.json();
       setStatewise(data.states ?? []);
     } catch {
@@ -659,7 +666,7 @@ export default function AdminGstInvoicingPage() {
   useEffect(() => { loadSettings(); }, []);
   useEffect(() => { if (tab === "invoices") loadInvoices(); }, [tab]);
   useEffect(() => { if (tab === "monthly") loadMonthly(); }, [tab, monthlyYear]);
-  useEffect(() => { if (tab === "statewise") loadStatewise(); }, [tab, stateYear]);
+  useEffect(() => { if (tab === "statewise") loadStatewise(); }, [tab, stateYear, stateMonth]);
 
   function exportCsv() {
     const rows = [
@@ -877,6 +884,24 @@ export default function AdminGstInvoicingPage() {
     { value: "7", label: "July" }, { value: "8", label: "August" },
     { value: "9", label: "September" }, { value: "10", label: "October" },
     { value: "11", label: "November" }, { value: "12", label: "December" },
+  ];
+  // Indian Financial Year helpers
+  const fyStartYear = (() => {
+    const now = new Date();
+    return now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  })();
+  const fyYears = Array.from({ length: 6 }, (_, i) => {
+    const s = fyStartYear - i;
+    return { value: `${s}-${String(s + 1).slice(2)}`, label: `${s}-${String(s + 1).slice(2)}` };
+  });
+  // FY months in Indian order: April(1) … March(12)
+  const fyMonths = [
+    { value: "1", label: "April" }, { value: "2", label: "May" },
+    { value: "3", label: "June" }, { value: "4", label: "July" },
+    { value: "5", label: "August" }, { value: "6", label: "September" },
+    { value: "7", label: "October" }, { value: "8", label: "November" },
+    { value: "9", label: "December" }, { value: "10", label: "January" },
+    { value: "11", label: "February" }, { value: "12", label: "March" },
   ];
 
   const monthlyTotals = monthly.reduce((acc, m) => ({
@@ -1109,11 +1134,19 @@ export default function AdminGstInvoicingPage() {
       {/* ── State-wise Report Tab ── */}
       {tab === "statewise" && (
         <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <Label className="font-medium">Year</Label>
-            <Select value={stateYear} onValueChange={setStateYear}>
-              <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-              <SelectContent>{years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
+          <div className="flex flex-wrap items-center gap-3">
+            <Label className="font-medium">Financial Year</Label>
+            <Select value={stateYear} onValueChange={v => { setStateYear(v); setStateMonth(""); }}>
+              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+              <SelectContent>{fyYears.map(y => <SelectItem key={y.value} value={y.value}>{y.label}</SelectItem>)}</SelectContent>
+            </Select>
+            <Label className="font-medium">Month</Label>
+            <Select value={stateMonth} onValueChange={setStateMonth}>
+              <SelectTrigger className="w-36"><SelectValue placeholder="All Months" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Months</SelectItem>
+                {fyMonths.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+              </SelectContent>
             </Select>
             <Button variant="outline" onClick={loadStatewise} disabled={stateLoading}>
               <RefreshCw className={`h-4 w-4 mr-1 ${stateLoading ? "animate-spin" : ""}`} /> Refresh
@@ -1138,7 +1171,9 @@ export default function AdminGstInvoicingPage() {
                 {stateLoading ? (
                   <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground">Loading…</TableCell></TableRow>
                 ) : statewise.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground">No data for {stateYear}</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                    No data for {stateMonth ? `${fyMonths.find(m => m.value === stateMonth)?.label} ` : ""}{stateYear}
+                  </TableCell></TableRow>
                 ) : statewise.map(s => (
                   <TableRow key={s.state}>
                     <TableCell className="font-medium">{s.state}</TableCell>
