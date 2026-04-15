@@ -481,7 +481,7 @@ export default function AdminOrdersPage() {
                       <Badge className={`text-xs ${gtw.className}`}>{gtw.label}</Badge>
                     </td>
                     {/* Actions */}
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 align-middle">
                       <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
                         <Button
                           size="sm"
