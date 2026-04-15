@@ -241,9 +241,9 @@ function InvoicePrintModal({ invoice, settings, onClose }: {
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-blue-700" />
-            <span className="font-bold text-gray-800">{invoice.invoiceNumber}</span>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${invoice.isInterstate ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>
+            <FileText className="h-5 w-5 text-blue-400" />
+            <span className="font-bold text-foreground">{invoice.invoiceNumber}</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${invoice.isInterstate ? "bg-blue-500/20 text-blue-400" : "bg-green-500/20 text-green-400"}`}>
               {invoice.isInterstate ? "Interstate · IGST" : "Intra-state · CGST+SGST"}
             </span>
           </div>
@@ -686,7 +686,7 @@ export default function AdminGstInvoicingPage() {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <FileText className="h-6 w-6 text-blue-600" /> GST Invoicing
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage GST invoices, summaries, and company settings</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage GST invoices, summaries, and company settings</p>
         </div>
       </div>
 
@@ -701,7 +701,7 @@ export default function AdminGstInvoicingPage() {
           <button
             key={t.id}
             onClick={() => setTab(t.id as Tab)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === t.id ? "border-blue-600 text-blue-700" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === t.id ? "border-blue-500 text-blue-400" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
             <t.icon className="h-4 w-4" /> {t.label}
           </button>
@@ -764,18 +764,18 @@ export default function AdminGstInvoicingPage() {
               </TableHeader>
               <TableBody>
                 {invLoading ? (
-                  <TableRow><TableCell colSpan={9} className="text-center py-10 text-gray-400">Loading…</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-10 text-muted-foreground">Loading…</TableCell></TableRow>
                 ) : invoices.length === 0 ? (
-                  <TableRow><TableCell colSpan={9} className="text-center py-10 text-gray-400">No invoices found. Click "Generate Missing" to create invoices for existing completed payments.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-10 text-muted-foreground">No invoices found. Click "Generate Missing" to create invoices for existing completed payments.</TableCell></TableRow>
                 ) : invoices.map(inv => {
                   const gst = parseFloat(inv.cgstAmount) + parseFloat(inv.sgstAmount) + parseFloat(inv.igstAmount);
                   return (
                     <TableRow key={inv.id}>
-                      <TableCell className="font-mono text-sm font-semibold text-blue-700">{inv.invoiceNumber}</TableCell>
+                      <TableCell className="font-mono text-sm font-semibold text-blue-400">{inv.invoiceNumber}</TableCell>
                       <TableCell className="text-sm">{new Date(inv.createdAt).toLocaleDateString("en-IN")}</TableCell>
                       <TableCell>
                         <div className="font-medium text-sm">{inv.customerName}</div>
-                        <div className="text-xs text-gray-500">{inv.customerEmail}</div>
+                        <div className="text-xs text-muted-foreground">{inv.customerEmail}</div>
                       </TableCell>
                       <TableCell className="text-sm max-w-[140px] truncate">{inv.courseTitle}</TableCell>
                       <TableCell className="text-right text-sm">{fmt(inv.baseAmount)}</TableCell>
@@ -791,7 +791,7 @@ export default function AdminGstInvoicingPage() {
                           <Button size="sm" variant="ghost" onClick={() => openInvoice(inv)} title="View invoice">
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => setDeleteTarget(inv)} title="Delete invoice">
+                          <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-400 hover:bg-red-500/10" onClick={() => setDeleteTarget(inv)} title="Delete invoice">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -803,7 +803,7 @@ export default function AdminGstInvoicingPage() {
             </Table>
           </div>
           {invoices.length > 0 && (
-            <p className="text-sm text-gray-500">{invoices.length} invoice(s) found</p>
+            <p className="text-sm text-muted-foreground">{invoices.length} invoice(s) found</p>
           )}
         </div>
       )}
@@ -838,9 +838,9 @@ export default function AdminGstInvoicingPage() {
               </TableHeader>
               <TableBody>
                 {monthlyLoading ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-10 text-gray-400">Loading…</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground">Loading…</TableCell></TableRow>
                 ) : monthly.map(m => (
-                  <TableRow key={m.month} className={m.count === 0 ? "text-gray-400" : ""}>
+                  <TableRow key={m.month} className={m.count === 0 ? "text-muted-foreground/50" : ""}>
                     <TableCell className="font-medium">{m.label}</TableCell>
                     <TableCell className="text-right">{m.count}</TableCell>
                     <TableCell className="text-right">{fmt(m.taxable)}</TableCell>
@@ -854,7 +854,7 @@ export default function AdminGstInvoicingPage() {
               </TableBody>
               {!monthlyLoading && monthly.length > 0 && (
                 <tfoot>
-                  <TableRow className="bg-gray-50 font-bold border-t-2">
+                  <TableRow className="bg-muted/40 font-bold border-t-2">
                     <TableCell>Total</TableCell>
                     <TableCell className="text-right">{monthlyTotals.count}</TableCell>
                     <TableCell className="text-right">{fmt(monthlyTotals.taxable)}</TableCell>
@@ -901,9 +901,9 @@ export default function AdminGstInvoicingPage() {
               </TableHeader>
               <TableBody>
                 {stateLoading ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-10 text-gray-400">Loading…</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground">Loading…</TableCell></TableRow>
                 ) : statewise.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-10 text-gray-400">No data for {stateYear}</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground">No data for {stateYear}</TableCell></TableRow>
                 ) : statewise.map(s => (
                   <TableRow key={s.state}>
                     <TableCell className="font-medium">{s.state}</TableCell>
@@ -919,7 +919,7 @@ export default function AdminGstInvoicingPage() {
               </TableBody>
               {!stateLoading && statewise.length > 0 && (
                 <tfoot>
-                  <TableRow className="bg-gray-50 font-bold border-t-2">
+                  <TableRow className="bg-muted/40 font-bold border-t-2">
                     <TableCell>Total</TableCell>
                     <TableCell className="text-right">{stateTotals.count}</TableCell>
                     <TableCell className="text-right">{fmt(stateTotals.taxable)}</TableCell>
@@ -940,10 +940,10 @@ export default function AdminGstInvoicingPage() {
       {tab === "settings" && (
         <div className="max-w-2xl space-y-6">
           {settingsLoading ? (
-            <div className="text-center py-10 text-gray-400">Loading settings…</div>
+            <div className="text-center py-10 text-muted-foreground">Loading settings…</div>
           ) : (
             <Fragment>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 text-sm text-blue-400">
                 These settings appear on all GST invoices. Make sure your GSTIN is correct before generating invoices.
               </div>
 
@@ -969,8 +969,8 @@ export default function AdminGstInvoicingPage() {
                     onChange={e => setSettings(s => ({ ...s, nextInvoiceSeq: Math.max(1, parseInt(e.target.value) || 1) }))}
                     placeholder="1"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Next invoice will be: <span className="font-mono font-semibold text-gray-800">{settings.invoicePrefix || "INV"}-{settings.nextInvoiceSeq}</span>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Next invoice will be: <span className="font-mono font-semibold text-foreground">{settings.invoicePrefix || "INV"}-{settings.nextInvoiceSeq}</span>
                   </p>
                 </div>
                 <div>
@@ -1053,14 +1053,14 @@ export default function AdminGstInvoicingPage() {
               </DialogTitle>
             </DialogHeader>
             <div className="py-2 space-y-3">
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-foreground">
                 Are you sure you want to permanently delete invoice{" "}
-                <span className="font-mono font-bold text-gray-900">{deleteTarget.invoiceNumber}</span>?
+                <span className="font-mono font-bold text-foreground">{deleteTarget.invoiceNumber}</span>?
               </p>
-              <div className="bg-gray-50 border rounded-lg p-3 text-sm space-y-1 text-gray-600">
-                <div><span className="font-medium">Customer:</span> {deleteTarget.customerName}</div>
-                <div><span className="font-medium">Course:</span> {deleteTarget.courseTitle}</div>
-                <div><span className="font-medium">Amount:</span> {fmt(deleteTarget.totalAmount)}</div>
+              <div className="bg-muted/50 border border-border rounded-lg p-3 text-sm space-y-1 text-muted-foreground">
+                <div><span className="font-medium text-foreground">Customer:</span> {deleteTarget.customerName}</div>
+                <div><span className="font-medium text-foreground">Course:</span> {deleteTarget.courseTitle}</div>
+                <div><span className="font-medium text-foreground">Amount:</span> {fmt(deleteTarget.totalAmount)}</div>
               </div>
               <p className="text-xs text-red-500">This action cannot be undone. The invoice record will be permanently removed.</p>
             </div>
