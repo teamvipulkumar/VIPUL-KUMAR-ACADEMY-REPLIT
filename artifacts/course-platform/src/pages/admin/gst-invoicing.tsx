@@ -352,7 +352,7 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
             <div style={{ marginBottom: 16, border: "1px solid #dbeafe", borderRadius: 8, overflow: "hidden" }}>
               {/* Card header */}
               <div style={{ background: "#1e3a5f", padding: "8px 16px", display: "flex", justifyContent: "space-between", fontSize: 10, fontWeight: 700, color: "#93c5fd", letterSpacing: 0.5, textTransform: "uppercase" }}>
-                <span>GST Breakup &amp; Total</span>
+                <span className="text-right">GST Breakup &amp; Total</span>
                 <span>HSN/SAC: 999294</span>
               </div>
               {/* Body: push content to right */}
