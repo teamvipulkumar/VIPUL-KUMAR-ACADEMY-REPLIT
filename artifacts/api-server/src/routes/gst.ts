@@ -321,7 +321,12 @@ router.get("/summary/state", requireAdmin, async (req, res): Promise<void> => {
     .map(s => ({ ...s, taxable: parseFloat(s.taxable.toFixed(2)), cgst: parseFloat(s.cgst.toFixed(2)), sgst: parseFloat(s.sgst.toFixed(2)), igst: parseFloat(s.igst.toFixed(2)), total: parseFloat(s.total.toFixed(2)) }))
     .sort((a, b) => b.total - a.total);
 
-  res.json({ fy, states: result });
+  // First & last invoice numbers for the selected period (by creation date)
+  const sorted = [...invoices].sort((a, b) => new Date(a.createdAt!).getTime() - new Date(b.createdAt!).getTime());
+  const firstInvoice = sorted.length > 0 ? sorted[0].invoiceNumber : null;
+  const lastInvoice  = sorted.length > 0 ? sorted[sorted.length - 1].invoiceNumber : null;
+
+  res.json({ fy, states: result, firstInvoice, lastInvoice });
 });
 
 export default router;

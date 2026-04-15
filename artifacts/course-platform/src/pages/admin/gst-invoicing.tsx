@@ -494,6 +494,7 @@ export default function AdminGstInvoicingPage() {
     return `${s}-${String(s + 1).slice(2)}`;
   });
   const [stateLoading, setStateLoading] = useState(false);
+  const [stateInvoiceRange, setStateInvoiceRange] = useState<{ first: string | null; last: string | null } | null>(null);
 
   // Settings state
   const [settings, setSettings] = useState<GstSettings>({
@@ -543,6 +544,7 @@ export default function AdminGstInvoicingPage() {
       const res = await fetch(`${API_BASE}/api/admin/gst/summary/state?${params}`, { credentials: "include" });
       const data = await res.json();
       setStatewise(data.states ?? []);
+      setStateInvoiceRange({ first: data.firstInvoice ?? null, last: data.lastInvoice ?? null });
     } catch {
       toast({ title: "Failed to load state-wise report", variant: "destructive" });
     } finally {
@@ -1134,23 +1136,47 @@ export default function AdminGstInvoicingPage() {
       {/* ── State-wise Report Tab ── */}
       {tab === "statewise" && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <Label className="font-medium">Financial Year</Label>
-            <Select value={stateYear} onValueChange={v => { setStateYear(v); setStateMonth(""); }}>
-              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-              <SelectContent>{fyYears.map(y => <SelectItem key={y.value} value={y.value}>{y.label}</SelectItem>)}</SelectContent>
-            </Select>
-            <Label className="font-medium">Month</Label>
-            <Select value={stateMonth || "all"} onValueChange={v => setStateMonth(v === "all" ? "" : v)}>
-              <SelectTrigger className="w-36"><SelectValue placeholder="All Months" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Months</SelectItem>
-                {fyMonths.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Button variant="outline" onClick={loadStatewise} disabled={stateLoading}>
-              <RefreshCw className={`h-4 w-4 mr-1 ${stateLoading ? "animate-spin" : ""}`} /> Refresh
-            </Button>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {/* Left: filters */}
+            <div className="flex flex-wrap items-center gap-3">
+              <Label className="font-medium">Financial Year</Label>
+              <Select value={stateYear} onValueChange={v => { setStateYear(v); setStateMonth(""); }}>
+                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                <SelectContent>{fyYears.map(y => <SelectItem key={y.value} value={y.value}>{y.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Label className="font-medium">Month</Label>
+              <Select value={stateMonth || "all"} onValueChange={v => setStateMonth(v === "all" ? "" : v)}>
+                <SelectTrigger className="w-36"><SelectValue placeholder="All Months" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Months</SelectItem>
+                  {fyMonths.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button variant="outline" onClick={loadStatewise} disabled={stateLoading}>
+                <RefreshCw className={`h-4 w-4 mr-1 ${stateLoading ? "animate-spin" : ""}`} /> Refresh
+              </Button>
+            </div>
+
+            {/* Right: invoice range card */}
+            <div className="border border-border rounded-lg px-4 py-2.5 bg-muted/30 text-sm min-w-[200px]">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Invoice Range</p>
+              {stateLoading ? (
+                <p className="text-muted-foreground text-xs">Loading…</p>
+              ) : stateInvoiceRange && stateInvoiceRange.first ? (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-muted-foreground text-xs">First</span>
+                    <span className="font-mono font-semibold text-foreground">{stateInvoiceRange.first}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-muted-foreground text-xs">Last</span>
+                    <span className="font-mono font-semibold text-foreground">{stateInvoiceRange.last}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-xs">No invoices in this period</p>
+              )}
+            </div>
           </div>
 
           <div className="rounded-md border overflow-hidden">
