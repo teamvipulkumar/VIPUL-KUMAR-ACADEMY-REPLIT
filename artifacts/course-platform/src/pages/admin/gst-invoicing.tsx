@@ -351,14 +351,17 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
             {/* GST Breakup + Grand Total — right-aligned card */}
             <div style={{ marginBottom: 16, border: "1px solid #dbeafe", borderRadius: 8, overflow: "hidden" }}>
               {/* Card header */}
-              <div style={{ background: "#1e3a5f", padding: "8px 16px", display: "flex", justifyContent: "space-between", fontSize: 10, fontWeight: 700, color: "#93c5fd", letterSpacing: 0.5, textTransform: "uppercase" }}>
-                <span className="text-right">GST Breakup &amp; Total</span>
+              <div style={{ background: "#1e3a5f", padding: "8px 16px", display: "flex", justifyContent: "flex-end", fontSize: 10, fontWeight: 700, color: "#93c5fd", letterSpacing: 0.5, textTransform: "uppercase" }}>
                 <span>HSN/SAC: 999294</span>
               </div>
               {/* Body: push content to right */}
               <div style={{ background: "#f8faff", display: "flex", justifyContent: "flex-end" }}>
                 {/* Right panel — GST breakdown + Grand Total stacked */}
                 <div style={{ width: "42%", borderLeft: "1px solid #dbeafe" }}>
+                  {/* Panel label */}
+                  <div style={{ background: "#e8f0fe", padding: "7px 16px", fontSize: 10, fontWeight: 700, color: "#1e3a5f", letterSpacing: 0.5, textTransform: "uppercase", borderBottom: "1px solid #dbeafe" }}>
+                    GST Breakup &amp; Total
+                  </div>
                   {/* GST rows */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderBottom: "1px solid #e5e7eb" }}>
                     <span style={{ fontSize: 11, color: "#6b7280" }}>Taxable Value</span>
