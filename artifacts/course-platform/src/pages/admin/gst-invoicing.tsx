@@ -669,8 +669,8 @@ export default function AdminGstInvoicingPage() {
 
     const monthLabel = invMonth ? months.find(m => m.value === invMonth)?.label ?? "" : "All Months";
     const filterLabel = `${monthLabel} ${invYear}`.trim();
-    const companyAddr = [settings.addressLine1, settings.addressLine2, settings.city, settings.state, settings.pincode]
-      .filter(Boolean).join(", ");
+    const companyInitials = (settings.companyName || "VK").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+    const companyAddrLine = [settings.addressLine1, settings.city, settings.state].filter(Boolean).join(", ");
 
     const pages = invoices.map((inv, idx) => {
       const base = parseFloat(inv.baseAmount);
@@ -683,14 +683,14 @@ export default function AdminGstInvoicingPage() {
       const date = new Date(inv.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
       const d = new Date(inv.createdAt);
       const yr = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
-      const fy = inv.financialYear || `${yr}-${String(yr + 1).slice(2)}`;
+      const fy = inv.financialYear ? `20${inv.financialYear.slice(0, 2)}-${inv.financialYear.slice(2)}` : `${yr}-${String(yr + 1).slice(2)}`;
       const stateStr = inv.customerState
         ? `${inv.customerState}${inv.customerStateCode ? ` (${inv.customerStateCode})` : ""}` : "—";
 
       const taxRows = inv.isInterstate
-        ? `<tr><td style="padding:9px 14px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280;">IGST @ ${inv.gstRate}%</td><td style="padding:9px 14px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">${fmtN(igst)}</td></tr>`
-        : `<tr><td style="padding:9px 14px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280;">CGST @ ${halfRate}%</td><td style="padding:9px 14px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">${fmtN(cgst)}</td></tr>
-           <tr><td style="padding:9px 14px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280;">SGST @ ${halfRate}%</td><td style="padding:9px 14px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">${fmtN(sgst)}</td></tr>`;
+        ? `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #e5e7eb;"><span style="font-size:11px;color:#6b7280;">IGST @ ${inv.gstRate}%</span><span style="font-size:12px;font-weight:600;color:#111827;">${fmtN(igst)}</span></div>`
+        : `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #e5e7eb;"><span style="font-size:11px;color:#6b7280;">CGST @ ${halfRate}%</span><span style="font-size:12px;font-weight:600;color:#111827;">${fmtN(cgst)}</span></div>
+           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #e5e7eb;"><span style="font-size:11px;color:#6b7280;">SGST @ ${halfRate}%</span><span style="font-size:12px;font-weight:600;color:#111827;">${fmtN(sgst)}</span></div>`;
 
       const detailRows = [
         ["Invoice No.", inv.invoiceNumber, true],
@@ -706,74 +706,111 @@ export default function AdminGstInvoicingPage() {
         </div>`
       ).join("");
 
-      return `<div style="page-break-after:${idx < invoices.length - 1 ? "always" : "auto"};font-family:Arial,sans-serif;max-width:800px;margin:0 auto ${idx < invoices.length - 1 ? "40px" : "0"};border:1px solid #ddd;border-radius:8px;overflow:hidden;">
-        <div style="background:#1e3a5f;color:white;padding:20px 30px;display:flex;justify-content:space-between;align-items:flex-start;">
-          <div>
-            <div style="font-size:20px;font-weight:800;">${settings.companyName || "Company"}</div>
-            <div style="font-size:11px;color:#93c5fd;margin-top:4px;">${companyAddr}</div>
-            ${settings.gstin ? `<div style="font-size:11px;color:#bfdbfe;margin-top:3px;">GSTIN: ${settings.gstin}</div>` : ""}
-            ${settings.email ? `<div style="font-size:11px;color:#93c5fd;margin-top:2px;">${settings.email}${settings.phone ? " | " + settings.phone : ""}</div>` : ""}
+      const gstTaxNote = inv.isInterstate
+        ? "4. IGST applicable (Inter-State supply)."
+        : "4. CGST + SGST applicable (Intra-State supply).";
+
+      return `<div style="page-break-after:${idx < invoices.length - 1 ? "always" : "auto"};font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a1a2e;max-width:800px;margin:0 auto ${idx < invoices.length - 1 ? "40px" : "0"};border:1px solid #ddd;">
+
+        <!-- Header -->
+        <div style="background:#1e3a5f;color:white;padding:22px 30px;display:flex;justify-content:space-between;align-items:center;">
+          <div style="display:flex;align-items:center;">
+            <div style="width:50px;height:50px;background:#3b82f6;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:white;flex-shrink:0;">${companyInitials}</div>
+            <div style="margin-left:14px;">
+              <div style="font-size:18px;font-weight:700;">${settings.companyName || "Your Company"}</div>
+              ${settings.gstin ? `<div style="font-size:11px;color:#93c5fd;margin-top:2px;">GSTIN: ${settings.gstin}</div>` : ""}
+              <div style="font-size:11px;color:#93c5fd;margin-top:1px;">${companyAddrLine}</div>
+              ${(settings.email || settings.phone) ? `<div style="font-size:11px;color:#93c5fd;margin-top:1px;">${[settings.email, settings.phone].filter(Boolean).join(" · ")}</div>` : ""}
+            </div>
           </div>
-          <div style="text-align:right;">
-            <div style="font-size:20px;font-weight:800;letter-spacing:2px;color:#bfdbfe;">TAX INVOICE</div>
+          <div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:12px 22px;text-align:right;">
+            <div style="font-size:22px;font-weight:800;letter-spacing:2px;color:#bfdbfe;">TAX INVOICE</div>
             <div style="font-size:11px;color:#93c5fd;margin-top:4px;">Original for Recipient</div>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:20px 30px 16px;">
-          <div style="background:#f8faff;border:1px solid #dbeafe;border-radius:6px;padding:14px;">
-            <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;font-weight:700;margin-bottom:8px;border-bottom:1px solid #e5e7eb;padding-bottom:5px;">Bill To</div>
-            <div style="font-size:14px;font-weight:700;color:#1e3a5f;margin-bottom:8px;">${inv.customerName || "—"}</div>
-            <div style="display:flex;margin-bottom:4px;"><span style="font-size:11px;color:#6b7280;width:70px;flex-shrink:0;">Email</span><span style="font-size:12px;color:#111827;font-weight:500;">${inv.customerEmail || "—"}</span></div>
-            ${inv.customerMobile ? `<div style="display:flex;margin-bottom:4px;"><span style="font-size:11px;color:#6b7280;width:70px;flex-shrink:0;">Mobile</span><span style="font-size:12px;color:#111827;font-weight:500;">${inv.customerMobile}</span></div>` : ""}
-            <div style="display:flex;margin-bottom:4px;"><span style="font-size:11px;color:#6b7280;width:70px;flex-shrink:0;">State</span><span style="font-size:12px;color:#111827;font-weight:500;">${stateStr}</span></div>
-            ${inv.customerGstin ? `<div style="display:flex;margin-bottom:4px;"><span style="font-size:11px;color:#6b7280;width:70px;flex-shrink:0;">GSTIN</span><span style="font-size:12px;color:#111827;font-weight:600;font-family:monospace;">${inv.customerGstin}</span></div>` : ""}
+
+        <!-- Bill To + Invoice Details -->
+        <div style="padding:24px 30px 0;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+            <div style="background:#f8faff;border:1px solid #dbeafe;border-radius:8px;padding:16px;">
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;font-weight:700;margin-bottom:10px;border-bottom:1px solid #e5e7eb;padding-bottom:6px;">Bill To</div>
+              <div style="font-size:15px;font-weight:700;color:#1e3a5f;margin-bottom:10px;">${inv.customerName || "—"}</div>
+              <div style="display:flex;margin-bottom:5px;"><span style="font-size:11px;color:#6b7280;width:80px;flex-shrink:0;">Email</span><span style="font-size:12px;color:#111827;font-weight:500;">${inv.customerEmail || "—"}</span></div>
+              ${inv.customerMobile ? `<div style="display:flex;margin-bottom:5px;"><span style="font-size:11px;color:#6b7280;width:80px;flex-shrink:0;">Mobile</span><span style="font-size:12px;color:#111827;font-weight:500;">${inv.customerMobile}</span></div>` : ""}
+              <div style="display:flex;margin-bottom:5px;"><span style="font-size:11px;color:#6b7280;width:80px;flex-shrink:0;">State</span><span style="font-size:12px;color:#111827;font-weight:500;">${stateStr}</span></div>
+              ${inv.customerGstin ? `<div style="display:flex;margin-bottom:5px;"><span style="font-size:11px;color:#6b7280;width:80px;flex-shrink:0;">GSTIN</span><span style="font-size:12px;color:#111827;font-weight:600;font-family:monospace;">${inv.customerGstin}</span></div>` : ""}
+            </div>
+            <div style="background:#f8faff;border:1px solid #dbeafe;border-radius:8px;padding:16px;">
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;font-weight:700;margin-bottom:10px;border-bottom:1px solid #e5e7eb;padding-bottom:6px;">Invoice Details</div>
+              ${detailRows}
+            </div>
           </div>
-          <div style="background:#f8faff;border:1px solid #dbeafe;border-radius:6px;padding:14px;">
-            <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;font-weight:700;margin-bottom:8px;border-bottom:1px solid #e5e7eb;padding-bottom:5px;">Invoice Details</div>
-            ${detailRows}
-          </div>
-        </div>
-        <div style="padding:0 30px 16px;">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#1e3a5f;margin-bottom:8px;">Items</div>
-          <table style="width:100%;border-collapse:collapse;font-size:12px;">
-            <thead><tr>
-              <th style="background:#1e3a5f;color:white;padding:9px 12px;text-align:left;font-size:11px;">#</th>
-              <th style="background:#1e3a5f;color:white;padding:9px 12px;text-align:left;font-size:11px;">Description</th>
-              <th style="background:#1e3a5f;color:white;padding:9px 12px;text-align:left;font-size:11px;">HSN/SAC</th>
-              <th style="background:#1e3a5f;color:white;padding:9px 12px;text-align:right;font-size:11px;">Qty</th>
-              <th style="background:#1e3a5f;color:white;padding:9px 12px;text-align:right;font-size:11px;">Rate (Excl. Tax)</th>
-              <th style="background:#1e3a5f;color:white;padding:9px 12px;text-align:right;font-size:11px;">Taxable Amt</th>
-            </tr></thead>
-            <tbody><tr>
-              <td style="padding:11px 12px;border-bottom:1px solid #e5e7eb;">1</td>
-              <td style="padding:11px 12px;border-bottom:1px solid #e5e7eb;">
-                <div style="font-weight:600;color:#1a1a2e;">${inv.courseTitle}</div>
-                <div style="font-size:10px;color:#6b7280;margin-top:2px;">Online Educational Course — Digital Service</div>
-              </td>
-              <td style="padding:11px 12px;border-bottom:1px solid #e5e7eb;font-family:monospace;">999294</td>
-              <td style="padding:11px 12px;border-bottom:1px solid #e5e7eb;text-align:right;">1</td>
-              <td style="padding:11px 12px;border-bottom:1px solid #e5e7eb;text-align:right;">${fmtN(base)}</td>
-              <td style="padding:11px 12px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">${fmtN(base)}</td>
-            </tr></tbody>
-          </table>
-        </div>
-        <div style="padding:0 30px 16px;display:flex;justify-content:flex-end;">
-          <div style="width:44%;border:1px solid #dbeafe;border-radius:6px;overflow:hidden;">
-            <div style="background:#e8f0fe;padding:7px 14px;font-size:10px;font-weight:700;color:#1e3a5f;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid #dbeafe;">GST Breakup &amp; Total</div>
-            <table style="width:100%;border-collapse:collapse;">
-              <tbody>
-                <tr><td style="padding:9px 14px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280;">Taxable Value</td><td style="padding:9px 14px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">${fmtN(base)}</td></tr>
-                ${taxRows}
-                <tr style="background:#eff6ff;"><td style="padding:9px 14px;border-bottom:2px solid #1e3a5f;font-size:11px;font-weight:700;color:#1e3a5f;">Total Tax</td><td style="padding:9px 14px;border-bottom:2px solid #1e3a5f;text-align:right;font-weight:800;color:#1e3a5f;">${fmtN(totalGst)}</td></tr>
-                <tr style="background:#1e3a5f;"><td style="padding:11px 14px;font-size:11px;font-weight:700;color:#93c5fd;text-transform:uppercase;letter-spacing:0.5px;">Grand Total (INR)</td><td style="padding:11px 14px;text-align:right;font-size:16px;font-weight:900;color:#fff;">${fmtN(total)}</td></tr>
-              </tbody>
+
+          <!-- Items Table -->
+          <div style="margin-bottom:16px;">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#1e3a5f;margin-bottom:8px;">Items</div>
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+              <thead><tr>
+                <th style="background:#1e3a5f;color:white;padding:10px 12px;text-align:left;font-weight:600;font-size:11px;letter-spacing:0.3px;">#</th>
+                <th style="background:#1e3a5f;color:white;padding:10px 12px;text-align:left;font-weight:600;font-size:11px;letter-spacing:0.3px;">Description</th>
+                <th style="background:#1e3a5f;color:white;padding:10px 12px;text-align:left;font-weight:600;font-size:11px;letter-spacing:0.3px;">HSN/SAC</th>
+                <th style="background:#1e3a5f;color:white;padding:10px 12px;text-align:right;font-weight:600;font-size:11px;letter-spacing:0.3px;">Qty</th>
+                <th style="background:#1e3a5f;color:white;padding:10px 12px;text-align:right;font-weight:600;font-size:11px;letter-spacing:0.3px;">Rate (Excl. Tax)</th>
+                <th style="background:#1e3a5f;color:white;padding:10px 12px;text-align:right;font-weight:600;font-size:11px;letter-spacing:0.3px;">Taxable Amt</th>
+              </tr></thead>
+              <tbody><tr>
+                <td style="padding:12px;border-bottom:1px solid #e5e7eb;">1</td>
+                <td style="padding:12px;border-bottom:1px solid #e5e7eb;">
+                  <div style="font-weight:600;color:#1a1a2e;">${inv.courseTitle}</div>
+                  <div style="font-size:10px;color:#6b7280;margin-top:2px;">Online Educational Course — Digital Service</div>
+                </td>
+                <td style="padding:12px;border-bottom:1px solid #e5e7eb;font-family:monospace;">999294</td>
+                <td style="padding:12px;border-bottom:1px solid #e5e7eb;text-align:right;">1</td>
+                <td style="padding:12px;border-bottom:1px solid #e5e7eb;text-align:right;">${fmtN(base)}</td>
+                <td style="padding:12px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">${fmtN(base)}</td>
+              </tr></tbody>
             </table>
           </div>
+
+          <!-- GST Breakup + Grand Total -->
+          <div style="margin-bottom:16px;border:1px solid #dbeafe;border-radius:8px;overflow:hidden;">
+            <div style="background:#f8faff;display:flex;justify-content:flex-end;">
+              <div style="width:42%;border-left:1px solid #dbeafe;">
+                <div style="background:#e8f0fe;padding:7px 16px;font-size:10px;font-weight:700;color:#1e3a5f;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid #dbeafe;">GST Breakup &amp; Total</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #e5e7eb;"><span style="font-size:11px;color:#6b7280;">Taxable Value</span><span style="font-size:12px;font-weight:600;color:#111827;">${fmtN(base)}</span></div>
+                ${taxRows}
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:2px solid #1e3a5f;background:#eff6ff;"><span style="font-size:11px;font-weight:700;color:#1e3a5f;">Total Tax</span><span style="font-size:12px;font-weight:800;color:#1e3a5f;">${fmtN(totalGst)}</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#1e3a5f;"><span style="font-size:11px;font-weight:700;color:#93c5fd;text-transform:uppercase;letter-spacing:0.5px;">Grand Total (INR)</span><span style="font-size:16px;font-weight:900;color:#fff;">${fmtN(total)}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Amount in Words -->
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:10px 14px;margin-bottom:20px;font-size:11px;color:#1e40af;">
+            <span style="font-weight:700;">Amount in Words: </span>${amountInWords(total)}
+          </div>
+
+          <!-- Terms & Notes + Signature -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+            <div style="font-size:11px;color:#6b7280;line-height:1.7;">
+              <div style="font-weight:700;color:#374151;margin-bottom:6px;">Terms &amp; Notes</div>
+              <div>1. This is a computer-generated invoice and does not require a physical signature.</div>
+              <div>2. SAC Code: 999294 — Online Educational Services.</div>
+              <div>3. All amounts are in Indian Rupees (INR).</div>
+              <div>${gstTaxNote}</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="border:1px dashed #9ca3af;border-radius:4px;height:56px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#9ca3af;margin-bottom:8px;">Seal / Stamp</div>
+              <div style="border-top:1px solid #9ca3af;padding-top:6px;font-size:11px;color:#6b7280;">
+                Authorised Signatory<br/>
+                <span style="font-weight:700;color:#1e3a5f;">${settings.companyName || ""}</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <div style="margin:0 30px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:9px 13px;font-size:11px;color:#1e40af;">
-          <span style="font-weight:700;">Amount in Words: </span>${amountInWords(total)}
-        </div>
-        <div style="background:#f3f4f6;border-top:2px solid #1e3a5f;padding:7px 30px;display:flex;justify-content:space-between;font-size:10px;color:#6b7280;">
+
+        <!-- Page Footer -->
+        <div style="background:#f3f4f6;border-top:2px solid #1e3a5f;padding:8px 30px;display:flex;justify-content:space-between;font-size:10px;color:#6b7280;margin-top:20px;">
           <span>${settings.companyName}${settings.gstin ? " | GSTIN: " + settings.gstin : ""}</span>
           <span>Invoice: ${inv.invoiceNumber} | FY ${fy}</span>
           <span>Generated on ${new Date().toLocaleDateString("en-IN")}</span>
@@ -783,7 +820,14 @@ export default function AdminGstInvoicingPage() {
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
       <title>GST Invoices — ${filterLabel}</title>
-      <style>*{box-sizing:border-box;}body{margin:30px;background:#f3f4f6;font-family:Arial,sans-serif;}@media print{body{margin:0;background:white;}}</style>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #f3f4f6; font-family: 'Segoe UI', Arial, sans-serif; padding: 30px; }
+        @media print {
+          body { background: white; padding: 0; }
+          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+      </style>
     </head><body>${pages}</body></html>`;
 
     const win = window.open("", "_blank");
