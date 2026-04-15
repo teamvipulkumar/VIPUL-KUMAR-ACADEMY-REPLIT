@@ -13,7 +13,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { FileText, Printer, Settings2, BarChart3, MapPin, Search, RefreshCw, Download, Eye, Trash2, Upload } from "lucide-react";
+import { FileText, Printer, Settings2, BarChart3, MapPin, Search, RefreshCw, Download, Eye, Trash2, Upload, Copy } from "lucide-react";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -1159,14 +1159,23 @@ export default function AdminGstInvoicingPage() {
 
             {/* Right: invoice range — two pill cards matching button height */}
             <div className="flex items-center gap-2">
-              {(["first", "last"] as const).map(key => (
-                <div key={key} className="flex items-center gap-2 h-9 border border-border rounded-md px-3 bg-muted/30">
-                  <span className="text-xs text-muted-foreground capitalize">{key}</span>
-                  <span className="font-mono text-xs font-semibold text-foreground">
-                    {stateLoading ? "…" : stateInvoiceRange?.[key] ?? "—"}
-                  </span>
-                </div>
-              ))}
+              {(["first", "last"] as const).map(key => {
+                const val = stateInvoiceRange?.[key] ?? null;
+                return (
+                  <div
+                    key={key}
+                    title={val ? `Copy ${key} invoice number` : undefined}
+                    onClick={() => val && navigator.clipboard.writeText(val).then(() => toast({ title: `${key === "first" ? "First" : "Last"} invoice copied!` }))}
+                    className={`flex items-center gap-2 h-9 border border-border rounded-md px-3 bg-muted/30 select-none transition-colors ${val && !stateLoading ? "cursor-pointer hover:bg-muted/60" : "cursor-default"}`}
+                  >
+                    <span className="text-xs text-muted-foreground capitalize">{key}</span>
+                    <span className="font-mono text-xs font-semibold text-foreground">
+                      {stateLoading ? "…" : val ?? "—"}
+                    </span>
+                    {!stateLoading && val && <Copy className="h-3 w-3 text-muted-foreground" />}
+                  </div>
+                );
+              })}
             </div>
           </div>
 
