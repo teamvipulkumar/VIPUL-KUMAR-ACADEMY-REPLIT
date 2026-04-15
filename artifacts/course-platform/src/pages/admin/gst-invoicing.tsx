@@ -348,59 +348,51 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
               </table>
             </div>
 
-            {/* GST Breakup */}
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: "#1e3a5f", marginBottom: 8 }}>GST Breakup</div>
-              <div style={{ background: "#f8faff", border: "1px solid #dbeafe", borderRadius: 8, overflow: "hidden" }}>
-                {/* Header */}
-                <div style={{ background: "#1e3a5f", padding: "8px 16px", display: "flex", justifyContent: "space-between", fontSize: 10, fontWeight: 700, color: "#93c5fd", letterSpacing: 0.5, textTransform: "uppercase" }}>
-                  <span>Tax Component</span>
-                  <span>HSN/SAC: 999294</span>
-                </div>
-                {/* Rows */}
-                <div style={{ padding: "4px 0" }}>
-                  {/* Taxable Value */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 16px", borderBottom: "1px solid #e5e7eb" }}>
-                    <span style={{ fontSize: 12, color: "#374151" }}>Taxable Value</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{fmt(base)}</span>
+            {/* GST Breakup + Grand Total — unified card */}
+            <div style={{ marginBottom: 16, border: "1px solid #dbeafe", borderRadius: 8, overflow: "hidden" }}>
+              {/* Card header */}
+              <div style={{ background: "#1e3a5f", padding: "8px 16px", display: "flex", justifyContent: "space-between", fontSize: 10, fontWeight: 700, color: "#93c5fd", letterSpacing: 0.5, textTransform: "uppercase" }}>
+                <span>GST Breakup &amp; Total</span>
+                <span>HSN/SAC: 999294</span>
+              </div>
+              {/* 1 : 3 grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 3fr" }}>
+                {/* Left — breakdown (1 part) */}
+                <div style={{ background: "#f8faff", borderRight: "1px solid #dbeafe" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 16px", borderBottom: "1px solid #e5e7eb" }}>
+                    <span style={{ fontSize: 11, color: "#6b7280" }}>Taxable Value</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#111827" }}>{fmt(base)}</span>
                   </div>
-                  {/* CGST+SGST or IGST */}
                   {!invoice.isInterstate ? (
                     <Fragment>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 16px", borderBottom: "1px solid #e5e7eb" }}>
-                        <span style={{ fontSize: 12, color: "#374151" }}>CGST <span style={{ fontSize: 11, color: "#6b7280" }}>@ {halfRate}%</span></span>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{fmt(cgst)}</span>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 16px", borderBottom: "1px solid #e5e7eb" }}>
+                        <span style={{ fontSize: 11, color: "#6b7280" }}>CGST @ {halfRate}%</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#111827" }}>{fmt(cgst)}</span>
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 16px", borderBottom: "1px solid #e5e7eb" }}>
-                        <span style={{ fontSize: 12, color: "#374151" }}>SGST <span style={{ fontSize: 11, color: "#6b7280" }}>@ {halfRate}%</span></span>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{fmt(sgst)}</span>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 16px", borderBottom: "1px solid #e5e7eb" }}>
+                        <span style={{ fontSize: 11, color: "#6b7280" }}>SGST @ {halfRate}%</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#111827" }}>{fmt(sgst)}</span>
                       </div>
                     </Fragment>
                   ) : (
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 16px", borderBottom: "1px solid #e5e7eb" }}>
-                      <span style={{ fontSize: 12, color: "#374151" }}>IGST <span style={{ fontSize: 11, color: "#6b7280" }}>@ {invoice.gstRate}%</span></span>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{fmt(igst)}</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 16px", borderBottom: "1px solid #e5e7eb" }}>
+                      <span style={{ fontSize: 11, color: "#6b7280" }}>IGST @ {invoice.gstRate}%</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "#111827" }}>{fmt(igst)}</span>
                     </div>
                   )}
-                  {/* Total Tax */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", background: "#eff6ff" }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#1e3a5f" }}>Total Tax</span>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: "#1e3a5f" }}>{fmt(totalGst)}</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 16px", background: "#eff6ff" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#1e3a5f" }}>Total Tax</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: "#1e3a5f" }}>{fmt(totalGst)}</span>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Grand Total */}
-            <div style={{ background: "#1e3a5f", color: "white", borderRadius: 8, padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <div>
-                <div style={{ fontSize: 12, color: "#93c5fd", marginBottom: 2 }}>Taxable Value</div>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{fmt(base)}</div>
-                <div style={{ fontSize: 11, color: "#93c5fd", marginTop: 4 }}>Total GST ({invoice.gstRate}%): {fmt(totalGst)}</div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 13, color: "#93c5fd", fontWeight: 600 }}>GRAND TOTAL (INR)</div>
-                <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: 1 }}>{fmt(total)}</div>
+                {/* Right — Grand Total (3 parts) */}
+                <div style={{ background: "#1e3a5f", display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "center", padding: "20px 28px", gap: 6 }}>
+                  <div style={{ fontSize: 11, color: "#93c5fd", fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase" }}>Grand Total (INR)</div>
+                  <div style={{ fontSize: 36, fontWeight: 900, color: "#ffffff", letterSpacing: 1, lineHeight: 1.1 }}>{fmt(total)}</div>
+                  <div style={{ fontSize: 11, color: "#93c5fd", marginTop: 4 }}>
+                    Taxable {fmt(base)} &nbsp;+&nbsp; GST ({invoice.gstRate}%) {fmt(totalGst)}
+                  </div>
+                </div>
               </div>
             </div>
 
