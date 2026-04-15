@@ -176,7 +176,24 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
 
   useEffect(() => {
     if (!autoPrint) return;
-    const t = setTimeout(() => { handlePrint(); }, 600);
+    const t = setTimeout(async () => {
+      if (!printRef.current) return;
+      try {
+        const mod = await import('html2pdf.js');
+        const html2pdfLib = (mod as any).default ?? mod;
+        await html2pdfLib()
+          .from(printRef.current)
+          .set({
+            margin: 0,
+            filename: `${invoice.invoiceNumber}.pdf`,
+            html2canvas: { scale: 2, useCORS: true, logging: false },
+            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+          })
+          .save();
+      } finally {
+        onClose();
+      }
+    }, 500);
     return () => clearTimeout(t);
   }, [autoPrint]);
 
@@ -243,24 +260,8 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
     setTimeout(() => win.print(), 500);
   }
 
-  return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
-        <div className="flex items-center justify-between px-6 py-4 border-b">
-          <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-blue-400" />
-            <span className="font-bold text-foreground">{invoice.invoiceNumber}</span>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${invoice.isInterstate ? "bg-blue-500/20 text-blue-400" : "bg-green-500/20 text-green-400"}`}>
-              {invoice.isInterstate ? "Interstate · IGST" : "Intra-state · CGST+SGST"}
-            </span>
-          </div>
-          <Button onClick={handlePrint} className="bg-blue-700 hover:bg-blue-800 text-white gap-2">
-            <Printer className="h-4 w-4" /> Print / Save PDF
-          </Button>
-        </div>
-
-        {/* Invoice preview */}
-        <div ref={printRef} style={{ fontFamily: "'Segoe UI', Arial, sans-serif", background: "#fff", color: "#1a1a2e" }}>
+  const invoiceBodyEl = (
+    <div ref={printRef} style={{ fontFamily: "'Segoe UI', Arial, sans-serif", background: "#fff", color: "#1a1a2e" }}>
           {/* Header */}
           <div style={{ background: "#1e3a5f", color: "white", padding: "22px 30px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ display: "flex", alignItems: "center" }}>
@@ -466,7 +467,33 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
             <span>Invoice: {invoice.invoiceNumber} | FY {fy}</span>
             <span>Generated on {new Date().toLocaleDateString("en-IN")}</span>
           </div>
+    </div>
+  );
+
+  if (autoPrint) {
+    return (
+      <div aria-hidden style={{ position: "fixed", top: -9999, left: -9999, width: "210mm", zIndex: -1 }}>
+        {invoiceBodyEl}
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-blue-400" />
+            <span className="font-bold text-foreground">{invoice.invoiceNumber}</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${invoice.isInterstate ? "bg-blue-500/20 text-blue-400" : "bg-green-500/20 text-green-400"}`}>
+              {invoice.isInterstate ? "Interstate · IGST" : "Intra-state · CGST+SGST"}
+            </span>
+          </div>
+          <Button onClick={handlePrint} className="bg-blue-700 hover:bg-blue-800 text-white gap-2">
+            <Printer className="h-4 w-4" /> Print / Save PDF
+          </Button>
         </div>
+        {invoiceBodyEl}
       </DialogContent>
     </Dialog>
   );
