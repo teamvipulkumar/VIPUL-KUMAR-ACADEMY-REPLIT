@@ -150,10 +150,11 @@ function amountInWords(amount: number): string {
   return result + " Only";
 }
 
-function InvoicePrintModal({ invoice, settings, onClose }: {
+function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
   invoice: GstInvoice;
   settings: GstSettings | null;
   onClose: () => void;
+  autoPrint?: boolean;
 }) {
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -172,6 +173,12 @@ function InvoicePrintModal({ invoice, settings, onClose }: {
   const placeOfSupply = invoice.customerState
     ? `${invoice.customerState}${invoice.customerStateCode ? ` (${invoice.customerStateCode})` : ""}`
     : "—";
+
+  useEffect(() => {
+    if (!autoPrint) return;
+    const t = setTimeout(() => { handlePrint(); }, 600);
+    return () => clearTimeout(t);
+  }, [autoPrint]);
 
   function handlePrint() {
     const content = printRef.current?.innerHTML ?? "";
@@ -480,6 +487,9 @@ export default function AdminGstInvoicingPage() {
   const [generating, setGenerating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<GstInvoice | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [downloadingInvoice, setDownloadingInvoice] = useState<GstInvoice | null>(null);
+  const [downloadSettings, setDownloadSettings] = useState<GstSettings | null>(null);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
   // Monthly summary state
   const [monthly, setMonthly] = useState<MonthlyData[]>([]);
@@ -617,6 +627,21 @@ export default function AdminGstInvoicingPage() {
     } catch {
       setInvoiceSettings(null);
       setSelectedInvoice(inv);
+    }
+  }
+
+  async function downloadInvoicePdf(inv: GstInvoice) {
+    setDownloadingId(inv.id);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/gst/invoices/${inv.id}`, { credentials: "include" });
+      const data = await res.json();
+      setDownloadSettings(data.settings ?? settings);
+      setDownloadingInvoice(data.invoice ?? inv);
+    } catch {
+      setDownloadSettings(settings);
+      setDownloadingInvoice(inv);
+    } finally {
+      setDownloadingId(null);
     }
   }
 
@@ -792,6 +817,18 @@ export default function AdminGstInvoicingPage() {
                         <div className="flex items-center gap-1">
                           <Button size="sm" variant="ghost" onClick={() => openInvoice(inv)} title="View invoice">
                             <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                            onClick={() => downloadInvoicePdf(inv)}
+                            disabled={downloadingId === inv.id}
+                            title="Download PDF"
+                          >
+                            {downloadingId === inv.id
+                              ? <RefreshCw className="h-4 w-4 animate-spin" />
+                              : <Download className="h-4 w-4" />}
                           </Button>
                           <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-400 hover:bg-red-500/10" onClick={() => setDeleteTarget(inv)} title="Delete invoice">
                             <Trash2 className="h-4 w-4" />
@@ -1036,12 +1073,22 @@ export default function AdminGstInvoicingPage() {
         </div>
       )}
 
-      {/* Invoice print modal */}
+      {/* Invoice print modal (view) */}
       {selectedInvoice && (
         <InvoicePrintModal
           invoice={selectedInvoice}
           settings={invoiceSettings ?? settings}
           onClose={() => setSelectedInvoice(null)}
+        />
+      )}
+
+      {/* Invoice print modal (auto-download PDF) */}
+      {downloadingInvoice && (
+        <InvoicePrintModal
+          invoice={downloadingInvoice}
+          settings={downloadSettings ?? settings}
+          onClose={() => { setDownloadingInvoice(null); setDownloadSettings(null); }}
+          autoPrint
         />
       )}
 
