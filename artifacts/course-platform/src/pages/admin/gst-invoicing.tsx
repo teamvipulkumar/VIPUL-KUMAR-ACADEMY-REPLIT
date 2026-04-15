@@ -725,7 +725,7 @@ export default function AdminGstInvoicingPage() {
           </div>
           <div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:12px 22px;text-align:right;">
             <div style="font-size:22px;font-weight:800;letter-spacing:2px;color:#bfdbfe;">TAX INVOICE</div>
-            <div style="font-size:11px;color:#93c5fd;margin-top:4px;">Original for Recipient</div>
+            <div style="font-size:11px;color:#93c5fd;margin-top:4px;text-align:center;">Original for Recipient</div>
           </div>
         </div>
 
