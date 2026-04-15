@@ -309,9 +309,9 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
                   ["Invoice No.", invoice.invoiceNumber],
                   ["Invoice Date", formattedDate],
                   ["Financial Year", fy],
-                  ["Place of Supply", placeOfSupply],
                   ["Payment Mode", (invoice.gateway || "—").toUpperCase()],
                   ["Supply Type", invoice.isInterstate ? "Inter-State" : "Intra-State"],
+                  ["Place of Supply", placeOfSupply],
                 ].map(([label, value]) => (
                   <div key={label} style={{ display: "flex", marginBottom: 5 }}>
                     <span style={{ fontSize: 11, color: "#6b7280", width: 110, flexShrink: 0 }}>{label}</span>
