@@ -350,10 +350,6 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
 
             {/* GST Breakup + Grand Total — right-aligned card */}
             <div style={{ marginBottom: 16, border: "1px solid #dbeafe", borderRadius: 8, overflow: "hidden" }}>
-              {/* Card header */}
-              <div style={{ background: "#1e3a5f", padding: "8px 16px", display: "flex", justifyContent: "flex-end", fontSize: 10, fontWeight: 700, color: "#93c5fd", letterSpacing: 0.5, textTransform: "uppercase" }}>
-                <span>HSN/SAC: 999294</span>
-              </div>
               {/* Body: push content to right */}
               <div style={{ background: "#f8faff", display: "flex", justifyContent: "flex-end" }}>
                 {/* Right panel — GST breakdown + Grand Total stacked */}
