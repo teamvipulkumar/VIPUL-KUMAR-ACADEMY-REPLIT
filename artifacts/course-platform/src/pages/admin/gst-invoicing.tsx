@@ -13,7 +13,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { FileText, Printer, Settings2, BarChart3, MapPin, Search, RefreshCw, Download, Eye } from "lucide-react";
+import { FileText, Printer, Settings2, BarChart3, MapPin, Search, RefreshCw, Download, Eye, Trash2 } from "lucide-react";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -478,6 +478,8 @@ export default function AdminGstInvoicingPage() {
   const [selectedInvoice, setSelectedInvoice] = useState<GstInvoice | null>(null);
   const [invoiceSettings, setInvoiceSettings] = useState<GstSettings | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<GstInvoice | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Monthly summary state
   const [monthly, setMonthly] = useState<MonthlyData[]>([]);
@@ -585,6 +587,24 @@ export default function AdminGstInvoicingPage() {
       toast({ title: "Failed to generate invoices", variant: "destructive" });
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function confirmDeleteInvoice() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/gst/invoices/${deleteTarget.id}`, {
+        method: "DELETE", credentials: "include",
+      });
+      if (!res.ok) throw new Error();
+      toast({ title: `Invoice ${deleteTarget.invoiceNumber} deleted` });
+      setDeleteTarget(null);
+      loadInvoices();
+    } catch {
+      toast({ title: "Failed to delete invoice", variant: "destructive" });
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -767,9 +787,14 @@ export default function AdminGstInvoicingPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Button size="sm" variant="ghost" onClick={() => openInvoice(inv)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => openInvoice(inv)} title="View invoice">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => setDeleteTarget(inv)} title="Delete invoice">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -1016,6 +1041,37 @@ export default function AdminGstInvoicingPage() {
           settings={invoiceSettings ?? settings}
           onClose={() => setSelectedInvoice(null)}
         />
+      )}
+
+      {/* Delete confirmation dialog */}
+      {deleteTarget && (
+        <Dialog open onOpenChange={() => setDeleteTarget(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-600">
+                <Trash2 className="h-5 w-5" /> Delete Invoice
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-2 space-y-3">
+              <p className="text-sm text-gray-700">
+                Are you sure you want to permanently delete invoice{" "}
+                <span className="font-mono font-bold text-gray-900">{deleteTarget.invoiceNumber}</span>?
+              </p>
+              <div className="bg-gray-50 border rounded-lg p-3 text-sm space-y-1 text-gray-600">
+                <div><span className="font-medium">Customer:</span> {deleteTarget.customerName}</div>
+                <div><span className="font-medium">Course:</span> {deleteTarget.courseTitle}</div>
+                <div><span className="font-medium">Amount:</span> {fmt(deleteTarget.totalAmount)}</div>
+              </div>
+              <p className="text-xs text-red-500">This action cannot be undone. The invoice record will be permanently removed.</p>
+            </div>
+            <div className="flex justify-end gap-3 pt-1">
+              <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
+              <Button variant="destructive" onClick={confirmDeleteInvoice} disabled={deleting}>
+                {deleting ? "Deleting…" : "Delete Invoice"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

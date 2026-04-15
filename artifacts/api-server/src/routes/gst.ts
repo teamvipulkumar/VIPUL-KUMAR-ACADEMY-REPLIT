@@ -199,6 +199,16 @@ router.get("/invoices/:id", requireAdmin, async (req, res): Promise<void> => {
   res.json({ invoice, settings: settings ?? null });
 });
 
+// ── Delete invoice ────────────────────────────────────────────────────────────
+router.delete("/invoices/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid invoice id" }); return; }
+  const [existing] = await db.select({ id: gstInvoicesTable.id }).from(gstInvoicesTable).where(eq(gstInvoicesTable.id, id)).limit(1);
+  if (!existing) { res.status(404).json({ error: "Invoice not found" }); return; }
+  await db.delete(gstInvoicesTable).where(eq(gstInvoicesTable.id, id));
+  res.json({ success: true });
+});
+
 // ── Manual generate for a payment ────────────────────────────────────────────
 router.post("/invoices/generate/:paymentId", requireAdmin, async (req, res): Promise<void> => {
   const paymentId = parseInt(req.params.paymentId);
