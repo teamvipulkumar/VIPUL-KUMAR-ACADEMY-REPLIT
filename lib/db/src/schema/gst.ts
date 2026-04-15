@@ -16,6 +16,7 @@ export const gstCompanySettingsTable = pgTable("gst_company_settings", {
   email: text("email").notNull().default(""),
   phone: text("phone").notNull().default(""),
   logoUrl: text("logo_url"),
+  stampUrl: text("stamp_url"),
   gstRate: integer("gst_rate").notNull().default(18),
   invoicePrefix: text("invoice_prefix").notNull().default("INV"),
   nextInvoiceSeq: integer("next_invoice_seq").notNull().default(1),

@@ -13,7 +13,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { FileText, Printer, Settings2, BarChart3, MapPin, Search, RefreshCw, Download, Eye, Trash2 } from "lucide-react";
+import { FileText, Printer, Settings2, BarChart3, MapPin, Search, RefreshCw, Download, Eye, Trash2, Upload } from "lucide-react";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -72,6 +72,7 @@ interface GstSettings {
   email: string;
   phone: string;
   logoUrl: string | null;
+  stampUrl: string | null;
   gstRate: number;
   invoicePrefix: string;
   nextInvoiceSeq: number;
@@ -410,7 +411,10 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
                   : <div>4. CGST + SGST applicable (Intra-State supply).</div>}
               </div>
               <div style={{ textAlign: "right" }}>
-                <div style={{ border: "1px dashed #9ca3af", borderRadius: 4, height: 56, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#9ca3af", marginBottom: 8 }}>Seal / Stamp</div>
+                {settings?.stampUrl
+                  ? <img src={settings.stampUrl} alt="Company Stamp" style={{ height: 80, maxWidth: "100%", objectFit: "contain", marginBottom: 8, display: "inline-block" }} />
+                  : <div style={{ border: "1px dashed #9ca3af", borderRadius: 4, height: 56, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#9ca3af", marginBottom: 8 }}>Seal / Stamp</div>
+                }
                 <div style={{ borderTop: "1px solid #9ca3af", paddingTop: 6, fontSize: 11, color: "#6b7280" }}>
                   Authorised Signatory<br />
                   <span style={{ fontWeight: 700, color: "#1e3a5f" }}>{settings?.companyName || ""}</span>
@@ -490,10 +494,11 @@ export default function AdminGstInvoicingPage() {
   const [settings, setSettings] = useState<GstSettings>({
     companyName: "", gstin: "", addressLine1: "", addressLine2: "",
     city: "", state: "", stateCode: "", pincode: "",
-    email: "", phone: "", logoUrl: null, gstRate: 18, invoicePrefix: "INV", nextInvoiceSeq: 1,
+    email: "", phone: "", logoUrl: null, stampUrl: null, gstRate: 18, invoicePrefix: "INV", nextInvoiceSeq: 1,
   });
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
+  const [stampUploading, setStampUploading] = useState(false);
 
   async function loadInvoices() {
     setInvLoading(true);
@@ -566,6 +571,27 @@ export default function AdminGstInvoicingPage() {
       toast({ title: "Failed to save settings", variant: "destructive" });
     } finally {
       setSettingsSaving(false);
+    }
+  }
+
+  async function uploadStamp(file: File) {
+    setStampUploading(true);
+    try {
+      const form = new FormData();
+      form.append("image", file);
+      const res = await fetch(`${API_BASE}/api/upload/image`, {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setSettings(s => ({ ...s, stampUrl: data.url }));
+      toast({ title: "Stamp uploaded — save settings to apply it to invoices" });
+    } catch {
+      toast({ title: "Failed to upload stamp", variant: "destructive" });
+    } finally {
+      setStampUploading(false);
     }
   }
 
@@ -800,7 +826,10 @@ export default function AdminGstInvoicingPage() {
               <div>${gstTaxNote}</div>
             </div>
             <div style="text-align:right;">
-              <div style="border:1px dashed #9ca3af;border-radius:4px;height:56px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#9ca3af;margin-bottom:8px;">Seal / Stamp</div>
+              ${settings.stampUrl
+                ? `<img src="${settings.stampUrl}" alt="Company Stamp" style="height:80px;max-width:100%;object-fit:contain;margin-bottom:8px;display:inline-block;" />`
+                : `<div style="border:1px dashed #9ca3af;border-radius:4px;height:56px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#9ca3af;margin-bottom:8px;">Seal / Stamp</div>`
+              }
               <div style="border-top:1px solid #9ca3af;padding-top:6px;font-size:11px;color:#6b7280;">
                 Authorised Signatory<br/>
                 <span style="font-weight:700;color:#1e3a5f;">${settings.companyName || ""}</span>
@@ -1226,6 +1255,50 @@ export default function AdminGstInvoicingPage() {
                 <div>
                   <Label>Business Phone</Label>
                   <Input value={settings.phone} onChange={e => setSettings(s => ({ ...s, phone: e.target.value }))} />
+                </div>
+              </div>
+
+              {/* Company Stamp */}
+              <div className="border border-border rounded-lg p-4 space-y-3">
+                <div>
+                  <Label className="text-sm font-semibold">Company Stamp / Seal <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  <p className="text-xs text-muted-foreground mt-1">Upload your company stamp or seal. It will appear on invoices in the "Authorised Signatory" section instead of the empty placeholder.</p>
+                </div>
+                <div className="flex items-start gap-4">
+                  {settings.stampUrl ? (
+                    <div className="flex-shrink-0 border border-border rounded-md p-2 bg-white">
+                      <img src={settings.stampUrl} alt="Company Stamp" className="h-20 max-w-[160px] object-contain" />
+                    </div>
+                  ) : (
+                    <div className="flex-shrink-0 border border-dashed border-border rounded-md h-20 w-36 flex items-center justify-center text-xs text-muted-foreground">
+                      No stamp uploaded
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-2">
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="hidden"
+                        disabled={stampUploading}
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) uploadStamp(file);
+                          e.target.value = "";
+                        }}
+                      />
+                      <span className={`inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent transition-colors ${stampUploading ? "opacity-50 pointer-events-none" : ""}`}>
+                        {stampUploading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                        {stampUploading ? "Uploading…" : settings.stampUrl ? "Replace Stamp" : "Upload Stamp"}
+                      </span>
+                    </label>
+                    {settings.stampUrl && (
+                      <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-400 w-fit px-2" onClick={() => setSettings(s => ({ ...s, stampUrl: null }))}>
+                        <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
+                      </Button>
+                    )}
+                    <p className="text-xs text-muted-foreground">PNG, JPG, WebP · max 10 MB<br/>Transparent background recommended</p>
+                  </div>
                 </div>
               </div>
 

@@ -148,6 +148,7 @@ router.put("/settings", requireAdmin, async (req, res): Promise<void> => {
     email: body.email ?? "",
     phone: body.phone ?? "",
     logoUrl: body.logoUrl ?? null,
+    stampUrl: body.stampUrl ?? null,
     gstRate: parseInt(body.gstRate ?? "18"),
     invoicePrefix: body.invoicePrefix ?? "INV",
     nextInvoiceSeq: parseInt(body.nextInvoiceSeq ?? "1") || 1,
