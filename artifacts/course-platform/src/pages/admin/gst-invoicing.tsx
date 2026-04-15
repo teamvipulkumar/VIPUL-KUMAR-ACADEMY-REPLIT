@@ -351,61 +351,44 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
             {/* GST Breakup */}
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: "#1e3a5f", marginBottom: 8 }}>GST Breakup</div>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                <thead>
-                  <tr>
-                    <th style={{ background: "#1e3a5f", color: "white", padding: "8px 12px", textAlign: "left", fontSize: 11 }}>HSN/SAC</th>
-                    <th style={{ background: "#1e3a5f", color: "white", padding: "8px 12px", textAlign: "right", fontSize: 11 }}>Taxable Value</th>
-                    {!invoice.isInterstate ? (
-                      <Fragment>
-                        <th style={{ background: "#1e3a5f", color: "white", padding: "8px 12px", textAlign: "center", fontSize: 11 }}>CGST Rate</th>
-                        <th style={{ background: "#1e3a5f", color: "white", padding: "8px 12px", textAlign: "right", fontSize: 11 }}>CGST Amt</th>
-                        <th style={{ background: "#1e3a5f", color: "white", padding: "8px 12px", textAlign: "center", fontSize: 11 }}>SGST Rate</th>
-                        <th style={{ background: "#1e3a5f", color: "white", padding: "8px 12px", textAlign: "right", fontSize: 11 }}>SGST Amt</th>
-                      </Fragment>
-                    ) : (
-                      <Fragment>
-                        <th style={{ background: "#1e3a5f", color: "white", padding: "8px 12px", textAlign: "center", fontSize: 11 }}>IGST Rate</th>
-                        <th style={{ background: "#1e3a5f", color: "white", padding: "8px 12px", textAlign: "right", fontSize: 11 }}>IGST Amt</th>
-                      </Fragment>
-                    )}
-                    <th style={{ background: "#1e3a5f", color: "white", padding: "8px 12px", textAlign: "right", fontSize: 11 }}>Total Tax</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", fontFamily: "monospace" }}>999294</td>
-                    <td style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", textAlign: "right" }}>{fmt(base)}</td>
-                    {!invoice.isInterstate ? (
-                      <Fragment>
-                        <td style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", textAlign: "center" }}>{halfRate}%</td>
-                        <td style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", textAlign: "right" }}>{fmt(cgst)}</td>
-                        <td style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", textAlign: "center" }}>{halfRate}%</td>
-                        <td style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", textAlign: "right" }}>{fmt(sgst)}</td>
-                      </Fragment>
-                    ) : (
-                      <Fragment>
-                        <td style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", textAlign: "center" }}>{invoice.gstRate}%</td>
-                        <td style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", textAlign: "right" }}>{fmt(igst)}</td>
-                      </Fragment>
-                    )}
-                    <td style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", textAlign: "right", fontWeight: 700 }}>{fmt(totalGst)}</td>
-                  </tr>
-                  {/* Summary row */}
-                  <tr style={{ background: "#f0f9ff" }}>
-                    <td colSpan={2} style={{ padding: "8px 12px", fontWeight: 700, fontSize: 12, color: "#1e3a5f" }}>Total</td>
-                    {!invoice.isInterstate ? (
-                      <Fragment>
-                        <td colSpan={2} style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700 }}>{fmt(cgst)}</td>
-                        <td colSpan={2} style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700 }}>{fmt(sgst)}</td>
-                      </Fragment>
-                    ) : (
-                      <td colSpan={2} style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700 }}>{fmt(igst)}</td>
-                    )}
-                    <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 800, color: "#1e3a5f" }}>{fmt(totalGst)}</td>
-                  </tr>
-                </tbody>
-              </table>
+              <div style={{ background: "#f8faff", border: "1px solid #dbeafe", borderRadius: 8, overflow: "hidden" }}>
+                {/* Header */}
+                <div style={{ background: "#1e3a5f", padding: "8px 16px", display: "flex", justifyContent: "space-between", fontSize: 10, fontWeight: 700, color: "#93c5fd", letterSpacing: 0.5, textTransform: "uppercase" }}>
+                  <span>Tax Component</span>
+                  <span>HSN/SAC: 999294</span>
+                </div>
+                {/* Rows */}
+                <div style={{ padding: "4px 0" }}>
+                  {/* Taxable Value */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 16px", borderBottom: "1px solid #e5e7eb" }}>
+                    <span style={{ fontSize: 12, color: "#374151" }}>Taxable Value</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{fmt(base)}</span>
+                  </div>
+                  {/* CGST+SGST or IGST */}
+                  {!invoice.isInterstate ? (
+                    <Fragment>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 16px", borderBottom: "1px solid #e5e7eb" }}>
+                        <span style={{ fontSize: 12, color: "#374151" }}>CGST <span style={{ fontSize: 11, color: "#6b7280" }}>@ {halfRate}%</span></span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{fmt(cgst)}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 16px", borderBottom: "1px solid #e5e7eb" }}>
+                        <span style={{ fontSize: 12, color: "#374151" }}>SGST <span style={{ fontSize: 11, color: "#6b7280" }}>@ {halfRate}%</span></span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{fmt(sgst)}</span>
+                      </div>
+                    </Fragment>
+                  ) : (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 16px", borderBottom: "1px solid #e5e7eb" }}>
+                      <span style={{ fontSize: 12, color: "#374151" }}>IGST <span style={{ fontSize: 11, color: "#6b7280" }}>@ {invoice.gstRate}%</span></span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{fmt(igst)}</span>
+                    </div>
+                  )}
+                  {/* Total Tax */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", background: "#eff6ff" }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#1e3a5f" }}>Total Tax</span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: "#1e3a5f" }}>{fmt(totalGst)}</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Grand Total */}
