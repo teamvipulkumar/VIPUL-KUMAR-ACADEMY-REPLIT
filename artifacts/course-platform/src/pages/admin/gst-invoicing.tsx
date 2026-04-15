@@ -1157,25 +1157,16 @@ export default function AdminGstInvoicingPage() {
               </Button>
             </div>
 
-            {/* Right: invoice range card */}
-            <div className="border border-border rounded-lg px-4 py-2.5 bg-muted/30 text-sm min-w-[200px]">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Invoice Range</p>
-              {stateLoading ? (
-                <p className="text-muted-foreground text-xs">Loading…</p>
-              ) : stateInvoiceRange && stateInvoiceRange.first ? (
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-muted-foreground text-xs">First</span>
-                    <span className="font-mono font-semibold text-foreground">{stateInvoiceRange.first}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-muted-foreground text-xs">Last</span>
-                    <span className="font-mono font-semibold text-foreground">{stateInvoiceRange.last}</span>
-                  </div>
+            {/* Right: invoice range — two pill cards matching button height */}
+            <div className="flex items-center gap-2">
+              {(["first", "last"] as const).map(key => (
+                <div key={key} className="flex items-center gap-2 h-9 border border-border rounded-md px-3 bg-muted/30">
+                  <span className="text-xs text-muted-foreground capitalize">{key}</span>
+                  <span className="font-mono text-xs font-semibold text-foreground">
+                    {stateLoading ? "…" : stateInvoiceRange?.[key] ?? "—"}
+                  </span>
                 </div>
-              ) : (
-                <p className="text-muted-foreground text-xs">No invoices in this period</p>
-              )}
+              ))}
             </div>
           </div>
 
