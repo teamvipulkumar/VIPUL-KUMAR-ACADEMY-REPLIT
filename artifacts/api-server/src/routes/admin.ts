@@ -480,6 +480,8 @@ router.get("/orders", requireAdmin, async (req, res): Promise<void> => {
       userName: usersTable.name,
       userEmail: usersTable.email,
       courseTitle: coursesTable.title,
+      billingMobile: paymentsTable.billingMobile,
+      billingState: paymentsTable.billingState,
     })
     .from(paymentsTable)
     .innerJoin(usersTable, eq(paymentsTable.userId, usersTable.id))

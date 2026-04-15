@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import {
   Search, BadgeIndianRupee, ShoppingCart, Clock, RefreshCw, Upload,
-  User, BookOpen, Calendar, CreditCard, Tag, Hash, Mail, AlertTriangle, RotateCcw
+  User, BookOpen, Calendar, CreditCard, Tag, Hash, Mail, AlertTriangle, RotateCcw, Phone, MapPin
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
@@ -28,6 +28,8 @@ type Order = {
   userName: string;
   userEmail: string;
   courseTitle: string;
+  billingMobile: string | null;
+  billingState: string | null;
 };
 
 type Stats = {
@@ -196,6 +198,8 @@ function OrderDetailDialog({
               {[
                 { icon: User, label: "Customer", value: order.userName },
                 { icon: Mail, label: "Email", value: order.userEmail },
+                ...(order.billingMobile ? [{ icon: Phone, label: "Mobile", value: `+91 ${order.billingMobile}` }] : []),
+                ...(order.billingState ? [{ icon: MapPin, label: "State", value: order.billingState }] : []),
                 { icon: BookOpen, label: "Course", value: order.courseTitle },
                 { icon: Calendar, label: "Order Date", value: formatDate(order.createdAt) },
                 { icon: CreditCard, label: "Payment Gateway", value: <Badge className={`text-xs ${gtw.className}`}>{gtw.label}</Badge> },
