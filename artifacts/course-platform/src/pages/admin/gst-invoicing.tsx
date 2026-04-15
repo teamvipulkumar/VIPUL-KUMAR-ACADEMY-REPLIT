@@ -661,6 +661,141 @@ export default function AdminGstInvoicingPage() {
     URL.revokeObjectURL(url);
   }
 
+  function downloadAllInvoices() {
+    if (invoices.length === 0) return;
+
+    const fmtN = (val: string | number) =>
+      "₹" + parseFloat(String(val)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const monthLabel = invMonth ? months.find(m => m.value === invMonth)?.label ?? "" : "All Months";
+    const filterLabel = `${monthLabel} ${invYear}`.trim();
+    const companyAddr = [settings.addressLine1, settings.addressLine2, settings.city, settings.state, settings.pincode]
+      .filter(Boolean).join(", ");
+
+    const pages = invoices.map((inv, idx) => {
+      const base = parseFloat(inv.baseAmount);
+      const total = parseFloat(inv.totalAmount);
+      const cgst = parseFloat(inv.cgstAmount);
+      const sgst = parseFloat(inv.sgstAmount);
+      const igst = parseFloat(inv.igstAmount);
+      const totalGst = cgst + sgst + igst;
+      const halfRate = inv.gstRate / 2;
+      const date = new Date(inv.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+      const d = new Date(inv.createdAt);
+      const yr = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
+      const fy = inv.financialYear || `${yr}-${String(yr + 1).slice(2)}`;
+      const stateStr = inv.customerState
+        ? `${inv.customerState}${inv.customerStateCode ? ` (${inv.customerStateCode})` : ""}` : "—";
+
+      const taxRows = inv.isInterstate
+        ? `<tr><td style="padding:9px 14px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280;">IGST @ ${inv.gstRate}%</td><td style="padding:9px 14px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">${fmtN(igst)}</td></tr>`
+        : `<tr><td style="padding:9px 14px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280;">CGST @ ${halfRate}%</td><td style="padding:9px 14px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">${fmtN(cgst)}</td></tr>
+           <tr><td style="padding:9px 14px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280;">SGST @ ${halfRate}%</td><td style="padding:9px 14px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">${fmtN(sgst)}</td></tr>`;
+
+      const detailRows = [
+        ["Invoice No.", inv.invoiceNumber, true],
+        ["Invoice Date", date, false],
+        ["Financial Year", fy, false],
+        ["Payment Mode", (inv.gateway || "—").toUpperCase(), false],
+        ["Supply Type", inv.isInterstate ? "Inter-State" : "Intra-State", false],
+        ["Place of Supply", stateStr, false],
+      ].map(([label, value, mono]) =>
+        `<div style="display:flex;margin-bottom:5px;">
+          <span style="font-size:11px;color:#6b7280;width:110px;flex-shrink:0;">${label}</span>
+          <span style="font-size:12px;color:#111827;font-weight:${label === "Invoice No." ? "700" : "500"};${mono ? "font-family:monospace;" : ""}">${value}</span>
+        </div>`
+      ).join("");
+
+      return `<div style="page-break-after:${idx < invoices.length - 1 ? "always" : "auto"};font-family:Arial,sans-serif;max-width:800px;margin:0 auto ${idx < invoices.length - 1 ? "40px" : "0"};border:1px solid #ddd;border-radius:8px;overflow:hidden;">
+        <div style="background:#1e3a5f;color:white;padding:20px 30px;display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <div style="font-size:20px;font-weight:800;">${settings.companyName || "Company"}</div>
+            <div style="font-size:11px;color:#93c5fd;margin-top:4px;">${companyAddr}</div>
+            ${settings.gstin ? `<div style="font-size:11px;color:#bfdbfe;margin-top:3px;">GSTIN: ${settings.gstin}</div>` : ""}
+            ${settings.email ? `<div style="font-size:11px;color:#93c5fd;margin-top:2px;">${settings.email}${settings.phone ? " | " + settings.phone : ""}</div>` : ""}
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:20px;font-weight:800;letter-spacing:2px;color:#bfdbfe;">TAX INVOICE</div>
+            <div style="font-size:11px;color:#93c5fd;margin-top:4px;">Original for Recipient</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:20px 30px 16px;">
+          <div style="background:#f8faff;border:1px solid #dbeafe;border-radius:6px;padding:14px;">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;font-weight:700;margin-bottom:8px;border-bottom:1px solid #e5e7eb;padding-bottom:5px;">Bill To</div>
+            <div style="font-size:14px;font-weight:700;color:#1e3a5f;margin-bottom:8px;">${inv.customerName || "—"}</div>
+            <div style="display:flex;margin-bottom:4px;"><span style="font-size:11px;color:#6b7280;width:70px;flex-shrink:0;">Email</span><span style="font-size:12px;color:#111827;font-weight:500;">${inv.customerEmail || "—"}</span></div>
+            ${inv.customerMobile ? `<div style="display:flex;margin-bottom:4px;"><span style="font-size:11px;color:#6b7280;width:70px;flex-shrink:0;">Mobile</span><span style="font-size:12px;color:#111827;font-weight:500;">${inv.customerMobile}</span></div>` : ""}
+            <div style="display:flex;margin-bottom:4px;"><span style="font-size:11px;color:#6b7280;width:70px;flex-shrink:0;">State</span><span style="font-size:12px;color:#111827;font-weight:500;">${stateStr}</span></div>
+            ${inv.customerGstin ? `<div style="display:flex;margin-bottom:4px;"><span style="font-size:11px;color:#6b7280;width:70px;flex-shrink:0;">GSTIN</span><span style="font-size:12px;color:#111827;font-weight:600;font-family:monospace;">${inv.customerGstin}</span></div>` : ""}
+          </div>
+          <div style="background:#f8faff;border:1px solid #dbeafe;border-radius:6px;padding:14px;">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;font-weight:700;margin-bottom:8px;border-bottom:1px solid #e5e7eb;padding-bottom:5px;">Invoice Details</div>
+            ${detailRows}
+          </div>
+        </div>
+        <div style="padding:0 30px 16px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#1e3a5f;margin-bottom:8px;">Items</div>
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead><tr>
+              <th style="background:#1e3a5f;color:white;padding:9px 12px;text-align:left;font-size:11px;">#</th>
+              <th style="background:#1e3a5f;color:white;padding:9px 12px;text-align:left;font-size:11px;">Description</th>
+              <th style="background:#1e3a5f;color:white;padding:9px 12px;text-align:left;font-size:11px;">HSN/SAC</th>
+              <th style="background:#1e3a5f;color:white;padding:9px 12px;text-align:right;font-size:11px;">Qty</th>
+              <th style="background:#1e3a5f;color:white;padding:9px 12px;text-align:right;font-size:11px;">Rate (Excl. Tax)</th>
+              <th style="background:#1e3a5f;color:white;padding:9px 12px;text-align:right;font-size:11px;">Taxable Amt</th>
+            </tr></thead>
+            <tbody><tr>
+              <td style="padding:11px 12px;border-bottom:1px solid #e5e7eb;">1</td>
+              <td style="padding:11px 12px;border-bottom:1px solid #e5e7eb;">
+                <div style="font-weight:600;color:#1a1a2e;">${inv.courseTitle}</div>
+                <div style="font-size:10px;color:#6b7280;margin-top:2px;">Online Educational Course — Digital Service</div>
+              </td>
+              <td style="padding:11px 12px;border-bottom:1px solid #e5e7eb;font-family:monospace;">999294</td>
+              <td style="padding:11px 12px;border-bottom:1px solid #e5e7eb;text-align:right;">1</td>
+              <td style="padding:11px 12px;border-bottom:1px solid #e5e7eb;text-align:right;">${fmtN(base)}</td>
+              <td style="padding:11px 12px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">${fmtN(base)}</td>
+            </tr></tbody>
+          </table>
+        </div>
+        <div style="padding:0 30px 16px;display:flex;justify-content:flex-end;">
+          <div style="width:44%;border:1px solid #dbeafe;border-radius:6px;overflow:hidden;">
+            <div style="background:#e8f0fe;padding:7px 14px;font-size:10px;font-weight:700;color:#1e3a5f;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid #dbeafe;">GST Breakup &amp; Total</div>
+            <table style="width:100%;border-collapse:collapse;">
+              <tbody>
+                <tr><td style="padding:9px 14px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280;">Taxable Value</td><td style="padding:9px 14px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">${fmtN(base)}</td></tr>
+                ${taxRows}
+                <tr style="background:#eff6ff;"><td style="padding:9px 14px;border-bottom:2px solid #1e3a5f;font-size:11px;font-weight:700;color:#1e3a5f;">Total Tax</td><td style="padding:9px 14px;border-bottom:2px solid #1e3a5f;text-align:right;font-weight:800;color:#1e3a5f;">${fmtN(totalGst)}</td></tr>
+                <tr style="background:#1e3a5f;"><td style="padding:11px 14px;font-size:11px;font-weight:700;color:#93c5fd;text-transform:uppercase;letter-spacing:0.5px;">Grand Total (INR)</td><td style="padding:11px 14px;text-align:right;font-size:16px;font-weight:900;color:#fff;">${fmtN(total)}</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div style="margin:0 30px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:9px 13px;font-size:11px;color:#1e40af;">
+          <span style="font-weight:700;">Amount in Words: </span>${amountInWords(total)}
+        </div>
+        <div style="background:#f3f4f6;border-top:2px solid #1e3a5f;padding:7px 30px;display:flex;justify-content:space-between;font-size:10px;color:#6b7280;">
+          <span>${settings.companyName}${settings.gstin ? " | GSTIN: " + settings.gstin : ""}</span>
+          <span>Invoice: ${inv.invoiceNumber} | FY ${fy}</span>
+          <span>Generated on ${new Date().toLocaleDateString("en-IN")}</span>
+        </div>
+      </div>`;
+    }).join("\n");
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+      <title>GST Invoices — ${filterLabel}</title>
+      <style>*{box-sizing:border-box;}body{margin:30px;background:#f3f4f6;font-family:Arial,sans-serif;}@media print{body{margin:0;background:white;}}</style>
+    </head><body>${pages}</body></html>`;
+
+    const win = window.open("", "_blank");
+    if (!win) {
+      toast({ title: "Allow popups to download invoices", variant: "destructive" });
+      return;
+    }
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => win.print(), 600);
+  }
+
   const years = Array.from({ length: 6 }, (_, i) => String(new Date().getFullYear() - i));
   const months = [
     { value: "1", label: "January" }, { value: "2", label: "February" },
@@ -752,6 +887,9 @@ export default function AdminGstInvoicingPage() {
             </Button>
             <Button variant="outline" onClick={exportCsv} disabled={invoices.length === 0}>
               <Download className="h-4 w-4 mr-1" /> Export CSV
+            </Button>
+            <Button variant="outline" onClick={downloadAllInvoices} disabled={invoices.length === 0} title="Open all filtered invoices in a print window — save as PDF from there">
+              <Printer className="h-4 w-4 mr-1" /> Download Invoices
             </Button>
             <Button onClick={generateAll} disabled={generating} className="bg-blue-600 hover:bg-blue-700 text-white">
               {generating ? <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> : <FileText className="h-4 w-4 mr-1" />}
