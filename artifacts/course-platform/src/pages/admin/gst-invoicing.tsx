@@ -308,6 +308,7 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
                 <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1, color: "#6b7280", fontWeight: 700, marginBottom: 10, borderBottom: "1px solid #e5e7eb", paddingBottom: 6 }}>Invoice Details</div>
                 {[
                   ["Invoice No.", invoice.invoiceNumber],
+                  ["Order No.", invoice.paymentId ? `#${invoice.paymentId}` : "—"],
                   ["Invoice Date", formattedDate],
                   ["Financial Year", fy],
                   ["Payment Mode", (invoice.gateway || "—").toUpperCase()],
@@ -316,7 +317,7 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
                 ].map(([label, value]) => (
                   <div key={label} style={{ display: "flex", marginBottom: 5 }}>
                     <span style={{ fontSize: 11, color: "#6b7280", width: 110, flexShrink: 0 }}>{label}</span>
-                    <span style={{ fontSize: 12, color: "#111827", fontWeight: label === "Invoice No." ? 700 : 500, fontFamily: label === "Invoice No." ? "monospace" : "inherit" }}>{value}</span>
+                    <span style={{ fontSize: 12, color: "#111827", fontWeight: label === "Invoice No." ? 700 : 500, fontFamily: label === "Invoice No." || label === "Order No." ? "monospace" : "inherit" }}>{value}</span>
                   </div>
                 ))}
               </div>
@@ -729,6 +730,7 @@ export default function AdminGstInvoicingPage() {
 
       const detailRows = [
         ["Invoice No.", inv.invoiceNumber, true],
+        ["Order No.", inv.paymentId ? `#${inv.paymentId}` : "—", true],
         ["Invoice Date", date, false],
         ["Financial Year", fy, false],
         ["Payment Mode", (inv.gateway || "—").toUpperCase(), false],
