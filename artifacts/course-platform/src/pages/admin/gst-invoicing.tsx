@@ -74,6 +74,7 @@ interface GstSettings {
   logoUrl: string | null;
   gstRate: number;
   invoicePrefix: string;
+  nextInvoiceSeq: number;
 }
 
 interface GstInvoice {
@@ -492,7 +493,7 @@ export default function AdminGstInvoicingPage() {
   const [settings, setSettings] = useState<GstSettings>({
     companyName: "", gstin: "", addressLine1: "", addressLine2: "",
     city: "", state: "", stateCode: "", pincode: "",
-    email: "", phone: "", logoUrl: null, gstRate: 18, invoicePrefix: "INV",
+    email: "", phone: "", logoUrl: null, gstRate: 18, invoicePrefix: "INV", nextInvoiceSeq: 1,
   });
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
@@ -933,6 +934,19 @@ export default function AdminGstInvoicingPage() {
                 <div>
                   <Label>Invoice Prefix</Label>
                   <Input value={settings.invoicePrefix} onChange={e => setSettings(s => ({ ...s, invoicePrefix: e.target.value.toUpperCase() }))} placeholder="INV" maxLength={10} />
+                </div>
+                <div>
+                  <Label>Next Invoice Number</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={settings.nextInvoiceSeq}
+                    onChange={e => setSettings(s => ({ ...s, nextInvoiceSeq: Math.max(1, parseInt(e.target.value) || 1) }))}
+                    placeholder="1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Next invoice will be: <span className="font-mono font-semibold text-gray-800">{settings.invoicePrefix || "INV"}-{String(settings.nextInvoiceSeq).padStart(4, "0")}</span>
+                  </p>
                 </div>
                 <div>
                   <Label>GST Rate (%)</Label>

@@ -30,16 +30,6 @@ const STATE_CODE_MAP: Record<string, string> = {
   "Dadra & Nagar Haveli": "26", "Daman & Diu": "25",
 };
 
-async function getNextInvoiceNumber(prefix: string, fy: string): Promise<string> {
-  const pattern = `${prefix}-${fy}-%`;
-  const [row] = await db
-    .select({ cnt: count() })
-    .from(gstInvoicesTable)
-    .where(like(gstInvoicesTable.invoiceNumber, pattern));
-  const seq = ((row?.cnt ?? 0) + 1).toString().padStart(4, "0");
-  return `${prefix}-${fy}-${seq}`;
-}
-
 export async function generateGstInvoice(paymentId: number): Promise<void> {
   try {
     const [existing] = await db
@@ -57,15 +47,32 @@ export async function generateGstInvoice(paymentId: number): Promise<void> {
     const [course] = await db.select({ title: coursesTable.title })
       .from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
 
-    const [settings] = await db.select().from(gstCompanySettingsTable).limit(1);
-    const prefix = settings?.invoicePrefix ?? "INV";
-    const gstRate = settings?.gstRate ?? 18;
-    const companyState = settings?.state ?? "";
-    const companyStateCode = settings?.stateCode ?? "";
-
     const createdAt = payment.createdAt ?? new Date();
     const fy = getFinancialYear(createdAt);
-    const invoiceNumber = await getNextInvoiceNumber(prefix, fy);
+
+    // Atomically claim the next sequence number from settings
+    let invoiceNumber = "";
+    let prefix = "INV";
+    let gstRate = 18;
+    let companyState = "";
+    let companyStateCode = "";
+
+    await db.transaction(async (tx) => {
+      let [settings] = await tx.select().from(gstCompanySettingsTable).limit(1);
+      if (!settings) {
+        await tx.insert(gstCompanySettingsTable).values({});
+        [settings] = await tx.select().from(gstCompanySettingsTable).limit(1);
+      }
+      prefix = settings.invoicePrefix ?? "INV";
+      gstRate = settings.gstRate ?? 18;
+      companyState = settings.state ?? "";
+      companyStateCode = settings.stateCode ?? "";
+      const seq = settings.nextInvoiceSeq ?? 1;
+      invoiceNumber = `${prefix}-${String(seq).padStart(4, "0")}`;
+      await tx.update(gstCompanySettingsTable)
+        .set({ nextInvoiceSeq: seq + 1 })
+        .where(eq(gstCompanySettingsTable.id, settings.id));
+    });
 
     const total = parseFloat(String(payment.amount));
     const baseAmount = parseFloat((total * 100 / (100 + gstRate)).toFixed(2));
@@ -143,6 +150,7 @@ router.put("/settings", requireAdmin, async (req, res): Promise<void> => {
     logoUrl: body.logoUrl ?? null,
     gstRate: parseInt(body.gstRate ?? "18"),
     invoicePrefix: body.invoicePrefix ?? "INV",
+    nextInvoiceSeq: parseInt(body.nextInvoiceSeq ?? "1") || 1,
   }).where(eq(gstCompanySettingsTable.id, existing.id));
   const [updated] = await db.select().from(gstCompanySettingsTable).limit(1);
   res.json(updated);
