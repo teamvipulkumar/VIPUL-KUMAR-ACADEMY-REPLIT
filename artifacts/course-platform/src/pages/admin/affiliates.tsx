@@ -1465,14 +1465,40 @@ type AffiliateSale = {
   createdAt: string;
 };
 
+type Period = "today" | "yesterday" | "7days" | "30days" | "custom" | "all";
+
+const PERIODS: { id: Period; label: string }[] = [
+  { id: "today",     label: "Today" },
+  { id: "yesterday", label: "Yesterday" },
+  { id: "7days",     label: "Last 7 Days" },
+  { id: "30days",    label: "Last 30 Days" },
+  { id: "custom",    label: "Custom" },
+  { id: "all",       label: "All Time" },
+];
+
+function periodRange(period: Period, customFrom: string, customTo: string): { from: Date | null; to: Date | null } {
+  const now = new Date();
+  const startOfDay = (d: Date) => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
+  const endOfDay   = (d: Date) => { const x = new Date(d); x.setHours(23,59,59,999); return x; };
+  if (period === "today")     return { from: startOfDay(now), to: endOfDay(now) };
+  if (period === "yesterday") { const y = new Date(now); y.setDate(y.getDate()-1); return { from: startOfDay(y), to: endOfDay(y) }; }
+  if (period === "7days")     { const s = new Date(now); s.setDate(s.getDate()-6); return { from: startOfDay(s), to: endOfDay(now) }; }
+  if (period === "30days")    { const s = new Date(now); s.setDate(s.getDate()-29); return { from: startOfDay(s), to: endOfDay(now) }; }
+  if (period === "custom")    return { from: customFrom ? new Date(customFrom + "T00:00:00") : null, to: customTo ? new Date(customTo + "T23:59:59") : null };
+  return { from: null, to: null };
+}
+
 function SalesTab() {
   const { toast } = useToast();
   const [sales, setSales] = useState<AffiliateSale[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [period, setPeriod] = useState<Period>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
 
   useEffect(() => {
-    apiFetch("/api/affiliates/admin/sales")
+    apiFetch("/api/affiliate/admin/sales")
       .then(r => r.json())
       .then(data => setSales(Array.isArray(data) ? data : []))
       .catch(() => toast({ title: "Failed to load affiliate sales", variant: "destructive" }))
@@ -1481,7 +1507,12 @@ function SalesTab() {
 
   const fmt = (v: number) => "₹" + v.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+  const { from: pFrom, to: pTo } = periodRange(period, customFrom, customTo);
+
   const filtered = sales.filter(s => {
+    const d = new Date(s.createdAt);
+    if (pFrom && d < pFrom) return false;
+    if (pTo   && d > pTo)   return false;
     const q = search.toLowerCase();
     return !q || [s.buyerName, s.buyerEmail, s.affiliateName, s.affiliateEmail, s.affiliateRef, s.courseTitle, String(s.orderId)]
       .some(v => v?.toLowerCase().includes(q));
@@ -1551,6 +1582,47 @@ function SalesTab() {
         </div>
       )}
 
+      {/* Period selector */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          {PERIODS.map(p => (
+            <button
+              key={p.id}
+              onClick={() => setPeriod(p.id)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                period === p.id
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        {period === "custom" && (
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground whitespace-nowrap">From</label>
+              <input
+                type="date"
+                value={customFrom}
+                onChange={e => setCustomFrom(e.target.value)}
+                className="px-3 py-1.5 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground whitespace-nowrap">To</label>
+              <input
+                type="date"
+                value={customTo}
+                onChange={e => setCustomTo(e.target.value)}
+                className="px-3 py-1.5 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Search + table */}
       <div className="space-y-3">
         <div className="relative">
@@ -1565,7 +1637,7 @@ function SalesTab() {
 
         {filtered.length === 0 ? (
           <div className="py-12 text-center text-muted-foreground text-sm">
-            {search ? "No matching sales found." : "No affiliate-attributed sales yet."}
+            {search ? "No matching sales found." : period !== "all" ? "No sales in this period." : "No affiliate-attributed sales yet."}
           </div>
         ) : (
           <div className="rounded-xl border border-border overflow-hidden">
