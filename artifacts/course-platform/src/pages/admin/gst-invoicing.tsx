@@ -666,7 +666,7 @@ export default function AdminGstInvoicingPage() {
   }
 
   useEffect(() => { loadSettings(); }, []);
-  useEffect(() => { if (tab === "invoices") loadInvoices(); }, [tab]);
+  useEffect(() => { if (tab === "invoices") loadInvoices(); }, [tab, invMonth, invYear]);
   useEffect(() => { if (tab === "monthly") loadMonthly(); }, [tab, monthlyYear]);
   useEffect(() => { if (tab === "statewise") loadStatewise(); }, [tab, stateYear, stateMonth]);
 
