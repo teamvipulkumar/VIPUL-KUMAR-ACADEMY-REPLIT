@@ -113,6 +113,7 @@ export async function generateGstInvoice(paymentId: number): Promise<void> {
       isInterstate,
       financialYear: fy,
       gateway: payment.gateway,
+      createdAt: createdAt,   // invoice date = payment/order date always
     });
   } catch (err) {
     console.error("GST invoice generation failed:", err);
