@@ -186,8 +186,15 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
           .set({
             margin: 0,
             filename: `${invoice.invoiceNumber}.pdf`,
-            html2canvas: { scale: 2, useCORS: true, logging: false },
-            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+            image: { type: "jpeg", quality: 1 },
+            html2canvas: {
+              scale: 4,
+              useCORS: true,
+              logging: false,
+              letterRendering: true,
+              allowTaint: true,
+            },
+            jsPDF: { unit: "mm", format: "a4", orientation: "portrait", compress: true },
           })
           .save();
       } finally {
