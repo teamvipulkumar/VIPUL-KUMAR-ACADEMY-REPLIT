@@ -269,7 +269,9 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
             </div>
             <div style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.25)", borderRadius: 8, padding: "12px 22px", textAlign: "right" }}>
               <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: 2, color: "#bfdbfe" }}>TAX INVOICE</div>
-              <div style={{ fontSize: 11, color: "#93c5fd", marginTop: 4 }}>Original for Recipient</div>
+              <div
+                style={{ fontSize: 11, color: "#93c5fd", marginTop: 4 }}
+                className="text-center text-[12px]">Original for Recipient</div>
             </div>
           </div>
 
