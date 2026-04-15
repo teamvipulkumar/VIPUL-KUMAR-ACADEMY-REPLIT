@@ -482,30 +482,32 @@ export default function AdminOrdersPage() {
                     </td>
                     {/* Actions */}
                     <td className="px-4 py-3 align-middle">
-                      <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-white/5"
-                          onClick={() => setSelectedOrder(order)}
-                        >
-                          View
-                        </Button>
-                        {order.status === "completed" && (
+                      <div className="flex items-center justify-between gap-2" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-7 px-2.5 text-xs text-orange-400 hover:text-orange-300 hover:bg-orange-400/10"
-                            onClick={() => setRefundingOrder(order)}
+                            className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-white/5"
+                            onClick={() => setSelectedOrder(order)}
                           >
-                            <RotateCcw className="w-3 h-3 mr-1" />Refund
+                            View
                           </Button>
-                        )}
-                        {order.status === "refunded" && (
-                          <span className="flex items-center gap-1 text-xs text-purple-400 px-2">
-                            <RotateCcw className="w-3 h-3" />Refunded
-                          </span>
-                        )}
+                          {order.status === "completed" && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2.5 text-xs text-orange-400 hover:text-orange-300 hover:bg-orange-400/10"
+                              onClick={() => setRefundingOrder(order)}
+                            >
+                              <RotateCcw className="w-3 h-3 mr-1" />Refund
+                            </Button>
+                          )}
+                          {order.status === "refunded" && (
+                            <span className="flex items-center gap-1 text-xs text-purple-400 px-2">
+                              <RotateCcw className="w-3 h-3" />Refunded
+                            </span>
+                          )}
+                        </div>
                         <Button
                           size="sm"
                           variant="ghost"
