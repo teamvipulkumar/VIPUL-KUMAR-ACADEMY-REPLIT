@@ -461,8 +461,11 @@ export default function AdminOrdersPage() {
                     {/* Date */}
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">
                       <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3 h-3 flex-shrink-0" />
-                        {formatDate(order.createdAt)}
+                        <Calendar className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <div>{new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</div>
+                          <div className="text-[11px] text-muted-foreground/70">{new Date(order.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}</div>
+                        </div>
                       </div>
                     </td>
                     {/* Amount */}
