@@ -1035,7 +1035,7 @@ export default function AdminGstInvoicingPage() {
                       <TableCell className="max-w-[180px]">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${inv.bundleId ? "bg-primary/15 text-primary border border-primary/30" : "bg-blue-500/10 text-blue-400 border border-blue-500/20"}`}>
-                            {inv.bundleId ? "📦 Bundle" : "🎓 Course"}
+                            {inv.bundleId ? "Bundle" : "Course"}
                           </span>
                         </div>
                         <div className="text-sm truncate mt-0.5" title={inv.bundleId ? inv.courseTitle.replace(/^Bundle:\s*/, "") : inv.courseTitle}>
