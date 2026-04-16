@@ -187,8 +187,6 @@ function OrderDetailDialog({
 }: { order: Order; onClose: () => void; onRefundInitiated: (orderId: number) => void }) {
   const [refundOpen, setRefundOpen] = useState(false);
   const [paymentId, setPaymentId] = useState(order.paymentId);
-  const [syncing, setSyncing] = useState(false);
-  const { toast } = useToast();
 
   const cfg = statusConfig[order.status] ?? { label: order.status, className: "text-muted-foreground border-border bg-muted/30" };
   const gtw = gatewayConfig[order.gateway] ?? { label: order.gateway, className: "text-muted-foreground border-border bg-muted/30" };
@@ -200,22 +198,16 @@ function OrderDetailDialog({
     : order.gateway === "payu"     ? "PayU Transaction ID"
     : "Transaction ID";
 
-  const handleSyncCashfreeId = async () => {
-    setSyncing(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/admin/orders/${order.id}/sync-cashfree-id`, {
-        method: "POST", credentials: "include",
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Sync failed");
-      setPaymentId(data.paymentId);
-      toast({ title: "Transaction ID synced", description: `Cashfree Transaction ID updated to ${data.paymentId}` });
-    } catch (err: unknown) {
-      toast({ title: "Sync failed", description: (err as Error).message, variant: "destructive" });
-    } finally {
-      setSyncing(false);
-    }
-  };
+  // Auto-fetch the real Cashfree cf_payment_id when the dialog opens
+  useEffect(() => {
+    if (order.gateway !== "cashfree") return;
+    fetch(`${API_BASE}/api/admin/orders/${order.id}/sync-cashfree-id`, {
+      method: "POST", credentials: "include",
+    })
+      .then(r => r.json())
+      .then(data => { if (data.paymentId) setPaymentId(data.paymentId); })
+      .catch(() => {});
+  }, [order.id, order.gateway]);
 
   const rows = [
     { icon: User, label: "Customer", value: order.userName },
@@ -260,41 +252,15 @@ function OrderDetailDialog({
                 </div>
               ))}
 
-              {/* Transaction ID row — rendered separately so sync button can be inlined */}
+              {/* Transaction ID row */}
               {paymentId && (
                 <div className="flex items-center justify-between py-2 border-b border-border/40 last:border-0">
                   <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <Hash className="w-3.5 h-3.5" />{txnLabel}
                   </span>
-                  <span className="flex items-center gap-1.5 text-sm text-foreground font-medium text-right max-w-[55%]">
-                    <code className="text-xs font-mono text-muted-foreground truncate">{paymentId}</code>
-                    {order.gateway === "cashfree" && (
-                      <button
-                        onClick={handleSyncCashfreeId}
-                        disabled={syncing}
-                        title="Sync latest Cashfree Transaction ID"
-                        className="flex-shrink-0 text-muted-foreground hover:text-primary transition-colors disabled:opacity-40"
-                      >
-                        <RefreshCw className={`w-3 h-3 ${syncing ? "animate-spin" : ""}`} />
-                      </button>
-                    )}
+                  <span className="text-sm text-foreground font-medium text-right max-w-[55%] truncate">
+                    <code className="text-xs font-mono text-muted-foreground">{paymentId}</code>
                   </span>
-                </div>
-              )}
-              {/* Show sync button even when no paymentId is stored yet (Cashfree only) */}
-              {!paymentId && order.gateway === "cashfree" && (
-                <div className="flex items-center justify-between py-2 border-b border-border/40 last:border-0">
-                  <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <Hash className="w-3.5 h-3.5" />{txnLabel}
-                  </span>
-                  <button
-                    onClick={handleSyncCashfreeId}
-                    disabled={syncing}
-                    className="flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-40"
-                  >
-                    <RefreshCw className={`w-3 h-3 ${syncing ? "animate-spin" : ""}`} />
-                    {syncing ? "Fetching…" : "Fetch from Cashfree"}
-                  </button>
                 </div>
               )}
             </div>
