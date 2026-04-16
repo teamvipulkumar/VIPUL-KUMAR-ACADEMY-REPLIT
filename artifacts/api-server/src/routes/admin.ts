@@ -4,7 +4,7 @@ import { db } from "@workspace/db";
 import {
   usersTable, coursesTable, modulesTable, enrollmentsTable, paymentsTable, referralsTable,
   payoutRequestsTable, platformSettingsTable, lessonCompletionsTable, lessonsTable,
-  paymentGatewaysTable
+  paymentGatewaysTable, bundlesTable, bundleCoursesTable
 } from "@workspace/db";
 import { eq, count, sum, gte, and, ilike, or, sql, desc, ne } from "drizzle-orm";
 import { requireAdmin, type JwtPayload } from "../middlewares/auth";
@@ -470,6 +470,7 @@ router.get("/orders", requireAdmin, async (req, res): Promise<void> => {
       id: paymentsTable.id,
       userId: paymentsTable.userId,
       courseId: paymentsTable.courseId,
+      bundleId: paymentsTable.bundleId,
       amount: paymentsTable.amount,
       currency: paymentsTable.currency,
       status: paymentsTable.status,
@@ -480,12 +481,14 @@ router.get("/orders", requireAdmin, async (req, res): Promise<void> => {
       userName: usersTable.name,
       userEmail: usersTable.email,
       courseTitle: coursesTable.title,
+      bundleTitle: bundlesTable.name,
       billingMobile: paymentsTable.billingMobile,
       billingState: paymentsTable.billingState,
     })
     .from(paymentsTable)
     .innerJoin(usersTable, eq(paymentsTable.userId, usersTable.id))
-    .innerJoin(coursesTable, eq(paymentsTable.courseId, coursesTable.id));
+    .leftJoin(coursesTable, eq(paymentsTable.courseId, coursesTable.id))
+    .leftJoin(bundlesTable, eq(paymentsTable.bundleId, bundlesTable.id));
 
   let orders = await baseQuery.where(conditions.length > 0 ? and(...conditions) : undefined).orderBy(desc(paymentsTable.createdAt)).limit(parseInt(limit)).offset(parseInt(offset));
 
@@ -494,7 +497,8 @@ router.get("/orders", requireAdmin, async (req, res): Promise<void> => {
     orders = orders.filter(o =>
       o.userName.toLowerCase().includes(s) ||
       o.userEmail.toLowerCase().includes(s) ||
-      o.courseTitle.toLowerCase().includes(s) ||
+      (o.courseTitle ?? "").toLowerCase().includes(s) ||
+      (o.bundleTitle ?? "").toLowerCase().includes(s) ||
       String(o.id).includes(s)
     );
   }
@@ -525,32 +529,51 @@ router.post("/orders/:orderId/refund", requireAdmin, async (req, res): Promise<v
 
   await db.update(paymentsTable).set({ status: "refunded" }).where(eq(paymentsTable.id, orderId));
 
-  // Fire refund automation
   const [refundUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
-  const [refundCourse] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
-  if (refundUser && refundCourse) {
-    triggerAutomation("refund", refundUser.id, refundUser.email, {
-      name: refundUser.name,
-      email: refundUser.email,
-      course_name: refundCourse.title,
-      amount: String(parseFloat(String(payment.amount)).toFixed(2)),
-    }).catch(() => {});
+
+  // Collect all course IDs to unenroll from
+  const courseIdsToUnenroll: number[] = [];
+  if (payment.courseId) {
+    courseIdsToUnenroll.push(payment.courseId);
+    // Fire refund automation for course orders
+    const [refundCourse] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+    if (refundUser && refundCourse) {
+      triggerAutomation("refund", refundUser.id, refundUser.email, {
+        name: refundUser.name,
+        email: refundUser.email,
+        course_name: refundCourse.title,
+        amount: String(parseFloat(String(payment.amount)).toFixed(2)),
+      }).catch(() => {});
+    }
+  } else if (payment.bundleId) {
+    // Bundle refund — collect all courses in the bundle
+    const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
+    for (const bc of bundleCourses) courseIdsToUnenroll.push(bc.courseId);
+    const [refundBundle] = await db.select().from(bundlesTable).where(eq(bundlesTable.id, payment.bundleId)).limit(1);
+    if (refundUser && refundBundle) {
+      triggerAutomation("refund", refundUser.id, refundUser.email, {
+        name: refundUser.name,
+        email: refundUser.email,
+        course_name: refundBundle.name,
+        amount: String(parseFloat(String(payment.amount)).toFixed(2)),
+      }).catch(() => {});
+    }
   }
 
-  // Lessons belong to modules, modules belong to courses — join through modules
-  const courseModules = await db.select({ id: modulesTable.id }).from(modulesTable).where(eq(modulesTable.courseId, payment.courseId));
-  if (courseModules.length > 0) {
+  // Remove lesson completions and enrollments for every affected course
+  for (const cid of courseIdsToUnenroll) {
+    const courseModules = await db.select({ id: modulesTable.id }).from(modulesTable).where(eq(modulesTable.courseId, cid));
     for (const mod of courseModules) {
       const modLessons = await db.select({ id: lessonsTable.id }).from(lessonsTable).where(eq(lessonsTable.moduleId, mod.id));
       for (const lesson of modLessons) {
         await db.delete(lessonCompletionsTable).where(and(eq(lessonCompletionsTable.userId, payment.userId), eq(lessonCompletionsTable.lessonId, lesson.id)));
       }
     }
+    await db.delete(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, cid)));
   }
 
-  await db.delete(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId)));
-
-  res.json({ message: "Refund processed. User has been unenrolled from the course." });
+  const label = payment.bundleId ? "package" : "course";
+  res.json({ message: `Refund processed. User has been unenrolled from the ${label}.` });
 });
 
 router.delete("/orders/:orderId", requireAdmin, async (req, res): Promise<void> => {
@@ -561,14 +584,23 @@ router.delete("/orders/:orderId", requireAdmin, async (req, res): Promise<void> 
 
   // If order was completed, revoke enrollment and lesson progress
   if (payment.status === "completed") {
-    const courseModules = await db.select({ id: modulesTable.id }).from(modulesTable).where(eq(modulesTable.courseId, payment.courseId));
-    for (const mod of courseModules) {
-      const modLessons = await db.select({ id: lessonsTable.id }).from(lessonsTable).where(eq(lessonsTable.moduleId, mod.id));
-      for (const lesson of modLessons) {
-        await db.delete(lessonCompletionsTable).where(and(eq(lessonCompletionsTable.userId, payment.userId), eq(lessonCompletionsTable.lessonId, lesson.id)));
-      }
+    const courseIdsToRevoke: number[] = [];
+    if (payment.courseId) {
+      courseIdsToRevoke.push(payment.courseId);
+    } else if (payment.bundleId) {
+      const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
+      for (const bc of bundleCourses) courseIdsToRevoke.push(bc.courseId);
     }
-    await db.delete(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId)));
+    for (const cid of courseIdsToRevoke) {
+      const courseModules = await db.select({ id: modulesTable.id }).from(modulesTable).where(eq(modulesTable.courseId, cid));
+      for (const mod of courseModules) {
+        const modLessons = await db.select({ id: lessonsTable.id }).from(lessonsTable).where(eq(lessonsTable.moduleId, mod.id));
+        for (const lesson of modLessons) {
+          await db.delete(lessonCompletionsTable).where(and(eq(lessonCompletionsTable.userId, payment.userId), eq(lessonCompletionsTable.lessonId, lesson.id)));
+        }
+      }
+      await db.delete(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, cid)));
+    }
   }
 
   // Delete payment (GST invoice paymentId auto-nulled via SET NULL FK)

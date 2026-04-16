@@ -17,7 +17,8 @@ const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 type Order = {
   id: number;
   userId: number;
-  courseId: number;
+  courseId: number | null;
+  bundleId: number | null;
   amount: string;
   currency: string;
   status: "pending" | "completed" | "failed" | "refunded";
@@ -27,7 +28,8 @@ type Order = {
   createdAt: string;
   userName: string;
   userEmail: string;
-  courseTitle: string;
+  courseTitle: string | null;
+  bundleTitle: string | null;
   billingMobile: string | null;
   billingState: string | null;
 };
@@ -96,7 +98,7 @@ function RefundConfirmDialog({
       if (!res.ok) throw new Error(data.error ?? "Refund failed");
       toast({
         title: "Refund processed",
-        description: `${order.userName} has been refunded and unenrolled from "${order.courseTitle}".`,
+        description: `${order.userName} has been refunded and unenrolled from "${order.bundleId ? order.bundleTitle : order.courseTitle}".`,
       });
       onConfirmed();
     } catch (err: unknown) {
@@ -130,8 +132,8 @@ function RefundConfirmDialog({
             <span className="text-foreground font-medium">{order.userName}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Course</span>
-            <span className="text-foreground font-medium max-w-[55%] text-right truncate">{order.courseTitle}</span>
+            <span className="text-muted-foreground">{order.bundleId ? "Package" : "Course"}</span>
+            <span className="text-foreground font-medium max-w-[55%] text-right truncate">{order.bundleId ? order.bundleTitle : order.courseTitle}</span>
           </div>
           <div className="flex justify-between border-t border-border/50 pt-2">
             <span className="text-muted-foreground">Amount</span>
@@ -144,7 +146,7 @@ function RefundConfirmDialog({
           <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
           <p>
             Proceeding will mark this order as <strong>Refunded</strong> and immediately
-            remove <strong>{order.userName}'s</strong> access to <strong>"{order.courseTitle}"</strong>,
+            remove <strong>{order.userName}'s</strong> access to <strong>"{order.bundleId ? order.bundleTitle : order.courseTitle}"</strong>,
             including all lesson progress.
           </p>
         </div>
@@ -200,7 +202,7 @@ function OrderDetailDialog({
                 { icon: Mail, label: "Email", value: order.userEmail },
                 ...(order.billingMobile ? [{ icon: Phone, label: "Mobile", value: `+91 ${order.billingMobile}` }] : []),
                 ...(order.billingState ? [{ icon: MapPin, label: "State", value: order.billingState }] : []),
-                { icon: BookOpen, label: "Course", value: order.courseTitle },
+                { icon: BookOpen, label: order.bundleId ? "Package" : "Course", value: order.bundleId ? order.bundleTitle : order.courseTitle },
                 { icon: Calendar, label: "Order Date", value: formatDate(order.createdAt) },
                 { icon: CreditCard, label: "Payment Gateway", value: <Badge className={`text-xs ${gtw.className}`}>{gtw.label}</Badge> },
                 ...(order.paymentId ? [{ icon: Hash, label: "Payment ID", value: <code className="text-xs font-mono text-muted-foreground">{order.paymentId}</code> }] : []),
@@ -331,7 +333,7 @@ export default function AdminOrdersPage() {
   const exportCsv = () => {
     const headers = ["Order ID", "Customer", "Email", "Course", "Amount", "Currency", "Status", "Gateway", "Coupon", "Date"];
     const rows = orders.map(o => [
-      o.id, o.userName, o.userEmail, `"${o.courseTitle}"`,
+      o.id, o.userName, o.userEmail, `"${o.bundleId ? o.bundleTitle : o.courseTitle}"`,
       parseFloat(o.amount).toFixed(2), o.currency, o.status, o.gateway,
       o.couponCode ?? "", formatDate(o.createdAt),
     ]);
@@ -423,7 +425,7 @@ export default function AdminOrdersPage() {
           <table className="w-full min-w-[860px]">
             <thead className="bg-card border-b border-border">
               <tr>
-                {["Order", "Customer", "Course", "Date & Time", "Amount", "Status", "Gateway", "Actions"].map(h => (
+                {["Order", "Customer", "Course / Package", "Date & Time", "Amount", "Status", "Gateway", "Actions"].map(h => (
                   <th key={h} className="text-left text-xs font-semibold text-muted-foreground px-4 py-3 uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -454,9 +456,16 @@ export default function AdminOrdersPage() {
                         </div>
                       </div>
                     </td>
-                    {/* Course */}
+                    {/* Course / Package */}
                     <td className="px-4 py-3">
-                      <p className="text-sm text-foreground max-w-[160px] truncate" title={order.courseTitle}>{order.courseTitle}</p>
+                      {order.bundleId && (
+                        <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 mb-0.5">
+                          Package
+                        </span>
+                      )}
+                      <p className="text-sm text-foreground max-w-[160px] truncate" title={order.bundleId ? (order.bundleTitle ?? "") : (order.courseTitle ?? "")}>
+                        {order.bundleId ? order.bundleTitle : order.courseTitle}
+                      </p>
                     </td>
                     {/* Date */}
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">
