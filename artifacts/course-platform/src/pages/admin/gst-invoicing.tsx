@@ -1,4 +1,5 @@
 import { Fragment, useState, useEffect, useRef } from "react";
+import { useOrderFormat } from "@/lib/format-order";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -159,6 +160,7 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
   autoPrint?: boolean;
 }) {
   const printRef = useRef<HTMLDivElement>(null);
+  const { fmt } = useOrderFormat();
 
   const base = parseFloat(invoice.baseAmount);
   const cgst = parseFloat(invoice.cgstAmount);
@@ -309,7 +311,7 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
                 <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1, color: "#6b7280", fontWeight: 700, marginBottom: 10, borderBottom: "1px solid #e5e7eb", paddingBottom: 6 }}>Invoice Details</div>
                 {[
                   ["Invoice No.", invoice.invoiceNumber],
-                  ["Order No.", invoice.paymentId ? `#${invoice.paymentId}` : "—"],
+                  ["Order No.", invoice.paymentId ? fmt(invoice.paymentId) : "—"],
                   ["Invoice Date", formattedDate],
                   ["Financial Year", fy],
                   ["Payment Mode", (invoice.gateway || "—").toUpperCase()],
@@ -464,6 +466,7 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
 }
 
 export default function AdminGstInvoicingPage() {
+  const { fmt } = useOrderFormat();
   const { toast } = useToast();
   const [tab, setTab] = useState<Tab>("invoices");
 
@@ -731,7 +734,7 @@ export default function AdminGstInvoicingPage() {
 
       const detailRows = [
         ["Invoice No.", inv.invoiceNumber, true],
-        ["Order No.", inv.paymentId ? `#${inv.paymentId}` : "—", true],
+        ["Order No.", inv.paymentId ? fmt(inv.paymentId) : "—", true],
         ["Invoice Date", date, false],
         ["Financial Year", fy, false],
         ["Payment Mode", (inv.gateway || "—").toUpperCase(), false],
@@ -1026,7 +1029,7 @@ export default function AdminGstInvoicingPage() {
                   return (
                     <TableRow key={inv.id}>
                       <TableCell className="font-mono text-sm font-semibold text-blue-400">{inv.invoiceNumber}</TableCell>
-                      <TableCell className="font-mono text-sm text-muted-foreground">#{inv.paymentId}</TableCell>
+                      <TableCell className="font-mono text-sm text-muted-foreground">{fmt(inv.paymentId)}</TableCell>
                       <TableCell className="text-sm">{new Date(inv.createdAt).toLocaleDateString("en-IN")}</TableCell>
                       <TableCell>
                         <div className="font-medium text-sm">{inv.customerName}</div>

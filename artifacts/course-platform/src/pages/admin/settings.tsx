@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Chrome, Info, Construction } from "lucide-react";
+import { Eye, EyeOff, Chrome, Info, Construction, Hash } from "lucide-react";
 
 export default function AdminSettingsPage() {
   const { data: settings } = useGetAdminSettings({ query: { queryKey: getGetAdminSettingsQueryKey() } });
@@ -21,6 +21,8 @@ export default function AdminSettingsPage() {
     stripeEnabled: true, razorpayEnabled: false, emailNotificationsEnabled: true,
     commissionRate: 20,
   });
+  const [orderForm, setOrderForm] = useState({ orderPrefix: "ORD", orderSuffix: "" });
+  const [orderSaving, setOrderSaving] = useState(false);
   const [maintenanceForm, setMaintenanceForm] = useState({ maintenanceMode: false, maintenanceMessage: "" });
   const [maintenanceSaving, setMaintenanceSaving] = useState(false);
 
@@ -43,6 +45,10 @@ export default function AdminSettingsPage() {
         enabled: (settings as Record<string, unknown>).googleSignInEnabled as boolean ?? false,
         clientId: (settings as Record<string, unknown>).googleClientId as string ?? "",
         clientSecret: (settings as Record<string, unknown>).googleClientSecret as string ?? "",
+      });
+      setOrderForm({
+        orderPrefix: (settings as Record<string, unknown>).orderPrefix as string ?? "ORD",
+        orderSuffix: (settings as Record<string, unknown>).orderSuffix as string ?? "",
       });
     }
   }, [settings]);
@@ -68,6 +74,21 @@ export default function AdminSettingsPage() {
         setMaintenanceSaving(false);
       },
       onError: () => { toast({ title: "Error saving maintenance settings", variant: "destructive" }); setMaintenanceSaving(false); },
+    });
+  };
+
+  const handleSaveOrderFormat = async () => {
+    setOrderSaving(true);
+    updateSettings.mutate({
+      data: orderForm as Parameters<typeof updateSettings.mutate>[0]["data"],
+    }, {
+      onSuccess: () => {
+        toast({ title: "Order number format saved!" });
+        queryClient.invalidateQueries({ queryKey: getGetAdminSettingsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: ["platform-settings-order-format"] });
+        setOrderSaving(false);
+      },
+      onError: () => { toast({ title: "Error saving order format", variant: "destructive" }); setOrderSaving(false); },
     });
   };
 
@@ -132,6 +153,55 @@ export default function AdminSettingsPage() {
         <Button onClick={handleSave} disabled={updateSettings.isPending} className="w-full">
           {updateSettings.isPending ? "Saving..." : "Save Settings"}
         </Button>
+
+        {/* Order Number Format */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Hash className="w-4 h-4 text-primary" />Order Number Format
+            </CardTitle>
+            <CardDescription>Customize the prefix and suffix applied to every order number across orders, invoices, and all displays.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm mb-1.5 block">Prefix</Label>
+                <Input
+                  value={orderForm.orderPrefix}
+                  onChange={e => setOrderForm(f => ({ ...f, orderPrefix: e.target.value }))}
+                  placeholder="ORD"
+                  className="bg-background font-mono"
+                  maxLength={10}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Appears before the number</p>
+              </div>
+              <div>
+                <Label className="text-sm mb-1.5 block">Suffix</Label>
+                <Input
+                  value={orderForm.orderSuffix}
+                  onChange={e => setOrderForm(f => ({ ...f, orderSuffix: e.target.value }))}
+                  placeholder="(leave blank)"
+                  className="bg-background font-mono"
+                  maxLength={10}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Appears after the number</p>
+              </div>
+            </div>
+
+            {/* Live preview */}
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
+              <span className="text-xs text-muted-foreground font-medium">Preview:</span>
+              <code className="text-base font-bold font-mono text-primary tracking-wide">
+                #{orderForm.orderPrefix || ""}123{orderForm.orderSuffix || ""}
+              </code>
+              <span className="text-xs text-muted-foreground ml-auto">Order #123 will display as shown</span>
+            </div>
+
+            <Button onClick={handleSaveOrderFormat} disabled={orderSaving} variant="outline" className="w-full border-border">
+              {orderSaving ? "Saving..." : "Save Order Format"}
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Maintenance Mode */}
         <Card className={`border-2 ${maintenanceForm.maintenanceMode ? "bg-amber-500/5 border-amber-500/40" : "bg-card border-border"}`}>

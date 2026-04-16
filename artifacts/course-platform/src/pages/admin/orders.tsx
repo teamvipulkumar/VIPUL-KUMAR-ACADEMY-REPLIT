@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useOrderFormat } from "@/lib/format-order";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -87,6 +88,7 @@ function RefundConfirmDialog({
 }: { order: Order; onClose: () => void; onConfirmed: () => void }) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { fmt } = useOrderFormat();
 
   const handleRefund = async () => {
     setLoading(true);
@@ -139,7 +141,7 @@ function RefundConfirmDialog({
         <div className="my-2 rounded-xl border border-orange-400/20 bg-orange-400/5 p-4 space-y-2.5 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Order No.</span>
-            <span className="font-mono font-semibold text-foreground">#ORD{order.id}</span>
+            <span className="font-mono font-semibold text-foreground">{fmt(order.id)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Customer</span>
@@ -187,6 +189,7 @@ function OrderDetailDialog({
   order, onClose, onRefundInitiated,
 }: { order: Order; onClose: () => void; onRefundInitiated: (orderId: number) => void }) {
   const [refundOpen, setRefundOpen] = useState(false);
+  const { fmt } = useOrderFormat();
 
   const cfg = statusConfig[order.status] ?? { label: order.status, className: "text-muted-foreground border-border bg-muted/30" };
   const gtw = gatewayConfig[order.gateway] ?? { label: order.gateway, className: "text-muted-foreground border-border bg-muted/30" };
@@ -225,7 +228,7 @@ function OrderDetailDialog({
         <DialogContent className="sm:max-w-md bg-[#0d1424] border-white/10">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ShoppingCart className="w-4 h-4 text-primary" />Order No. #ORD{order.id}
+              <ShoppingCart className="w-4 h-4 text-primary" />Order No. {fmt(order.id)}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
@@ -233,7 +236,7 @@ function OrderDetailDialog({
             <div className="flex items-center justify-between p-4 rounded-xl bg-card/60 border border-border">
               <div>
                 <p className="text-2xl font-bold text-foreground">{formatAmount(order.amount, order.currency)}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Order No. #ORD{order.id}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Order No. {fmt(order.id)}</p>
               </div>
               <Badge className={`text-sm px-3 py-1 ${cfg.className}`}>{cfg.label}</Badge>
             </div>
@@ -305,6 +308,7 @@ function OrderDetailDialog({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AdminOrdersPage() {
+  const { fmt } = useOrderFormat();
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<Stats>({ totalRevenue: 0, totalOrders: 0, pendingOrders: 0, refundedOrders: 0 });
   const [total, setTotal] = useState(0);
@@ -355,7 +359,7 @@ export default function AdminOrdersPage() {
         method: "DELETE", credentials: "include",
       });
       if (!res.ok) throw new Error();
-      toast({ title: `Order #ORD${deleteTarget.id} deleted permanently` });
+      toast({ title: `Order ${fmt(deleteTarget.id)} deleted permanently` });
       setDeleteTarget(null);
       fetchOrders();
     } catch {
@@ -483,7 +487,7 @@ export default function AdminOrdersPage() {
                   <tr key={order.id} className="hover:bg-card/40 transition-colors cursor-pointer" onClick={() => setSelectedOrder(order)}>
                     {/* Order # */}
                     <td className="px-4 py-3">
-                      <span className="font-mono text-sm font-semibold text-foreground">#ORD{order.id}</span>
+                      <span className="font-mono text-sm font-semibold text-foreground">{fmt(order.id)}</span>
                       {order.couponCode && (
                         <div className="flex items-center gap-1 mt-0.5">
                           <Tag className="w-2.5 h-2.5 text-primary" />
@@ -610,7 +614,7 @@ export default function AdminOrdersPage() {
           <DialogContent className="sm:max-w-md bg-[#0d1424] border-white/10">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-red-400">
-                <Trash2 className="w-4 h-4" /> Delete Order #ORD{deleteTarget.id}
+                <Trash2 className="w-4 h-4" /> Delete Order {fmt(deleteTarget.id)}
               </DialogTitle>
               <DialogDescription className="text-muted-foreground text-sm pt-1">
                 This will permanently remove the order record.

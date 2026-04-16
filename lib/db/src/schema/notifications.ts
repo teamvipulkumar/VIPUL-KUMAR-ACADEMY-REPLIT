@@ -31,6 +31,8 @@ export const platformSettingsTable = pgTable("platform_settings", {
   googleClientSecret: text("google_client_secret"),
   maintenanceMode: boolean("maintenance_mode").notNull().default(false),
   maintenanceMessage: text("maintenance_message"),
+  orderPrefix: text("order_prefix").notNull().default("ORD"),
+  orderSuffix: text("order_suffix").notNull().default(""),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
