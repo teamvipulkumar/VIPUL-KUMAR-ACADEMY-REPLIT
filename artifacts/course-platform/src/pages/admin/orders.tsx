@@ -186,7 +186,6 @@ function OrderDetailDialog({
   order, onClose, onRefundInitiated,
 }: { order: Order; onClose: () => void; onRefundInitiated: (orderId: number) => void }) {
   const [refundOpen, setRefundOpen] = useState(false);
-  const [paymentId, setPaymentId] = useState(order.paymentId);
 
   const cfg = statusConfig[order.status] ?? { label: order.status, className: "text-muted-foreground border-border bg-muted/30" };
   const gtw = gatewayConfig[order.gateway] ?? { label: order.gateway, className: "text-muted-foreground border-border bg-muted/30" };
@@ -197,17 +196,6 @@ function OrderDetailDialog({
     : order.gateway === "paytm"    ? "Paytm Transaction ID"
     : order.gateway === "payu"     ? "PayU Transaction ID"
     : "Transaction ID";
-
-  // Auto-fetch the real Cashfree cf_payment_id when the dialog opens
-  useEffect(() => {
-    if (order.gateway !== "cashfree") return;
-    fetch(`${API_BASE}/api/admin/orders/${order.id}/sync-cashfree-id`, {
-      method: "POST", credentials: "include",
-    })
-      .then(r => r.json())
-      .then(data => { if (data.paymentId) setPaymentId(data.paymentId); })
-      .catch(() => {});
-  }, [order.id, order.gateway]);
 
   const rows = [
     { icon: User, label: "Customer", value: order.userName },
@@ -253,13 +241,13 @@ function OrderDetailDialog({
               ))}
 
               {/* Transaction ID row */}
-              {paymentId && (
+              {order.paymentId && (
                 <div className="flex items-center justify-between py-2 border-b border-border/40 last:border-0">
                   <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <Hash className="w-3.5 h-3.5" />{txnLabel}
                   </span>
                   <span className="text-sm text-foreground font-medium text-right max-w-[55%] truncate">
-                    <code className="text-xs font-mono text-muted-foreground">{paymentId}</code>
+                    <code className="text-xs font-mono text-muted-foreground">{order.paymentId}</code>
                   </span>
                 </div>
               )}
