@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Package, BookOpen, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, BookOpen, Check, Eye, EyeOff } from "lucide-react";
 import { ImageUploader } from "@/components/image-uploader";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -81,6 +81,19 @@ export default function AdminCoursesPage() {
     updateCourse.mutate({ courseId: id, data: { status: newStatus as "draft" | "published" } }, {
       onSuccess: () => { toast({ title: `Course ${newStatus}!` }); queryClient.invalidateQueries({ queryKey: getAdminListCoursesQueryKey() }); },
     });
+  };
+
+  const handleToggleWebsite = (id: number, current: boolean) => {
+    fetch(`${API_BASE}/api/courses/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ showOnWebsite: !current }),
+    }).then(r => {
+      if (!r.ok) throw new Error();
+      toast({ title: !current ? "Course is now visible on website" : "Course hidden from website" });
+      queryClient.invalidateQueries({ queryKey: getAdminListCoursesQueryKey() });
+    }).catch(() => toast({ title: "Failed to update visibility", variant: "destructive" }));
   };
 
   const handleDelete = (id: number) => {
@@ -253,10 +266,12 @@ export default function AdminCoursesPage() {
           <div className="border border-border rounded-xl overflow-hidden">
             <table className="w-full">
               <thead className="bg-card border-b border-border">
-                <tr>{["Title", "Category", "Level", "Price", "Status", "Students", "Actions"].map(h => <th key={h} className="text-left text-xs font-medium text-muted-foreground px-4 py-3">{h}</th>)}</tr>
+                <tr>{["Title", "Category", "Level", "Price", "Status", "On Website", "Students", "Actions"].map(h => <th key={h} className="text-left text-xs font-medium text-muted-foreground px-4 py-3">{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {courses.map(c => (
+                {courses.map(c => {
+                  const showOnWebsite = (c as unknown as { showOnWebsite: boolean }).showOnWebsite !== false;
+                  return (
                   <tr key={c.id} className="hover:bg-card/50 transition-colors">
                     <td className="px-4 py-3 font-medium text-sm max-w-xs"><p className="truncate">{c.title}</p></td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{c.category}</td>
@@ -264,6 +279,16 @@ export default function AdminCoursesPage() {
                     <td className="px-4 py-3 text-sm font-bold">₹{c.price}</td>
                     <td className="px-4 py-3">
                       <Badge className={`text-xs cursor-pointer select-none ${c.status === "published" ? "text-green-400 border-green-400/30 bg-green-400/10" : "text-yellow-400 border-yellow-400/30 bg-yellow-400/10"}`} onClick={() => handleToggleStatus(c.id, c.status)} title="Click to toggle">{c.status}</Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => handleToggleWebsite(c.id, showOnWebsite)}
+                        title={showOnWebsite ? "Visible on website – click to hide" : "Hidden from website – click to show"}
+                        className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${showOnWebsite ? "bg-blue-400/10 border-blue-400/30 text-blue-400 hover:bg-blue-400/20" : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/50"}`}
+                      >
+                        {showOnWebsite ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                        {showOnWebsite ? "Visible" : "Hidden"}
+                      </button>
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{c.enrollmentCount}</td>
                     <td className="px-4 py-3">
@@ -277,7 +302,8 @@ export default function AdminCoursesPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

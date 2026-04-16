@@ -11,7 +11,7 @@ type AuthedRequest = Request & { user: JwtPayload };
 
 router.get("/", async (req, res): Promise<void> => {
   const { category, search, limit = "20", offset = "0" } = req.query as Record<string, string>;
-  const conditions = [eq(coursesTable.status, "published")];
+  const conditions = [eq(coursesTable.status, "published"), eq(coursesTable.showOnWebsite, true)];
   if (category) conditions.push(eq(coursesTable.category, category));
   if (search) conditions.push(or(ilike(coursesTable.title, `%${search}%`), ilike(coursesTable.description, `%${search}%`))!);
 
@@ -74,8 +74,8 @@ router.get("/:courseId", async (req, res): Promise<void> => {
 
 router.put("/:courseId", requireAdmin, async (req, res): Promise<void> => {
   const courseId = parseInt(req.params.courseId);
-  const { title, description, thumbnailUrl, price, category, level, status } = req.body;
-  const [updated] = await db.update(coursesTable).set({ title, description, thumbnailUrl, price: price !== undefined ? String(price) : undefined, category, level, status }).where(eq(coursesTable.id, courseId)).returning();
+  const { title, description, thumbnailUrl, price, category, level, status, showOnWebsite } = req.body;
+  const [updated] = await db.update(coursesTable).set({ title, description, thumbnailUrl, price: price !== undefined ? String(price) : undefined, category, level, status, showOnWebsite }).where(eq(coursesTable.id, courseId)).returning();
   if (!updated) { res.status(404).json({ error: "Course not found" }); return; }
   res.json({ ...updated, price: parseFloat(updated.price), moduleCount: 0, lessonCount: 0, enrollmentCount: 0 });
 });
