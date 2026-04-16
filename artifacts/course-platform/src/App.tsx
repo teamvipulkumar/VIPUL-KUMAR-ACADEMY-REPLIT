@@ -85,6 +85,7 @@ import AdminGstInvoicingPage from "@/pages/admin/gst-invoicing";
 import PaymentVerifyPage from "@/pages/payment-verify";
 import VerifyEmailPage from "@/pages/verify-email";
 import CheckoutPage from "@/pages/checkout";
+import BundleCheckoutPage from "@/pages/bundle-checkout";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import TermsOfServicePage from "@/pages/terms-of-service";
 import CookiePolicyPage from "@/pages/cookie-policy";
@@ -134,6 +135,7 @@ function Router() {
       <Route path="/admin/enrollments" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminEnrollmentsPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/payment-gateways" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminPaymentGatewaysPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/checkout/:id" component={() => <CheckoutPage />} />
+      <Route path="/bundles/:id" component={() => <BundleCheckoutPage />} />
       <Route path="/payment/verify" component={() => <PaymentVerifyPage />} />
       <Route path="/verify-email" component={() => <VerifyEmailPage />} />
       <Route path="/admin/settings" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminSettingsPage /></AdminLayout></ProtectedRoute>} />

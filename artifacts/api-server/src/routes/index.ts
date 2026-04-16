@@ -13,6 +13,7 @@ import analyticsRouter from "./analytics";
 import uploadRouter from "./upload";
 import crmRouter from "./crm";
 import gstRouter from "./gst";
+import bundlesRouter from "./bundles";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use("/analytics", analyticsRouter);
 router.use("/upload", uploadRouter);
 router.use("/admin/crm", crmRouter);
 router.use("/admin/gst", gstRouter);
+router.use("/bundles", bundlesRouter);
 
 export default router;

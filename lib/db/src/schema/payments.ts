@@ -3,11 +3,13 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
 import { coursesTable } from "./courses";
+import { bundlesTable } from "./bundles";
 
 export const paymentsTable = pgTable("payments", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
-  courseId: integer("course_id").notNull().references(() => coursesTable.id, { onDelete: "cascade" }),
+  courseId: integer("course_id").references(() => coursesTable.id, { onDelete: "set null" }),
+  bundleId: integer("bundle_id").references(() => bundlesTable.id, { onDelete: "set null" }),
   amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
   currency: text("currency").notNull().default("INR"),
   status: text("status", { enum: ["pending", "completed", "failed", "refunded"] }).notNull().default("pending"),
