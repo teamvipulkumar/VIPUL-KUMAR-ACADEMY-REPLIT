@@ -299,7 +299,7 @@ function BundleSuccessScreen({ result, onContinue }: { result: BundleSuccessResu
 
 // ── Main Bundle Checkout Page ─────────────────────────────────────────────────
 export default function BundleCheckoutPage() {
-  const [, params] = useRoute("/bundles/:id");
+  const [, params] = useRoute("/bundles/:id/checkout");
   const bundleId = parseInt(params?.id ?? "0");
   const [, navigate] = useLocation();
   const { user: authUser, isAuthenticated } = useAuth();
