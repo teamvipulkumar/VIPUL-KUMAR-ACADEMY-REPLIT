@@ -48,8 +48,6 @@ export const gstInvoicesTable = pgTable("gst_invoices", {
   isInterstate: boolean("is_interstate").notNull().default(false),
   financialYear: text("financial_year").notNull().default(""),
   gateway: text("gateway").notNull().default(""),
-  orderPrefix: text("order_prefix").notNull().default("ORD"),
-  orderSuffix: text("order_suffix").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
