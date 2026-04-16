@@ -2,6 +2,7 @@ import { pgTable, serial, text, numeric, integer, boolean, timestamp } from "dri
 import { paymentsTable } from "./payments";
 import { usersTable } from "./users";
 import { coursesTable } from "./courses";
+import { bundlesTable } from "./bundles";
 
 export const gstCompanySettingsTable = pgTable("gst_company_settings", {
   id: serial("id").primaryKey(),
@@ -29,6 +30,7 @@ export const gstInvoicesTable = pgTable("gst_invoices", {
   paymentId: integer("payment_id").references(() => paymentsTable.id, { onDelete: "set null" }),
   userId: integer("user_id").references(() => usersTable.id, { onDelete: "set null" }),
   courseId: integer("course_id").references(() => coursesTable.id, { onDelete: "set null" }),
+  bundleId: integer("bundle_id").references(() => bundlesTable.id, { onDelete: "set null" }),
   customerName: text("customer_name").notNull().default(""),
   customerEmail: text("customer_email").notNull().default(""),
   customerMobile: text("customer_mobile"),

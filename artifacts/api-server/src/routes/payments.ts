@@ -196,10 +196,47 @@ router.get("/history", requireAuth, async (req, res): Promise<void> => {
   const authedReq = req as AuthedRequest;
   const payments = await db.select().from(paymentsTable).where(eq(paymentsTable.userId, authedReq.user.userId)).orderBy(paymentsTable.createdAt);
   const enriched = await Promise.all(payments.map(async (p) => {
+    if (p.bundleId) {
+      const [bundle] = await db.select().from(bundlesTable).where(eq(bundlesTable.id, p.bundleId)).limit(1);
+      return { ...p, amount: parseFloat(String(p.amount)), course: null, bundle: bundle ? { id: bundle.id, name: bundle.name, thumbnailUrl: bundle.thumbnailUrl } : null };
+    }
     const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, p.courseId)).limit(1);
-    return { ...p, amount: parseFloat(String(p.amount)), course: course ? { ...course, price: parseFloat(course.price), moduleCount: 0, lessonCount: 0, enrollmentCount: 0 } : null };
+    return { ...p, amount: parseFloat(String(p.amount)), bundle: null, course: course ? { ...course, price: parseFloat(course.price), moduleCount: 0, lessonCount: 0, enrollmentCount: 0 } : null };
   }));
   res.json(enriched);
+});
+
+router.get("/my-bundles", requireAuth, async (req, res): Promise<void> => {
+  const authedReq = req as AuthedRequest;
+  const bundlePayments = await db
+    .select()
+    .from(paymentsTable)
+    .where(and(eq(paymentsTable.userId, authedReq.user.userId), eq(paymentsTable.status, "completed")))
+    .orderBy(paymentsTable.createdAt);
+  const bundleIds = [...new Set(bundlePayments.filter(p => p.bundleId).map(p => p.bundleId!))];
+  const result = await Promise.all(bundleIds.map(async (bid) => {
+    const [bundle] = await db.select().from(bundlesTable).where(eq(bundlesTable.id, bid)).limit(1);
+    if (!bundle) return null;
+    const bundleCourseRows = await db
+      .select({
+        id: coursesTable.id, title: coursesTable.title, description: coursesTable.description,
+        thumbnailUrl: coursesTable.thumbnailUrl, price: coursesTable.price,
+        category: coursesTable.category, level: coursesTable.level, durationMinutes: coursesTable.durationMinutes,
+      })
+      .from(bundleCoursesTable)
+      .leftJoin(coursesTable, eq(bundleCoursesTable.courseId, coursesTable.id))
+      .where(eq(bundleCoursesTable.bundleId, bid));
+    const payment = bundlePayments.find(p => p.bundleId === bid);
+    return {
+      ...bundle,
+      price: parseFloat(String(bundle.price)),
+      compareAtPrice: bundle.compareAtPrice ? parseFloat(String(bundle.compareAtPrice)) : null,
+      purchasedAt: payment?.createdAt,
+      amount: payment ? parseFloat(String(payment.amount)) : null,
+      courses: bundleCourseRows.filter(c => c.id !== null).map(c => ({ ...c, price: parseFloat(String(c.price)) })),
+    };
+  }));
+  res.json(result.filter(Boolean));
 });
 
 // ── Guest / Auto-register Checkout ───────────────────────────────────────────

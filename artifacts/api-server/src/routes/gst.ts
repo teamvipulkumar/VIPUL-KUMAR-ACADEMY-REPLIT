@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import {
-  gstCompanySettingsTable, gstInvoicesTable, paymentsTable, usersTable, coursesTable,
+  gstCompanySettingsTable, gstInvoicesTable, paymentsTable, usersTable, coursesTable, bundlesTable,
 } from "@workspace/db";
 import { eq, desc, and, gte, lte, like, count } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth";
@@ -44,8 +44,13 @@ export async function generateGstInvoice(paymentId: number): Promise<void> {
 
     const [user] = await db.select({ name: usersTable.name, email: usersTable.email, phone: usersTable.phone })
       .from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
-    const [course] = await db.select({ title: coursesTable.title })
-      .from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+    const [course] = payment.courseId
+      ? await db.select({ title: coursesTable.title }).from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1)
+      : [null];
+    const [bundle] = payment.bundleId
+      ? await db.select({ id: bundlesTable.id, name: bundlesTable.name }).from(bundlesTable).where(eq(bundlesTable.id, payment.bundleId)).limit(1)
+      : [null];
+    const productTitle = bundle ? `Bundle: ${bundle.name}` : (course?.title ?? "");
 
     const createdAt = payment.createdAt ?? new Date();
     const fy = getFinancialYear(createdAt);
@@ -95,7 +100,8 @@ export async function generateGstInvoice(paymentId: number): Promise<void> {
       invoiceNumber,
       paymentId: payment.id,
       userId: payment.userId,
-      courseId: payment.courseId,
+      courseId: payment.courseId ?? null,
+      bundleId: payment.bundleId ?? null,
       customerName,
       customerEmail,
       customerMobile,
@@ -103,7 +109,7 @@ export async function generateGstInvoice(paymentId: number): Promise<void> {
       customerAddress: "",
       customerState,
       customerStateCode,
-      courseTitle: course?.title ?? "",
+      courseTitle: productTitle,
       baseAmount: String(baseAmount),
       gstRate,
       cgstAmount: String(cgst),
