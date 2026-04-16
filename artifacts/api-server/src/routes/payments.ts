@@ -507,7 +507,17 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
 
     const status: string = order.order_status ?? "";
     if (status === "PAID") {
-      await db.update(paymentsTable).set({ status: "completed", paymentId: order.cf_order_id ? String(order.cf_order_id) : `cf_${nanoid(12)}` }).where(eq(paymentsTable.id, payment.id));
+      // Fetch the actual Cashfree transaction ID (cf_payment_id) from the payments list
+      let cfTxnId: string = order.cf_order_id ? String(order.cf_order_id) : `cf_${nanoid(12)}`;
+      try {
+        const pr = await fetch(`${host}/pg/orders/${orderId}/payments`, {
+          headers: { "x-api-version": "2023-08-01", "x-client-id": gw.apiKey, "x-client-secret": gw.secretKey },
+        });
+        const pList = await pr.json();
+        const successPay = Array.isArray(pList) ? pList.find((p: { payment_status?: string; cf_payment_id?: number | string }) => p.payment_status === "SUCCESS") ?? pList[0] : null;
+        if (successPay?.cf_payment_id) cfTxnId = String(successPay.cf_payment_id);
+      } catch { /* fallback to cf_order_id already set */ }
+      await db.update(paymentsTable).set({ status: "completed", paymentId: cfTxnId }).where(eq(paymentsTable.id, payment.id));
       generateGstInvoice(payment.id).catch(() => {});
 
       // Bundle payment

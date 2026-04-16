@@ -661,6 +661,41 @@ router.post("/orders/:orderId/refund", requireAdmin, async (req, res): Promise<v
   });
 });
 
+// ── Sync Cashfree Transaction ID for an existing order ───────────────────────
+router.post("/orders/:orderId/sync-cashfree-id", requireAdmin, async (req, res): Promise<void> => {
+  const orderId = parseInt(req.params.orderId);
+  if (isNaN(orderId)) { res.status(400).json({ error: "Invalid order id" }); return; }
+
+  const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.id, orderId)).limit(1);
+  if (!payment) { res.status(404).json({ error: "Order not found" }); return; }
+  if (payment.gateway !== "cashfree") { res.status(400).json({ error: "Only applicable for Cashfree orders" }); return; }
+  if (!payment.gatewayOrderId) { res.status(400).json({ error: "No Cashfree order ID on record" }); return; }
+
+  const [gw] = await db.select().from(paymentGatewaysTable).where(eq(paymentGatewaysTable.name, "cashfree")).limit(1);
+  if (!gw) { res.status(400).json({ error: "Cashfree gateway not configured" }); return; }
+
+  const host = gw.isTestMode ? "https://sandbox.cashfree.com" : "https://api.cashfree.com";
+  try {
+    const r = await fetch(`${host}/pg/orders/${payment.gatewayOrderId}/payments`, {
+      headers: { "x-api-version": "2023-08-01", "x-client-id": gw.apiKey, "x-client-secret": gw.secretKey },
+    });
+    const pList = await r.json();
+    if (!r.ok) { res.status(400).json({ error: pList.message ?? "Cashfree API error" }); return; }
+
+    const successPay = Array.isArray(pList)
+      ? (pList.find((p: { payment_status?: string }) => p.payment_status === "SUCCESS") ?? pList[0])
+      : null;
+
+    if (!successPay?.cf_payment_id) { res.status(404).json({ error: "No successful Cashfree payment found for this order" }); return; }
+
+    const cfTxnId = String(successPay.cf_payment_id);
+    await db.update(paymentsTable).set({ paymentId: cfTxnId }).where(eq(paymentsTable.id, orderId));
+    res.json({ success: true, paymentId: cfTxnId });
+  } catch (err: unknown) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
 router.delete("/orders/:orderId", requireAdmin, async (req, res): Promise<void> => {
   const orderId = parseInt(req.params.orderId);
   if (isNaN(orderId)) { res.status(400).json({ error: "Invalid order id" }); return; }
