@@ -218,7 +218,16 @@ function OrderDetailDialog({
                 { icon: BookOpen, label: order.bundleId ? "Package" : "Course", value: order.bundleId ? order.bundleTitle : order.courseTitle },
                 { icon: Calendar, label: "Order Date", value: formatDate(order.createdAt) },
                 { icon: CreditCard, label: "Payment Gateway", value: <Badge className={`text-xs ${gtw.className}`}>{gtw.label}</Badge> },
-                ...(order.paymentId ? [{ icon: Hash, label: "Payment ID", value: <code className="text-xs font-mono text-muted-foreground">{order.paymentId}</code> }] : []),
+                ...(order.paymentId ? [{
+                  icon: Hash,
+                  label: order.gateway === "cashfree" ? "Cashfree Transaction ID"
+                       : order.gateway === "razorpay" ? "Razorpay Payment ID"
+                       : order.gateway === "stripe"   ? "Stripe Payment ID"
+                       : order.gateway === "paytm"    ? "Paytm Transaction ID"
+                       : order.gateway === "payu"     ? "PayU Transaction ID"
+                       : "Transaction ID",
+                  value: <code className="text-xs font-mono text-muted-foreground">{order.paymentId}</code>,
+                }] : []),
                 ...(order.couponCode ? [{ icon: Tag, label: "Coupon Used", value: <code className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-mono">{order.couponCode}</code> }] : []),
               ].map((row, i) => (
                 <div key={i} className="flex items-center justify-between py-2 border-b border-border/40 last:border-0">
