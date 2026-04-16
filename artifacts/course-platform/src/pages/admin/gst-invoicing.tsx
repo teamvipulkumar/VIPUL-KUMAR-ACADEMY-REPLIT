@@ -83,7 +83,8 @@ interface GstInvoice {
   invoiceNumber: string;
   paymentId: number;
   userId: number;
-  courseId: number;
+  courseId: number | null;
+  bundleId: number | null;
   customerName: string;
   customerEmail: string;
   customerMobile: string | null;
@@ -1007,7 +1008,7 @@ export default function AdminGstInvoicingPage() {
                   <TableHead>Order No</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead>Course</TableHead>
+                  <TableHead>Course / Package</TableHead>
                   <TableHead className="text-right">Taxable</TableHead>
                   <TableHead className="text-right">GST</TableHead>
                   <TableHead className="text-right">Total</TableHead>
@@ -1031,7 +1032,16 @@ export default function AdminGstInvoicingPage() {
                         <div className="font-medium text-sm">{inv.customerName}</div>
                         <div className="text-xs text-muted-foreground">{inv.customerEmail}</div>
                       </TableCell>
-                      <TableCell className="text-sm max-w-[140px] truncate">{inv.courseTitle}</TableCell>
+                      <TableCell className="max-w-[180px]">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${inv.bundleId ? "bg-primary/15 text-primary border border-primary/30" : "bg-blue-500/10 text-blue-400 border border-blue-500/20"}`}>
+                            {inv.bundleId ? "📦 Bundle" : "🎓 Course"}
+                          </span>
+                        </div>
+                        <div className="text-sm truncate mt-0.5" title={inv.bundleId ? inv.courseTitle.replace(/^Bundle:\s*/, "") : inv.courseTitle}>
+                          {inv.bundleId ? inv.courseTitle.replace(/^Bundle:\s*/, "") : inv.courseTitle}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right text-sm">{fmt(inv.baseAmount)}</TableCell>
                       <TableCell className="text-right text-sm">{fmt(gst)}</TableCell>
                       <TableCell className="text-right font-semibold">{fmt(inv.totalAmount)}</TableCell>
@@ -1413,7 +1423,10 @@ export default function AdminGstInvoicingPage() {
               </p>
               <div className="bg-muted/50 border border-border rounded-lg p-3 text-sm space-y-1 text-muted-foreground">
                 <div><span className="font-medium text-foreground">Customer:</span> {deleteTarget.customerName}</div>
-                <div><span className="font-medium text-foreground">Course:</span> {deleteTarget.courseTitle}</div>
+                <div>
+                  <span className="font-medium text-foreground">{deleteTarget.bundleId ? "Package:" : "Course:"}</span>{" "}
+                  {deleteTarget.bundleId ? deleteTarget.courseTitle.replace(/^Bundle:\s*/, "") : deleteTarget.courseTitle}
+                </div>
                 <div><span className="font-medium text-foreground">Amount:</span> {fmt(deleteTarget.totalAmount)}</div>
               </div>
               <p className="text-xs text-red-500">This action cannot be undone. The invoice record will be permanently removed.</p>
