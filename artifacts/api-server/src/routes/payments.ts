@@ -9,6 +9,7 @@ import {
   affiliateApplicationsTable, platformSettingsTable, affiliatePixelTable,
 } from "@workspace/db";
 import { eq, and, desc, isNull, or } from "drizzle-orm";
+import { bundlesTable, bundleCoursesTable } from "@workspace/db";
 import { requireAuth, signToken, verifyToken, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import { triggerAutomation } from "./crm";
@@ -446,13 +447,30 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
       await db.update(paymentsTable).set({ status: "completed", paymentId: order.cf_order_id ? String(order.cf_order_id) : `cf_${nanoid(12)}` }).where(eq(paymentsTable.id, payment.id));
       generateGstInvoice(payment.id).catch(() => {});
 
-      // Enroll
+      // Bundle payment
+      if (payment.bundleId && !payment.courseId) {
+        const [bundle] = await db.select().from(bundlesTable).where(eq(bundlesTable.id, payment.bundleId)).limit(1);
+        const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
+        for (const { courseId } of bundleCourses) {
+          if (!courseId) continue;
+          const [ex] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, courseId))).limit(1);
+          if (!ex) await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId });
+        }
+        await db.insert(notificationsTable).values({ userId: payment.userId, title: "Bundle Enrolled! 🎉", message: `You now have access to all courses in "${bundle?.name ?? "the bundle"}".`, type: "success" });
+        if (payment.couponCode) {
+          const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
+          if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
+        }
+        res.json({ success: true, enrolled: true, bundleId: payment.bundleId, bundleName: bundle?.name, courseCount: bundleCourses.length });
+        return;
+      }
+
+      // Single course payment
       const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
       if (!existing) {
         await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId: payment.courseId });
         const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
         await db.insert(notificationsTable).values({ userId: payment.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success" });
-        // Update coupon usage
         if (payment.couponCode) {
           const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
           if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
@@ -715,6 +733,25 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
       await db.update(paymentsTable).set({ status: "completed", paymentId: txnId }).where(eq(paymentsTable.id, payment.id));
       generateGstInvoice(payment.id).catch(() => {});
 
+      // Bundle payment
+      if (payment.bundleId && !payment.courseId) {
+        const [bundle] = await db.select().from(bundlesTable).where(eq(bundlesTable.id, payment.bundleId)).limit(1);
+        const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
+        for (const { courseId } of bundleCourses) {
+          if (!courseId) continue;
+          const [ex] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, courseId))).limit(1);
+          if (!ex) await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId });
+        }
+        await db.insert(notificationsTable).values({ userId: payment.userId, title: "Bundle Enrolled! 🎉", message: `You now have access to all courses in "${bundle?.name ?? "the bundle"}".`, type: "success" });
+        if (payment.couponCode) {
+          const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
+          if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
+        }
+        res.json({ success: true, enrolled: true, bundleId: payment.bundleId, bundleName: bundle?.name, courseCount: bundleCourses.length });
+        return;
+      }
+
+      // Single course payment
       const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
       if (!existing) {
         await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId: payment.courseId });

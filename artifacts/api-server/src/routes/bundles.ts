@@ -1,15 +1,19 @@
 import { Router } from "express";
 import { nanoid } from "nanoid";
+import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
 import {
   bundlesTable, bundleCoursesTable, coursesTable, paymentsTable,
   enrollmentsTable, notificationsTable, usersTable, couponsTable,
-  platformSettingsTable,
+  platformSettingsTable, paymentGatewaysTable,
 } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
-import { requireAuth, requireAdmin, type JwtPayload } from "../middlewares/auth";
+import { requireAuth, requireAdmin, signToken, verifyToken, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import { triggerAutomation } from "./crm";
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const PaytmChecksum = require("paytmchecksum");
 
 const router = Router();
 type AuthedRequest = Request & { user: JwtPayload };
@@ -41,6 +45,62 @@ async function getBundleWithCourses(bundleId: number) {
       price: parseFloat(String(c.price)),
     })),
   };
+}
+
+async function enrollInBundle(bundleId: number, userId: number, affiliateRef?: string | null): Promise<{ enrolledCourses: number[]; bundleName: string }> {
+  const bundle = await getBundleWithCourses(bundleId);
+  if (!bundle) throw new Error("Bundle not found");
+
+  const enrolledCourses: number[] = [];
+  for (const course of bundle.courses) {
+    if (!course.id) continue;
+    const [existing] = await db.select().from(enrollmentsTable).where(
+      and(eq(enrollmentsTable.userId, userId), eq(enrollmentsTable.courseId, course.id))
+    ).limit(1);
+    if (!existing) {
+      await db.insert(enrollmentsTable).values({ userId, courseId: course.id });
+      enrolledCourses.push(course.id);
+    }
+  }
+
+  await db.insert(notificationsTable).values({
+    userId,
+    title: "Bundle Enrolled! 🎉",
+    message: `You now have access to all ${bundle.courses.length} courses in "${bundle.name}".`,
+    type: "success",
+  });
+
+  const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (buyer) {
+    triggerAutomation("purchase", buyer.id, buyer.email, {
+      name: buyer.name, email: buyer.email, course_name: bundle.name,
+    }).catch(() => {});
+  }
+
+  if (affiliateRef) {
+    // No per-course commission for bundles, just log the referral purchase
+    try {
+      const [referrer] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.referralCode, affiliateRef)).limit(1);
+      if (referrer && referrer.id !== userId) {
+        const [settings] = await db.select({ commissionRate: platformSettingsTable.commissionRate }).from(platformSettingsTable).limit(1);
+        const rate = settings?.commissionRate ?? 20;
+        const [payment] = await db.select().from(paymentsTable).where(
+          and(eq(paymentsTable.userId, userId), eq(paymentsTable.bundleId, bundleId))
+        ).orderBy(desc(paymentsTable.createdAt)).limit(1);
+        if (payment) {
+          const commission = parseFloat(((parseFloat(String(payment.amount)) * rate) / 100).toFixed(2));
+          await db.insert(notificationsTable).values({
+            userId: referrer.id,
+            title: "Commission Earned! 🎉",
+            message: `You earned ₹${commission.toFixed(2)} commission from a bundle purchase.`,
+            type: "success",
+          });
+        }
+      }
+    } catch { /* ignore */ }
+  }
+
+  return { enrolledCourses, bundleName: bundle.name };
 }
 
 /* ── Public Routes ───────────────────────────────────────────────────────── */
@@ -133,6 +193,7 @@ router.delete("/admin/:id", requireAdmin, async (req, res): Promise<void> => {
 
 /* ── Bundle Payment Routes ───────────────────────────────────────────────── */
 
+// ── Legacy auth-only checkout (kept for backward compat) ──────────────────
 router.post("/checkout", requireAuth, async (req, res): Promise<void> => {
   const authedReq = req as AuthedRequest;
   const { bundleId, gateway, couponCode, affiliateRef, state, mobile } = req.body;
@@ -188,44 +249,349 @@ router.post("/verify", requireAuth, async (req, res): Promise<void> => {
 
   await db.update(paymentsTable).set({ status: "completed", paymentId: `sim_${nanoid(12)}` }).where(eq(paymentsTable.id, payment.id));
 
-  const bundle = await getBundleWithCourses(payment.bundleId);
-  if (!bundle) { res.status(404).json({ error: "Bundle not found" }); return; }
-
-  const enrolledCourses: number[] = [];
-  for (const course of bundle.courses) {
-    if (!course.id) continue;
-    const existing = await db.select().from(enrollmentsTable).where(
-      and(eq(enrollmentsTable.userId, authedReq.user.userId), eq(enrollmentsTable.courseId, course.id))
-    ).limit(1);
-    if (existing.length === 0) {
-      await db.insert(enrollmentsTable).values({ userId: authedReq.user.userId, courseId: course.id });
-      enrolledCourses.push(course.id);
-    }
-  }
-
-  await db.insert(notificationsTable).values({
-    userId: authedReq.user.userId,
-    title: "Bundle Enrolled! 🎉",
-    message: `You now have access to all ${bundle.courses.length} courses in "${bundle.name}".`,
-    type: "success",
-  });
-
   if (payment.couponCode) {
     const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
     if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
   }
 
-  const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, authedReq.user.userId)).limit(1);
-  if (buyer) {
-    triggerAutomation("purchase", buyer.id, buyer.email, {
-      name: buyer.name,
-      email: buyer.email,
-      course_name: bundle.name,
-      amount: String(parseFloat(String(payment.amount)).toFixed(2)),
-    }).catch(() => {});
+  const { enrolledCourses, bundleName } = await enrollInBundle(payment.bundleId, authedReq.user.userId, payment.affiliateRef);
+  res.json({ success: true, bundleId: payment.bundleId, enrolledCourses, bundleName });
+});
+
+// ── Guest / Auto-register Bundle Checkout (simulated gateways) ───────────
+router.post("/checkout/guest", async (req, res): Promise<void> => {
+  const { bundleId, email, fullName, state, mobile, gateway, couponCode, affiliateRef } = req.body;
+  if (!bundleId || !email || !fullName || !gateway) {
+    res.status(400).json({ error: "bundleId, email, fullName, and gateway are required" }); return;
   }
 
-  res.json({ success: true, bundleId: payment.bundleId, enrolledCourses, bundleName: bundle.name });
+  const bundle = await getBundleWithCourses(parseInt(bundleId));
+  if (!bundle || !bundle.isActive) { res.status(404).json({ error: "Bundle not found" }); return; }
+
+  // Find or create user
+  let userId: number;
+  let isNewUser = false;
+  let tempPassword: string | undefined;
+
+  const existingToken = req.cookies?.token;
+  if (existingToken) {
+    try { const payload = verifyToken(existingToken); userId = payload.userId; }
+    catch { userId = 0; }
+  } else { userId = 0; }
+
+  if (!userId) {
+    const [existingUser] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase().trim())).limit(1);
+    if (existingUser) {
+      userId = existingUser.id;
+    } else {
+      tempPassword = nanoid(10);
+      const hashed = await bcrypt.hash(tempPassword, 10);
+      const [newUser] = await db.insert(usersTable).values({
+        email: email.toLowerCase().trim(), password: hashed, name: fullName.trim(),
+        referralCode: nanoid(8).toUpperCase(), role: "student",
+      }).returning();
+      userId = newUser.id;
+      isNewUser = true;
+    }
+  }
+
+  // Apply coupon (bundle-wide only — no courseId restriction)
+  let amount = bundle.price;
+  if (couponCode) {
+    const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, couponCode.toUpperCase())).limit(1);
+    if (coupon && coupon.isActive && (!coupon.expiresAt || coupon.expiresAt > new Date()) && (!coupon.maxUses || coupon.usedCount < coupon.maxUses) && !coupon.courseId) {
+      const discount = parseFloat(String(coupon.discountValue));
+      amount = coupon.discountType === "percentage" ? amount * (1 - discount / 100) : Math.max(0, amount - discount);
+      await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
+    }
+  }
+
+  // Insert completed payment
+  const sessionId = nanoid(32);
+  await db.insert(paymentsTable).values({
+    userId,
+    bundleId: bundle.id,
+    courseId: null,
+    amount: String(amount.toFixed(2)),
+    currency: "INR",
+    status: "completed",
+    gateway,
+    sessionId,
+    paymentId: `sim_${nanoid(12)}`,
+    couponCode: couponCode || null,
+    affiliateRef: affiliateRef || null,
+    billingName: fullName?.trim() || null,
+    billingEmail: email?.toLowerCase().trim() || null,
+    billingMobile: mobile?.trim() || null,
+    billingState: state || null,
+  });
+
+  // Enroll in all bundle courses
+  const { enrolledCourses, bundleName } = await enrollInBundle(bundle.id, userId, affiliateRef);
+
+  // Auto-login
+  const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (freshUser) {
+    if (isNewUser) triggerAutomation("welcome", freshUser.id, freshUser.email, { name: freshUser.name, email: freshUser.email }).catch(() => {});
+  }
+  const token = signToken({ userId: freshUser!.id, email: freshUser!.email, role: freshUser!.role });
+  res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+
+  const { password: _, ...safeUser } = freshUser!;
+  res.json({
+    success: true, isNewUser, tempPassword,
+    user: safeUser,
+    bundleId: bundle.id, bundleName,
+    enrolledCourses,
+    enrolledCount: enrolledCourses.length,
+  });
+});
+
+// ── Cashfree: Create Order for Bundle ─────────────────────────────────────
+router.post("/cashfree/create-order", async (req, res): Promise<void> => {
+  const { bundleId, email, fullName, state, mobile, couponCode, affiliateRef } = req.body;
+  if (!bundleId || !email || !fullName) {
+    res.status(400).json({ error: "bundleId, email, and fullName are required" }); return;
+  }
+
+  const [gw] = await db.select().from(paymentGatewaysTable).where(
+    and(eq(paymentGatewaysTable.name, "cashfree"), eq(paymentGatewaysTable.isActive, true))
+  ).limit(1);
+  if (!gw?.apiKey || !gw?.secretKey) {
+    res.status(400).json({ error: "Cashfree is not configured or inactive" }); return;
+  }
+
+  const bundle = await getBundleWithCourses(parseInt(bundleId));
+  if (!bundle || !bundle.isActive) { res.status(404).json({ error: "Bundle not found" }); return; }
+
+  // Find or create user
+  let userId: number;
+  let isNewUser = false;
+  let tempPassword: string | undefined;
+
+  const existingToken = req.cookies?.token;
+  if (existingToken) {
+    try { const payload = verifyToken(existingToken); userId = payload.userId; }
+    catch { userId = 0; }
+  } else { userId = 0; }
+
+  if (!userId) {
+    const [existingUser] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase().trim())).limit(1);
+    if (existingUser) {
+      userId = existingUser.id;
+    } else {
+      tempPassword = nanoid(10);
+      const hashed = await bcrypt.hash(tempPassword, 10);
+      const [newUser] = await db.insert(usersTable).values({
+        email: email.toLowerCase().trim(), password: hashed, name: fullName.trim(),
+        referralCode: nanoid(8).toUpperCase(), role: "student",
+      }).returning();
+      userId = newUser.id;
+      isNewUser = true;
+    }
+  }
+
+  // Apply coupon
+  let amount = bundle.price;
+  if (couponCode) {
+    const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, couponCode.toUpperCase())).limit(1);
+    if (coupon?.isActive && (!coupon.maxUses || coupon.usedCount < coupon.maxUses) && !coupon.courseId) {
+      const d = parseFloat(String(coupon.discountValue));
+      amount = coupon.discountType === "percentage" ? amount * (1 - d / 100) : Math.max(0, amount - d);
+    }
+  }
+
+  // Create Cashfree order
+  const cfOrderId = `bnd_${nanoid(14)}`;
+  const host = gw.isTestMode ? "https://sandbox.cashfree.com" : "https://api.cashfree.com";
+
+  let cfResp: { order_id?: string; payment_session_id?: string; message?: string };
+  try {
+    const r = await fetch(`${host}/pg/orders`, {
+      method: "POST",
+      headers: { "x-api-version": "2023-08-01", "x-client-id": gw.apiKey, "x-client-secret": gw.secretKey, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        order_id: cfOrderId,
+        order_amount: parseFloat(amount.toFixed(2)),
+        order_currency: "INR",
+        customer_details: {
+          customer_id: `uid_${userId}`,
+          customer_email: email.toLowerCase().trim(),
+          customer_phone: mobile?.trim() || "9999999999",
+          customer_name: fullName.trim(),
+        },
+        order_meta: { notify_url: "" },
+      }),
+    });
+    cfResp = await r.json();
+    if (!r.ok || !cfResp.payment_session_id) {
+      res.status(400).json({ error: cfResp.message ?? "Failed to create Cashfree order" }); return;
+    }
+  } catch (err: unknown) {
+    res.status(500).json({ error: (err as Error).message }); return;
+  }
+
+  // Store pending payment
+  const sessionId = nanoid(32);
+  await db.insert(paymentsTable).values({
+    userId,
+    bundleId: bundle.id,
+    courseId: null,
+    amount: String(amount.toFixed(2)),
+    currency: "INR",
+    status: "pending",
+    gateway: "cashfree",
+    sessionId,
+    gatewayOrderId: cfOrderId,
+    couponCode: couponCode || null,
+    affiliateRef: affiliateRef || null,
+    billingName: fullName?.trim() || null,
+    billingEmail: email?.toLowerCase().trim() || null,
+    billingMobile: mobile?.trim() || null,
+    billingState: state || null,
+  });
+
+  // Auto-login
+  const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  const token = signToken({ userId: freshUser!.id, email: freshUser!.email, role: freshUser!.role });
+  res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+
+  res.json({
+    paymentSessionId: cfResp.payment_session_id,
+    orderId: cfOrderId,
+    isTestMode: gw.isTestMode,
+    isNewUser, tempPassword,
+    userId,
+    bundleId: bundle.id,
+    bundleName: bundle.name,
+  });
+});
+
+// ── Paytm: Create Order for Bundle ───────────────────────────────────────
+router.post("/paytm/create-order", async (req, res): Promise<void> => {
+  const { bundleId, email, fullName, state, mobile, couponCode, affiliateRef } = req.body;
+  if (!bundleId || !email || !fullName) {
+    res.status(400).json({ error: "bundleId, email, and fullName are required" }); return;
+  }
+
+  const [gw] = await db.select().from(paymentGatewaysTable).where(
+    and(eq(paymentGatewaysTable.name, "paytm"), eq(paymentGatewaysTable.isActive, true))
+  ).limit(1);
+  if (!gw?.apiKey || !gw?.secretKey) {
+    res.status(400).json({ error: "Paytm is not configured or inactive" }); return;
+  }
+
+  const mid = gw.apiKey;
+  const merchantKey = gw.secretKey;
+
+  const bundle = await getBundleWithCourses(parseInt(bundleId));
+  if (!bundle || !bundle.isActive) { res.status(404).json({ error: "Bundle not found" }); return; }
+
+  // Find or create user
+  let userId: number;
+  let isNewUser = false;
+  let tempPassword: string | undefined;
+
+  const existingToken = req.cookies?.token;
+  if (existingToken) {
+    try { const payload = verifyToken(existingToken); userId = payload.userId; }
+    catch { userId = 0; }
+  } else { userId = 0; }
+
+  if (!userId) {
+    const [existingUser] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase().trim())).limit(1);
+    if (existingUser) {
+      userId = existingUser.id;
+    } else {
+      tempPassword = nanoid(10);
+      const hashed = await bcrypt.hash(tempPassword, 10);
+      const [newUser] = await db.insert(usersTable).values({
+        email: email.toLowerCase().trim(), password: hashed, name: fullName.trim(),
+        referralCode: nanoid(8).toUpperCase(), role: "student",
+      }).returning();
+      userId = newUser.id;
+      isNewUser = true;
+    }
+  }
+
+  // Apply coupon
+  let amount = bundle.price;
+  if (couponCode) {
+    const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, couponCode.toUpperCase())).limit(1);
+    if (coupon?.isActive && (!coupon.maxUses || coupon.usedCount < coupon.maxUses) && !coupon.courseId) {
+      const d = parseFloat(String(coupon.discountValue));
+      amount = coupon.discountType === "percentage" ? amount * (1 - d / 100) : Math.max(0, amount - d);
+    }
+  }
+
+  const orderId = `BPT_${nanoid(14)}`;
+  const host = gw.isTestMode ? "https://securegw-stage.paytm.in" : "https://securegw.paytm.in";
+
+  const forwardedProto = req.get("x-forwarded-proto") || req.protocol;
+  const origin = `${forwardedProto}://${req.get("host")}`;
+  const websiteName = gw.isTestMode ? "WEBSTAGING" : (gw.webhookSecret?.startsWith("WS:") ? gw.webhookSecret.slice(3) : "DEFAULT");
+  const txnBody: Record<string, unknown> = {
+    requestType: "Payment",
+    mid,
+    websiteName,
+    orderId,
+    callbackUrl: `${origin}/api/payments/paytm/callback`,
+    txnAmount: { value: amount.toFixed(2), currency: "INR" },
+    userInfo: { custId: `uid_${userId}` },
+  };
+
+  const signature = await PaytmChecksum.generateSignature(JSON.stringify(txnBody), merchantKey);
+
+  let txnToken: string;
+  try {
+    const reqPayload = { head: { version: "v1", signature }, body: txnBody };
+    const r = await fetch(
+      `${host}/theia/api/v1/initiateTransaction?mid=${encodeURIComponent(mid)}&orderId=${encodeURIComponent(orderId)}`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(reqPayload) }
+    );
+    const paytmResp = await r.json();
+    if (paytmResp.body?.resultInfo?.resultStatus !== "S") {
+      res.status(400).json({ error: paytmResp.body?.resultInfo?.resultMsg ?? "Failed to initiate Paytm transaction" }); return;
+    }
+    txnToken = paytmResp.body.txnToken;
+  } catch (err: unknown) {
+    res.status(500).json({ error: (err as Error).message }); return;
+  }
+
+  // Store pending payment
+  const sessionId = nanoid(32);
+  await db.insert(paymentsTable).values({
+    userId,
+    bundleId: bundle.id,
+    courseId: null,
+    amount: String(amount.toFixed(2)),
+    currency: "INR",
+    status: "pending",
+    gateway: "paytm",
+    sessionId,
+    gatewayOrderId: orderId,
+    couponCode: couponCode || null,
+    affiliateRef: affiliateRef || null,
+    billingName: fullName?.trim() || null,
+    billingEmail: email?.toLowerCase().trim() || null,
+    billingMobile: mobile?.trim() || null,
+    billingState: state || null,
+  });
+
+  // Auto-login
+  const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  const token = signToken({ userId: freshUser!.id, email: freshUser!.email, role: freshUser!.role });
+  res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+
+  res.json({
+    txnToken, orderId, mid,
+    amount: parseFloat(amount.toFixed(2)),
+    isTestMode: gw.isTestMode,
+    isNewUser, tempPassword,
+    userId,
+    bundleId: bundle.id,
+    bundleName: bundle.name,
+  });
 });
 
 export default router;

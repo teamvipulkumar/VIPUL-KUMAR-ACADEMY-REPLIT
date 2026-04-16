@@ -14,8 +14,11 @@ type NewUserCreds = {
 };
 
 type SuccessData = {
-  courseId: number;
-  courseTitle: string;
+  courseId?: number;
+  courseTitle?: string;
+  bundleId?: number;
+  bundleName?: string;
+  courseCount?: number;
   newUser?: NewUserCreds;
 };
 
@@ -67,7 +70,7 @@ export default function PaymentVerifyPage() {
           } catch { /* ignore */ }
 
           setState("success");
-          setSuccessData({ courseId: data.courseId, courseTitle: data.courseTitle, newUser });
+          setSuccessData({ courseId: data.courseId, courseTitle: data.courseTitle, bundleId: data.bundleId, bundleName: data.bundleName, courseCount: data.courseCount, newUser });
         } else if (data.pending) {
           setState("pending");
           setMessage(data.message ?? "Payment is processing. Please wait a moment.");
@@ -115,8 +118,17 @@ export default function PaymentVerifyPage() {
             </div>
 
             <h2 className="text-xl font-bold text-foreground mb-1">Payment Successful!</h2>
-            <p className="text-sm text-muted-foreground mb-1">You've been enrolled in</p>
-            <p className="font-semibold text-foreground mb-5">"{successData.courseTitle}"</p>
+            {successData.bundleName ? (
+              <>
+                <p className="text-sm text-muted-foreground mb-1">You're now enrolled in all courses from</p>
+                <p className="font-semibold text-foreground mb-5">"{successData.bundleName}"</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground mb-1">You've been enrolled in</p>
+                <p className="font-semibold text-foreground mb-5">"{successData.courseTitle}"</p>
+              </>
+            )}
 
             {/* New user credentials box */}
             {successData.newUser && (
@@ -160,9 +172,15 @@ export default function PaymentVerifyPage() {
               </div>
             )}
 
-            <Button onClick={() => navigate(`/learn/${successData.courseId}`)} className="w-full bg-primary gap-2">
-              <BookOpen className="w-4 h-4" />Start Learning Now
-            </Button>
+            {successData.bundleId ? (
+              <Button onClick={() => navigate("/my-courses")} className="w-full bg-primary gap-2">
+                <BookOpen className="w-4 h-4" />Go to My Courses
+              </Button>
+            ) : (
+              <Button onClick={() => navigate(`/learn/${successData.courseId}`)} className="w-full bg-primary gap-2">
+                <BookOpen className="w-4 h-4" />Start Learning Now
+              </Button>
+            )}
             <Button variant="ghost" onClick={() => navigate("/")} className="w-full mt-2 text-muted-foreground">
               Back to Home
             </Button>
