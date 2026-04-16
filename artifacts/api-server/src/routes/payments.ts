@@ -208,15 +208,20 @@ router.get("/history", requireAuth, async (req, res): Promise<void> => {
 
 router.get("/my-bundles", requireAuth, async (req, res): Promise<void> => {
   const authedReq = req as AuthedRequest;
+  const userId = authedReq.user.userId;
+
+  // Only consider completed (non-refunded) bundle payments
   const bundlePayments = await db
     .select()
     .from(paymentsTable)
-    .where(and(eq(paymentsTable.userId, authedReq.user.userId), eq(paymentsTable.status, "completed")))
+    .where(and(eq(paymentsTable.userId, userId), eq(paymentsTable.status, "completed")))
     .orderBy(paymentsTable.createdAt);
   const bundleIds = [...new Set(bundlePayments.filter(p => p.bundleId).map(p => p.bundleId!))];
+
   const result = await Promise.all(bundleIds.map(async (bid) => {
     const [bundle] = await db.select().from(bundlesTable).where(eq(bundlesTable.id, bid)).limit(1);
     if (!bundle) return null;
+
     const bundleCourseRows = await db
       .select({
         id: coursesTable.id, title: coursesTable.title, description: coursesTable.description,
@@ -226,6 +231,27 @@ router.get("/my-bundles", requireAuth, async (req, res): Promise<void> => {
       .from(bundleCoursesTable)
       .leftJoin(coursesTable, eq(bundleCoursesTable.courseId, coursesTable.id))
       .where(eq(bundleCoursesTable.bundleId, bid));
+
+    const validCourses = bundleCourseRows.filter(c => c.id !== null);
+
+    // Secondary guard: verify the user still has at least one active enrollment
+    // in the bundle's courses. This ensures refunded bundles (where enrollments
+    // are deleted) are hidden even if the payment status check somehow passes.
+    if (validCourses.length > 0) {
+      const courseIds = validCourses.map(c => c.id!);
+      const [anyEnrollment] = await db
+        .select({ id: enrollmentsTable.id })
+        .from(enrollmentsTable)
+        .where(and(
+          eq(enrollmentsTable.userId, userId),
+          courseIds.length === 1
+            ? eq(enrollmentsTable.courseId, courseIds[0])
+            : or(...courseIds.map(cid => eq(enrollmentsTable.courseId, cid)))
+        ))
+        .limit(1);
+      if (!anyEnrollment) return null; // Refunded / access revoked
+    }
+
     const payment = bundlePayments.find(p => p.bundleId === bid);
     return {
       ...bundle,
@@ -233,7 +259,7 @@ router.get("/my-bundles", requireAuth, async (req, res): Promise<void> => {
       compareAtPrice: bundle.compareAtPrice ? parseFloat(String(bundle.compareAtPrice)) : null,
       purchasedAt: payment?.createdAt,
       amount: payment ? parseFloat(String(payment.amount)) : null,
-      courses: bundleCourseRows.filter(c => c.id !== null).map(c => ({ ...c, price: parseFloat(String(c.price)) })),
+      courses: validCourses.map(c => ({ ...c, price: parseFloat(String(c.price)) })),
     };
   }));
   res.json(result.filter(Boolean));
