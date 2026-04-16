@@ -1,5 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
+import { nanoid } from "nanoid";
 import { db } from "@workspace/db";
 import {
   usersTable, coursesTable, modulesTable, enrollmentsTable, paymentsTable, referralsTable,
@@ -527,6 +528,86 @@ router.post("/orders/:orderId/refund", requireAdmin, async (req, res): Promise<v
   if (payment.status === "refunded") { res.status(400).json({ error: "Order already refunded" }); return; }
   if (payment.status !== "completed") { res.status(400).json({ error: "Only completed orders can be refunded" }); return; }
 
+  // ── Attempt gateway-level refund ────────────────────────────────────────────
+  let gatewayRefundId: string | null = null;
+  let gatewayRefundWarning: string | null = null;
+  const refundAmount = parseFloat(String(payment.amount));
+
+  const [gw] = await db.select().from(paymentGatewaysTable).where(eq(paymentGatewaysTable.name, payment.gateway)).limit(1);
+
+  if (gw && gw.apiKey && gw.secretKey) {
+    try {
+      if (payment.gateway === "cashfree") {
+        // Use gatewayOrderId (the order_id we sent to Cashfree when creating the order)
+        const cfOrderId = payment.gatewayOrderId;
+        if (cfOrderId && !cfOrderId.startsWith("sim_") && !cfOrderId.startsWith("bnd_sim_")) {
+          const host = gw.isTestMode ? "https://sandbox.cashfree.com" : "https://api.cashfree.com";
+          const refundId = `ref_${nanoid(12)}`;
+          const r = await fetch(`${host}/pg/orders/${cfOrderId}/refunds`, {
+            method: "POST",
+            headers: {
+              "x-api-version": "2023-08-01",
+              "x-client-id": gw.apiKey,
+              "x-client-secret": gw.secretKey,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              refund_amount: refundAmount,
+              refund_id: refundId,
+              refund_note: "Admin initiated refund",
+            }),
+          });
+          const data = await r.json();
+          if (r.ok) {
+            gatewayRefundId = data.cf_refund_id ?? data.refund_id ?? refundId;
+          } else {
+            gatewayRefundWarning = `Cashfree: ${data.message ?? data.error ?? "Refund API error"}`;
+          }
+        }
+
+      } else if (payment.gateway === "razorpay") {
+        // paymentId stores razorpay_payment_id (format: pay_xxx)
+        const pid = payment.paymentId;
+        if (pid && pid.startsWith("pay_")) {
+          const creds = Buffer.from(`${gw.apiKey}:${gw.secretKey}`).toString("base64");
+          const r = await fetch(`https://api.razorpay.com/v1/payments/${pid}/refund`, {
+            method: "POST",
+            headers: { Authorization: `Basic ${creds}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ amount: Math.round(refundAmount * 100) }),
+          });
+          const data = await r.json();
+          if (r.ok) {
+            gatewayRefundId = data.id;
+          } else {
+            gatewayRefundWarning = `Razorpay: ${data.error?.description ?? "Refund API error"}`;
+          }
+        }
+
+      } else if (payment.gateway === "stripe") {
+        // paymentId stores payment_intent_id (format: pi_xxx)
+        const pid = payment.paymentId;
+        if (pid && pid.startsWith("pi_")) {
+          const body = new URLSearchParams({ payment_intent: pid });
+          const r = await fetch("https://api.stripe.com/v1/refunds", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${gw.secretKey}`, "Content-Type": "application/x-www-form-urlencoded" },
+            body: body.toString(),
+          });
+          const data = await r.json();
+          if (r.ok) {
+            gatewayRefundId = data.id;
+          } else {
+            gatewayRefundWarning = `Stripe: ${data.error?.message ?? "Refund API error"}`;
+          }
+        }
+      }
+      // PayU and Paytm require complex checksum-based refund flows — those need to be handled via their dashboards
+    } catch (err: unknown) {
+      gatewayRefundWarning = `Gateway refund error: ${(err as Error).message}`;
+    }
+  }
+
+  // Mark as refunded in our DB (always, regardless of gateway result)
   await db.update(paymentsTable).set({ status: "refunded" }).where(eq(paymentsTable.id, orderId));
 
   const [refundUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
@@ -573,7 +654,11 @@ router.post("/orders/:orderId/refund", requireAdmin, async (req, res): Promise<v
   }
 
   const label = payment.bundleId ? "package" : "course";
-  res.json({ message: `Refund processed. User has been unenrolled from the ${label}.` });
+  res.json({
+    message: `Refund processed. User has been unenrolled from the ${label}.`,
+    gatewayRefundId,
+    gatewayRefundWarning,
+  });
 });
 
 router.delete("/orders/:orderId", requireAdmin, async (req, res): Promise<void> => {

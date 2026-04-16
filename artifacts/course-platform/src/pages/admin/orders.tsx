@@ -96,10 +96,23 @@ function RefundConfirmDialog({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Refund failed");
-      toast({
-        title: "Refund processed",
-        description: `${order.userName} has been refunded and unenrolled from "${order.bundleId ? order.bundleTitle : order.courseTitle}".`,
-      });
+      if (data.gatewayRefundWarning) {
+        toast({
+          title: "Refund recorded (gateway warning)",
+          description: data.gatewayRefundWarning + " — Status updated in our system. Complete the refund via the gateway dashboard if needed.",
+          variant: "destructive",
+        });
+      } else if (data.gatewayRefundId) {
+        toast({
+          title: "Refund processed",
+          description: `${order.userName} unenrolled from "${order.bundleId ? order.bundleTitle : order.courseTitle}". Gateway refund ID: ${data.gatewayRefundId}`,
+        });
+      } else {
+        toast({
+          title: "Refund processed",
+          description: `${order.userName} has been refunded and unenrolled from "${order.bundleId ? order.bundleTitle : order.courseTitle}".`,
+        });
+      }
       onConfirmed();
     } catch (err: unknown) {
       toast({ title: "Refund failed", description: (err as Error).message, variant: "destructive" });
