@@ -478,6 +478,7 @@ router.get("/orders", requireAdmin, async (req, res): Promise<void> => {
       gateway: paymentsTable.gateway,
       couponCode: paymentsTable.couponCode,
       paymentId: paymentsTable.paymentId,
+      gatewayOrderId: paymentsTable.gatewayOrderId,
       createdAt: paymentsTable.createdAt,
       userName: usersTable.name,
       userEmail: usersTable.email,

@@ -25,6 +25,7 @@ type Order = {
   gateway: "stripe" | "razorpay" | "cashfree" | "paytm" | "payu";
   couponCode: string | null;
   paymentId: string | null;
+  gatewayOrderId: string | null;
   createdAt: string;
   userName: string;
   userEmail: string;
@@ -205,6 +206,16 @@ function OrderDetailDialog({
     { icon: BookOpen, label: order.bundleId ? "Package" : "Course", value: order.bundleId ? order.bundleTitle : order.courseTitle },
     { icon: Calendar, label: "Order Date", value: formatDate(order.createdAt) },
     { icon: CreditCard, label: "Payment Gateway", value: <Badge className={`text-xs ${gtw.className}`}>{gtw.label}</Badge> },
+    ...(order.gatewayOrderId ? [{
+      icon: Hash,
+      label: order.gateway === "cashfree" ? "Cashfree Order ID"
+           : order.gateway === "razorpay" ? "Razorpay Order ID"
+           : order.gateway === "stripe"   ? "Stripe Payment Intent"
+           : order.gateway === "paytm"    ? "Paytm Order ID"
+           : order.gateway === "payu"     ? "PayU Ref"
+           : "Gateway Order ID",
+      value: <code className="text-xs font-mono text-muted-foreground">{order.gatewayOrderId}</code>,
+    }] : []),
     ...(order.couponCode ? [{ icon: Tag, label: "Coupon Used", value: <code className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-mono">{order.couponCode}</code> }] : []),
   ];
 
