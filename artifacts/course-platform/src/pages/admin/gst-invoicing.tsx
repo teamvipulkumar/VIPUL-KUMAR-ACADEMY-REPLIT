@@ -467,6 +467,9 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
   );
 }
 
+const fmtN = (v: number | string) =>
+  "₹" + parseFloat(String(v)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export default function AdminGstInvoicingPage() {
   const { fmt } = useOrderFormat();
   const { toast } = useToast();
@@ -1047,9 +1050,9 @@ export default function AdminGstInvoicingPage() {
                           {inv.bundleId ? inv.courseTitle.replace(/^Bundle:\s*/, "") : inv.courseTitle}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right text-sm">{fmt(inv.baseAmount)}</TableCell>
-                      <TableCell className="text-right text-sm">{fmt(gst)}</TableCell>
-                      <TableCell className="text-right font-semibold">{fmt(inv.totalAmount)}</TableCell>
+                      <TableCell className="text-right text-sm">{fmtN(inv.baseAmount)}</TableCell>
+                      <TableCell className="text-right text-sm">{fmtN(gst)}</TableCell>
+                      <TableCell className="text-right font-semibold">{fmtN(inv.totalAmount)}</TableCell>
                       <TableCell>
                         <Badge variant={inv.isInterstate ? "secondary" : "outline"} className="text-xs">
                           {inv.isInterstate ? "IGST" : "CGST+SGST"}
@@ -1124,12 +1127,12 @@ export default function AdminGstInvoicingPage() {
                   <TableRow key={m.month} className={m.count === 0 ? "text-muted-foreground/50" : ""}>
                     <TableCell className="font-medium">{m.label}</TableCell>
                     <TableCell className="text-right">{m.count}</TableCell>
-                    <TableCell className="text-right">{fmt(m.taxable)}</TableCell>
-                    <TableCell className="text-right">{fmt(m.cgst)}</TableCell>
-                    <TableCell className="text-right">{fmt(m.sgst)}</TableCell>
-                    <TableCell className="text-right">{fmt(m.igst)}</TableCell>
-                    <TableCell className="text-right">{fmt(m.cgst + m.sgst + m.igst)}</TableCell>
-                    <TableCell className="text-right font-semibold">{fmt(m.total)}</TableCell>
+                    <TableCell className="text-right">{fmtN(m.taxable)}</TableCell>
+                    <TableCell className="text-right">{fmtN(m.cgst)}</TableCell>
+                    <TableCell className="text-right">{fmtN(m.sgst)}</TableCell>
+                    <TableCell className="text-right">{fmtN(m.igst)}</TableCell>
+                    <TableCell className="text-right">{fmtN(m.cgst + m.sgst + m.igst)}</TableCell>
+                    <TableCell className="text-right font-semibold">{fmtN(m.total)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -1138,12 +1141,12 @@ export default function AdminGstInvoicingPage() {
                   <TableRow className="bg-muted/40 font-bold border-t-2">
                     <TableCell>Total</TableCell>
                     <TableCell className="text-right">{monthlyTotals.count}</TableCell>
-                    <TableCell className="text-right">{fmt(monthlyTotals.taxable)}</TableCell>
-                    <TableCell className="text-right">{fmt(monthlyTotals.cgst)}</TableCell>
-                    <TableCell className="text-right">{fmt(monthlyTotals.sgst)}</TableCell>
-                    <TableCell className="text-right">{fmt(monthlyTotals.igst)}</TableCell>
-                    <TableCell className="text-right">{fmt(monthlyTotals.cgst + monthlyTotals.sgst + monthlyTotals.igst)}</TableCell>
-                    <TableCell className="text-right">{fmt(monthlyTotals.total)}</TableCell>
+                    <TableCell className="text-right">{fmtN(monthlyTotals.taxable)}</TableCell>
+                    <TableCell className="text-right">{fmtN(monthlyTotals.cgst)}</TableCell>
+                    <TableCell className="text-right">{fmtN(monthlyTotals.sgst)}</TableCell>
+                    <TableCell className="text-right">{fmtN(monthlyTotals.igst)}</TableCell>
+                    <TableCell className="text-right">{fmtN(monthlyTotals.cgst + monthlyTotals.sgst + monthlyTotals.igst)}</TableCell>
+                    <TableCell className="text-right">{fmtN(monthlyTotals.total)}</TableCell>
                   </TableRow>
                 </tfoot>
               )}
@@ -1223,12 +1226,12 @@ export default function AdminGstInvoicingPage() {
                   <TableRow key={s.state}>
                     <TableCell className="font-medium">{s.state}</TableCell>
                     <TableCell className="text-right">{s.count}</TableCell>
-                    <TableCell className="text-right">{fmt(s.taxable)}</TableCell>
-                    <TableCell className="text-right">{fmt(s.cgst)}</TableCell>
-                    <TableCell className="text-right">{fmt(s.sgst)}</TableCell>
-                    <TableCell className="text-right">{fmt(s.igst)}</TableCell>
-                    <TableCell className="text-right">{fmt(s.cgst + s.sgst + s.igst)}</TableCell>
-                    <TableCell className="text-right font-semibold">{fmt(s.total)}</TableCell>
+                    <TableCell className="text-right">{fmtN(s.taxable)}</TableCell>
+                    <TableCell className="text-right">{fmtN(s.cgst)}</TableCell>
+                    <TableCell className="text-right">{fmtN(s.sgst)}</TableCell>
+                    <TableCell className="text-right">{fmtN(s.igst)}</TableCell>
+                    <TableCell className="text-right">{fmtN(s.cgst + s.sgst + s.igst)}</TableCell>
+                    <TableCell className="text-right font-semibold">{fmtN(s.total)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -1237,12 +1240,12 @@ export default function AdminGstInvoicingPage() {
                   <TableRow className="bg-muted/40 font-bold border-t-2">
                     <TableCell>Total</TableCell>
                     <TableCell className="text-right">{stateTotals.count}</TableCell>
-                    <TableCell className="text-right">{fmt(stateTotals.taxable)}</TableCell>
-                    <TableCell className="text-right">{fmt(stateTotals.cgst)}</TableCell>
-                    <TableCell className="text-right">{fmt(stateTotals.sgst)}</TableCell>
-                    <TableCell className="text-right">{fmt(stateTotals.igst)}</TableCell>
-                    <TableCell className="text-right">{fmt(stateTotals.cgst + stateTotals.sgst + stateTotals.igst)}</TableCell>
-                    <TableCell className="text-right">{fmt(stateTotals.total)}</TableCell>
+                    <TableCell className="text-right">{fmtN(stateTotals.taxable)}</TableCell>
+                    <TableCell className="text-right">{fmtN(stateTotals.cgst)}</TableCell>
+                    <TableCell className="text-right">{fmtN(stateTotals.sgst)}</TableCell>
+                    <TableCell className="text-right">{fmtN(stateTotals.igst)}</TableCell>
+                    <TableCell className="text-right">{fmtN(stateTotals.cgst + stateTotals.sgst + stateTotals.igst)}</TableCell>
+                    <TableCell className="text-right">{fmtN(stateTotals.total)}</TableCell>
                   </TableRow>
                 </tfoot>
               )}
@@ -1432,7 +1435,7 @@ export default function AdminGstInvoicingPage() {
                   <span className="font-medium text-foreground">{deleteTarget.bundleId ? "Package:" : "Course:"}</span>{" "}
                   {deleteTarget.bundleId ? deleteTarget.courseTitle.replace(/^Bundle:\s*/, "") : deleteTarget.courseTitle}
                 </div>
-                <div><span className="font-medium text-foreground">Amount:</span> {fmt(deleteTarget.totalAmount)}</div>
+                <div><span className="font-medium text-foreground">Amount:</span> {fmtN(deleteTarget.totalAmount)}</div>
               </div>
               <p className="text-xs text-red-500">This action cannot be undone. The invoice record will be permanently removed.</p>
             </div>
