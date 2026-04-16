@@ -46,9 +46,13 @@ async function getBundleWithCourses(bundleId: number) {
 /* ── Public Routes ───────────────────────────────────────────────────────── */
 
 router.get("/", async (_req, res): Promise<void> => {
-  const bundles = await db.select().from(bundlesTable).where(eq(bundlesTable.isActive, true)).orderBy(desc(bundlesTable.createdAt));
-  const enriched = await Promise.all(bundles.map(b => getBundleWithCourses(b.id)));
-  res.json(enriched.filter(Boolean));
+  try {
+    const bundles = await db.select().from(bundlesTable).where(eq(bundlesTable.isActive, true)).orderBy(desc(bundlesTable.createdAt));
+    const enriched = await Promise.all(bundles.map(b => getBundleWithCourses(b.id)));
+    res.json(enriched.filter(Boolean));
+  } catch {
+    res.json([]);
+  }
 });
 
 router.get("/:id", async (req, res): Promise<void> => {
