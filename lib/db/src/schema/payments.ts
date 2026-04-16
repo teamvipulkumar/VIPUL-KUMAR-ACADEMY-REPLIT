@@ -23,6 +23,8 @@ export const paymentsTable = pgTable("payments", {
   billingEmail: text("billing_email"),
   billingMobile: text("billing_mobile"),
   billingState: text("billing_state"),
+  orderPrefix: text("order_prefix").notNull().default("ORD"),
+  orderSuffix: text("order_suffix").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

@@ -139,6 +139,7 @@ router.post("/checkout", requireAuth, async (req, res): Promise<void> => {
     }
   }
 
+  const [psFmt] = await db.select({ orderPrefix: platformSettingsTable.orderPrefix, orderSuffix: platformSettingsTable.orderSuffix }).from(platformSettingsTable).limit(1);
   const sessionId = nanoid(32);
   await db.insert(paymentsTable).values({
     userId: authedReq.user.userId,
@@ -154,6 +155,8 @@ router.post("/checkout", requireAuth, async (req, res): Promise<void> => {
     billingEmail: user?.email || null,
     billingMobile: mobile?.trim() || user?.phone || null,
     billingState: state || null,
+    orderPrefix: psFmt?.orderPrefix ?? "ORD",
+    orderSuffix: psFmt?.orderSuffix ?? "",
   });
 
   res.json({ sessionId, amount, currency: "INR", gateway, redirectUrl: null, razorpayOrderId: null, razorpayKey: null });
@@ -327,6 +330,7 @@ router.post("/checkout/guest", async (req, res): Promise<void> => {
   }
 
   // Payment + Enrollment
+  const [psFmt2] = await db.select({ orderPrefix: platformSettingsTable.orderPrefix, orderSuffix: platformSettingsTable.orderSuffix }).from(platformSettingsTable).limit(1);
   const sessionId = nanoid(32);
   const [newPayment] = await db.insert(paymentsTable).values({
     userId, courseId: parseInt(courseId),
@@ -339,6 +343,8 @@ router.post("/checkout/guest", async (req, res): Promise<void> => {
     billingEmail: email?.toLowerCase().trim() || null,
     billingMobile: mobile?.trim() || null,
     billingState: state || null,
+    orderPrefix: psFmt2?.orderPrefix ?? "ORD",
+    orderSuffix: psFmt2?.orderSuffix ?? "",
   }).returning({ id: paymentsTable.id });
   if (newPayment) generateGstInvoice(newPayment.id).catch(() => {});
 
@@ -418,6 +424,7 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
   }
 
   // Insert payment record first to get the auto-incremented DB id
+  const [psFmt3] = await db.select({ orderPrefix: platformSettingsTable.orderPrefix, orderSuffix: platformSettingsTable.orderSuffix }).from(platformSettingsTable).limit(1);
   const sessionId = nanoid(32);
   const host = gw.isTestMode ? "https://sandbox.cashfree.com" : "https://api.cashfree.com";
   const [pendingPayment] = await db.insert(paymentsTable).values({
@@ -431,6 +438,8 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
     billingEmail: email?.toLowerCase().trim() || null,
     billingMobile: mobile?.trim() || null,
     billingState: state || null,
+    orderPrefix: psFmt3?.orderPrefix ?? "ORD",
+    orderSuffix: psFmt3?.orderSuffix ?? "",
   }).returning();
 
   // Build the Cashfree order ID from the DB payment id so they match

@@ -119,6 +119,8 @@ export async function generateGstInvoice(paymentId: number): Promise<void> {
       isInterstate,
       financialYear: fy,
       gateway: payment.gateway,
+      orderPrefix: payment.orderPrefix ?? "ORD",
+      orderSuffix: payment.orderSuffix ?? "",
       createdAt: createdAt,   // invoice date = payment/order date always
     });
   } catch (err) {
