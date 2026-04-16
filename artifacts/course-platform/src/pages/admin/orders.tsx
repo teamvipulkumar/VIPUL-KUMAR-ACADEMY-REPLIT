@@ -470,7 +470,7 @@ export default function AdminOrdersPage() {
           <table className="w-full min-w-[860px]">
             <thead className="bg-card border-b border-border">
               <tr>
-                {["Order", "Customer", "Course / Package", "Date & Time", "Amount", "Status", "Gateway", "Actions"].map(h => (
+                {["Order No.", "Customer", "Course / Package", "Date & Time", "Amount", "Status", "Gateway", "Actions"].map(h => (
                   <th key={h} className="text-left text-xs font-semibold text-muted-foreground px-4 py-3 uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
               </tr>
