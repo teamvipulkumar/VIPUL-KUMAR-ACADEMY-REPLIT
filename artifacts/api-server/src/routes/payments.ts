@@ -417,9 +417,24 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
     }
   }
 
-  // Create Cashfree order
-  const cfOrderId = `ord_${nanoid(14)}`;
+  // Insert payment record first to get the auto-incremented DB id
+  const sessionId = nanoid(32);
   const host = gw.isTestMode ? "https://sandbox.cashfree.com" : "https://api.cashfree.com";
+  const [pendingPayment] = await db.insert(paymentsTable).values({
+    userId, courseId: parseInt(courseId),
+    amount: String(amount.toFixed(2)), currency: "INR",
+    status: "pending", gateway: "cashfree",
+    sessionId, gatewayOrderId: sessionId, // temp placeholder
+    couponCode: couponCode || null,
+    affiliateRef: affiliateRef || null,
+    billingName: fullName?.trim() || null,
+    billingEmail: email?.toLowerCase().trim() || null,
+    billingMobile: mobile?.trim() || null,
+    billingState: state || null,
+  }).returning();
+
+  // Build the Cashfree order ID from the DB payment id so they match
+  const cfOrderId = `ORD${pendingPayment.id}`;
 
   let cfResp: { order_id?: string; payment_session_id?: string; message?: string };
   try {
@@ -441,26 +456,16 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
     });
     cfResp = await r.json();
     if (!r.ok || !cfResp.payment_session_id) {
+      await db.delete(paymentsTable).where(eq(paymentsTable.id, pendingPayment.id));
       res.status(400).json({ error: cfResp.message ?? "Failed to create Cashfree order" }); return;
     }
   } catch (err: unknown) {
+    await db.delete(paymentsTable).where(eq(paymentsTable.id, pendingPayment.id));
     res.status(500).json({ error: (err as Error).message }); return;
   }
 
-  // Store pending payment
-  const sessionId = nanoid(32);
-  await db.insert(paymentsTable).values({
-    userId, courseId: parseInt(courseId),
-    amount: String(amount.toFixed(2)), currency: "INR",
-    status: "pending", gateway: "cashfree",
-    sessionId, gatewayOrderId: cfOrderId,
-    couponCode: couponCode || null,
-    affiliateRef: affiliateRef || null,
-    billingName: fullName?.trim() || null,
-    billingEmail: email?.toLowerCase().trim() || null,
-    billingMobile: mobile?.trim() || null,
-    billingState: state || null,
-  });
+  // Update the payment record with the real gatewayOrderId
+  await db.update(paymentsTable).set({ gatewayOrderId: cfOrderId }).where(eq(paymentsTable.id, pendingPayment.id));
 
   // Auto-login
   const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
