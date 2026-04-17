@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
-type Theme = "dark" | "light";
+export type Theme = "dark" | "light" | "forest";
 
 interface ThemeContextValue {
   theme: Theme;
@@ -14,31 +14,29 @@ const ThemeContext = createContext<ThemeContextValue>({
   toggleTheme: () => {},
 });
 
+const ALL_THEMES: Theme[] = ["dark", "light", "forest"];
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     try {
       const stored = localStorage.getItem("vka-theme");
-      if (stored === "light" || stored === "dark") return stored;
+      if (stored === "light" || stored === "dark" || stored === "forest") return stored;
     } catch {}
     return "dark";
   });
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "light") {
-      root.classList.add("light");
-      root.classList.remove("dark");
-    } else {
-      root.classList.add("dark");
-      root.classList.remove("light");
-    }
+    root.classList.remove("dark", "light", "forest");
+    root.classList.add(theme);
     try {
       localStorage.setItem("vka-theme", theme);
     } catch {}
   }, [theme]);
 
   const setTheme = (t: Theme) => setThemeState(t);
-  const toggleTheme = () => setThemeState(t => (t === "dark" ? "light" : "dark"));
+  const toggleTheme = () =>
+    setThemeState(t => ALL_THEMES[(ALL_THEMES.indexOf(t) + 1) % ALL_THEMES.length]);
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>

@@ -8,13 +8,36 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Chrome, Info, Construction } from "lucide-react";
+import { Eye, EyeOff, Chrome, Info, Construction, Check } from "lucide-react";
+import { useTheme, type Theme } from "@/lib/theme-context";
+
+const THEMES: { id: Theme; label: string; description: string; swatches: string[] }[] = [
+  {
+    id: "dark",
+    label: "Dark",
+    description: "Deep navy & electric blue",
+    swatches: ["#0b1120", "#142043", "#3b5bdb", "#c8d8ff"],
+  },
+  {
+    id: "light",
+    label: "Light",
+    description: "Clean white & blue",
+    swatches: ["#f8fafc", "#e2e8f0", "#3b5bdb", "#1e293b"],
+  },
+  {
+    id: "forest",
+    label: "Forest",
+    description: "Deep forest green",
+    swatches: ["#091413", "#285A48", "#408A71", "#B0E4CC"],
+  },
+];
 
 export default function AdminSettingsPage() {
   const { data: settings } = useGetAdminSettings({ query: { queryKey: getGetAdminSettingsQueryKey() } });
   const updateSettings = useUpdateAdminSettings();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
 
   const [form, setForm] = useState({
     siteName: "", siteDescription: "", currency: "INR",
@@ -96,6 +119,46 @@ export default function AdminSettingsPage() {
       </div>
 
       <div className="space-y-6">
+        {/* Appearance / Theme */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-base">Appearance</CardTitle>
+            <CardDescription>Choose a colour theme for your platform.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-3">
+              {THEMES.map(t => {
+                const active = theme === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setTheme(t.id)}
+                    className={`relative rounded-xl border-2 p-3 text-left transition-all ${
+                      active
+                        ? "border-primary shadow-md shadow-primary/20"
+                        : "border-border hover:border-primary/40"
+                    }`}
+                  >
+                    {/* Swatch preview */}
+                    <div className="flex gap-1 mb-2.5 rounded-lg overflow-hidden h-8">
+                      {t.swatches.map((c, i) => (
+                        <div key={i} className="flex-1 h-full" style={{ backgroundColor: c }} />
+                      ))}
+                    </div>
+                    <p className="text-xs font-semibold text-foreground">{t.label}</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{t.description}</p>
+                    {active && (
+                      <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                        <Check className="w-2.5 h-2.5 text-primary-foreground" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* General */}
         <Card className="bg-card border-border">
           <CardHeader><CardTitle className="text-base">General</CardTitle></CardHeader>

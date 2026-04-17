@@ -208,6 +208,79 @@ html, body {
 }
 
 
+/* ── Forest theme ── */
+.forest {
+  --button-outline: rgba(176, 228, 204, 0.12);
+  --badge-outline: rgba(176, 228, 204, 0.06);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(64, 138, 113, 0.06);
+  --elevate-2: rgba(64, 138, 113, 0.12);
+
+  --nav-bg: #091413;
+  --nav-border: rgba(176, 228, 204, 0.08);
+  --dropdown-bg: #0e1e1c;
+  --dropdown-border: rgba(176, 228, 204, 0.12);
+  --footer-bg: #060e0d;
+  --mobile-drawer-bg: #091413;
+
+  --background: 175 38% 6%;
+  --foreground: 152 49% 92%;
+
+  --border: 158 30% 18%;
+  --input: 158 30% 18%;
+  --ring: 160 37% 40%;
+
+  --card: 158 38% 10%;
+  --card-foreground: 152 49% 92%;
+  --card-border: 158 30% 18%;
+
+  --popover: 158 38% 10%;
+  --popover-foreground: 152 49% 92%;
+  --popover-border: 158 30% 18%;
+
+  --sidebar: 175 38% 6%;
+  --sidebar-foreground: 152 30% 72%;
+  --sidebar-border: 158 30% 14%;
+  --sidebar-primary: 160 37% 40%;
+  --sidebar-primary-foreground: 152 49% 95%;
+  --sidebar-accent: 158 30% 14%;
+  --sidebar-accent-foreground: 152 30% 80%;
+  --sidebar-ring: 160 37% 40%;
+
+  --primary: 160 37% 40%;
+  --primary-foreground: 152 49% 95%;
+
+  --secondary: 158 30% 14%;
+  --secondary-foreground: 152 30% 80%;
+
+  --muted: 158 30% 12%;
+  --muted-foreground: 152 20% 55%;
+
+  --accent: 158 30% 14%;
+  --accent-foreground: 152 49% 90%;
+
+  --destructive: 0 62% 40%;
+  --destructive-foreground: 152 49% 95%;
+
+  --chart-1: 160 37% 40%;
+  --chart-2: 152 49% 79%;
+  --chart-3: 158 38% 26%;
+  --chart-4: 175 38% 15%;
+  --chart-5: 158 38% 10%;
+
+  --app-font-sans: 'Inter', sans-serif;
+  --app-font-serif: Georgia, serif;
+  --app-font-mono: Menlo, monospace;
+  --radius: .5rem;
+
+  --shadow-sm: 0px 2px 4px 0px rgba(0,0,0,0.6);
+  --shadow: 0px 4px 8px 0px rgba(0,0,0,0.6);
+  --shadow-md: 0px 8px 16px 0px rgba(0,0,0,0.6);
+  --shadow-lg: 0px 16px 32px 0px rgba(0,0,0,0.6);
+
+  color-scheme: dark;
+}
+
 /* ── Light mode: darken neon palette classes so they remain readable ── */
 .light .text-green-400  { color: #16a34a; }
 .light .text-green-500  { color: #15803d; }
