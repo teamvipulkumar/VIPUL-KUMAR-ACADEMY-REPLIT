@@ -755,6 +755,44 @@ router.delete("/orders/:orderId", requireAdmin, async (req, res): Promise<void> 
   res.json({ success: true });
 });
 
+// ── Bulk delete orders ────────────────────────────────────────────────────────
+router.delete("/orders/bulk", requireAdmin, async (req, res): Promise<void> => {
+  const { ids } = req.body as { ids?: unknown };
+  if (!Array.isArray(ids) || ids.length === 0) {
+    res.status(400).json({ error: "ids must be a non-empty array" });
+    return;
+  }
+  const orderIds = (ids as unknown[]).map(Number).filter(n => !isNaN(n));
+  if (orderIds.length === 0) { res.status(400).json({ error: "No valid order ids" }); return; }
+
+  const payments = await db.select().from(paymentsTable).where(inArray(paymentsTable.id, orderIds));
+
+  for (const payment of payments) {
+    if (payment.status === "completed") {
+      const courseIdsToRevoke: number[] = [];
+      if (payment.courseId) {
+        courseIdsToRevoke.push(payment.courseId);
+      } else if (payment.bundleId) {
+        const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
+        for (const bc of bundleCourses) courseIdsToRevoke.push(bc.courseId);
+      }
+      for (const cid of courseIdsToRevoke) {
+        const courseModules = await db.select({ id: modulesTable.id }).from(modulesTable).where(eq(modulesTable.courseId, cid));
+        for (const mod of courseModules) {
+          const modLessons = await db.select({ id: lessonsTable.id }).from(lessonsTable).where(eq(lessonsTable.moduleId, mod.id));
+          for (const lesson of modLessons) {
+            await db.delete(lessonCompletionsTable).where(and(eq(lessonCompletionsTable.userId, payment.userId), eq(lessonCompletionsTable.lessonId, lesson.id)));
+          }
+        }
+        await db.delete(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, cid)));
+      }
+    }
+  }
+
+  await db.delete(paymentsTable).where(inArray(paymentsTable.id, orderIds));
+  res.json({ deleted: orderIds.length });
+});
+
 // ── Payment Gateways ──────────────────────────────────────────────────────────
 const SUPPORTED_GATEWAYS = [
   { name: "stripe", displayName: "Stripe", keyLabel: "Publishable Key", secretLabel: "Secret Key", supportedCountries: "Global" },

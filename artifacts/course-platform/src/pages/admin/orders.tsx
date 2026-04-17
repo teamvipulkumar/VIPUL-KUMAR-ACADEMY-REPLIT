@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import {
   Search, BadgeIndianRupee, ShoppingCart, Clock, RefreshCw, Upload,
-  User, BookOpen, Calendar, CreditCard, Tag, Hash, Mail, AlertTriangle, RotateCcw, Phone, MapPin, Trash2
+  User, BookOpen, Calendar, CreditCard, Tag, Hash, Mail, AlertTriangle, RotateCcw, Phone, MapPin, Trash2,
+  CheckSquare, Square, X, Loader2
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
@@ -304,6 +305,33 @@ function OrderDetailDialog({
   );
 }
 
+// ── Bulk Delete Confirm Dialog ────────────────────────────────────────────────
+function BulkDeleteDialog({
+  count, onConfirm, onClose, loading,
+}: { count: number; onConfirm: () => void; onClose: () => void; loading: boolean }) {
+  return (
+    <Dialog open onOpenChange={v => !v && onClose()}>
+      <DialogContent className="sm:max-w-sm bg-[#0d1424] border-white/10">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-red-400">
+            <Trash2 className="w-4 h-4" />Delete {count} Order{count !== 1 ? "s" : ""}
+          </DialogTitle>
+          <DialogDescription>
+            Permanently delete {count} order{count !== 1 ? "s" : ""}? Any completed orders will also revoke student course access and remove their progress. This cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 mt-2">
+          <Button variant="outline" onClick={onClose} className="border-white/10" disabled={loading}>Cancel</Button>
+          <Button variant="destructive" onClick={onConfirm} disabled={loading}>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+            Delete {count} Order{count !== 1 ? "s" : ""}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -318,6 +346,11 @@ export default function AdminOrdersPage() {
   const [refundingOrder, setRefundingOrder] = useState<Order | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
   const { toast } = useToast();
 
   const fetchOrders = async () => {
@@ -374,6 +407,44 @@ export default function AdminOrdersPage() {
     setRefundingOrder(null);
     // Reset filter to "all" so the refunded order remains visible; useEffect will re-fetch
     setStatus("all");
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    const allSelected = orders.every(o => selectedIds.has(o.id));
+    setSelectedIds(allSelected ? new Set() : new Set(orders.map(o => o.id)));
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkLoading(true);
+    const ids = Array.from(selectedIds);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/orders/bulk`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Delete failed");
+      const count = data.deleted ?? ids.length;
+      toast({ title: `${count} order${count !== 1 ? "s" : ""} deleted permanently` });
+      setSelectedIds(new Set());
+      setBulkDialogOpen(false);
+      fetchOrders();
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   const exportCsv = () => {
@@ -457,6 +528,21 @@ export default function AdminOrdersPage() {
         </Select>
       </div>
 
+      {/* Floating Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl border border-white/10 backdrop-blur-md" style={{ background: "rgba(13,20,36,0.95)" }}>
+          <span className="text-sm font-semibold text-foreground">{selectedIds.size} selected</span>
+          <div className="w-px h-5 bg-border" />
+          <Button size="sm" variant="ghost" className="gap-1.5 text-red-400 hover:bg-red-500/10 hover:text-red-300 h-8" onClick={() => setBulkDialogOpen(true)}>
+            <Trash2 className="w-3.5 h-3.5" />Delete
+          </Button>
+          <div className="w-px h-5 bg-border" />
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={() => setSelectedIds(new Set())}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+
       {/* Table */}
       {loading ? (
         <div className="space-y-2">{[1,2,3,4,5,6].map(i => <div key={i} className="h-16 bg-card rounded-xl animate-pulse" />)}</div>
@@ -468,9 +554,18 @@ export default function AdminOrdersPage() {
         </div>
       ) : (
         <div className="border border-border rounded-xl overflow-hidden overflow-x-auto">
-          <table className="w-full min-w-[860px]">
+          <table className="w-full min-w-[900px]">
             <thead className="bg-card border-b border-border">
               <tr>
+                <th className="px-4 py-3 w-10">
+                  <button onClick={toggleAll} className="text-muted-foreground hover:text-foreground transition-colors">
+                    {orders.length > 0 && orders.every(o => selectedIds.has(o.id))
+                      ? <CheckSquare className="w-4 h-4 text-primary" />
+                      : orders.some(o => selectedIds.has(o.id))
+                      ? <CheckSquare className="w-4 h-4 text-primary/50" />
+                      : <Square className="w-4 h-4" />}
+                  </button>
+                </th>
                 {["Order No.", "Customer", "Course / Package", "Date & Time", "Amount", "Status", "Gateway", "Actions"].map(h => (
                   <th key={h} className="text-left text-xs font-semibold text-muted-foreground px-4 py-3 uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
@@ -480,8 +575,15 @@ export default function AdminOrdersPage() {
               {orders.map(order => {
                 const cfg = statusConfig[order.status] ?? { label: order.status, className: "text-muted-foreground border-border bg-muted/30" };
                 const gtw = gatewayConfig[order.gateway] ?? { label: order.gateway, className: "text-muted-foreground border-border bg-muted/30" };
+                const isSelected = selectedIds.has(order.id);
                 return (
-                  <tr key={order.id} className="hover:bg-card/40 transition-colors cursor-pointer" onClick={() => setSelectedOrder(order)}>
+                  <tr key={order.id} className={`hover:bg-card/40 transition-colors cursor-pointer ${isSelected ? "bg-primary/5" : ""}`} onClick={() => setSelectedOrder(order)}>
+                    {/* Checkbox */}
+                    <td className="px-4 py-3 w-10" onClick={e => { e.stopPropagation(); toggleSelect(order.id); }}>
+                      <button className="text-muted-foreground hover:text-foreground transition-colors">
+                        {isSelected ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
+                      </button>
+                    </td>
                     {/* Order # */}
                     <td className="px-4 py-3">
                       <span className="font-mono text-sm font-semibold text-foreground">{formatOrderNo(order.id)}</span>
@@ -602,6 +704,16 @@ export default function AdminOrdersPage() {
           order={refundingOrder}
           onClose={() => setRefundingOrder(null)}
           onConfirmed={() => handleRefundCompleted(refundingOrder.id)}
+        />
+      )}
+
+      {/* Bulk delete confirmation */}
+      {bulkDialogOpen && (
+        <BulkDeleteDialog
+          count={selectedIds.size}
+          onConfirm={handleBulkDelete}
+          onClose={() => setBulkDialogOpen(false)}
+          loading={bulkLoading}
         />
       )}
 
