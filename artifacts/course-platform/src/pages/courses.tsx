@@ -41,7 +41,6 @@ export default function CoursesPage() {
 
         {/* ── Individual Courses ── */}
         <div className="mb-4">
-          <h2 className="text-xl font-bold mb-4">Individual Courses</h2>
           <div className="flex flex-col sm:flex-row gap-3 mb-6 md:mb-8">
             <div className="relative flex-1 sm:max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
