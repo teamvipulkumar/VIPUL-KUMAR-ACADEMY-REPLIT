@@ -332,11 +332,20 @@ export default function AdminCoursesPage() {
           <div className="border border-border rounded-xl overflow-hidden">
             <table className="w-full">
               <thead className="bg-card border-b border-border">
-                <tr>{["Bundle Name", "Courses", "Bundle Price", "Compare At", "Status", "Actions"].map(h => <th key={h} className="text-left text-xs font-medium text-muted-foreground px-4 py-3">{h}</th>)}</tr>
+                <tr>{["", "Bundle Name", "Courses", "Bundle Price", "Compare At", "Status", "Actions"].map((h, i) => <th key={i} className="text-left text-xs font-medium text-muted-foreground px-4 py-3">{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {bundles.map(b => (
                   <tr key={b.id} className="hover:bg-card/50 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="w-20 h-12 rounded-md overflow-hidden bg-gradient-to-br from-primary/20 to-blue-900/30 flex-shrink-0 flex items-center justify-center">
+                        {b.thumbnailUrl ? (
+                          <img src={b.thumbnailUrl} alt={b.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-lg font-black text-primary/30 select-none">B</span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-sm">{b.name}</p>
                       {b.description && <p className="text-xs text-muted-foreground truncate max-w-xs mt-0.5">{b.description}</p>}
