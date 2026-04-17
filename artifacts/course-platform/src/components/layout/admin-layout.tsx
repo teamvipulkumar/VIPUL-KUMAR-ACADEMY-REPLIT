@@ -15,40 +15,79 @@ function AdminLogo() {
   );
 }
 
-const navItems = [
-  { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/admin/orders", icon: ShoppingCart, label: "Orders" },
-  { href: "/admin/enrollments", icon: GraduationCap, label: "Enrollments" },
-  { href: "/admin/courses", icon: BookOpen, label: "Courses" },
-  { href: "/admin/users", icon: Users, label: "Users" },
-  { href: "/admin/affiliates", icon: Share2, label: "Affiliates" },
-  { href: "/admin/payouts", icon: CreditCard, label: "Payouts" },
-  { href: "/admin/coupons", icon: Tag, label: "Coupons" },
-  { href: "/admin/payment-gateways", icon: Landmark, label: "Payment Gateways" },
-  { href: "/admin/crm", icon: Mail, label: "CRM & Email" },
-  { href: "/admin/gst-invoicing", icon: FileText, label: "GST Invoicing" },
-  { href: "/admin/files", icon: HardDrive, label: "Files" },
-  { href: "/admin/pages", icon: Layers, label: "Pages" },
-  { href: "/admin/settings", icon: Settings, label: "Settings" },
+const navGroups = [
+  {
+    label: "Overview",
+    items: [
+      { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
+    ],
+  },
+  {
+    label: "Sales",
+    items: [
+      { href: "/admin/orders", icon: ShoppingCart, label: "Orders" },
+      { href: "/admin/enrollments", icon: GraduationCap, label: "Enrollments" },
+      { href: "/admin/coupons", icon: Tag, label: "Coupons" },
+      { href: "/admin/affiliates", icon: Share2, label: "Affiliates" },
+      { href: "/admin/payouts", icon: CreditCard, label: "Payouts" },
+    ],
+  },
+  {
+    label: "Content",
+    items: [
+      { href: "/admin/courses", icon: BookOpen, label: "Courses" },
+      { href: "/admin/pages", icon: Layers, label: "Pages" },
+      { href: "/admin/files", icon: HardDrive, label: "Files" },
+    ],
+  },
+  {
+    label: "Users & CRM",
+    items: [
+      { href: "/admin/users", icon: Users, label: "Users" },
+      { href: "/admin/crm", icon: Mail, label: "CRM & Email" },
+    ],
+  },
+  {
+    label: "Finance",
+    items: [
+      { href: "/admin/payment-gateways", icon: Landmark, label: "Payment Gateways" },
+      { href: "/admin/gst-invoicing", icon: FileText, label: "GST Invoicing" },
+    ],
+  },
+  {
+    label: "Configuration",
+    items: [
+      { href: "/admin/settings", icon: Settings, label: "Settings" },
+    ],
+  },
 ];
 
 function NavContent({ location, onNav }: { location: string; onNav?: () => void }) {
   return (
     <>
-      <nav className="flex-1 p-3 space-y-1">
-        {navItems.map(item => {
-          const isActive = item.href === "/admin"
-            ? location === "/admin"
-            : location.startsWith(item.href + "/") || location === item.href;
-          return (
-            <Link key={item.href} href={item.href} onClick={onNav}>
-              <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}>
-                <item.icon className="w-4 h-4 flex-shrink-0" />
-                {item.label}
-              </div>
-            </Link>
-          );
-        })}
+      <nav className="flex-1 p-3 overflow-y-auto space-y-4">
+        {navGroups.map(group => (
+          <div key={group.label}>
+            <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 select-none">
+              {group.label}
+            </p>
+            <div className="space-y-0.5">
+              {group.items.map(item => {
+                const isActive = item.href === "/admin"
+                  ? location === "/admin"
+                  : location.startsWith(item.href + "/") || location === item.href;
+                return (
+                  <Link key={item.href} href={item.href} onClick={onNav}>
+                    <div className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}>
+                      <item.icon className="w-4 h-4 flex-shrink-0" />
+                      {item.label}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
       <div className="p-3 border-t border-border">
         <Link href="/" onClick={onNav}>
