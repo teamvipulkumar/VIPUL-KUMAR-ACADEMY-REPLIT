@@ -183,7 +183,7 @@ export default function AdminCoursesPage() {
               onClick={() => setActiveTab("bundles")}
               className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === "bundles" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground hover:bg-card"}`}
             >
-              <Package className="w-3.5 h-3.5" />Bundles ({bundles?.length ?? 0})
+              <Package className="w-3.5 h-3.5" />Packages ({bundles?.length ?? 0})
             </button>
           </div>
         </div>
@@ -252,7 +252,7 @@ export default function AdminCoursesPage() {
             </DialogContent>
           </Dialog>
         ) : (
-          <Button size="sm" onClick={openCreateBundle}><Plus className="w-4 h-4 mr-2" />New Bundle</Button>
+          <Button size="sm" onClick={openCreateBundle}><Plus className="w-4 h-4 mr-2" />New Package</Button>
         )}
       </div>
 
@@ -326,13 +326,13 @@ export default function AdminCoursesPage() {
         ) : !bundles || bundles.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p>No bundles yet. Create your first package!</p>
+            <p>No packages yet. Create your first package!</p>
           </div>
         ) : (
           <div className="border border-border rounded-xl overflow-hidden">
             <table className="w-full">
               <thead className="bg-card border-b border-border">
-                <tr>{["", "Bundle Name", "Courses", "Bundle Price", "Compare At", "Status", "Actions"].map((h, i) => <th key={i} className="text-left text-xs font-medium text-muted-foreground px-4 py-3">{h}</th>)}</tr>
+                <tr>{["", "Package Name", "Courses", "Package Price", "Compare At", "Status", "Actions"].map((h, i) => <th key={i} className="text-left text-xs font-medium text-muted-foreground px-4 py-3">{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {bundles.map(b => (
@@ -381,13 +381,13 @@ export default function AdminCoursesPage() {
       <Dialog open={bundleOpen} onOpenChange={setBundleOpen}>
         <DialogContent className="bg-card border-border max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingBundle ? "Edit Bundle" : "Create New Bundle"}</DialogTitle>
+            <DialogTitle>{editingBundle ? "Edit Package" : "Create New Package"}</DialogTitle>
             <DialogDescription>Group multiple courses into a single package for students to purchase.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Bundle Name *</label>
-              <Input placeholder="e.g. Pro Package, Supreme Bundle" value={bundleForm.name} onChange={e => setBundleForm(f => ({ ...f, name: e.target.value }))} className="bg-background" />
+              <label className="text-sm font-medium mb-1.5 block">Package Name *</label>
+              <Input placeholder="e.g. Pro Package, Supreme Package" value={bundleForm.name} onChange={e => setBundleForm(f => ({ ...f, name: e.target.value }))} className="bg-background" />
             </div>
             <ImageUploader label="Thumbnail / Banner" value={bundleForm.thumbnailUrl} onChange={url => setBundleForm(f => ({ ...f, thumbnailUrl: url }))} aspectRatio="video" hint="Optional · JPG, PNG, WebP · Max 10 MB" />
             <div>
@@ -396,7 +396,7 @@ export default function AdminCoursesPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm font-medium mb-1.5 block">Bundle Price (₹) *</label>
+                <label className="text-sm font-medium mb-1.5 block">Package Price (₹) *</label>
                 <Input placeholder="e.g. 799" type="number" min="0" value={bundleForm.price} onChange={e => setBundleForm(f => ({ ...f, price: e.target.value }))} className="bg-background" />
               </div>
               <div>
@@ -456,7 +456,7 @@ export default function AdminCoursesPage() {
             </div>
 
             <Button className="w-full" onClick={handleSaveBundle} disabled={bundleSaving}>
-              {bundleSaving ? "Saving..." : editingBundle ? "Update Bundle" : "Create Bundle"}
+              {bundleSaving ? "Saving..." : editingBundle ? "Update Package" : "Create Package"}
             </Button>
           </div>
         </DialogContent>
