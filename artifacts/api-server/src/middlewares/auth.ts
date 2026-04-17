@@ -37,7 +37,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
   requireAuth(req, res, () => {
     const user = (req as Request & { user: JwtPayload }).user;
-    if (user?.role !== "admin") {
+    if (user?.role !== "admin" && user?.role !== "staff") {
       res.status(403).json({ error: "Forbidden: admin only" });
       return;
     }

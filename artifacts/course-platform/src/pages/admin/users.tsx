@@ -31,11 +31,12 @@ type User = {
 
 const roleColors: Record<string, string> = {
   admin: "text-red-400 border-red-400/30 bg-red-400/10",
+  staff: "text-amber-400 border-amber-400/30 bg-amber-400/10",
   student: "text-blue-400 border-blue-400/30 bg-blue-400/10",
   affiliate: "text-purple-400 border-purple-400/30 bg-purple-400/10",
 };
 const roleIcons: Record<string, React.ElementType> = {
-  admin: ShieldCheck, student: GraduationCap, affiliate: Share2,
+  admin: ShieldCheck, staff: ShieldCheck, student: GraduationCap, affiliate: Share2,
 };
 
 function Avatar({ name, size = "md" }: { name: string; size?: "sm" | "md" | "lg" }) {
@@ -387,6 +388,7 @@ function AddUserDialog({ open, onClose, onSuccess }: { open: boolean; onClose: (
               <SelectContent>
                 <SelectItem value="student">Student</SelectItem>
                 <SelectItem value="affiliate">Affiliate</SelectItem>
+                <SelectItem value="staff">Staff</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
               </SelectContent>
             </Select>
@@ -461,6 +463,7 @@ function EditUserDialog({ user, onClose, onSuccess }: { user: User; onClose: () 
               <SelectContent>
                 <SelectItem value="student">Student</SelectItem>
                 <SelectItem value="affiliate">Affiliate</SelectItem>
+                <SelectItem value="staff">Staff</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
               </SelectContent>
             </Select>
@@ -799,6 +802,7 @@ export default function AdminUsersPage() {
   const roleCounts = {
     total: data?.total ?? 0,
     admin: (data?.users ?? []).filter(u => u.role === "admin").length,
+    staff: (data?.users ?? []).filter(u => u.role === "staff").length,
     student: (data?.users ?? []).filter(u => u.role === "student").length,
     affiliate: (data?.users ?? []).filter(u => u.role === "affiliate").length,
   };
@@ -825,10 +829,11 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Stats strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
         {[
           { label: "Total Users", value: roleCounts.total, color: "text-foreground" },
           { label: "Admins", value: roleCounts.admin, color: "text-red-400" },
+          { label: "Staff", value: roleCounts.staff, color: "text-amber-400" },
           { label: "Students", value: roleCounts.student, color: "text-blue-400" },
           { label: "Affiliates", value: roleCounts.affiliate, color: "text-purple-400" },
         ].map(s => (
@@ -855,6 +860,7 @@ export default function AdminUsersPage() {
           <SelectContent>
             <SelectItem value="all">All Roles</SelectItem>
             <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="staff">Staff</SelectItem>
             <SelectItem value="student">Student</SelectItem>
             <SelectItem value="affiliate">Affiliate</SelectItem>
           </SelectContent>

@@ -37,11 +37,8 @@ router.post("/", requireAdmin, async (req: Request, res): Promise<void> => {
 
   if (targetUser) {
     if (targetUser.role === "admin") {
-      const alreadyStaff = await db.select().from(adminStaffTable).where(eq(adminStaffTable.userId, targetUser.id)).limit(1);
-      if (alreadyStaff.length === 0) {
-        res.status(400).json({ error: "This user is already a super admin and cannot be added as staff." });
-        return;
-      }
+      res.status(400).json({ error: "This user is already a super admin and cannot be added as staff." });
+      return;
     }
     const alreadyStaff = await db.select().from(adminStaffTable).where(eq(adminStaffTable.userId, targetUser.id)).limit(1);
     if (alreadyStaff.length > 0) {
@@ -64,7 +61,7 @@ router.post("/", requireAdmin, async (req: Request, res): Promise<void> => {
   }
 
   const previousRole = targetUser.role;
-  await db.update(usersTable).set({ role: "admin" }).where(eq(usersTable.id, targetUser.id));
+  await db.update(usersTable).set({ role: "staff" as "student" }).where(eq(usersTable.id, targetUser.id));
 
   const [staffRecord] = await db.insert(adminStaffTable).values({
     userId: targetUser.id,
@@ -112,7 +109,7 @@ router.post("/:id/restore", requireAdmin, async (req, res): Promise<void> => {
   const [staff] = await db.select().from(adminStaffTable).where(eq(adminStaffTable.id, id)).limit(1);
   if (!staff) { res.status(404).json({ error: "Staff member not found" }); return; }
 
-  await db.update(usersTable).set({ role: "admin" }).where(eq(usersTable.id, staff.userId));
+  await db.update(usersTable).set({ role: "staff" as "student" }).where(eq(usersTable.id, staff.userId));
   const [updated] = await db.update(adminStaffTable).set({ status: "active", updatedAt: new Date() }).where(eq(adminStaffTable.id, id)).returning();
   res.json(updated);
 });
