@@ -1,0 +1,268 @@
+import { useState, useRef, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Search, Upload, Check, Loader2, AlertCircle, ImageIcon, Film, FileText, File,
+} from "lucide-react";
+
+const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+type MediaFile = {
+  filename: string;
+  url: string;
+  size: number;
+  uploadedAt: string;
+  mimetype: string;
+  type: "image" | "video" | "document" | "other";
+};
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function FileThumb({ file }: { file: MediaFile }) {
+  if (file.type === "image") {
+    return (
+      <img
+        src={`${API_BASE}${file.url}`}
+        alt={file.filename}
+        className="w-full h-full object-cover"
+        loading="lazy"
+        onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+      />
+    );
+  }
+  const Icon = file.type === "video" ? Film : file.type === "document" ? FileText : File;
+  const color = file.type === "video" ? "text-blue-400" : file.type === "document" ? "text-red-400" : "text-muted-foreground";
+  return (
+    <div className="w-full h-full flex items-center justify-center">
+      <Icon className={`w-8 h-8 ${color}`} />
+    </div>
+  );
+}
+
+interface MediaPickerProps {
+  open: boolean;
+  onClose: () => void;
+  onSelect: (url: string) => void;
+  accept?: "image" | "video" | "document" | "all";
+  title?: string;
+}
+
+export function MediaPicker({
+  open,
+  onClose,
+  onSelect,
+  accept = "all",
+  title = "Media Library",
+}: MediaPickerProps) {
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadDrag, setUploadDrag] = useState(false);
+
+  const { data: files = [], isLoading } = useQuery<MediaFile[]>({
+    queryKey: ["admin-files"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/upload/admin/files`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: open,
+  });
+
+  const filtered = files.filter(f => {
+    const matchesType = accept === "all" || f.type === accept;
+    const matchesSearch = f.filename.toLowerCase().includes(search.toLowerCase());
+    return matchesType && matchesSearch;
+  });
+
+  const handleSelect = () => {
+    if (!selected) return;
+    onSelect(`${API_BASE}${selected}`);
+    setSelected(null);
+    onClose();
+  };
+
+  const uploadFile = useCallback(async (file: File) => {
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`${API_BASE}/api/upload/file`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Upload failed");
+      }
+      const data = await res.json();
+      queryClient.invalidateQueries({ queryKey: ["admin-files"] });
+      onSelect(`${API_BASE}${data.url}`);
+      setSelected(null);
+      onClose();
+    } catch (err: any) {
+      setUploadError(err.message ?? "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }, [queryClient, onSelect, onClose]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) uploadFile(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setUploadDrag(false);
+    const file = e.dataTransfer.files[0];
+    if (file) uploadFile(file);
+  };
+
+  const acceptAttr = accept === "image" ? "image/*"
+    : accept === "video" ? "video/*"
+    : accept === "document" ? "application/pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
+    : "image/*,video/*,application/pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx";
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) { setSelected(null); onClose(); } }}>
+      <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border flex-shrink-0">
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+
+        <Tabs defaultValue="library" className="flex flex-col flex-1 min-h-0">
+          <TabsList className="mx-6 mt-4 mb-2 self-start flex-shrink-0">
+            <TabsTrigger value="library">Library</TabsTrigger>
+            <TabsTrigger value="upload">Upload New</TabsTrigger>
+          </TabsList>
+
+          {/* Library tab */}
+          <TabsContent value="library" className="flex flex-col flex-1 min-h-0 px-6 pb-6 mt-0">
+            <div className="relative mb-4 flex-shrink-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder="Search files…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-9 bg-card border-border"
+              />
+            </div>
+
+            <div className="flex-1 overflow-y-auto min-h-0">
+              {isLoading ? (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                  {[...Array(10)].map((_, i) => (
+                    <div key={i} className="aspect-square bg-card rounded-lg animate-pulse" />
+                  ))}
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="text-center py-16 text-muted-foreground">
+                  <ImageIcon className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">No files found. Upload something first.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                  {filtered.map(file => {
+                    const isSelected = selected === file.url;
+                    return (
+                      <button
+                        key={file.filename}
+                        onClick={() => setSelected(isSelected ? null : file.url)}
+                        className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all duration-150 bg-card group ${isSelected ? "border-primary ring-2 ring-primary/30" : "border-border hover:border-primary/50"}`}
+                      >
+                        <FileThumb file={file} />
+                        {isSelected && (
+                          <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                            <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                              <Check className="w-3.5 h-3.5 text-white" />
+                            </div>
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/70 px-1.5 py-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <p className="text-[10px] text-white truncate">{file.filename}</p>
+                          <p className="text-[9px] text-white/60">{formatBytes(file.size)}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t border-border mt-4 flex-shrink-0">
+              <p className="text-xs text-muted-foreground">
+                {selected ? "1 file selected" : `${filtered.length} file${filtered.length !== 1 ? "s" : ""}`}
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => { setSelected(null); onClose(); }}>Cancel</Button>
+                <Button size="sm" disabled={!selected} onClick={handleSelect} className="gap-1.5">
+                  <Check className="w-3.5 h-3.5" />Select
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Upload tab */}
+          <TabsContent value="upload" className="flex-1 min-h-0 px-6 pb-6 mt-0">
+            <div
+              className={`relative border-2 border-dashed rounded-xl h-64 flex flex-col items-center justify-center gap-4 text-muted-foreground transition-colors cursor-pointer ${uploadDrag ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-primary/5"}`}
+              onClick={() => !uploading && fileInputRef.current?.click()}
+              onDrop={handleDrop}
+              onDragOver={e => { e.preventDefault(); setUploadDrag(true); }}
+              onDragLeave={() => setUploadDrag(false)}
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                  <p className="text-sm font-medium text-primary">Uploading…</p>
+                </>
+              ) : (
+                <>
+                  <div className={`p-4 rounded-2xl transition-colors ${uploadDrag ? "bg-primary/20" : "bg-card"}`}>
+                    <Upload className={`w-8 h-8 transition-colors ${uploadDrag ? "text-primary" : "text-muted-foreground/50"}`} />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-medium text-foreground text-sm">
+                      {uploadDrag ? "Drop to upload" : "Click or drag & drop to upload"}
+                    </p>
+                    <p className="text-xs mt-1">Images, Videos, PDFs, Documents · Max 500 MB</p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {uploadError && (
+              <div className="flex items-center gap-2 text-red-400 text-sm mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {uploadError}
+              </div>
+            )}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={acceptAttr}
+              className="hidden"
+              onChange={handleFileChange}
+            />
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}

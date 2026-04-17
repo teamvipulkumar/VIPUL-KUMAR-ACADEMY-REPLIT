@@ -82,6 +82,7 @@ import AdminSettingsPage from "@/pages/admin/settings";
 import AdminCrmPage from "@/pages/admin/crm";
 import AdminPagesPage from "@/pages/admin/pages";
 import AdminGstInvoicingPage from "@/pages/admin/gst-invoicing";
+import AdminFilesPage from "@/pages/admin/files";
 import PaymentVerifyPage from "@/pages/payment-verify";
 import VerifyEmailPage from "@/pages/verify-email";
 import CheckoutPage from "@/pages/checkout";
@@ -144,6 +145,7 @@ function Router() {
       <Route path="/admin/crm" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminCrmPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/pages" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminPagesPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/gst-invoicing" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminGstInvoicingPage /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/files" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminFilesPage /></AdminLayout></ProtectedRoute>} />
 
       <Route component={() => <AppLayout><NotFound /></AppLayout>} />
     </Switch>
