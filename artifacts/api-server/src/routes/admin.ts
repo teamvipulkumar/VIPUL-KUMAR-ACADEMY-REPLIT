@@ -722,39 +722,6 @@ router.post("/orders/:orderId/sync-cashfree-id", requireAdmin, async (req, res):
   }
 });
 
-router.delete("/orders/:orderId", requireAdmin, async (req, res): Promise<void> => {
-  const orderId = parseInt(req.params.orderId);
-  if (isNaN(orderId)) { res.status(400).json({ error: "Invalid order id" }); return; }
-  const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.id, orderId)).limit(1);
-  if (!payment) { res.status(404).json({ error: "Order not found" }); return; }
-
-  // If order was completed, revoke enrollment and lesson progress
-  if (payment.status === "completed") {
-    const courseIdsToRevoke: number[] = [];
-    if (payment.courseId) {
-      courseIdsToRevoke.push(payment.courseId);
-    } else if (payment.bundleId) {
-      const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
-      for (const bc of bundleCourses) courseIdsToRevoke.push(bc.courseId);
-    }
-    for (const cid of courseIdsToRevoke) {
-      const courseModules = await db.select({ id: modulesTable.id }).from(modulesTable).where(eq(modulesTable.courseId, cid));
-      for (const mod of courseModules) {
-        const modLessons = await db.select({ id: lessonsTable.id }).from(lessonsTable).where(eq(lessonsTable.moduleId, mod.id));
-        for (const lesson of modLessons) {
-          await db.delete(lessonCompletionsTable).where(and(eq(lessonCompletionsTable.userId, payment.userId), eq(lessonCompletionsTable.lessonId, lesson.id)));
-        }
-      }
-      await db.delete(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, cid)));
-    }
-  }
-
-  // Delete payment (GST invoice paymentId auto-nulled via SET NULL FK)
-  await db.delete(paymentsTable).where(eq(paymentsTable.id, orderId));
-
-  res.json({ success: true });
-});
-
 // ── Bulk delete orders ────────────────────────────────────────────────────────
 router.delete("/orders/bulk", requireAdmin, async (req, res): Promise<void> => {
   const { ids } = req.body as { ids?: unknown };
@@ -791,6 +758,39 @@ router.delete("/orders/bulk", requireAdmin, async (req, res): Promise<void> => {
 
   await db.delete(paymentsTable).where(inArray(paymentsTable.id, orderIds));
   res.json({ deleted: orderIds.length });
+});
+
+router.delete("/orders/:orderId", requireAdmin, async (req, res): Promise<void> => {
+  const orderId = parseInt(req.params.orderId);
+  if (isNaN(orderId)) { res.status(400).json({ error: "Invalid order id" }); return; }
+  const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.id, orderId)).limit(1);
+  if (!payment) { res.status(404).json({ error: "Order not found" }); return; }
+
+  // If order was completed, revoke enrollment and lesson progress
+  if (payment.status === "completed") {
+    const courseIdsToRevoke: number[] = [];
+    if (payment.courseId) {
+      courseIdsToRevoke.push(payment.courseId);
+    } else if (payment.bundleId) {
+      const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
+      for (const bc of bundleCourses) courseIdsToRevoke.push(bc.courseId);
+    }
+    for (const cid of courseIdsToRevoke) {
+      const courseModules = await db.select({ id: modulesTable.id }).from(modulesTable).where(eq(modulesTable.courseId, cid));
+      for (const mod of courseModules) {
+        const modLessons = await db.select({ id: lessonsTable.id }).from(lessonsTable).where(eq(lessonsTable.moduleId, mod.id));
+        for (const lesson of modLessons) {
+          await db.delete(lessonCompletionsTable).where(and(eq(lessonCompletionsTable.userId, payment.userId), eq(lessonCompletionsTable.lessonId, lesson.id)));
+        }
+      }
+      await db.delete(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, cid)));
+    }
+  }
+
+  // Delete payment (GST invoice paymentId auto-nulled via SET NULL FK)
+  await db.delete(paymentsTable).where(eq(paymentsTable.id, orderId));
+
+  res.json({ success: true });
 });
 
 // ── Payment Gateways ──────────────────────────────────────────────────────────
