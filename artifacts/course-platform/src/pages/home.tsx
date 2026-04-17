@@ -1,8 +1,11 @@
 import { useListCourses, getListCoursesQueryKey } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "wouter";
-import { TrendingUp, Users, BookOpen, BadgeIndianRupee, CheckCircle, ArrowRight, Star, Zap, Shield, Award } from "lucide-react";
+import { TrendingUp, Users, BookOpen, BadgeIndianRupee, CheckCircle, ArrowRight, Star, Zap, Shield, Award, Package } from "lucide-react";
+
+const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const STATS = [
   { label: "Active Students", value: "2,400+", icon: Users },
@@ -30,9 +33,25 @@ const levelColors: Record<string, string> = {
   advanced: "bg-red-500/10 text-red-400 border-red-500/20",
 };
 
+type BundleCourse = { id: number; title: string; };
+type Bundle = {
+  id: number; name: string; slug: string; description: string | null;
+  thumbnailUrl: string | null; price: number; compareAtPrice: number | null;
+  isActive: boolean; courses: BundleCourse[];
+};
+
 export default function Home() {
   const { data: coursesData, isLoading } = useListCourses({ limit: 3 }, {
     query: { queryKey: getListCoursesQueryKey({ limit: 3 }) }
+  });
+
+  const { data: bundles, isLoading: bundlesLoading } = useQuery<Bundle[]>({
+    queryKey: ["public-bundles"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/bundles`);
+      if (!res.ok) return [];
+      return res.json();
+    },
   });
 
   return (
@@ -141,6 +160,78 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      {/* Packages */}
+      {(bundlesLoading || (bundles && bundles.length > 0)) && (
+        <section className="py-20 px-6 bg-card/30 border-y border-border">
+          <div className="container mx-auto max-w-5xl">
+            <div className="flex justify-between items-end mb-10">
+              <div>
+                <h2 className="text-3xl font-bold tracking-tight mb-2">Course Packages</h2>
+                <p className="text-muted-foreground">Bundle deals with maximum value at a lower price.</p>
+              </div>
+            </div>
+
+            {bundlesLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[1, 2, 3].map(i => <div key={i} className="h-80 bg-card rounded-xl animate-pulse" />)}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {(bundles ?? []).map(bundle => (
+                  <Link href={`/bundles/${bundle.id}`} key={bundle.id}>
+                    <Card className="h-full flex flex-col bg-card border-border hover:border-primary/50 transition-all duration-200 cursor-pointer group overflow-hidden">
+                      {bundle.thumbnailUrl ? (
+                        <div className="w-full aspect-video overflow-hidden rounded-t-xl flex-shrink-0">
+                          <img src={bundle.thumbnailUrl} alt={bundle.name} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-full aspect-video bg-gradient-to-br from-primary/20 to-blue-900/30 flex items-center justify-center rounded-t-xl flex-shrink-0">
+                          <Package className="w-12 h-12 text-primary/30" />
+                        </div>
+                      )}
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs text-primary font-medium uppercase tracking-wider">Package</span>
+                          <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-primary/10 text-primary border-primary/20 flex-shrink-0">
+                            {bundle.courses.length} {bundle.courses.length === 1 ? "course" : "courses"}
+                          </span>
+                        </div>
+                        <CardTitle className="text-base leading-snug group-hover:text-primary transition-colors line-clamp-2 min-h-[2.5rem]">{bundle.name}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pb-2 flex-1">
+                        <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">{bundle.description}</p>
+                        {bundle.courses.length > 0 && (
+                          <ul className="mt-3 space-y-1">
+                            {bundle.courses.slice(0, 3).map(c => (
+                              <li key={c.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
+                                <span className="truncate">{c.title}</span>
+                              </li>
+                            ))}
+                            {bundle.courses.length > 3 && (
+                              <li className="text-xs text-muted-foreground pl-4.5">+{bundle.courses.length - 3} more</li>
+                            )}
+                          </ul>
+                        )}
+                      </CardContent>
+                      <CardFooter className="pt-0 flex items-center justify-between mt-auto">
+                        <div>
+                          <span className="text-lg font-bold">₹{bundle.price}</span>
+                          {bundle.compareAtPrice && (
+                            <span className="text-sm text-muted-foreground line-through ml-2">₹{bundle.compareAtPrice}</span>
+                          )}
+                        </div>
+                        <Button size="sm" className="text-xs h-8 px-4">Get Package</Button>
+                      </CardFooter>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Features */}
       <section className="py-20 px-6 bg-card/30 border-y border-border">
