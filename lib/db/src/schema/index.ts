@@ -9,3 +9,4 @@ export * from "./payment-gateways";
 export * from "./crm";
 export * from "./gst";
 export * from "./bundles";
+export * from "./staff";
