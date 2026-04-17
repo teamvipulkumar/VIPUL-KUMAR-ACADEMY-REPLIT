@@ -141,21 +141,6 @@ router.put("/users/:userId", requireAdmin, async (req, res): Promise<void> => {
   res.json(updated);
 });
 
-router.delete("/users/:userId", requireAdmin, async (req, res): Promise<void> => {
-  const userId = parseInt(req.params.userId);
-  const authedReq = req as AuthedRequest;
-  if (authedReq.user?.id === userId) { res.status(400).json({ error: "Cannot delete your own account" }); return; }
-  await db.delete(usersTable).where(eq(usersTable.id, userId));
-  res.json({ message: "User deleted" });
-});
-
-router.post("/users/:userId/ban", requireAdmin, async (req, res): Promise<void> => {
-  const userId = parseInt(req.params.userId);
-  const { banned } = req.body;
-  await db.update(usersTable).set({ isBanned: banned }).where(eq(usersTable.id, userId));
-  res.json({ message: `User ${banned ? "banned" : "unbanned"}` });
-});
-
 // ── Bulk delete users ─────────────────────────────────────────────────────────
 router.delete("/users/bulk", requireAdmin, async (req, res): Promise<void> => {
   const authedReq = req as AuthedRequest;
@@ -177,6 +162,21 @@ router.post("/users/bulk-ban", requireAdmin, async (req, res): Promise<void> => 
   if (safeIds.length === 0) { res.status(400).json({ error: "Cannot ban your own account" }); return; }
   await db.update(usersTable).set({ isBanned: banned }).where(inArray(usersTable.id, safeIds));
   res.json({ updated: safeIds.length });
+});
+
+router.delete("/users/:userId", requireAdmin, async (req, res): Promise<void> => {
+  const userId = parseInt(req.params.userId);
+  const authedReq = req as AuthedRequest;
+  if (authedReq.user?.id === userId) { res.status(400).json({ error: "Cannot delete your own account" }); return; }
+  await db.delete(usersTable).where(eq(usersTable.id, userId));
+  res.json({ message: "User deleted" });
+});
+
+router.post("/users/:userId/ban", requireAdmin, async (req, res): Promise<void> => {
+  const userId = parseInt(req.params.userId);
+  const { banned } = req.body;
+  await db.update(usersTable).set({ isBanned: banned }).where(eq(usersTable.id, userId));
+  res.json({ message: `User ${banned ? "banned" : "unbanned"}` });
 });
 
 // ── Import users from CSV/JSON ────────────────────────────────────────────────
