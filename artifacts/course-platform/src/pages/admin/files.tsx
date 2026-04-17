@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Upload, Search, Trash2, Copy, Check, FileText, Film, File, ImageIcon,
-  Loader2, AlertCircle, X,
+  Loader2, AlertCircle, X, Eye, ChevronLeft, ChevronRight, Download,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -54,6 +54,7 @@ export default function AdminFilesPage() {
   const [deletingFile, setDeletingFile] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [previewFile, setPreviewFile] = useState<MediaFile | null>(null);
 
   const { data: files = [], isLoading } = useQuery<MediaFile[]>({
     queryKey: ["admin-files"],
@@ -259,6 +260,16 @@ export default function AdminFilesPage() {
                   {/* Hover actions */}
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
                     <Badge variant="secondary" className="text-[10px] capitalize mb-1">{file.type}</Badge>
+                    {file.type === "image" && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="w-full h-7 text-xs gap-1"
+                        onClick={() => setPreviewFile(file)}
+                      >
+                        <Eye className="w-3 h-3" />View
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="secondary"
@@ -294,6 +305,88 @@ export default function AdminFilesPage() {
           )}
         </>
       )}
+
+      {/* Lightbox */}
+      {previewFile && (() => {
+        const images = filtered.filter(f => f.type === "image");
+        const idx = images.findIndex(f => f.filename === previewFile.filename);
+        const prev = idx > 0 ? images[idx - 1] : null;
+        const next = idx < images.length - 1 ? images[idx + 1] : null;
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
+            onClick={() => setPreviewFile(null)}
+          >
+            {/* Close */}
+            <button
+              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+              onClick={() => setPreviewFile(null)}
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Prev */}
+            {prev && (
+              <button
+                className="absolute left-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                onClick={e => { e.stopPropagation(); setPreviewFile(prev); }}
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            )}
+
+            {/* Next */}
+            {next && (
+              <button
+                className="absolute right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                onClick={e => { e.stopPropagation(); setPreviewFile(next); }}
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            )}
+
+            {/* Image */}
+            <div
+              className="flex flex-col items-center max-w-[90vw] max-h-[90vh]"
+              onClick={e => e.stopPropagation()}
+            >
+              <img
+                src={`${API_BASE}${previewFile.url}`}
+                alt={previewFile.filename}
+                className="max-w-full max-h-[78vh] object-contain rounded-xl shadow-2xl"
+              />
+              {/* Footer bar */}
+              <div className="mt-3 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/8 backdrop-blur border border-white/10 w-full max-w-lg">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{previewFile.filename}</p>
+                  <p className="text-xs text-white/50">{formatBytes(previewFile.size)} · {formatDate(previewFile.uploadedAt)}</p>
+                </div>
+                <a
+                  href={`${API_BASE}${previewFile.url}`}
+                  download={previewFile.filename}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <Download className="w-3.5 h-3.5" />Download
+                </a>
+                <button
+                  className="flex-shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+                  onClick={e => { e.stopPropagation(); copyUrl(previewFile); }}
+                >
+                  {copiedFile === previewFile.filename
+                    ? <><Check className="w-3.5 h-3.5" />Copied!</>
+                    : <><Copy className="w-3.5 h-3.5" />Copy URL</>}
+                </button>
+              </div>
+              {images.length > 1 && (
+                <p className="text-xs text-white/30 mt-2">{idx + 1} / {images.length}</p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
