@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  ComposedChart, Line,
 } from "recharts";
 import {
   BadgeIndianRupee, Users, MousePointerClick, Copy, Check, TrendingUp,
@@ -446,10 +447,16 @@ function AffiliateDashboard({ user }: { user: any }) {
                   </div>
                 </div>
                 <ResponsiveContainer width="100%" height={chartDays === 30 && isDesktop ? 240 : 200}>
-                  <BarChart
+                  <ComposedChart
                     data={(dashboard?.dailyChart ?? []).slice(-chartDays)}
                     margin={{ top: 5, right: 5, bottom: chartDays === 30 && isDesktop ? 40 : 5, left: 0 }}
                   >
+                    <defs>
+                      <linearGradient id="earningsLineGrad" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#60a5fa" stopOpacity={0.9} />
+                        <stop offset="100%" stopColor="#a78bfa" stopOpacity={0.9} />
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                     <XAxis
                       dataKey="date"
@@ -463,14 +470,23 @@ function AffiliateDashboard({ user }: { user: any }) {
                     <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} tickFormatter={v => `₹${v}`} width={50} />
                     <Tooltip
                       contentStyle={{ background: "#0d1424", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
-                      formatter={(v: any) => [`₹${Number(v).toFixed(2)}`, "Earnings"]}
+                      formatter={(v: any, name: string) => [`₹${Number(v).toFixed(2)}`, name === "amount" ? "Earnings" : "Trend"]}
                       labelFormatter={(v: string) => `${v.substring(8)}-${v.substring(5, 7)}-${v.substring(0, 4)}`}
-                      cursor={false}
+                      cursor={{ fill: "rgba(255,255,255,0.03)" }}
                     />
-                    <Bar dataKey="amount" fill="#2563eb" name="Earnings" maxBarSize={40}
+                    <Bar dataKey="amount" fill="#2563eb" name="amount" maxBarSize={40}
                       shape={<EarningsBarShape />}
                       activeBar={<EarningsBarShape fill="#3b82f6" style={{ filter: "drop-shadow(0 0 6px rgba(59,130,246,0.7))" }} />} />
-                  </BarChart>
+                    <Line
+                      type="monotone"
+                      dataKey="amount"
+                      name="Trend"
+                      stroke="url(#earningsLineGrad)"
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 4, fill: "#a78bfa", stroke: "#1e1b4b", strokeWidth: 2 }}
+                    />
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
 
