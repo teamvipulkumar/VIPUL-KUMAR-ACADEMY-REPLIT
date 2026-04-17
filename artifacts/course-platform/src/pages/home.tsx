@@ -108,7 +108,7 @@ export default function Home() {
         <div className="container mx-auto max-w-5xl">
           <div className="flex justify-between items-end mb-10">
             <div>
-              <h2 className="text-3xl font-bold tracking-tight mb-2">Featured Programs</h2>
+              <h2 className="text-3xl font-bold tracking-tight mb-2">Featured Courses</h2>
               <p className="text-muted-foreground">The exact playbooks to start scaling.</p>
             </div>
             <Button variant="ghost" size="sm" className="text-primary" asChild>
