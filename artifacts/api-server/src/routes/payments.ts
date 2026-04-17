@@ -534,7 +534,7 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
           const [ex] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, courseId))).limit(1);
           if (!ex) await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId });
         }
-        await db.insert(notificationsTable).values({ userId: payment.userId, title: "Bundle Enrolled! 🎉", message: `You now have access to all courses in "${bundle?.name ?? "the bundle"}".`, type: "success" });
+        await db.insert(notificationsTable).values({ userId: payment.userId, title: "Package Enrolled! 🎉", message: `You now have access to all courses in "${bundle?.name ?? "the package"}".`, type: "success" });
         if (payment.couponCode) {
           const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
           if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
@@ -820,7 +820,7 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
           const [ex] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, courseId))).limit(1);
           if (!ex) await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId });
         }
-        await db.insert(notificationsTable).values({ userId: payment.userId, title: "Bundle Enrolled! 🎉", message: `You now have access to all courses in "${bundle?.name ?? "the bundle"}".`, type: "success" });
+        await db.insert(notificationsTable).values({ userId: payment.userId, title: "Package Enrolled! 🎉", message: `You now have access to all courses in "${bundle?.name ?? "the package"}".`, type: "success" });
         if (payment.couponCode) {
           const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
           if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));

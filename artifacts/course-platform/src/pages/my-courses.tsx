@@ -180,7 +180,7 @@ function BundleCard({ bundle, enrollments }: { bundle: MyBundle; enrollments: an
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className="flex items-center gap-1 text-xs font-semibold text-primary uppercase tracking-wider">
-                <Star className="w-3 h-3 fill-primary" />Bundle Package
+                <Star className="w-3 h-3 fill-primary" />Package
               </span>
               <span className="text-xs text-muted-foreground">· {bundle.courses.length} courses</span>
             </div>
@@ -294,7 +294,7 @@ function OrderRow({ p }: { p: any }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
           {isBundle && (
-            <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">Bundle</span>
+            <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">Package</span>
           )}
           <p className="text-sm font-semibold text-foreground truncate">
             {isBundle ? p.bundle.name : (p.course?.title ?? `Course #${p.courseId}`)}
@@ -347,7 +347,7 @@ export default function MyCoursesPage() {
         {/* ── Stats ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
           <StatCard icon={<BookOpen className="w-5 h-5" />} label="Enrolled Courses" value={totalCourses} />
-          <StatCard icon={<Package className="w-5 h-5" />} label="Bundle Packages" value={bundleCount} sub={bundleCount > 0 ? `${myBundles!.reduce((s, b) => s + b.courses.length, 0)} courses included` : undefined} />
+          <StatCard icon={<Package className="w-5 h-5" />} label="Packages" value={bundleCount} sub={bundleCount > 0 ? `${myBundles!.reduce((s, b) => s + b.courses.length, 0)} courses included` : undefined} />
           <StatCard icon={<TrendingUp className="w-5 h-5" />} label="Avg. Progress" value={`${avgProgress}%`} />
           <StatCard icon={<BadgeIndianRupee className="w-5 h-5" />} label="Total Invested" value={`₹${totalSpent.toLocaleString("en-IN")}`} />
         </div>
@@ -417,10 +417,10 @@ export default function MyCoursesPage() {
                 </div>
                 <h2 className="text-xl font-bold mb-2">No packages yet</h2>
                 <p className="text-muted-foreground text-sm mb-6 max-w-xs mx-auto">
-                  Get a bundle to access multiple courses at a discounted price.
+                  Get a package to access multiple courses at a discounted price.
                 </p>
                 <Button asChild className="bg-primary hover:bg-primary/90 gap-2">
-                  <Link href="/courses"><Package className="w-4 h-4" />Browse Bundles</Link>
+                  <Link href="/courses"><Package className="w-4 h-4" />Browse Packages</Link>
                 </Button>
               </div>
             ) : (

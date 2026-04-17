@@ -165,7 +165,7 @@ export default function Home() {
             <div className="flex justify-between items-end mb-10">
               <div>
                 <h2 className="text-3xl font-bold tracking-tight mb-2">Featured Packages</h2>
-                <p className="text-muted-foreground">Bundle deals with maximum value at a lower price.</p>
+                <p className="text-muted-foreground">Package deals with maximum value at a lower price.</p>
               </div>
             </div>
 

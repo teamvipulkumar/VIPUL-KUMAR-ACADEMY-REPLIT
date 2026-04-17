@@ -248,7 +248,7 @@ function BundleSuccessScreen({ result, onContinue }: { result: BundleSuccessResu
         <div className="w-20 h-20 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center mx-auto mb-6 animate-pulse">
           <PartyPopper className="w-9 h-9 text-green-400" />
         </div>
-        <h1 className="text-3xl font-bold text-foreground mb-2">Bundle Unlocked!</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-2">Package Unlocked!</h1>
         <p className="text-muted-foreground mb-1">
           You now have access to all {result.enrolledCount} courses in
         </p>
@@ -583,7 +583,7 @@ export default function BundleCheckoutPage() {
   }
 
   if (!bundle) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Bundle not found.</div>;
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Package not found.</div>;
   }
 
   return (
@@ -820,7 +820,7 @@ export default function BundleCheckoutPage() {
                   ? (gateway === "cashfree" ? "Redirecting to Cashfree…" : "Processing payment...")
                   : gateway === "cashfree"
                     ? `Continue to Cashfree · ₹${discountedPrice.toFixed(2)}`
-                    : `Pay ₹${discountedPrice.toFixed(2)} · Get Bundle Now`
+                    : `Pay ₹${discountedPrice.toFixed(2)} · Get Package Now`
                 }
               </Button>
               <p className="text-xs text-muted-foreground text-center">
@@ -842,7 +842,7 @@ export default function BundleCheckoutPage() {
               <div className="p-4">
                 <div className="flex items-center gap-1.5 mb-2">
                   <Package className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-xs text-primary font-semibold uppercase tracking-wider">Course Bundle</span>
+                  <span className="text-xs text-primary font-semibold uppercase tracking-wider">Course Package</span>
                 </div>
                 <h3 className="font-bold text-foreground leading-snug mb-3">{bundle.name}</h3>
                 {bundle.description && <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{bundle.description}</p>}

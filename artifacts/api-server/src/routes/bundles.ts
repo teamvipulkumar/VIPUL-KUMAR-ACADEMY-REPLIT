@@ -65,7 +65,7 @@ async function enrollInBundle(bundleId: number, userId: number, affiliateRef?: s
 
   await db.insert(notificationsTable).values({
     userId,
-    title: "Bundle Enrolled! 🎉",
+    title: "Package Enrolled! 🎉",
     message: `You now have access to all ${bundle.courses.length} courses in "${bundle.name}".`,
     type: "success",
   });
