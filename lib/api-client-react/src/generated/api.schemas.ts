@@ -59,6 +59,8 @@ export interface User {
   isBanned: boolean;
   emailVerified: boolean;
   createdAt: string;
+  isStaff?: boolean;
+  staffPermissions?: Record<string, boolean> | null;
 }
 
 export interface AuthResponse {

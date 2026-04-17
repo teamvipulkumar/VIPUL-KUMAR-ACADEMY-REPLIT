@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { LayoutDashboard, Users, BookOpen, Share2, CreditCard, Tag, Settings, ArrowLeft, Menu, X, ShoppingCart, GraduationCap, Landmark, Mail, Layers, FileText, HardDrive, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth-context";
 
 function AdminLogo() {
   return (
@@ -14,6 +15,23 @@ function AdminLogo() {
     </svg>
   );
 }
+
+const PERMISSION_MAP: Record<string, string> = {
+  "/admin": "dashboard",
+  "/admin/orders": "orders",
+  "/admin/enrollments": "enrollments",
+  "/admin/coupons": "coupons",
+  "/admin/affiliates": "affiliates",
+  "/admin/payouts": "payouts",
+  "/admin/courses": "courses",
+  "/admin/pages": "pages",
+  "/admin/files": "files",
+  "/admin/users": "users",
+  "/admin/crm": "crm",
+  "/admin/payment-gateways": "paymentGateways",
+  "/admin/gst-invoicing": "gstInvoicing",
+  "/admin/settings": "settings",
+};
 
 const navGroups = [
   {
@@ -64,31 +82,47 @@ const navGroups = [
 ];
 
 function NavContent({ location, onNav }: { location: string; onNav?: () => void }) {
+  const { isAdmin, isStaff, staffPermissions } = useAuth();
+
+  function canSee(href: string): boolean {
+    if (isAdmin) return true;
+    if (href === "/admin/staff") return false;
+    if (isStaff && staffPermissions) {
+      const perm = PERMISSION_MAP[href];
+      return perm ? staffPermissions[perm] === true : false;
+    }
+    return false;
+  }
+
   return (
     <>
       <nav className="flex-1 p-3 overflow-y-auto space-y-4">
-        {navGroups.map(group => (
-          <div key={group.label}>
-            <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 select-none">
-              {group.label}
-            </p>
-            <div className="space-y-0.5">
-              {group.items.map(item => {
-                const isActive = item.href === "/admin"
-                  ? location === "/admin"
-                  : location.startsWith(item.href + "/") || location === item.href;
-                return (
-                  <Link key={item.href} href={item.href} onClick={onNav}>
-                    <div className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}>
-                      <item.icon className="w-4 h-4 flex-shrink-0" />
-                      {item.label}
-                    </div>
-                  </Link>
-                );
-              })}
+        {navGroups.map(group => {
+          const visibleItems = group.items.filter(item => canSee(item.href));
+          if (visibleItems.length === 0) return null;
+          return (
+            <div key={group.label}>
+              <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 select-none">
+                {group.label}
+              </p>
+              <div className="space-y-0.5">
+                {visibleItems.map(item => {
+                  const isActive = item.href === "/admin"
+                    ? location === "/admin"
+                    : location.startsWith(item.href + "/") || location === item.href;
+                  return (
+                    <Link key={item.href} href={item.href} onClick={onNav}>
+                      <div className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}>
+                        <item.icon className="w-4 h-4 flex-shrink-0" />
+                        {item.label}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
       <div className="p-3 border-t border-border">
         <Link href="/" onClick={onNav}>
@@ -108,7 +142,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Desktop sidebar */}
       <aside className="hidden md:flex w-56 border-r border-border bg-card flex-shrink-0 flex-col h-screen">
         <div className="p-4 border-b border-border">
           <div className="flex items-center gap-2">
@@ -122,7 +155,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         <NavContent location={location} />
       </aside>
 
-      {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-card border-b border-border flex items-center px-4 gap-3">
         <Button variant="ghost" size="sm" className="px-2" onClick={() => setMobileOpen(o => !o)}>
           {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -134,7 +166,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* Mobile sidebar drawer */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
@@ -153,7 +184,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* Main content */}
       <main className="flex-1 overflow-y-auto min-w-0 md:pt-0 pt-14">
         {children}
       </main>

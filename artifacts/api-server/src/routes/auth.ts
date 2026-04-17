@@ -2,8 +2,8 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
 import { db } from "@workspace/db";
-import { usersTable, platformSettingsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { usersTable, platformSettingsTable, adminStaffTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 import { signToken, requireAuth, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import { triggerAutomation, sendTransactionalEmail } from "./crm";
@@ -101,10 +101,15 @@ router.post("/login", async (req, res): Promise<void> => {
     res.status(403).json({ error: "Account is banned" });
     return;
   }
-  const token = signToken({ userId: user.id, email: user.email, role: user.role });
+  const [staffRecord] = await db.select().from(adminStaffTable)
+    .where(and(eq(adminStaffTable.userId, user.id), eq(adminStaffTable.status, "active")))
+    .limit(1);
+  const isStaff = !!staffRecord;
+  const staffPermissions = staffRecord?.permissions ?? null;
+  const token = signToken({ userId: user.id, email: user.email, role: user.role, isStaff, staffPermissions });
   res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
   const { password: _, emailVerifyToken: _vt, emailVerifyTokenExpiresAt: _vte, resetToken: _rt, resetTokenExpiresAt: _rte, ...safeUser } = user;
-  res.json({ user: safeUser, message: "Login successful" });
+  res.json({ user: { ...safeUser, isStaff, staffPermissions }, message: "Login successful" });
 });
 
 router.post("/logout", (req, res): void => {
@@ -119,8 +124,13 @@ router.get("/me", requireAuth, async (req, res): Promise<void> => {
     res.status(404).json({ error: "User not found" });
     return;
   }
+  const [staffRecord] = await db.select().from(adminStaffTable)
+    .where(and(eq(adminStaffTable.userId, dbUser.id), eq(adminStaffTable.status, "active")))
+    .limit(1);
+  const isStaff = !!staffRecord;
+  const staffPermissions = staffRecord?.permissions ?? null;
   const { password: _, emailVerifyToken: _vt, emailVerifyTokenExpiresAt: _vte, resetToken: _rt, resetTokenExpiresAt: _rte, ...safeUser } = dbUser;
-  res.json(safeUser);
+  res.json({ ...safeUser, isStaff, staffPermissions });
 });
 
 /* ── Verify email via token from link ── */

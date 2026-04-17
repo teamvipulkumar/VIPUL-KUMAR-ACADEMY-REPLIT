@@ -7,6 +7,8 @@ export interface JwtPayload {
   userId: number;
   email: string;
   role: string;
+  isStaff?: boolean;
+  staffPermissions?: Record<string, boolean> | null;
 }
 
 export function signToken(payload: JwtPayload): string {
