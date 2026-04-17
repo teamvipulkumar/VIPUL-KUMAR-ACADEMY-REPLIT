@@ -7,7 +7,7 @@ import {
   payoutRequestsTable, platformSettingsTable, lessonCompletionsTable, lessonsTable,
   paymentGatewaysTable, bundlesTable, bundleCoursesTable
 } from "@workspace/db";
-import { eq, count, sum, gte, and, ilike, or, sql, desc, ne } from "drizzle-orm";
+import { eq, count, sum, gte, and, ilike, or, sql, desc, ne, inArray } from "drizzle-orm";
 import { requireAdmin, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import { triggerAutomation } from "./crm";
@@ -154,6 +154,29 @@ router.post("/users/:userId/ban", requireAdmin, async (req, res): Promise<void> 
   const { banned } = req.body;
   await db.update(usersTable).set({ isBanned: banned }).where(eq(usersTable.id, userId));
   res.json({ message: `User ${banned ? "banned" : "unbanned"}` });
+});
+
+// ── Bulk delete users ─────────────────────────────────────────────────────────
+router.delete("/users/bulk", requireAdmin, async (req, res): Promise<void> => {
+  const authedReq = req as AuthedRequest;
+  const ids: number[] = req.body?.ids ?? [];
+  if (!Array.isArray(ids) || ids.length === 0) { res.status(400).json({ error: "Provide a non-empty ids array" }); return; }
+  const safeIds = ids.filter(id => id !== authedReq.user?.id);
+  if (safeIds.length === 0) { res.status(400).json({ error: "Cannot delete your own account" }); return; }
+  await db.delete(usersTable).where(inArray(usersTable.id, safeIds));
+  res.json({ deleted: safeIds.length });
+});
+
+// ── Bulk ban/unban users ──────────────────────────────────────────────────────
+router.post("/users/bulk-ban", requireAdmin, async (req, res): Promise<void> => {
+  const authedReq = req as AuthedRequest;
+  const ids: number[] = req.body?.ids ?? [];
+  const banned: boolean = req.body?.banned ?? true;
+  if (!Array.isArray(ids) || ids.length === 0) { res.status(400).json({ error: "Provide a non-empty ids array" }); return; }
+  const safeIds = ids.filter(id => id !== authedReq.user?.id);
+  if (safeIds.length === 0) { res.status(400).json({ error: "Cannot ban your own account" }); return; }
+  await db.update(usersTable).set({ isBanned: banned }).where(inArray(usersTable.id, safeIds));
+  res.json({ updated: safeIds.length });
 });
 
 // ── Import users from CSV/JSON ────────────────────────────────────────────────

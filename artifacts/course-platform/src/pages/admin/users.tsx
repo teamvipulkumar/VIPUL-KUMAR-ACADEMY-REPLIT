@@ -16,7 +16,8 @@ import {
   UserPlus, Search, Eye, Pencil, Trash2, ShieldCheck,
   GraduationCap, Share2, Mail, Calendar, BookOpen, BadgeIndianRupee,
   MoreHorizontal, CheckCircle, XCircle, Lock, Phone,
-  Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, X, Loader2
+  Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, X, Loader2,
+  Square, CheckSquare, Ban,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -642,6 +643,45 @@ function DeleteDialog({ user, onClose, onSuccess }: { user: User; onClose: () =>
   );
 }
 
+// ── Bulk Confirm Dialog ───────────────────────────────────────────────────────
+function BulkConfirmDialog({
+  count, action, onConfirm, onClose, loading,
+}: { count: number; action: "delete" | "ban" | "unban"; onConfirm: () => void; onClose: () => void; loading: boolean }) {
+  const isDelete = action === "delete";
+  const isBan = action === "ban";
+  return (
+    <Dialog open onOpenChange={v => !v && onClose()}>
+      <DialogContent className="sm:max-w-sm bg-[#0d1424] border-white/10">
+        <DialogHeader>
+          <DialogTitle className={`flex items-center gap-2 ${isDelete ? "text-red-400" : isBan ? "text-orange-400" : "text-green-400"}`}>
+            {isDelete ? <Trash2 className="w-4 h-4" /> : isBan ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+            {isDelete ? "Delete" : isBan ? "Trash / Ban" : "Unban"} {count} User{count !== 1 ? "s" : ""}
+          </DialogTitle>
+          <DialogDescription>
+            {isDelete
+              ? `Permanently delete ${count} user${count !== 1 ? "s" : ""}? This cannot be undone and removes all their data.`
+              : isBan
+              ? `Move ${count} user${count !== 1 ? "s" : ""} to trash (ban them)? They won't be able to log in.`
+              : `Restore ${count} user${count !== 1 ? "s" : ""}? They will be able to log in again.`}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 mt-2">
+          <Button variant="outline" onClick={onClose} className="border-white/10" disabled={loading}>Cancel</Button>
+          <Button
+            variant={isDelete ? "destructive" : "default"}
+            onClick={onConfirm}
+            disabled={loading}
+            className={!isDelete ? (isBan ? "bg-orange-600 hover:bg-orange-700" : "bg-green-600 hover:bg-green-700") : ""}
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+            {isDelete ? "Delete" : isBan ? "Trash (Ban)" : "Restore"} {count} User{count !== 1 ? "s" : ""}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
@@ -654,6 +694,10 @@ export default function AdminUsersPage() {
   const [viewingUser, setViewingUser] = useState<User | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
+
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDialog, setBulkDialog] = useState<"delete" | "ban" | "unban" | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -694,6 +738,55 @@ export default function AdminUsersPage() {
       onSuccess: () => { toast({ title: banned ? `${name} banned` : `${name} unbanned` }); refresh(); },
       onError: () => toast({ title: "Error", variant: "destructive" }),
     });
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = (visibleUsers: User[]) => {
+    const visibleIds = visibleUsers.map(u => u.id);
+    const allSelected = visibleIds.every(id => selectedIds.has(id));
+    setSelectedIds(allSelected ? new Set() : new Set(visibleIds));
+  };
+
+  const handleBulkAction = async () => {
+    if (!bulkDialog || selectedIds.size === 0) return;
+    setBulkLoading(true);
+    const ids = Array.from(selectedIds);
+    try {
+      let res: Response;
+      if (bulkDialog === "delete") {
+        res = await fetch(`${API_BASE}/api/admin/users/bulk`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ ids }),
+        });
+      } else {
+        res = await fetch(`${API_BASE}/api/admin/users/bulk-ban`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ ids, banned: bulkDialog === "ban" }),
+        });
+      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Action failed");
+      const count = data.deleted ?? data.updated ?? ids.length;
+      toast({ title: bulkDialog === "delete" ? `${count} user${count !== 1 ? "s" : ""} deleted` : bulkDialog === "ban" ? `${count} user${count !== 1 ? "s" : ""} moved to trash` : `${count} user${count !== 1 ? "s" : ""} restored` });
+      setSelectedIds(new Set());
+      setBulkDialog(null);
+      refresh();
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   // Client-side status filter
@@ -776,6 +869,27 @@ export default function AdminUsersPage() {
         </Select>
       </div>
 
+      {/* Floating Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl border border-white/10 backdrop-blur-md" style={{ background: "rgba(13,20,36,0.95)" }}>
+          <span className="text-sm font-semibold text-foreground">{selectedIds.size} selected</span>
+          <div className="w-px h-5 bg-border" />
+          <Button size="sm" variant="ghost" className="gap-1.5 text-orange-400 hover:bg-orange-500/10 hover:text-orange-300 h-8" onClick={() => setBulkDialog("ban")}>
+            <Ban className="w-3.5 h-3.5" />Trash
+          </Button>
+          <Button size="sm" variant="ghost" className="gap-1.5 text-green-400 hover:bg-green-500/10 hover:text-green-300 h-8" onClick={() => setBulkDialog("unban")}>
+            <CheckCircle className="w-3.5 h-3.5" />Restore
+          </Button>
+          <Button size="sm" variant="ghost" className="gap-1.5 text-red-400 hover:bg-red-500/10 hover:text-red-300 h-8" onClick={() => setBulkDialog("delete")}>
+            <Trash2 className="w-3.5 h-3.5" />Delete
+          </Button>
+          <div className="w-px h-5 bg-border" />
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={() => setSelectedIds(new Set())}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+
       {/* Table */}
       {isLoading ? (
         <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-16 bg-card rounded-xl animate-pulse" />)}</div>
@@ -786,9 +900,21 @@ export default function AdminUsersPage() {
         </div>
       ) : (
         <div className="border border-border rounded-xl overflow-hidden overflow-x-auto">
-          <table className="w-full min-w-[640px]">
+          <table className="w-full min-w-[680px]">
             <thead className="bg-card border-b border-border">
               <tr>
+                <th className="px-4 py-3 w-10">
+                  <button
+                    onClick={() => toggleAll(users)}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {users.length > 0 && users.every(u => selectedIds.has(u.id))
+                      ? <CheckSquare className="w-4 h-4 text-primary" />
+                      : users.some(u => selectedIds.has(u.id))
+                      ? <CheckSquare className="w-4 h-4 text-primary/50" />
+                      : <Square className="w-4 h-4" />}
+                  </button>
+                </th>
                 {["User", "Role", "Status", "Joined", "Actions"].map(h => (
                   <th key={h} className="text-left text-xs font-semibold text-muted-foreground px-4 py-3 uppercase tracking-wide">{h}</th>
                 ))}
@@ -797,8 +923,15 @@ export default function AdminUsersPage() {
             <tbody className="divide-y divide-border">
               {users.map(u => {
                 const RoleIcon = roleIcons[u.role] ?? GraduationCap;
+                const isSelected = selectedIds.has(u.id);
                 return (
-                  <tr key={u.id} className="hover:bg-card/40 transition-colors group">
+                  <tr key={u.id} className={`hover:bg-card/40 transition-colors group ${isSelected ? "bg-primary/5" : ""}`}>
+                    {/* Checkbox */}
+                    <td className="px-4 py-3 w-10">
+                      <button onClick={() => toggleSelect(u.id)} className="text-muted-foreground hover:text-foreground transition-colors">
+                        {isSelected ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
+                      </button>
+                    </td>
                     {/* User */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -888,6 +1021,15 @@ export default function AdminUsersPage() {
       {viewingUser && <ViewProfileDialog userId={viewingUser.id} onClose={() => setViewingUser(null)} />}
       {editingUser && <EditUserDialog user={editingUser} onClose={() => setEditingUser(null)} onSuccess={refresh} />}
       {deletingUser && <DeleteDialog user={deletingUser} onClose={() => setDeletingUser(null)} onSuccess={refresh} />}
+      {bulkDialog && (
+        <BulkConfirmDialog
+          count={selectedIds.size}
+          action={bulkDialog}
+          onConfirm={handleBulkAction}
+          onClose={() => setBulkDialog(null)}
+          loading={bulkLoading}
+        />
+      )}
     </div>
   );
 }
