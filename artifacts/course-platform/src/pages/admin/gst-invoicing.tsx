@@ -342,7 +342,7 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
                   <tr>
                     <td style={{ padding: "12px", borderBottom: "1px solid #e5e7eb" }}>1</td>
                     <td style={{ padding: "12px", borderBottom: "1px solid #e5e7eb" }}>
-                      <div style={{ fontWeight: 600, color: "#1a1a2e" }}>{invoice.courseTitle}</div>
+                      <div style={{ fontWeight: 600, color: "#1a1a2e" }}>{invoice.courseTitle.replace(/^Bundle:\s*/, "Package: ")}</div>
                       <div style={{ fontSize: 10, color: "#6b7280", marginTop: 2 }}>Online Educational Course — Digital Service</div>
                     </td>
                     <td style={{ padding: "12px", borderBottom: "1px solid #e5e7eb", fontFamily: "monospace" }}>999294</td>
@@ -805,7 +805,7 @@ export default function AdminGstInvoicingPage() {
               <tbody><tr>
                 <td style="padding:12px;border-bottom:1px solid #e5e7eb;">1</td>
                 <td style="padding:12px;border-bottom:1px solid #e5e7eb;">
-                  <div style="font-weight:600;color:#1a1a2e;">${inv.courseTitle}</div>
+                  <div style="font-weight:600;color:#1a1a2e;">${inv.courseTitle.replace(/^Bundle:\s*/, "Package: ")}</div>
                   <div style="font-size:10px;color:#6b7280;margin-top:2px;">Online Educational Course — Digital Service</div>
                 </td>
                 <td style="padding:12px;border-bottom:1px solid #e5e7eb;font-family:monospace;">999294</td>
@@ -1044,8 +1044,8 @@ export default function AdminGstInvoicingPage() {
                             {inv.bundleId ? "Package" : "Course"}
                           </span>
                         </div>
-                        <div className="text-sm truncate mt-0.5" title={inv.bundleId ? inv.courseTitle.replace(/^Bundle:\s*/, "") : inv.courseTitle}>
-                          {inv.bundleId ? inv.courseTitle.replace(/^Bundle:\s*/, "") : inv.courseTitle}
+                        <div className="text-sm truncate mt-0.5" title={inv.courseTitle.replace(/^(?:Bundle|Package):\s*/, "")}>
+                          {inv.courseTitle.replace(/^(?:Bundle|Package):\s*/, "")}
                         </div>
                       </TableCell>
                       <TableCell className="text-right text-sm">{fmtN(inv.baseAmount)}</TableCell>
@@ -1431,7 +1431,7 @@ export default function AdminGstInvoicingPage() {
                 <div><span className="font-medium text-foreground">Customer:</span> {deleteTarget.customerName}</div>
                 <div>
                   <span className="font-medium text-foreground">{deleteTarget.bundleId ? "Package:" : "Course:"}</span>{" "}
-                  {deleteTarget.bundleId ? deleteTarget.courseTitle.replace(/^Bundle:\s*/, "") : deleteTarget.courseTitle}
+                  {deleteTarget.courseTitle.replace(/^(?:Bundle|Package):\s*/, "")}
                 </div>
                 <div><span className="font-medium text-foreground">Amount:</span> {fmtN(deleteTarget.totalAmount)}</div>
               </div>

@@ -50,7 +50,7 @@ export async function generateGstInvoice(paymentId: number): Promise<void> {
     const [bundle] = payment.bundleId
       ? await db.select({ id: bundlesTable.id, name: bundlesTable.name }).from(bundlesTable).where(eq(bundlesTable.id, payment.bundleId)).limit(1)
       : [null];
-    const productTitle = bundle ? `Bundle: ${bundle.name}` : (course?.title ?? "");
+    const productTitle = bundle ? `Package: ${bundle.name}` : (course?.title ?? "");
 
     const createdAt = payment.createdAt ?? new Date();
     const fy = getFinancialYear(createdAt);
