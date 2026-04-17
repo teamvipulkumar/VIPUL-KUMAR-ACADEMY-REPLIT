@@ -67,9 +67,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-56 border-r border-border bg-card flex-shrink-0 flex-col">
+      <aside className="hidden md:flex w-56 border-r border-border bg-card flex-shrink-0 flex-col h-screen">
         <div className="p-4 border-b border-border">
           <div className="flex items-center gap-2">
             <AdminLogo />
