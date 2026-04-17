@@ -905,7 +905,7 @@ export default function BundleCheckoutPage() {
 
             {/* What's included */}
             <div className="bg-card border border-border rounded-xl p-4">
-              <h3 className="font-semibold text-sm text-foreground mb-3">This bundle includes</h3>
+              <h3 className="font-semibold text-sm text-foreground mb-3">This package includes</h3>
               <div className="space-y-2">
                 {[
                   "Full lifetime access to all courses",
