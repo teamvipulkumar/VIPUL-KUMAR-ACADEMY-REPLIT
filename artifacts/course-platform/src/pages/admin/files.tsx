@@ -347,16 +347,25 @@ export default function AdminFilesPage() {
 
             {/* Image */}
             <div
-              className="flex flex-col items-center max-w-[90vw] max-h-[90vh]"
+              className="flex flex-col items-center"
+              style={{ maxWidth: "92vw" }}
               onClick={e => e.stopPropagation()}
             >
               <img
                 src={`${API_BASE}${previewFile.url}`}
                 alt={previewFile.filename}
-                className="max-w-full max-h-[78vh] object-contain rounded-xl shadow-2xl"
+                className="rounded-xl shadow-2xl"
+                style={{
+                  maxWidth: "92vw",
+                  maxHeight: "82vh",
+                  width: "auto",
+                  height: "auto",
+                  display: "block",
+                  imageRendering: "auto",
+                }}
               />
               {/* Footer bar */}
-              <div className="mt-3 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/8 backdrop-blur border border-white/10 w-full max-w-lg">
+              <div className="mt-3 flex items-center gap-3 px-4 py-2.5 rounded-xl border border-white/10 w-full max-w-lg" style={{ background: "rgba(255,255,255,0.08)", backdropFilter: "blur(12px)" }}>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white truncate">{previewFile.filename}</p>
                   <p className="text-xs text-white/50">{formatBytes(previewFile.size)} · {formatDate(previewFile.uploadedAt)}</p>
