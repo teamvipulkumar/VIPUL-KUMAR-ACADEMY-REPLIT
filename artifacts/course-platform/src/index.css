@@ -207,6 +207,82 @@ html, body {
   }
 }
 
+/* ── Admin Panel: Dark Green Neon Theme ── */
+.admin-theme {
+  --background: 120 8% 4%;
+  --foreground: 120 5% 96%;
+
+  --border: 120 10% 11%;
+  --input: 120 10% 11%;
+  --ring: 142 71% 45%;
+
+  --card: 120 10% 7%;
+  --card-foreground: 120 5% 96%;
+  --card-border: 120 10% 11%;
+
+  --popover: 120 10% 7%;
+  --popover-foreground: 120 5% 96%;
+  --popover-border: 120 10% 12%;
+
+  --sidebar: 120 8% 4%;
+  --sidebar-foreground: 120 5% 96%;
+  --sidebar-border: 120 10% 10%;
+  --sidebar-primary: 142 71% 45%;
+  --sidebar-primary-foreground: 0 0% 5%;
+  --sidebar-accent: 120 10% 9%;
+  --sidebar-accent-foreground: 120 5% 96%;
+  --sidebar-ring: 142 71% 45%;
+
+  /* Neon Green Primary */
+  --primary: 142 71% 45%;
+  --primary-foreground: 0 0% 5%;
+
+  --secondary: 120 10% 11%;
+  --secondary-foreground: 120 5% 96%;
+
+  --muted: 120 10% 11%;
+  --muted-foreground: 120 6% 52%;
+
+  --accent: 120 10% 11%;
+  --accent-foreground: 120 5% 96%;
+
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 120 5% 96%;
+
+  --chart-1: 142 71% 45%;
+  --chart-2: 120 5% 96%;
+  --chart-3: 158 64% 52%;
+  --chart-4: 120 10% 11%;
+  --chart-5: 120 10% 7%;
+
+  --button-outline: rgba(255,255,255,0.08);
+  --badge-outline: rgba(255,255,255,0.04);
+  --elevate-1: rgba(255,255,255,0.03);
+  --elevate-2: rgba(255,255,255,0.07);
+}
+
+/* Active nav item: solid green pill (matches screenshot) */
+.admin-theme .admin-nav-active {
+  background-color: hsl(142 71% 45%);
+  color: hsl(0 0% 5%);
+  font-weight: 600;
+}
+.admin-theme .admin-nav-active svg {
+  color: hsl(0 0% 5%);
+}
+
+/* Subtle green glow on cards inside admin */
+.admin-theme .admin-stat-card {
+  background: linear-gradient(135deg, hsl(120 10% 7%) 0%, hsl(142 30% 8%) 100%);
+  border-color: hsl(120 10% 13%);
+}
+
+/* Green tinted scrollbar for admin */
+.admin-theme ::-webkit-scrollbar { width: 5px; height: 5px; }
+.admin-theme ::-webkit-scrollbar-track { background: hsl(120 8% 5%); }
+.admin-theme ::-webkit-scrollbar-thumb { background: hsl(142 40% 20%); border-radius: 4px; }
+.admin-theme ::-webkit-scrollbar-thumb:hover { background: hsl(142 60% 30%); }
+
 /* ── Light mode: darken neon palette classes so they remain readable ── */
 .light .text-green-400  { color: #16a34a; }
 .light .text-green-500  { color: #15803d; }
