@@ -91,7 +91,6 @@ export default function Home() {
           ))}
         </div>
       </section>
-
       {/* Stats */}
       <section className="border-y border-border bg-card/50 py-12 px-6">
         <div className="container mx-auto max-w-4xl grid grid-cols-2 md:grid-cols-4 gap-8">
@@ -104,7 +103,6 @@ export default function Home() {
           ))}
         </div>
       </section>
-
       {/* Featured Courses */}
       <section className="py-20 px-6">
         <div className="container mx-auto max-w-5xl">
@@ -160,14 +158,13 @@ export default function Home() {
           )}
         </div>
       </section>
-
       {/* Packages */}
       {(bundlesLoading || (bundles && bundles.length > 0)) && (
         <section className="py-20 px-6 bg-card/30 border-y border-border">
           <div className="container mx-auto max-w-5xl">
             <div className="flex justify-between items-end mb-10">
               <div>
-                <h2 className="text-3xl font-bold tracking-tight mb-2">Course Packages</h2>
+                <h2 className="text-3xl font-bold tracking-tight mb-2">Featured Packages</h2>
                 <p className="text-muted-foreground">Bundle deals with maximum value at a lower price.</p>
               </div>
             </div>
@@ -232,7 +229,6 @@ export default function Home() {
           </div>
         </section>
       )}
-
       {/* Features */}
       <section className="py-20 px-6 bg-card/30 border-y border-border">
         <div className="container mx-auto max-w-5xl">
@@ -255,7 +251,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Testimonials */}
       <section className="py-20 px-6">
         <div className="container mx-auto max-w-5xl">
@@ -281,7 +276,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Final CTA */}
       <section className="py-24 px-6 bg-gradient-to-b from-primary/10 to-background border-t border-border">
         <div className="max-w-2xl mx-auto text-center">
