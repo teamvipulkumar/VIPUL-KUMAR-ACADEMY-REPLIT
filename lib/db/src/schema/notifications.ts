@@ -33,6 +33,8 @@ export const platformSettingsTable = pgTable("platform_settings", {
   maintenanceMessage: text("maintenance_message"),
   orderPrefix: text("order_prefix").notNull().default("ORD"),
   orderSuffix: text("order_suffix").notNull().default(""),
+  showFeaturedCourses: boolean("show_featured_courses").notNull().default(true),
+  showFeaturedPackages: boolean("show_featured_packages").notNull().default(true),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

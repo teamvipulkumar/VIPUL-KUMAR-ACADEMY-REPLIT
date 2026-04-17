@@ -459,7 +459,7 @@ router.get("/settings", requireAdmin, async (req, res): Promise<void> => {
 });
 
 router.put("/settings", requireAdmin, async (req, res): Promise<void> => {
-  const { siteName, siteDescription, commissionRate, currency, stripeEnabled, razorpayEnabled, emailNotificationsEnabled, googleSignInEnabled, googleClientId, googleClientSecret, maintenanceMode, maintenanceMessage, orderPrefix, orderSuffix } = req.body;
+  const { siteName, siteDescription, commissionRate, currency, stripeEnabled, razorpayEnabled, emailNotificationsEnabled, googleSignInEnabled, googleClientId, googleClientSecret, maintenanceMode, maintenanceMessage, orderPrefix, orderSuffix, showFeaturedCourses, showFeaturedPackages } = req.body;
   const existing = await db.select().from(platformSettingsTable).limit(1);
   const updates: Record<string, unknown> = {};
   if (siteName !== undefined) updates.siteName = siteName;
@@ -476,6 +476,8 @@ router.put("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (maintenanceMessage !== undefined) updates.maintenanceMessage = maintenanceMessage;
   if (orderPrefix !== undefined) updates.orderPrefix = orderPrefix;
   if (orderSuffix !== undefined) updates.orderSuffix = orderSuffix;
+  if (showFeaturedCourses !== undefined) updates.showFeaturedCourses = showFeaturedCourses;
+  if (showFeaturedPackages !== undefined) updates.showFeaturedPackages = showFeaturedPackages;
 
   if (existing.length === 0) {
     await db.insert(platformSettingsTable).values({});
@@ -897,6 +899,19 @@ router.get("/public/maintenance", async (_req, res): Promise<void> => {
     maintenanceMessage: platformSettingsTable.maintenanceMessage,
   }).from(platformSettingsTable).limit(1);
   if (settings.length === 0) { res.json({ maintenanceMode: false, maintenanceMessage: null }); return; }
+  res.json(settings[0]);
+});
+
+/* ── Public: homepage section visibility (no auth required) ── */
+router.get("/public/homepage-visibility", async (_req, res): Promise<void> => {
+  const settings = await db.select({
+    showFeaturedCourses: platformSettingsTable.showFeaturedCourses,
+    showFeaturedPackages: platformSettingsTable.showFeaturedPackages,
+  }).from(platformSettingsTable).limit(1);
+  if (settings.length === 0) {
+    res.json({ showFeaturedCourses: true, showFeaturedPackages: true });
+    return;
+  }
   res.json(settings[0]);
 });
 

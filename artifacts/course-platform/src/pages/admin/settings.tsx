@@ -43,6 +43,7 @@ export default function AdminSettingsPage() {
     siteName: "", siteDescription: "", currency: "INR",
     stripeEnabled: true, razorpayEnabled: false, emailNotificationsEnabled: true,
     commissionRate: 20,
+    showFeaturedCourses: true, showFeaturedPackages: true,
   });
   const [maintenanceForm, setMaintenanceForm] = useState({ maintenanceMode: false, maintenanceMessage: "" });
   const [maintenanceSaving, setMaintenanceSaving] = useState(false);
@@ -57,6 +58,8 @@ export default function AdminSettingsPage() {
         currency: settings.currency, stripeEnabled: settings.stripeEnabled,
         razorpayEnabled: settings.razorpayEnabled, emailNotificationsEnabled: settings.emailNotificationsEnabled,
         commissionRate: settings.commissionRate,
+        showFeaturedCourses: (settings as Record<string, unknown>).showFeaturedCourses as boolean ?? true,
+        showFeaturedPackages: (settings as Record<string, unknown>).showFeaturedPackages as boolean ?? true,
       });
       setMaintenanceForm({
         maintenanceMode: (settings as Record<string, unknown>).maintenanceMode as boolean ?? false,
@@ -188,6 +191,30 @@ export default function AdminSettingsPage() {
                 <p className="text-xs text-muted-foreground">Send emails for signups, purchases, etc.</p>
               </div>
               <Switch checked={form.emailNotificationsEnabled} onCheckedChange={v => setForm(f => ({ ...f, emailNotificationsEnabled: v }))} />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Homepage Sections */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-base">Homepage Sections</CardTitle>
+            <CardDescription>Show or hide sections on the public homepage.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Featured Courses</p>
+                <p className="text-xs text-muted-foreground">Display the featured courses section to visitors</p>
+              </div>
+              <Switch checked={form.showFeaturedCourses} onCheckedChange={v => setForm(f => ({ ...f, showFeaturedCourses: v }))} />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Featured Packages</p>
+                <p className="text-xs text-muted-foreground">Display the featured packages section to visitors</p>
+              </div>
+              <Switch checked={form.showFeaturedPackages} onCheckedChange={v => setForm(f => ({ ...f, showFeaturedPackages: v }))} />
             </div>
           </CardContent>
         </Card>

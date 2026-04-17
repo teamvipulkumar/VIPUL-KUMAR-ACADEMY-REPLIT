@@ -40,6 +40,8 @@ type Bundle = {
   isActive: boolean; courses: BundleCourse[];
 };
 
+type HomepageVisibility = { showFeaturedCourses: boolean; showFeaturedPackages: boolean };
+
 export default function Home() {
   const { data: coursesData, isLoading } = useListCourses({ limit: 3 }, {
     query: { queryKey: getListCoursesQueryKey({ limit: 3 }) }
@@ -53,6 +55,19 @@ export default function Home() {
       return res.json();
     },
   });
+
+  const { data: visibility } = useQuery<HomepageVisibility>({
+    queryKey: ["homepage-visibility"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/admin/public/homepage-visibility`);
+      if (!res.ok) return { showFeaturedCourses: true, showFeaturedPackages: true };
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+
+  const showCourses = visibility?.showFeaturedCourses ?? true;
+  const showPackages = visibility?.showFeaturedPackages ?? true;
 
   return (
     <div className="flex flex-col">
@@ -104,7 +119,8 @@ export default function Home() {
         </div>
       </section>
       {/* Featured Courses */}
-      <section className="py-20 px-6">
+      {showCourses && (
+        <section className="py-20 px-6">
         <div className="container mx-auto max-w-5xl">
           <div className="flex justify-between items-end mb-10">
             <div>
@@ -157,9 +173,10 @@ export default function Home() {
             </div>
           )}
         </div>
-      </section>
+        </section>
+      )}
       {/* Packages */}
-      {(bundlesLoading || (bundles && bundles.length > 0)) && (
+      {showPackages && (bundlesLoading || (bundles && bundles.length > 0)) && (
         <section className="py-20 px-6 bg-card/30 border-y border-border">
           <div className="container mx-auto max-w-5xl">
             <div className="flex justify-between items-end mb-10">
