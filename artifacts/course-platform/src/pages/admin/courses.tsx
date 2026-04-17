@@ -266,13 +266,22 @@ export default function AdminCoursesPage() {
           <div className="border border-border rounded-xl overflow-hidden">
             <table className="w-full">
               <thead className="bg-card border-b border-border">
-                <tr>{["Title", "Category", "Level", "Price", "Status", "On Website", "Students", "Actions"].map(h => <th key={h} className="text-left text-xs font-medium text-muted-foreground px-4 py-3">{h}</th>)}</tr>
+                <tr>{["", "Title", "Category", "Level", "Price", "Status", "On Website", "Students", "Actions"].map((h, i) => <th key={i} className="text-left text-xs font-medium text-muted-foreground px-4 py-3">{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {courses.map(c => {
                   const showOnWebsite = (c as unknown as { showOnWebsite: boolean }).showOnWebsite !== false;
                   return (
                   <tr key={c.id} className="hover:bg-card/50 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="w-20 h-12 rounded-md overflow-hidden bg-gradient-to-br from-primary/20 to-blue-900/30 flex-shrink-0 flex items-center justify-center">
+                        {c.thumbnailUrl ? (
+                          <img src={c.thumbnailUrl} alt={c.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-lg font-black text-primary/30 select-none">{c.category?.charAt(0) ?? "?"}</span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 font-medium text-sm max-w-xs"><p className="truncate">{c.title}</p></td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{c.category}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground capitalize">{c.level}</td>
