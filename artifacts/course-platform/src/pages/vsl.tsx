@@ -4,6 +4,51 @@ import { ArrowRight, X } from "lucide-react";
 
 const TRUST_BADGES = ["No Upselling", "No Webinars", "No High Ticket Pitches"];
 
+function VidalyticsEmbed() {
+  useEffect(() => {
+    const embedId = "vidalytics_embed_I48jnMn3fLUdr24x";
+    const src = "https://fast.vidalytics.com/embeds/gVGT5OOt/I48jnMn3fLUdr24x/";
+
+    (function (v: any, i: Document, d: string, a: string, l: string) {
+      const y = "_" + d.toLowerCase();
+      const c = d + "L";
+      if (!v[d]) v[d] = {};
+      if (!v[c]) v[c] = {};
+      if (!v[y]) v[y] = {};
+      const vl = "Loader";
+      let vli = v[y][vl];
+      let t: any;
+      const vsl: (u: string, cb: () => void) => void =
+        v[c][vl + "Script"] ||
+        function (u: string, cb: () => void) {
+          if (t) { cb(); return; }
+          const s = i.createElement("script") as HTMLScriptElement;
+          s.type = "text/javascript";
+          s.async = true;
+          s.src = u;
+          s.onload = () => { v[c][vl + "Loaded"] = 1; cb(); };
+          i.getElementsByTagName("head")[0].appendChild(s);
+        };
+      v[c][vl + "Script"] = vsl;
+      vsl(l + "loader.min.js", function () {
+        if (!vli) { const vlc = v[c][vl]; vli = new vlc(); v[y][vl] = vli; }
+        vli.loadScript(l + "player.min.js", function () {
+          const vec = v[d]["Embed"];
+          t = new vec();
+          t.run(a);
+        });
+      });
+    })(window, document, "Vidalytics", embedId, src);
+  }, []);
+
+  return (
+    <div
+      id="vidalytics_embed_I48jnMn3fLUdr24x"
+      style={{ width: "100%", position: "relative", paddingTop: "56.25%" }}
+    />
+  );
+}
+
 export default function VslPage() {
   const [showCta, setShowCta] = useState(false);
   const ctaRef = useRef<HTMLDivElement>(null);
@@ -77,50 +122,5 @@ export default function VslPage() {
 
       <SiteFooter />
     </div>
-  );
-}
-
-function VidalyticsEmbed() {
-  useEffect(() => {
-    const embedId = "vidalytics_embed_I48jnMn3fLUdr24x";
-    const src = "https://fast.vidalytics.com/embeds/gVGT5OOt/I48jnMn3fLUdr24x/";
-
-    (function (v: any, i: Document, d: string, a: string, l: string) {
-      const y = "_" + d.toLowerCase();
-      const c = d + "L";
-      if (!v[d]) v[d] = {};
-      if (!v[c]) v[c] = {};
-      if (!v[y]) v[y] = {};
-      const vl = "Loader";
-      let vli = v[y][vl];
-      let t: any;
-      const vsl: ((u: string, cb: () => void) => void) =
-        v[c][vl + "Script"] ||
-        function (u: string, cb: () => void) {
-          if (t) { cb(); return; }
-          const s = i.createElement("script") as HTMLScriptElement;
-          s.type = "text/javascript";
-          s.async = true;
-          s.src = u;
-          s.onload = () => { v[c][vl + "Loaded"] = 1; cb(); };
-          i.getElementsByTagName("head")[0].appendChild(s);
-        };
-      v[c][vl + "Script"] = vsl;
-      vsl(l + "loader.min.js", function () {
-        if (!vli) { const vlc = v[c][vl]; vli = new vlc(); v[y][vl] = vli; }
-        vli.loadScript(l + "player.min.js", function () {
-          const vec = v[d]["Embed"];
-          t = new vec();
-          t.run(a);
-        });
-      });
-    })(window, document, "Vidalytics", embedId, src);
-  }, []);
-
-  return (
-    <div
-      id="vidalytics_embed_I48jnMn3fLUdr24x"
-      style={{ width: "100%", position: "relative", paddingTop: "56.25%" }}
-    />
   );
 }
