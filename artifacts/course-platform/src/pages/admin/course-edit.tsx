@@ -67,7 +67,7 @@ export default function AdminCourseEditPage() {
   const updateLesson = useUpdateLesson();
 
   // Course settings state
-  const [courseForm, setCourseForm] = useState({ title: "", description: "", thumbnailUrl: "", price: "", category: "", level: "beginner", status: "draft" });
+  const [courseForm, setCourseForm] = useState({ title: "", description: "", thumbnailUrl: "", price: "", compareAtPrice: "", durationHours: "", category: "", level: "beginner", status: "draft" });
   const [courseSaving, setCourseSaving] = useState(false);
 
   // Curriculum state
@@ -85,11 +85,14 @@ export default function AdminCourseEditPage() {
 
   useEffect(() => {
     if (course) {
+      const c = course as any;
       setCourseForm({
         title: course.title ?? "",
         description: course.description ?? "",
-        thumbnailUrl: (course as any).thumbnailUrl ?? "",
+        thumbnailUrl: c.thumbnailUrl ?? "",
         price: String(course.price ?? ""),
+        compareAtPrice: c.compareAtPrice ? String(c.compareAtPrice) : "",
+        durationHours: c.durationMinutes ? String((c.durationMinutes / 60).toFixed(1)).replace(/\.0$/, "") : "",
         category: course.category ?? "",
         level: course.level ?? "beginner",
         status: course.status ?? "draft",
@@ -101,7 +104,7 @@ export default function AdminCourseEditPage() {
 
   const handleSaveCourse = () => {
     setCourseSaving(true);
-    const body: UpdateCourseBody = {
+    const body: UpdateCourseBody & { compareAtPrice?: number | null; durationMinutes?: number } = {
       title: courseForm.title,
       description: courseForm.description,
       thumbnailUrl: courseForm.thumbnailUrl || null,
@@ -109,8 +112,10 @@ export default function AdminCourseEditPage() {
       category: courseForm.category,
       level: courseForm.level as any,
       status: courseForm.status as any,
+      compareAtPrice: courseForm.compareAtPrice ? parseFloat(courseForm.compareAtPrice) : null,
+      durationMinutes: courseForm.durationHours ? Math.round(parseFloat(courseForm.durationHours) * 60) : 0,
     };
-    updateCourse.mutate({ courseId, data: body }, {
+    updateCourse.mutate({ courseId, data: body as UpdateCourseBody }, {
       onSuccess: () => { toast({ title: "Course saved!" }); setCourseSaving(false); invalidateCourse(); },
       onError: () => { toast({ title: "Failed to save course", variant: "destructive" }); setCourseSaving(false); },
     });
@@ -266,10 +271,24 @@ export default function AdminCourseEditPage() {
             <Input type="number" min="0" step="0.01" value={courseForm.price} onChange={e => setCourseForm(f => ({ ...f, price: e.target.value }))} className="bg-background" placeholder="0.00" />
           </div>
 
+          {/* Compare At Price */}
+          <div>
+            <label className="text-sm font-medium mb-1.5 block">Compare At Price (₹)</label>
+            <Input type="number" min="0" step="0.01" value={courseForm.compareAtPrice} onChange={e => setCourseForm(f => ({ ...f, compareAtPrice: e.target.value }))} className="bg-background" placeholder="Original price (crossed out)" />
+            <p className="text-xs text-muted-foreground mt-1">Shown as a strikethrough to highlight savings</p>
+          </div>
+
           {/* Category */}
           <div>
             <label className="text-sm font-medium mb-1.5 block">Category</label>
             <Input value={courseForm.category} onChange={e => setCourseForm(f => ({ ...f, category: e.target.value }))} className="bg-background" placeholder="e.g. Affiliate Marketing" />
+          </div>
+
+          {/* Duration */}
+          <div>
+            <label className="text-sm font-medium mb-1.5 block">Course Duration (hours)</label>
+            <Input type="number" min="0" step="0.5" value={courseForm.durationHours} onChange={e => setCourseForm(f => ({ ...f, durationHours: e.target.value }))} className="bg-background" placeholder="e.g. 2.5" />
+            <p className="text-xs text-muted-foreground mt-1">Total video/content hours (e.g. 10 for 10 hours)</p>
           </div>
 
           {/* Level */}
