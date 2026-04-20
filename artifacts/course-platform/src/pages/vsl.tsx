@@ -82,7 +82,7 @@ export default function VslPage() {
           </p>
 
           {/* Video */}
-          <div className="w-full rounded-2xl overflow-hidden shadow-2xl" style={{ background: "#111827", border: "1px solid #1e293b" }}>
+          <div className="w-full rounded-lg overflow-hidden shadow-2xl" style={{ background: "#111827", border: "1px solid #1e293b" }}>
             <VidalyticsEmbed />
           </div>
 
