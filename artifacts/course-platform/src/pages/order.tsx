@@ -341,10 +341,15 @@ export default function OrderPage() {
               `${API_BASE}/api/files/3034c6d598a19edf3010ef49.png`,
               `${API_BASE}/api/files/037ff30eaf8f7b280256e0ca.png`,
             ].map((src, i) => (
-              <img key={i} src={src} alt={`Proof screenshot ${i + 1}`} style={{
-                display: "block", width: "100%", height: "auto", borderRadius: 12,
-                boxShadow: "0 4px 20px rgba(0,0,0,0.10)", border: "1px solid #e2e8f0",
-              }} />
+              <img
+                key={i}
+                src={src}
+                alt={`Proof screenshot ${i + 1}`}
+                style={{
+                  display: "block", width: "100%", height: "auto", borderRadius: 12,
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.10)", border: "1px solid #e2e8f0",
+                }}
+                className="border-t-[#c6c6c6] border-r-[#c6c6c6] border-b-[#c6c6c6] border-l-[#c6c6c6] border-t-[1px] border-r-[1px] border-b-[1px] border-l-[1px] rounded-tl-[4px] rounded-tr-[4px] rounded-br-[4px] rounded-bl-[4px]" />
             ))}
           </div>
         </section>
