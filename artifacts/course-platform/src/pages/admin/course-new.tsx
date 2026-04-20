@@ -15,7 +15,7 @@ const INITIAL_FORM = {
   thumbnailUrl: "",
   price: "",
   compareAtPrice: "",
-  durationMinutes: "",
+  durationHours: "",
   category: "Affiliate Marketing",
   level: "beginner" as const,
   status: "draft" as const,
@@ -42,7 +42,7 @@ export default function AdminCourseNewPage() {
       level: form.level,
       status: form.status,
       ...(form.compareAtPrice ? { compareAtPrice: parseFloat(form.compareAtPrice) } : {}),
-      ...(form.durationMinutes ? { durationMinutes: parseInt(form.durationMinutes, 10) } : {}),
+      ...(form.durationHours ? { durationMinutes: Math.round(parseFloat(form.durationHours) * 60) } : {}),
     };
     createCourse.mutate({ data: body }, {
       onSuccess: (data) => {
@@ -170,13 +170,14 @@ export default function AdminCourseNewPage() {
           <h2 className="text-sm font-semibold mb-1 text-muted-foreground uppercase tracking-wide">Settings</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Duration (minutes)</label>
+              <label className="text-sm font-medium mb-1.5 block">Duration (hours)</label>
               <Input
-                placeholder="e.g. 120"
+                placeholder="e.g. 10"
                 type="number"
                 min="0"
-                value={form.durationMinutes}
-                onChange={e => setForm(f => ({ ...f, durationMinutes: e.target.value }))}
+                step="0.5"
+                value={form.durationHours}
+                onChange={e => setForm(f => ({ ...f, durationHours: e.target.value }))}
                 className="bg-background"
               />
             </div>
