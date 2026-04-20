@@ -331,7 +331,9 @@ export default function OrderPage() {
             <h2 style={{ fontFamily: FONT, fontWeight: 800, fontSize: "clamp(28px, 5vw, 38px)", color: "#0f172a", lineHeight: 1.2, margin: "0 0 12px" }}>
               What If I Told <span style={{ color: "#2563eb" }}>You...</span>
             </h2>
-            <p style={{ fontFamily: FONT, fontWeight: 700, fontSize: "clamp(15px, 4vw, 20px)", color: "#0f172a", lineHeight: 1.4, margin: 0 }}>
+            <p
+              style={{ fontFamily: FONT, fontWeight: 700, fontSize: "clamp(15px, 4vw, 20px)", color: "#0f172a", lineHeight: 1.4, margin: 0 }}
+              className="font-medium text-[14px]">
               You Could Make More In ONE Month Than Most People Make In A Year...{" "}
               <span style={{ color: "#2563eb" }}>Without Any Previous Experience!</span>
             </p>
