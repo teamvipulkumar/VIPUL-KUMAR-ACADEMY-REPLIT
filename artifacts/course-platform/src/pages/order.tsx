@@ -120,7 +120,7 @@ function Section({ children, className = "", style = {} }: { children: React.Rea
 function SectionHeading({ children, sub }: { children: React.ReactNode; sub?: string }) {
   return (
     <div style={{ textAlign: "center", marginBottom: 36 }}>
-      <h2 style={{ fontFamily: FONT, fontWeight: 800, fontSize: "clamp(20px, 5vw, 38px)", color: "#0f172a", lineHeight: 1.2, margin: 0 }}>{children}</h2>
+      <h2 style={{ fontFamily: FONT, fontWeight: 800, fontSize: "clamp(28px, 5vw, 38px)", color: "#0f172a", lineHeight: 1.2, margin: 0 }}>{children}</h2>
       {sub && <p style={{ fontFamily: FONT, fontSize: 14, color: "#64748b", marginTop: 8, lineHeight: 1.6 }}>{sub}</p>}
     </div>
   );
