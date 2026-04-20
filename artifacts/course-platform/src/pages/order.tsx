@@ -328,7 +328,7 @@ export default function OrderPage() {
         {/* ── Promise ── */}
         <section style={{ background: "#ffffff", padding: "48px 16px", textAlign: "center" }}>
           <div style={{ maxWidth: 640, margin: "0 auto 32px" }}>
-            <h2 style={{ fontFamily: FONT, fontWeight: 800, fontSize: "clamp(22px, 5vw, 34px)", color: "#0f172a", lineHeight: 1.2, margin: "0 0 12px" }}>
+            <h2 style={{ fontFamily: FONT, fontWeight: 800, fontSize: "clamp(22px, 5vw, 38px)", color: "#0f172a", lineHeight: 1.2, margin: "0 0 12px" }}>
               What If I Told <span style={{ color: "#2563eb" }}>You...</span>
             </h2>
             <p style={{ fontFamily: FONT, fontWeight: 700, fontSize: "clamp(15px, 4vw, 20px)", color: "#0f172a", lineHeight: 1.4, margin: 0 }}>
