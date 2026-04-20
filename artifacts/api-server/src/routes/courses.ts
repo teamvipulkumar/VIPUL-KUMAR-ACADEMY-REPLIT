@@ -41,9 +41,14 @@ router.get("/", async (req, res): Promise<void> => {
 });
 
 router.post("/", requireAdmin, async (req, res): Promise<void> => {
-  const { title, description, thumbnailUrl, price, category, level, status } = req.body;
-  const [course] = await db.insert(coursesTable).values({ title, description, thumbnailUrl, price: String(price || 0), category, level: level || "beginner", status: status || "draft" }).returning();
-  res.status(201).json({ ...course, price: parseFloat(course.price), moduleCount: 0, lessonCount: 0, enrollmentCount: 0 });
+  const { title, description, thumbnailUrl, price, compareAtPrice, durationMinutes, category, level, status } = req.body;
+  const [course] = await db.insert(coursesTable).values({
+    title, description, thumbnailUrl, price: String(price || 0),
+    compareAtPrice: compareAtPrice ? String(parseFloat(compareAtPrice)) : null,
+    durationMinutes: durationMinutes ? parseInt(durationMinutes, 10) : 0,
+    category, level: level || "beginner", status: status || "draft",
+  }).returning();
+  res.status(201).json({ ...course, price: parseFloat(course.price), compareAtPrice: course.compareAtPrice ? parseFloat(course.compareAtPrice) : null, moduleCount: 0, lessonCount: 0, enrollmentCount: 0 });
 });
 
 router.get("/:courseId", async (req, res): Promise<void> => {
@@ -74,10 +79,15 @@ router.get("/:courseId", async (req, res): Promise<void> => {
 
 router.put("/:courseId", requireAdmin, async (req, res): Promise<void> => {
   const courseId = parseInt(req.params.courseId);
-  const { title, description, thumbnailUrl, price, category, level, status, showOnWebsite } = req.body;
-  const [updated] = await db.update(coursesTable).set({ title, description, thumbnailUrl, price: price !== undefined ? String(price) : undefined, category, level, status, showOnWebsite }).where(eq(coursesTable.id, courseId)).returning();
+  const { title, description, thumbnailUrl, price, compareAtPrice, durationMinutes, category, level, status, showOnWebsite } = req.body;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updates: any = { title, description, thumbnailUrl, category, level, status, showOnWebsite };
+  if (price !== undefined) updates.price = String(price);
+  if (compareAtPrice !== undefined) updates.compareAtPrice = compareAtPrice ? String(parseFloat(compareAtPrice)) : null;
+  if (durationMinutes !== undefined) updates.durationMinutes = parseInt(durationMinutes, 10);
+  const [updated] = await db.update(coursesTable).set(updates).where(eq(coursesTable.id, courseId)).returning();
   if (!updated) { res.status(404).json({ error: "Course not found" }); return; }
-  res.json({ ...updated, price: parseFloat(updated.price), moduleCount: 0, lessonCount: 0, enrollmentCount: 0 });
+  res.json({ ...updated, price: parseFloat(updated.price), compareAtPrice: updated.compareAtPrice ? parseFloat(updated.compareAtPrice) : null, moduleCount: 0, lessonCount: 0, enrollmentCount: 0 });
 });
 
 router.delete("/:courseId", requireAdmin, async (req, res): Promise<void> => {

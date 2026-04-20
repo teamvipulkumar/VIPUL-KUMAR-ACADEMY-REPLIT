@@ -12,6 +12,7 @@ export const coursesTable = pgTable("courses", {
   level: text("level", { enum: ["beginner", "intermediate", "advanced"] }).notNull().default("beginner"),
   status: text("status", { enum: ["draft", "published"] }).notNull().default("draft"),
   durationMinutes: integer("duration_minutes").notNull().default(0),
+  compareAtPrice: numeric("compare_at_price", { precision: 10, scale: 2 }),
   showOnWebsite: boolean("show_on_website").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

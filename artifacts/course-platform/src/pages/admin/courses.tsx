@@ -13,7 +13,7 @@ import { ImageUploader } from "@/components/image-uploader";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-const INITIAL_FORM = { title: "", description: "", thumbnailUrl: "", price: "", category: "Affiliate Marketing", level: "beginner" as const, status: "draft" as const };
+const INITIAL_FORM = { title: "", description: "", thumbnailUrl: "", price: "", compareAtPrice: "", durationMinutes: "", category: "Affiliate Marketing", level: "beginner" as const, status: "draft" as const };
 const INITIAL_BUNDLE_FORM = { name: "", description: "", thumbnailUrl: "", price: "", compareAtPrice: "", isActive: true, courseIds: [] as number[] };
 
 type Tab = "courses" | "bundles";
@@ -69,6 +69,8 @@ export default function AdminCoursesPage() {
       title: form.title, description: form.description,
       thumbnailUrl: form.thumbnailUrl || null, price: parseFloat(form.price) || 0,
       category: form.category, level: form.level, status: form.status,
+      ...(form.compareAtPrice ? { compareAtPrice: parseFloat(form.compareAtPrice) } : {}),
+      ...(form.durationMinutes ? { durationMinutes: parseInt(form.durationMinutes, 10) } : {}),
     };
     createCourse.mutate({ data: body }, {
       onSuccess: () => { toast({ title: "Course created!" }); setOpen(false); setForm(INITIAL_FORM); queryClient.invalidateQueries({ queryKey: getAdminListCoursesQueryKey() }); },
@@ -211,6 +213,16 @@ export default function AdminCoursesPage() {
                     <Input placeholder="0.00" type="number" min="0" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} className="bg-background" />
                   </div>
                   <div>
+                    <label className="text-sm font-medium mb-1.5 block">Compare At Price (₹)</label>
+                    <Input placeholder="Original price (crossed out)" type="number" min="0" value={form.compareAtPrice} onChange={e => setForm(f => ({ ...f, compareAtPrice: e.target.value }))} className="bg-background" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Duration (minutes)</label>
+                    <Input placeholder="e.g. 120" type="number" min="0" value={form.durationMinutes} onChange={e => setForm(f => ({ ...f, durationMinutes: e.target.value }))} className="bg-background" />
+                  </div>
+                  <div>
                     <label className="text-sm font-medium mb-1.5 block">Category</label>
                     <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v }))}>
                       <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
@@ -266,7 +278,7 @@ export default function AdminCoursesPage() {
           <div className="border border-border rounded-xl overflow-hidden">
             <table className="w-full">
               <thead className="bg-card border-b border-border">
-                <tr>{["", "Title", "Category", "Level", "Price", "Status", "On Website", "Students", "Actions"].map((h, i) => <th key={i} className="text-left text-xs font-medium text-muted-foreground px-4 py-3">{h}</th>)}</tr>
+                <tr>{["", "Title", "Category", "Level", "Price", "Compare At", "Duration", "Status", "On Website", "Students", "Actions"].map((h, i) => <th key={i} className="text-left text-xs font-medium text-muted-foreground px-4 py-3">{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {courses.map(c => {
@@ -286,6 +298,8 @@ export default function AdminCoursesPage() {
                     <td className="px-4 py-3 text-sm text-muted-foreground">{c.category}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground capitalize">{c.level}</td>
                     <td className="px-4 py-3 text-sm font-bold">₹{c.price}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground line-through">{(c as unknown as { compareAtPrice?: number }).compareAtPrice ? `₹${(c as unknown as { compareAtPrice: number }).compareAtPrice}` : "—"}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{c.durationMinutes ? `${c.durationMinutes} min` : "—"}</td>
                     <td className="px-4 py-3">
                       <Badge className={`text-xs cursor-pointer select-none ${c.status === "published" ? "text-green-400 border-green-400/30 bg-green-400/10" : "text-yellow-400 border-yellow-400/30 bg-yellow-400/10"}`} onClick={() => handleToggleStatus(c.id, c.status)} title="Click to toggle">{c.status}</Badge>
                     </td>
