@@ -93,7 +93,7 @@ export default function VslPage() {
           >
             <a
               href="/order"
-              className="inline-flex items-center gap-3 px-10 py-5 rounded-xl font-extrabold text-lg text-white shadow-xl transition-all hover:scale-[1.03] active:scale-[0.98]"
+              className="inline-flex items-center gap-3 px-10 py-5 rounded-xl font-extrabold text-sm text-white shadow-xl transition-all hover:scale-[1.03] active:scale-[0.98]"
               style={{
                 background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
                 boxShadow: "0 8px 32px rgba(37,99,235,0.35)",
