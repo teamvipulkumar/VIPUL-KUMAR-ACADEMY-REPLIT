@@ -110,9 +110,7 @@ export default function OptinPage() {
                 )}
               </Button>
 
-              <p className="text-[11px] text-center text-muted-foreground/50 mt-2">
-                Your information is 100% secure and will never be shared.
-              </p>
+
             </form>
           ) : (
             <div
