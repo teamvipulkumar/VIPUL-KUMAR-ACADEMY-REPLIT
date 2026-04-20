@@ -156,7 +156,6 @@ function Faq({ q, a }: { q: string; a: string }) {
 export default function OrderPage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#ffffff", color: "#0f172a" }}>
-
       {/* ── Support Bar ── */}
       <div className="text-center py-2.5 px-4 text-sm font-medium" style={{ background: "#f1f5f9", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>
         Need Help?{" "}
@@ -169,7 +168,6 @@ export default function OrderPage() {
           WhatsApp Us +15557485582 (We're Here To Help)
         </a>
       </div>
-
       <main className="flex-1">
 
         {/* ── Hero ── */}
@@ -285,7 +283,7 @@ export default function OrderPage() {
                 <img
                   src={src}
                   alt={label}
-                  className="w-full rounded-2xl"
+                  className="w-full rounded-2xl border-t-[1px] border-r-[1px] border-b-[1px] border-l-[1px] border-t-[#262626] border-r-[#262626] border-b-[#262626] border-l-[#262626]"
                   style={{ display: "block", height: "auto", boxShadow: "0 4px 20px rgba(0,0,0,0.10)" }}
                 />
               </div>
@@ -401,7 +399,6 @@ export default function OrderPage() {
         </Section>
 
       </main>
-
       <SiteFooter />
     </div>
   );
