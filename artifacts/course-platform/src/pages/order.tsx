@@ -382,14 +382,16 @@ export default function OrderPage() {
             <p className="text-base" style={{ color: "#64748b" }}>
               Right now, you have a choice. Continue struggling with your current situation, or take action and transform your life in the next 30 days.
             </p>
+          </div>
 
+          <img
+            src={MOCKUP_IMG}
+            alt="Ultimate Affiliate 2.0 Course Mockup"
+            style={{ display: "block", width: "100%", height: "auto", maxWidth: "860px", margin: "1.5rem auto 0" }}
+          />
+
+          <div className="max-w-2xl mx-auto space-y-6 mt-6">
             <Countdown />
-
-            <img
-              src={MOCKUP_IMG}
-              alt="Ultimate Affiliate 2.0 Course Mockup"
-              style={{ display: "block", width: "100%", height: "auto", maxWidth: "560px", margin: "0 auto" }}
-            />
 
             <div className="space-y-1">
               <p className="text-lg" style={{ color: "#94a3b8" }}>
