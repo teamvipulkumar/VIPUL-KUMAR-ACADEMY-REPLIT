@@ -29,8 +29,24 @@ function VidalyticsEmbed() {
 
     document.head.appendChild(script);
 
+    const style = document.createElement("style");
+    style.textContent = `
+      #vidalytics_embed_I48jnMn3fLUdr24x video::-webkit-media-controls-picture-in-picture-button { display: none !important; }
+    `;
+    document.head.appendChild(style);
+
+    const pipTimer = setInterval(() => {
+      const videos = document.querySelectorAll<HTMLVideoElement>("#vidalytics_embed_I48jnMn3fLUdr24x video");
+      if (videos.length > 0) {
+        videos.forEach(v => { v.disablePictureInPicture = true; });
+        clearInterval(pipTimer);
+      }
+    }, 500);
+
     return () => {
       if (script.parentNode) script.parentNode.removeChild(script);
+      if (style.parentNode) style.parentNode.removeChild(style);
+      clearInterval(pipTimer);
     };
   }, []);
 
