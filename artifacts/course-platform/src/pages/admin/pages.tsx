@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import {
   Plus, ExternalLink, Trash2, Copy, Layers,
   MousePointerClick, Video, ShoppingCart, Megaphone,
@@ -40,17 +41,37 @@ interface Page {
 
 const STORAGE_KEY = "vka_admin_pages";
 
+const SEED_PAGES: Page[] = [
+  {
+    id: "builtin-optin",
+    title: "Affiliate Marketing Optin",
+    slug: "optin",
+    type: "optin",
+    status: "published",
+    createdAt: "2026-04-18T00:00:00.000Z",
+    views: 0,
+  },
+];
+
 function loadPages(): Page[] {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+    const stored: Page[] = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+    const storedIds = new Set(stored.map(p => p.id));
+    const missing = SEED_PAGES.filter(s => !storedIds.has(s.id));
+    if (missing.length === 0) return stored;
+    const merged = [...missing, ...stored];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    return merged;
   } catch {
-    return [];
+    return SEED_PAGES;
   }
 }
 
 function savePages(pages: Page[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(pages));
 }
+
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function slugify(str: string) {
   return str.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -62,6 +83,7 @@ function getTypeInfo(type: PageType) {
 
 export default function AdminPagesPage() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [pages, setPages] = useState<Page[]>(loadPages);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<PageType | "all">("all");
@@ -296,10 +318,13 @@ export default function AdminPagesPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-44">
-                          <DropdownMenuItem className="gap-2 cursor-pointer">
+                          <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => setLocation(`/${page.slug}`)}>
                             <PencilLine className="w-3.5 h-3.5" />Edit Page
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2 cursor-pointer">
+                          <DropdownMenuItem
+                            className="gap-2 cursor-pointer"
+                            onClick={() => window.open(`${BASE}/${page.slug}`, "_blank")}
+                          >
                             <ExternalLink className="w-3.5 h-3.5" />Preview
                           </DropdownMenuItem>
                           <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => duplicatePage(page)}>
