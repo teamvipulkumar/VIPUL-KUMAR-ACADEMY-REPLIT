@@ -318,7 +318,7 @@ export default function AdminPagesPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-44">
-                          <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => setLocation(`/${page.slug}`)}>
+                          <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => setLocation(`/admin/pages/${page.id}/builder`)}>
                             <PencilLine className="w-3.5 h-3.5" />Edit Page
                           </DropdownMenuItem>
                           <DropdownMenuItem
