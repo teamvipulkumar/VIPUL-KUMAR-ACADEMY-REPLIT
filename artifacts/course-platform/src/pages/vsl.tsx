@@ -63,12 +63,12 @@ export default function VslPage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#0a0f1e", color: "#ffffff" }}>
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#0a0f1e", color: "#ffffff", fontFamily: "'Montserrat', sans-serif" }}>
       <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 md:py-20">
         <div className="w-full max-w-3xl mx-auto text-center space-y-6">
 
           {/* Headline */}
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold leading-tight tracking-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight tracking-tight uppercase" style={{ letterSpacing: "-0.01em" }}>
             Earn{" "}
             <span style={{ color: "#3b82f6" }}>$10000+</span>{" "}
             Per Month With{" "}
@@ -76,9 +76,9 @@ export default function VslPage() {
           </h1>
 
           {/* Subheadline */}
-          <p className="text-base sm:text-lg" style={{ color: "#94a3b8" }}>
+          <p className="text-base sm:text-lg font-medium" style={{ color: "#94a3b8" }}>
             Watch How I Made a 6 Figure Business with{" "}
-            <span className="font-semibold" style={{ color: "#e2e8f0" }}>WarriorPlus</span>
+            <span className="font-bold" style={{ color: "#e2e8f0" }}>WarriorPlus</span>
           </p>
 
           {/* Video */}
@@ -106,15 +106,15 @@ export default function VslPage() {
           </div>
 
           {/* Trust Badges */}
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 pt-2">
-            {TRUST_BADGES.map(badge => (
+          <div className="flex flex-nowrap items-center justify-center gap-6 pt-2 overflow-hidden">
+            {TRUST_BADGES.map((badge) => (
               <span
                 key={badge}
-                className="flex items-center gap-2 text-sm font-medium"
-                style={{ color: "#94a3b8" }}
+                className="flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap"
+                style={{ color: "#64748b" }}
               >
-                <span className="flex items-center justify-center w-5 h-5 rounded-full" style={{ background: "rgba(239,68,68,0.15)" }}>
-                  <X className="w-3 h-3" style={{ color: "#ef4444" }} />
+                <span className="flex items-center justify-center w-4 h-4 rounded-full flex-shrink-0" style={{ background: "rgba(239,68,68,0.15)" }}>
+                  <X className="w-2.5 h-2.5" style={{ color: "#ef4444" }} />
                 </span>
                 {badge}
               </span>
