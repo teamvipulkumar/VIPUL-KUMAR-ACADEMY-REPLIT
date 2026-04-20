@@ -185,19 +185,41 @@ export default function OrderPage() {
             </p>
           </div>
 
-          {/* Product Mockup Image — full natural width, no constraints */}
-          <div className="mt-6 px-2">
+          {/* Product Mockup Image — edges fade into page background */}
+          <div style={{ position: "relative", maxWidth: "900px", margin: "1.5rem auto 0", padding: "0 0.5rem" }}>
             <img
               src={MOCKUP_IMG}
               alt="Ultimate Affiliate 2.0 Course Mockup"
               style={{
                 display: "block",
-                maxWidth: "900px",
                 width: "100%",
                 height: "auto",
-                margin: "0 auto",
               }}
             />
+            {/* Left fade */}
+            <div style={{
+              position: "absolute", top: 0, left: "0.5rem", bottom: 0, width: "12%",
+              background: "linear-gradient(to right, #0f172a, transparent)",
+              pointerEvents: "none",
+            }} />
+            {/* Right fade */}
+            <div style={{
+              position: "absolute", top: 0, right: "0.5rem", bottom: 0, width: "12%",
+              background: "linear-gradient(to left, #0f172a, transparent)",
+              pointerEvents: "none",
+            }} />
+            {/* Top fade */}
+            <div style={{
+              position: "absolute", top: 0, left: "0.5rem", right: "0.5rem", height: "12%",
+              background: "linear-gradient(to bottom, #0f172a, transparent)",
+              pointerEvents: "none",
+            }} />
+            {/* Bottom fade */}
+            <div style={{
+              position: "absolute", bottom: 0, left: "0.5rem", right: "0.5rem", height: "20%",
+              background: "linear-gradient(to top, #0f172a, transparent)",
+              pointerEvents: "none",
+            }} />
           </div>
 
           <div className="max-w-4xl mx-auto px-4 pb-10 space-y-5 mt-4">
