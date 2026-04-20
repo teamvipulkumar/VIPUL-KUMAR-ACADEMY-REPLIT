@@ -424,7 +424,7 @@ export default function OrderPage() {
         <section style={{ background: "#ffffff", padding: "48px 16px" }}>
           <div style={{ maxWidth: 600, margin: "0 auto" }}>
             <div style={{ textAlign: "center", marginBottom: 28 }}>
-              <p style={{ fontFamily: FONT, fontWeight: 800, fontSize: "clamp(20px, 5vw, 26px)", color: "#0f172a", margin: "0 0 6px" }}>FREE BONUSES 🎁</p>
+              <p style={{ fontFamily: FONT, fontWeight: 800, fontSize: "clamp(28px, 5vw, 34px)", color: "#0f172a", margin: "0 0 6px" }}>FREE BONUSES 🎁</p>
               <p style={{ fontFamily: FONT, fontWeight: 700, fontSize: 14, color: "#d97706", margin: 0 }}>BONUS: Order Today & Get FREE Access To:</p>
             </div>
             <div className="grid-bonuses">
