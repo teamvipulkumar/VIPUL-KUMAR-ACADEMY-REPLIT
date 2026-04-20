@@ -273,20 +273,22 @@ export default function OrderPage() {
           <p className="text-center text-sm mb-8" style={{ color: "#64748b" }}>
             These ordinary people followed the exact system you're about to discover...
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
             {[
-              `${API_BASE}/api/files/4d432b070d2d411e24a4d77c.jpg`,
-              `${API_BASE}/api/files/964249bf75f7602bc339ad4a.jpg`,
-              `${API_BASE}/api/files/6fe2de6bae918f8dd531bb90.jpg`,
-              `${API_BASE}/api/files/e49830a459f19fb7933d649b.jpg`,
-            ].map((src, i) => (
-              <img
-                key={i}
-                src={src}
-                alt={`Student result ${i + 1}`}
-                className="w-full rounded-xl"
-                style={{ display: "block", height: "auto" }}
-              />
+              { src: `${API_BASE}/api/files/4d432b070d2d411e24a4d77c.jpg`, label: "STUDENT #1" },
+              { src: `${API_BASE}/api/files/964249bf75f7602bc339ad4a.jpg`, label: "STUDENT #2" },
+              { src: `${API_BASE}/api/files/6fe2de6bae918f8dd531bb90.jpg`, label: "STUDENT #3" },
+              { src: `${API_BASE}/api/files/e49830a459f19fb7933d649b.jpg`, label: "STUDENT #4" },
+            ].map(({ src, label }, i) => (
+              <div key={i} className="flex flex-col items-center gap-3">
+                <p className="text-base sm:text-lg font-black tracking-wide" style={{ color: "#2563eb" }}>{label}</p>
+                <img
+                  src={src}
+                  alt={label}
+                  className="w-full rounded-2xl"
+                  style={{ display: "block", height: "auto", boxShadow: "0 4px 20px rgba(0,0,0,0.10)" }}
+                />
+              </div>
             ))}
           </div>
         </Section>
