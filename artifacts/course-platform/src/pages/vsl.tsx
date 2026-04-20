@@ -34,12 +34,7 @@ export default function VslPage() {
 
           {/* Video */}
           <div className="w-full rounded-2xl overflow-hidden shadow-2xl" style={{ background: "#111827", border: "1px solid #1e293b" }}>
-            <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
-              <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: "#111827" }}>
-                {/* Placeholder — swap src with real embed URL */}
-                <VideoPlaceholder />
-              </div>
-            </div>
+            <VidalyticsEmbed />
           </div>
 
           {/* CTA Button */}
@@ -85,64 +80,47 @@ export default function VslPage() {
   );
 }
 
-function VideoPlaceholder() {
-  const [clicked, setClicked] = useState(false);
+function VidalyticsEmbed() {
+  useEffect(() => {
+    const embedId = "vidalytics_embed_I48jnMn3fLUdr24x";
+    const src = "https://fast.vidalytics.com/embeds/gVGT5OOt/I48jnMn3fLUdr24x/";
+
+    (function (v: any, i: Document, d: string, a: string, l: string) {
+      const y = "_" + d.toLowerCase();
+      const c = d + "L";
+      if (!v[d]) v[d] = {};
+      if (!v[c]) v[c] = {};
+      if (!v[y]) v[y] = {};
+      const vl = "Loader";
+      let vli = v[y][vl];
+      let t: any;
+      const vsl: ((u: string, cb: () => void) => void) =
+        v[c][vl + "Script"] ||
+        function (u: string, cb: () => void) {
+          if (t) { cb(); return; }
+          const s = i.createElement("script") as HTMLScriptElement;
+          s.type = "text/javascript";
+          s.async = true;
+          s.src = u;
+          s.onload = () => { v[c][vl + "Loaded"] = 1; cb(); };
+          i.getElementsByTagName("head")[0].appendChild(s);
+        };
+      v[c][vl + "Script"] = vsl;
+      vsl(l + "loader.min.js", function () {
+        if (!vli) { const vlc = v[c][vl]; vli = new vlc(); v[y][vl] = vli; }
+        vli.loadScript(l + "player.min.js", function () {
+          const vec = v[d]["Embed"];
+          t = new vec();
+          t.run(a);
+        });
+      });
+    })(window, document, "Vidalytics", embedId, src);
+  }, []);
 
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer group" onClick={() => setClicked(true)}>
-      {/* Fake screen background */}
-      <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)" }} />
-
-      {/* Blurred dashboard mockup lines */}
-      <div className="absolute inset-0 flex flex-col gap-3 p-8 opacity-20 blur-[1px] pointer-events-none select-none">
-        <div className="h-4 rounded w-2/3" style={{ background: "#334155" }} />
-        <div className="h-4 rounded w-1/2" style={{ background: "#334155" }} />
-        <div className="grid grid-cols-3 gap-3 mt-2">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="rounded-lg p-3 space-y-2" style={{ background: "#1e293b", border: "1px solid #334155" }}>
-              <div className="h-3 rounded w-3/4" style={{ background: "#475569" }} />
-              <div className="h-6 rounded w-1/2" style={{ background: "#3b82f6", opacity: 0.6 }} />
-            </div>
-          ))}
-        </div>
-        <div className="flex-1 rounded-lg mt-2" style={{ background: "#1e293b", border: "1px solid #334155" }} />
-      </div>
-
-      {/* Overlay box — "Your Video Is Playing" */}
-      {!clicked ? (
-        <div
-          className="relative z-10 flex flex-col items-center justify-center gap-3 rounded-xl px-8 py-6 text-center"
-          style={{ background: "rgba(37,99,235,0.75)", backdropFilter: "blur(6px)", minWidth: "200px" }}
-        >
-          {/* Speaker icon */}
-          <svg className="w-10 h-10 text-white opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-            <path d="M11 5L6 9H2v6h4l5 4V5z" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <p className="text-white font-bold text-lg leading-tight">Your Video Is Playing</p>
-          <p className="text-white/80 font-semibold text-sm">Click To Unmute</p>
-        </div>
-      ) : (
-        <div className="relative z-10 flex flex-col items-center gap-2">
-          <div className="w-12 h-12 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-          <p className="text-white/60 text-sm">Loading video…</p>
-        </div>
-      )}
-
-      {/* Bottom bar mockup */}
-      <div
-        className="absolute bottom-0 left-0 right-0 flex items-center gap-3 px-4 py-2"
-        style={{ background: "rgba(15,23,42,0.9)", borderTop: "1px solid rgba(255,255,255,0.08)" }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="w-4 h-4 rounded-full" style={{ background: "#475569" }} />
-        <div className="w-4 h-4 rounded-full" style={{ background: "#475569" }} />
-        <div className="flex-1 h-1 rounded-full" style={{ background: "#1e293b" }}>
-          <div className="h-1 rounded-full w-[1%]" style={{ background: "#3b82f6" }} />
-        </div>
-        <span className="text-xs" style={{ color: "#475569" }}>00:01</span>
-        <div className="w-4 h-4 rounded-full ml-auto" style={{ background: "#475569" }} />
-      </div>
-    </div>
+    <div
+      id="vidalytics_embed_I48jnMn3fLUdr24x"
+      style={{ width: "100%", position: "relative", paddingTop: "56.25%" }}
+    />
   );
 }
