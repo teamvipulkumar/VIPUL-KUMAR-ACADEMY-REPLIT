@@ -99,7 +99,7 @@ export default function OptinPage() {
 
               <Button
                 type="submit"
-                disabled={loading || !form.firstName.trim() || !form.email.trim()}
+                disabled={loading}
                 className="w-full h-13 text-base font-bold bg-primary hover:bg-primary/90 text-white rounded-xl gap-2.5 shadow-lg shadow-primary/20"
                 style={{ height: "52px" }}
               >
