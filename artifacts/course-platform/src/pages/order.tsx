@@ -369,9 +369,9 @@ export default function OrderPage() {
               ].map(({ src, label }, i) => (
                 <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
                   <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: 13, color: "#2563eb", letterSpacing: "0.05em", textTransform: "uppercase" }}>{label}</span>
-                  <img src={src} alt={label} className="student-img border-t-[#c6c6c6] border-r-[#c6c6c6] border-b-[#c6c6c6] border-l-[#c6c6c6] border-t-[1px] border-r-[1px] border-b-[1px] border-l-[1px] rounded-tl-[12px] rounded-tr-[12px] rounded-br-[12px] rounded-bl-[12px]" style={{
+                  <img src={src} alt={label} className="student-img" style={{
                     display: "block", width: "100%", height: "auto", borderRadius: 12,
-                    boxShadow: "0 6px 24px rgba(0,0,0,0.10)", border: "1px solid #e2e8f0",
+                    boxShadow: "0 6px 24px rgba(0,0,0,0.10)", border: "2px solid #c7c7c7",
                   }} />
                 </div>
               ))}
