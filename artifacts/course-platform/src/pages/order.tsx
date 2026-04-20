@@ -385,6 +385,12 @@ export default function OrderPage() {
 
             <Countdown />
 
+            <img
+              src={MOCKUP_IMG}
+              alt="Ultimate Affiliate 2.0 Course Mockup"
+              style={{ display: "block", width: "100%", height: "auto", maxWidth: "560px", margin: "0 auto" }}
+            />
+
             <div className="space-y-1">
               <p className="text-lg" style={{ color: "#94a3b8" }}>
                 Regular Price —{" "}
