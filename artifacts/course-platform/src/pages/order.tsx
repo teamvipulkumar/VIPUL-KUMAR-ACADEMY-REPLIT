@@ -273,7 +273,7 @@ export default function OrderPage() {
           <p className="text-center text-sm mb-8" style={{ color: "#64748b" }}>
             These ordinary people followed the exact system you're about to discover...
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
               `${API_BASE}/api/files/4d432b070d2d411e24a4d77c.jpg`,
               `${API_BASE}/api/files/964249bf75f7602bc339ad4a.jpg`,
