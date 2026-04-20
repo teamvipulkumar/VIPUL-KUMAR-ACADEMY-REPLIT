@@ -85,10 +85,10 @@ function PlanCard() {
     }}>
       {/* Card Header */}
       <div style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)", padding: "22px 26px 18px" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: FONT, fontWeight: 700, fontSize: 10, color: "#fff", background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.25)", borderRadius: 999, padding: "3px 10px", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 8 }}>🎬 Recorded Course</span>
         <p style={{ fontFamily: FONT, fontWeight: 700, fontSize: 10, color: "rgba(255,255,255,0.65)", letterSpacing: "0.12em", textTransform: "uppercase", margin: "0 0 6px" }}>Complete Training Program</p>
         <h3 style={{ fontFamily: FONT, fontWeight: 800, fontSize: "clamp(18px, 4vw, 24px)", color: "#ffffff", margin: "0 0 3px", letterSpacing: "-0.01em" }}>ULTIMATE AFFILIATE 2.0</h3>
-        <p style={{ fontFamily: FONT, fontWeight: 500, fontSize: 12, color: "rgba(255,255,255,0.72)", margin: "0 0 10px" }}>Everything you need to go from zero to 6-figures</p>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: FONT, fontWeight: 700, fontSize: 10, color: "#fff", background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.25)", borderRadius: 999, padding: "3px 10px", letterSpacing: "0.06em", textTransform: "uppercase" }}>🎬 Recorded Course</span>
+        <p style={{ fontFamily: FONT, fontWeight: 500, fontSize: 12, color: "rgba(255,255,255,0.72)", margin: 0 }}>Everything you need to go from zero to 6-figures</p>
       </div>
 
       {/* Inclusions */}
