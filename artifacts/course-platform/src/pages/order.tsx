@@ -465,9 +465,7 @@ export default function OrderPage() {
         {/* ── Final CTA ── */}
         <section style={{ background: "#ffffff", padding: "48px 16px", textAlign: "center", borderTop: "1px solid #e2e8f0" }}>
           <div style={{ maxWidth: 640, margin: "0 auto 0" }}>
-            <h2
-              style={{ fontFamily: FONT, fontWeight: 800, fontSize: "clamp(20px, 5vw, 28px)", color: "#0f172a", margin: "0 0 10px" }}
-              className="text-[28px] font-extrabold">
+            <h2 style={{ fontFamily: FONT, fontWeight: 800, fontSize: "clamp(20px, 5vw, 38px)", color: "#0f172a", margin: "0 0 10px" }}>
               Don't Let This Opportunity Slip Away
             </h2>
             <p style={{ fontFamily: FONT, fontSize: 14, color: "#64748b", lineHeight: 1.6, margin: "0 0 24px" }}>
