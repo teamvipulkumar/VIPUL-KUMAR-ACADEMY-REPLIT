@@ -3,12 +3,12 @@ import { Link, useLocation } from "wouter";
 import { SiteFooter } from "@/components/layout/app-layout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { X, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Loader2, CheckCircle2, ShieldCheck, VideoOff, BadgeDollarSign } from "lucide-react";
 
 const TRUST_BADGES = [
-  "No Upselling",
-  "No Webinars",
-  "No High Ticket Pitches",
+  { label: "No Upselling",          Icon: ShieldCheck },
+  { label: "No Webinars",           Icon: VideoOff },
+  { label: "No High Ticket Pitches",Icon: BadgeDollarSign },
 ];
 
 export default function OptinPage() {
@@ -102,7 +102,7 @@ export default function OptinPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-13 text-base font-bold bg-primary hover:bg-primary/90 text-white rounded-xl gap-2.5 shadow-lg shadow-primary/20"
+                className={`w-full text-base font-bold bg-primary hover:bg-primary/90 text-white rounded-xl gap-2.5${!loading ? " cta-bounce-glow" : ""}`}
                 style={{ height: "52px" }}
               >
                 {loading ? (
@@ -135,11 +135,15 @@ export default function OptinPage() {
 
           {/* Trust badges */}
           {!submitted && (
-            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mt-8">
-              {TRUST_BADGES.map(badge => (
-                <span key={badge} className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <X className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
-                  {badge}
+            <div className="flex flex-nowrap items-center justify-center gap-3 sm:gap-6 mt-8 w-full">
+              {TRUST_BADGES.map(({ label, Icon }) => (
+                <span
+                  key={label}
+                  className="flex items-center gap-1 sm:gap-1.5 font-medium whitespace-nowrap flex-shrink-0"
+                  style={{ color: "var(--muted-foreground)", fontSize: "clamp(9px, 2.5vw, 13px)" }}
+                >
+                  <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0 text-primary opacity-70" />
+                  {label}
                 </span>
               ))}
             </div>
