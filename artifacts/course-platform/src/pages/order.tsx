@@ -196,8 +196,6 @@ export default function OrderPage() {
                 display: "block",
                 width: "100%",
                 height: "auto",
-                borderRadius: "16px",
-                boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
               }}
             />
           </div>
