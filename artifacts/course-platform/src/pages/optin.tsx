@@ -56,8 +56,8 @@ export default function OptinPage() {
           {!submitted ? (
             <form
               onSubmit={handleSubmit}
-              className="rounded-2xl border p-6 sm:p-8 shadow-2xl shadow-black/30 space-y-4 text-left"
-              style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
+              className="rounded-2xl p-6 sm:p-8 shadow-2xl shadow-black/30 space-y-4 text-left"
+              style={{ backgroundColor: "var(--card)" }}
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
