@@ -106,15 +106,15 @@ export default function VslPage() {
           </div>
 
           {/* Trust Badges */}
-          <div className="flex flex-nowrap items-center justify-center gap-6 pt-2 overflow-hidden">
+          <div className="flex flex-nowrap items-center justify-center gap-3 sm:gap-6 pt-2 w-full">
             {TRUST_BADGES.map((badge) => (
               <span
                 key={badge}
-                className="flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap"
-                style={{ color: "#64748b" }}
+                className="flex items-center gap-1 sm:gap-1.5 font-semibold whitespace-nowrap flex-shrink-0"
+                style={{ color: "#64748b", fontSize: "clamp(9px, 2.5vw, 13px)" }}
               >
-                <span className="flex items-center justify-center w-4 h-4 rounded-full flex-shrink-0" style={{ background: "rgba(239,68,68,0.15)" }}>
-                  <X className="w-2.5 h-2.5" style={{ color: "#ef4444" }} />
+                <span className="flex items-center justify-center w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full flex-shrink-0" style={{ background: "rgba(239,68,68,0.15)" }}>
+                  <X className="w-2 h-2 sm:w-2.5 sm:h-2.5" style={{ color: "#ef4444" }} />
                 </span>
                 {badge}
               </span>
