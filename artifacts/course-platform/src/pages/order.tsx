@@ -70,20 +70,19 @@ function ImgPlaceholder({ label = "Image", height = 260, className = "" }: { lab
 /* ─── CTA Button ─── */
 function CtaBtn({ label, sub }: { label: string; sub?: string }) {
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-1 w-full">
       <a
         href="#"
-        className="inline-flex flex-col items-center px-10 py-4 rounded-xl font-black text-white text-lg sm:text-xl uppercase tracking-wide transition-all hover:scale-[1.03] active:scale-[0.97] shadow-xl w-full sm:w-auto text-center"
+        className="inline-flex flex-col items-center px-6 sm:px-10 py-4 rounded-xl font-black text-white text-base sm:text-xl uppercase tracking-wide transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl w-full sm:w-auto text-center"
         style={{
           background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
           boxShadow: "0 8px 32px rgba(37,99,235,0.35)",
-          minWidth: 280,
         }}
         onClick={e => e.preventDefault()}
       >
         {label}
       </a>
-      {sub && <p className="text-xs mt-1 text-center max-w-xs" style={{ color: "#64748b" }}>{sub}</p>}
+      {sub && <p className="text-xs mt-1 text-center px-2" style={{ color: "#64748b" }}>{sub}</p>}
     </div>
   );
 }
@@ -91,9 +90,9 @@ function CtaBtn({ label, sub }: { label: string; sub?: string }) {
 /* ─── Trust Row ─── */
 function TrustRow() {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-sm font-semibold" style={{ color: "#64748b" }}>
-      <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-green-500" />Instant Access After Payment</span>
-      <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-green-500" />30-Day Money Back Guarantee</span>
+    <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-8 text-xs sm:text-sm font-semibold" style={{ color: "#64748b" }}>
+      <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />Instant Access After Payment</span>
+      <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-green-500 shrink-0" />30-Day Money Back Guarantee</span>
     </div>
   );
 }
@@ -157,14 +156,14 @@ export default function OrderPage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#ffffff", color: "#0f172a" }}>
       {/* ── Support Bar ── */}
-      <div className="text-center py-2.5 px-4 text-sm font-medium" style={{ background: "#f1f5f9", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>
-        Need Help?{" "}
+      <div className="text-center py-2.5 px-4 text-xs sm:text-sm font-medium flex flex-col sm:flex-row items-center justify-center gap-1" style={{ background: "#f1f5f9", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>
+        <span>Need Help?</span>
         <a
           href="https://wa.me/15557485582"
           className="font-bold inline-flex items-center gap-1.5 hover:underline underline-offset-2"
           style={{ color: "#2563eb" }}
         >
-          <MessageCircle className="w-4 h-4" />
+          <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           WhatsApp Us +15557485582 (We're Here To Help)
         </a>
       </div>
@@ -173,7 +172,7 @@ export default function OrderPage() {
         {/* ── Hero ── */}
         <section className="pt-10 sm:pt-14 text-center" style={{ background: "#ffffff" }}>
           <div className="max-w-4xl mx-auto px-4 space-y-4">
-            <h1 className="text-3xl sm:text-5xl font-black uppercase leading-tight tracking-tight" style={{ color: "#0f172a" }}>
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black uppercase leading-tight tracking-tight" style={{ color: "#0f172a" }}>
               Turn{" "}
               <span style={{ color: "#2563eb" }}>$0</span>{" "}
               Into{" "}
@@ -198,14 +197,14 @@ export default function OrderPage() {
             />
           </div>
 
-          <div className="max-w-4xl mx-auto px-4 pb-10 space-y-5 mt-8">
+          <div className="max-w-xl mx-auto px-4 pb-10 space-y-5 mt-8">
             <Countdown />
             <div className="space-y-1">
-              <p className="text-lg" style={{ color: "#94a3b8" }}>
+              <p className="text-base sm:text-lg" style={{ color: "#94a3b8" }}>
                 Regular Price —{" "}
                 <span className="line-through font-bold" style={{ color: "#ef4444" }}>₹2499</span>
               </p>
-              <p className="text-2xl sm:text-3xl font-black" style={{ color: "#0f172a" }}>
+              <p className="text-xl sm:text-3xl font-black" style={{ color: "#0f172a" }}>
                 For Limited Time Only{" "}
                 <span className="font-black" style={{ color: "#2563eb" }}>JUST ₹299</span>
               </p>
@@ -282,7 +281,7 @@ export default function OrderPage() {
             <p className="text-center text-sm mb-8" style={{ color: "#64748b" }}>
               These ordinary people followed the exact system you're about to discover...
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
                 { src: `${API_BASE}/api/files/4d432b070d2d411e24a4d77c.jpg`, label: "STUDENT #1" },
                 { src: `${API_BASE}/api/files/964249bf75f7602bc339ad4a.jpg`, label: "STUDENT #2" },
@@ -400,15 +399,15 @@ export default function OrderPage() {
             style={{ display: "block", width: "100%", height: "auto", maxWidth: "860px", margin: "1.5rem auto 0" }}
           />
 
-          <div className="max-w-2xl mx-auto space-y-6 mt-6">
+          <div className="max-w-xl mx-auto space-y-6 mt-6 px-4">
             <Countdown />
 
             <div className="space-y-1">
-              <p className="text-lg" style={{ color: "#94a3b8" }}>
+              <p className="text-base sm:text-lg" style={{ color: "#94a3b8" }}>
                 Regular Price —{" "}
                 <span className="line-through font-bold" style={{ color: "#ef4444" }}>₹2499</span>
               </p>
-              <p className="text-2xl sm:text-3xl font-black" style={{ color: "#0f172a" }}>
+              <p className="text-xl sm:text-3xl font-black" style={{ color: "#0f172a" }}>
                 For Limited Time Only{" "}
                 <span style={{ color: "#2563eb" }}>JUST ₹299</span>
               </p>
