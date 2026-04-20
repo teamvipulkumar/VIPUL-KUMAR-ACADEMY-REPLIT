@@ -214,7 +214,7 @@ export default function OrderPage() {
 
         /* ── Student Results: 1 col mobile → 2 col tablet → 4 col desktop ── */
         .grid-students { display: grid; grid-template-columns: 1fr; gap: 14px; }
-        .grid-students .student-img { max-width: 72%; margin: 0 auto; }
+        .grid-students .student-img { max-width: 85%; margin: 0 auto; }
         @media (min-width: 560px) { .grid-students { grid-template-columns: repeat(2, 1fr); } .grid-students .student-img { max-width: 100%; } }
         @media (min-width: 820px) { .grid-students { grid-template-columns: repeat(4, 1fr); } }
 
