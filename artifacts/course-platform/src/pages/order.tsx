@@ -352,7 +352,7 @@ export default function OrderPage() {
             ].map((src, i) => (
               <img key={i} src={src} alt={`Proof screenshot ${i + 1}`} style={{
                 display: "block", width: "100%", height: "auto", borderRadius: 12,
-                boxShadow: "0 4px 24px rgba(37,99,235,0.25)", border: "2px solid #2563eb",
+                boxShadow: "0 4px 24px rgba(0,0,0,0.3)", border: "2px solid #1e2a3d",
               }} />
             ))}
           </div>
@@ -375,7 +375,7 @@ export default function OrderPage() {
                   <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: 13, color: D.blue, letterSpacing: "0.05em", textTransform: "uppercase" }}>{label}</span>
                   <img src={src} alt={label} className="student-img" style={{
                     display: "block", width: "100%", height: "auto", borderRadius: 12,
-                    boxShadow: "0 6px 24px rgba(37,99,235,0.25)", border: "2px solid #2563eb",
+                    boxShadow: "0 6px 24px rgba(0,0,0,0.3)", border: "2px solid #1e2a3d",
                   }} />
                 </div>
               ))}
