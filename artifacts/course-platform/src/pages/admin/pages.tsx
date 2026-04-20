@@ -51,6 +51,15 @@ const SEED_PAGES: Page[] = [
     createdAt: "2026-04-18T00:00:00.000Z",
     views: 0,
   },
+  {
+    id: "builtin-vsl",
+    title: "Affiliate Marketing VSL",
+    slug: "vsl",
+    type: "vsl",
+    status: "published",
+    createdAt: "2026-04-20T00:00:00.000Z",
+    views: 0,
+  },
 ];
 
 function loadPages(): Page[] {
