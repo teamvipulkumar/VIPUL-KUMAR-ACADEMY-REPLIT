@@ -468,7 +468,7 @@ export default function OrderPage() {
             <h2 style={{ fontFamily: FONT, fontWeight: 800, fontSize: "clamp(20px, 5vw, 38px)", color: "#0f172a", margin: "0 0 10px" }}>
               Don't Let This Opportunity Slip Away
             </h2>
-            <p style={{ fontFamily: FONT, fontSize: 14, color: "#64748b", lineHeight: 1.6, margin: "0 0 24px" }}>
+            <p style={{ fontFamily: FONT, fontSize: 18, color: "#64748b", lineHeight: 1.6, margin: "0 0 24px" }}>
               Right now, you have a choice. Continue struggling with your current situation, or take action and transform your life in the next 30 days.
             </p>
           </div>
