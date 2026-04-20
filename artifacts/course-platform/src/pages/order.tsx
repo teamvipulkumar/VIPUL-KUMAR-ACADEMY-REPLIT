@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { SiteFooter } from "@/components/layout/app-layout";
 import { ShieldCheck, CheckCircle2, MessageCircle, ImageIcon, Clock } from "lucide-react";
 
+const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const MOCKUP_IMG = `${API_BASE}/api/files/b035af3c0c83d46d3e9d6285.png`;
+
 /* ─── Countdown Hook ─── */
 function useCountdown() {
   const [left, setLeft] = useState(() => {
@@ -181,9 +184,14 @@ export default function OrderPage() {
               ULTIMATE AFFILIATE 2.0 Beginner to Advance Level Affiliate Marketing Masterclass
             </p>
 
-            {/* Product Image Placeholder */}
+            {/* Product Mockup Image */}
             <div className="max-w-2xl mx-auto mt-2">
-              <ImgPlaceholder label="Product Image / Mockup" height={320} />
+              <img
+                src={MOCKUP_IMG}
+                alt="Ultimate Affiliate 2.0 Course Mockup"
+                className="w-full rounded-xl"
+                style={{ objectFit: "contain" }}
+              />
             </div>
 
             {/* Countdown */}
