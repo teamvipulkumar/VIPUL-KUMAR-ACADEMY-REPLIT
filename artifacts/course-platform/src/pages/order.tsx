@@ -466,7 +466,7 @@ export default function OrderPage() {
         <section style={{ background: "#ffffff", padding: "48px 16px", textAlign: "center", borderTop: "1px solid #e2e8f0" }}>
           <div style={{ maxWidth: 640, margin: "0 auto 0" }}>
             <h2 style={{ fontFamily: FONT, fontWeight: 800, fontSize: "clamp(28px, 5vw, 38px)", color: "#0f172a", margin: "0 0 10px" }}>
-              Don't Let This Opportunity Slip Away
+              Don't Let This <span style={{ color: "#2563eb" }}>Opportunity</span> Slip Away
             </h2>
             <p style={{ fontFamily: FONT, fontSize: 14, fontWeight: 500, color: "#64748b", lineHeight: 1.6, margin: "0 0 24px" }}>
               Right now, you have a choice. Continue struggling with your current situation, or take action and transform your life in the next 30 days.
