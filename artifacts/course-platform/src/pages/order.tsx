@@ -274,8 +274,19 @@ export default function OrderPage() {
             These ordinary people followed the exact system you're about to discover...
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {["STUDENT #1 @vipulkumar", "STUDENT #2 @vipulkumar", "STUDENT #3 @vipulkumar", "STUDENT #4 @vipulkumar"].map(label => (
-              <ImgPlaceholder key={label} label={label} height={220} />
+            {[
+              `${API_BASE}/api/files/4d432b070d2d411e24a4d77c.jpg`,
+              `${API_BASE}/api/files/964249bf75f7602bc339ad4a.jpg`,
+              `${API_BASE}/api/files/6fe2de6bae918f8dd531bb90.jpg`,
+              `${API_BASE}/api/files/e49830a459f19fb7933d649b.jpg`,
+            ].map((src, i) => (
+              <img
+                key={i}
+                src={src}
+                alt={`Student result ${i + 1}`}
+                className="w-full rounded-xl"
+                style={{ display: "block", height: "auto" }}
+              />
             ))}
           </div>
         </Section>
