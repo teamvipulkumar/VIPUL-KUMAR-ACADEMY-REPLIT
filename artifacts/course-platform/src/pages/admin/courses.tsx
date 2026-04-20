@@ -211,7 +211,7 @@ export default function AdminCoursesPage() {
                     <td className="px-4 py-3 text-sm text-muted-foreground capitalize">{c.level}</td>
                     <td className="px-4 py-3 text-sm font-bold">₹{c.price}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground line-through">{(c as unknown as { compareAtPrice?: number }).compareAtPrice ? `₹${(c as unknown as { compareAtPrice: number }).compareAtPrice}` : "—"}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{c.durationMinutes ? `${c.durationMinutes} min` : "—"}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{c.durationMinutes ? `${(c.durationMinutes / 60 % 1 === 0 ? c.durationMinutes / 60 : (c.durationMinutes / 60).toFixed(1))} hr` : "—"}</td>
                     <td className="px-4 py-3">
                       <Badge className={`text-xs cursor-pointer select-none ${c.status === "published" ? "text-green-400 border-green-400/30 bg-green-400/10" : "text-yellow-400 border-yellow-400/30 bg-yellow-400/10"}`} onClick={() => handleToggleStatus(c.id, c.status)} title="Click to toggle">{c.status}</Badge>
                     </td>
