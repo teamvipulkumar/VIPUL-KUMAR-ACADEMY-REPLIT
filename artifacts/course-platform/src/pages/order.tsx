@@ -148,8 +148,9 @@ function PlanCard() {
             textDecoration: "none",
             transition: "transform 0.15s, box-shadow 0.15s",
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 12px 36px rgba(37,99,235,0.58)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ""; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 28px rgba(37,99,235,0.45)"; }}
+          className="cta-btn"
+          onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.animation = "none"; el.style.transform = "translateY(-2px) scale(1.03)"; el.style.boxShadow = "0 14px 40px rgba(37,99,235,0.65)"; }}
+          onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.animation = ""; el.style.transform = ""; el.style.boxShadow = ""; }}
         >
           ⚡ GET INSTANT ACCESS NOW
         </a>
@@ -241,6 +242,11 @@ export default function OrderPage() {
     <div className="order-page" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: D.pageBg, fontFamily: FONT, color: D.text }}>
       <style>{`
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+        @keyframes ctaGlow {
+          0%,100% { box-shadow: 0 8px 28px rgba(37,99,235,0.45), 0 0 0 0 rgba(37,99,235,0.4); transform: scale(1); }
+          50%     { box-shadow: 0 12px 40px rgba(37,99,235,0.7), 0 0 0 8px rgba(37,99,235,0); transform: scale(1.025); }
+        }
+        .cta-btn { animation: ctaGlow 2s ease-in-out infinite; }
 
         .grid-modules { display: grid; grid-template-columns: 1fr; gap: 10px; }
         @media (min-width: 560px) { .grid-modules { grid-template-columns: repeat(2, 1fr); } }
