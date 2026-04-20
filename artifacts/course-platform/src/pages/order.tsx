@@ -3,7 +3,7 @@ import { SiteFooter } from "@/components/layout/app-layout";
 import { ShieldCheck, CheckCircle2, MessageCircle, ImageIcon, Clock } from "lucide-react";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const MOCKUP_IMG = `${API_BASE}/api/files/b035af3c0c83d46d3e9d6285.png`;
+const MOCKUP_IMG = `${API_BASE}/api/files/3b0b3e24eb675e69d0b30312.png`;
 
 /* ─── Countdown Hook ─── */
 function useCountdown() {
