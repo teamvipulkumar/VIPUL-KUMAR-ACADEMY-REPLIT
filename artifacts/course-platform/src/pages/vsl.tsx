@@ -48,7 +48,7 @@ export default function VslPage() {
             className={`transition-all duration-700 ${showCta ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
           >
             <a
-              href="#"
+              href="/order"
               className="inline-flex items-center gap-3 px-10 py-5 rounded-xl font-extrabold text-lg text-white shadow-xl transition-all hover:scale-[1.03] active:scale-[0.98]"
               style={{
                 background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
