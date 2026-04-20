@@ -22,16 +22,21 @@ const D = {
 };
 
 /* ─── Countdown Hook ─── */
+const COUNTDOWN_START = 3600;
 function useCountdown() {
   const [left, setLeft] = useState(() => {
     const s = sessionStorage.getItem("vka_order_cd");
-    return s ? parseInt(s, 10) : 3600;
+    const v = s ? parseInt(s, 10) : COUNTDOWN_START;
+    return v > 0 ? v : COUNTDOWN_START;
   });
   useEffect(() => {
-    if (left <= 0) return;
     const t = setInterval(() => {
       setLeft(p => {
-        const n = Math.max(0, p - 1);
+        const n = p - 1;
+        if (n <= 0) {
+          sessionStorage.setItem("vka_order_cd", String(COUNTDOWN_START));
+          return COUNTDOWN_START;
+        }
         sessionStorage.setItem("vka_order_cd", String(n));
         return n;
       });
