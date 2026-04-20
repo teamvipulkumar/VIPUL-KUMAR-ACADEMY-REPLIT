@@ -143,8 +143,7 @@ function PlanCard() {
       {/* CTA Button */}
       <div style={{ background: D.card, padding: "16px 26px 0" }}>
         <a
-          href="#"
-          onClick={e => e.preventDefault()}
+          href="/checkout/6"
           style={{
             display: "block", width: "100%", padding: "15px 24px", borderRadius: 12,
             fontFamily: FONT, fontWeight: 800, fontSize: "clamp(14px, 3.5vw, 17px)",
