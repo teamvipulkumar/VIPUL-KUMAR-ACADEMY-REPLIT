@@ -344,7 +344,7 @@ export default function OrderPage() {
             <SectionHeading sub="10 Power-Packed Modules That Will Transform You From Complete Beginner To Six-Figure Affiliate Marketer">
               The Complete ULTIMATE AFFILIATE 2.0 System
             </SectionHeading>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
               <Module num={1} title="Introduction to Affiliate Marketing" desc="Master the fundamentals and discover the untapped potential of affiliate marketing. Learn how complete beginners are making $10K+ monthly." />
               <Module num={2} title="Affiliate Networks & Account Setup" desc="Explore top networks and set up affiliate accounts to start promoting products." />
               <Module num={3} title="Profitable Niche Selection" desc="Discover the 7 most profitable niches generating millions. Use my proprietary research tools to find untapped markets." />
