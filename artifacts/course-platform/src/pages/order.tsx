@@ -277,13 +277,47 @@ export default function OrderPage() {
             </p>
           </div>
 
-          {/* Mockup */}
-          <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 16px" }}>
-            <img
-              src={MOCKUP_IMG}
-              alt="Ultimate Affiliate 2.0 Course Mockup"
-              style={{ display: "block", width: "100%", height: "auto", imageRendering: "auto" }}
-            />
+          {/* Plan Card */}
+          <div style={{ maxWidth: 560, margin: "0 auto", padding: "0 16px" }}>
+            <div style={{
+              borderRadius: 20, border: "2px solid #2563eb",
+              boxShadow: "0 8px 40px rgba(37,99,235,0.13)", overflow: "hidden", textAlign: "left",
+            }}>
+              <div style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)", padding: "24px 28px 20px" }}>
+                <p style={{ fontFamily: FONT, fontWeight: 700, fontSize: 11, color: "rgba(255,255,255,0.7)", letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 6px" }}>Complete Training Program</p>
+                <h3 style={{ fontFamily: FONT, fontWeight: 800, fontSize: "clamp(20px, 4vw, 26px)", color: "#ffffff", margin: "0 0 4px", letterSpacing: "-0.01em" }}>ULTIMATE AFFILIATE 2.0</h3>
+                <p style={{ fontFamily: FONT, fontWeight: 500, fontSize: 13, color: "rgba(255,255,255,0.75)", margin: 0 }}>Everything you need to go from zero to 6-figures</p>
+              </div>
+              <div style={{ background: "#ffffff", padding: "22px 28px" }}>
+                <p style={{ fontFamily: FONT, fontWeight: 700, fontSize: 12, color: "#64748b", letterSpacing: "0.06em", textTransform: "uppercase", margin: "0 0 14px" }}>What's Included:</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {[
+                    "10 Power-Packed Training Modules (10+ Hours)",
+                    "Beginner to Advanced Affiliate Marketing System",
+                    "Step-by-Step Funnel Building Templates",
+                    "AI-Powered Traffic Generation Strategies",
+                    "High-Converting Email Marketing Sequences",
+                    "Analytics & Conversion Tracking Masterclass",
+                    "Private VIP Community Access",
+                    "1 Year WhatsApp Support",
+                    "1-on-1 Strategy Call",
+                    "Lifetime Updates — Always Current",
+                  ].map(item => (
+                    <div key={item} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                      <CheckCircle2 size={16} color="#16a34a" style={{ flexShrink: 0, marginTop: 1 }} />
+                      <span style={{ fontFamily: FONT, fontSize: 14, color: "#0f172a", lineHeight: 1.45 }}>{item}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                  <div>
+                    <span style={{ fontFamily: FONT, fontSize: 13, color: "#94a3b8", textDecoration: "line-through", fontWeight: 600 }}>₹2,499</span>
+                    <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: 22, color: "#2563eb", marginLeft: 10 }}>₹299</span>
+                  </div>
+                  <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: 11, color: "#16a34a", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 999, padding: "3px 10px", letterSpacing: "0.04em" }}>88% OFF — Limited Time</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Countdown + CTA */}
