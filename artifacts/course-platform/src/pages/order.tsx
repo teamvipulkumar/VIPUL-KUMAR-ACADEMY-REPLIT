@@ -171,8 +171,8 @@ export default function OrderPage() {
       <main className="flex-1">
 
         {/* ── Hero ── */}
-        <Section className="pb-6 pt-10 sm:pt-14">
-          <div className="text-center space-y-5">
+        <section className="pt-10 sm:pt-14 text-center">
+          <div className="max-w-4xl mx-auto px-4 space-y-4">
             <h1 className="text-3xl sm:text-5xl font-black uppercase leading-tight tracking-tight">
               Turn{" "}
               <span style={{ color: "#3b82f6" }}>$0</span>{" "}
@@ -183,21 +183,26 @@ export default function OrderPage() {
             <p className="text-base sm:text-lg max-w-2xl mx-auto" style={{ color: "#94a3b8" }}>
               ULTIMATE AFFILIATE 2.0 Beginner to Advance Level Affiliate Marketing Masterclass
             </p>
+          </div>
 
-            {/* Product Mockup Image */}
-            <div className="max-w-2xl mx-auto mt-2">
-              <img
-                src={MOCKUP_IMG}
-                alt="Ultimate Affiliate 2.0 Course Mockup"
-                className="w-full rounded-xl"
-                style={{ objectFit: "contain" }}
-              />
-            </div>
+          {/* Product Mockup Image — full natural width, no constraints */}
+          <div className="mt-6 px-2">
+            <img
+              src={MOCKUP_IMG}
+              alt="Ultimate Affiliate 2.0 Course Mockup"
+              style={{
+                display: "block",
+                maxWidth: "900px",
+                width: "100%",
+                height: "auto",
+                margin: "0 auto",
+              }}
+            />
+          </div>
 
+          <div className="max-w-4xl mx-auto px-4 pb-10 space-y-5 mt-4">
             {/* Countdown */}
-            <div className="py-2">
-              <Countdown />
-            </div>
+            <Countdown />
 
             {/* Pricing */}
             <div className="space-y-1">
@@ -214,7 +219,7 @@ export default function OrderPage() {
             <CtaBtn label="GET INSTANT ACCESS" />
             <TrustRow />
           </div>
-        </Section>
+        </section>
 
         {/* ── Pain Points ── */}
         <Section style={{ background: "#0a1628", borderTop: "1px solid #1e293b", borderBottom: "1px solid #1e293b" }}>
