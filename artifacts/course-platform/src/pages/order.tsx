@@ -264,32 +264,34 @@ export default function OrderPage() {
         </Section>
 
         {/* ── Student Results (Proof) ── */}
-        <Section style={{ background: "#f8fafc", borderTop: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0" }}>
-          <h2 className="text-2xl sm:text-3xl font-black text-center mb-3" style={{ color: "#0f172a" }}>
-            PROOF: Real Student Results
-          </h2>
-          <p className="text-center text-sm mb-8" style={{ color: "#64748b" }}>
-            These ordinary people followed the exact system you're about to discover...
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
-            {[
-              { src: `${API_BASE}/api/files/4d432b070d2d411e24a4d77c.jpg`, label: "STUDENT #1" },
-              { src: `${API_BASE}/api/files/964249bf75f7602bc339ad4a.jpg`, label: "STUDENT #2" },
-              { src: `${API_BASE}/api/files/6fe2de6bae918f8dd531bb90.jpg`, label: "STUDENT #3" },
-              { src: `${API_BASE}/api/files/e49830a459f19fb7933d649b.jpg`, label: "STUDENT #4" },
-            ].map(({ src, label }, i) => (
-              <div key={i} className="flex flex-col items-center gap-3">
-                <p className="text-base sm:text-lg font-black tracking-wide" style={{ color: "#2563eb" }}>{label}</p>
-                <img
-                  src={src}
-                  alt={label}
-                  className="w-full rounded-2xl border-t-[1px] border-r-[1px] border-b-[1px] border-l-[1px] border-t-[#262626] border-r-[#262626] border-b-[#262626] border-l-[#262626]"
-                  style={{ display: "block", height: "auto", boxShadow: "0 4px 20px rgba(0,0,0,0.10)" }}
-                />
-              </div>
-            ))}
+        <section className="px-4 py-10 sm:py-14" style={{ background: "#f8fafc", borderTop: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0" }}>
+          <div className="max-w-7xl mx-auto">
+            <h2 className="text-2xl sm:text-3xl font-black text-center mb-3" style={{ color: "#0f172a" }}>
+              PROOF: Real Student Results
+            </h2>
+            <p className="text-center text-sm mb-8" style={{ color: "#64748b" }}>
+              These ordinary people followed the exact system you're about to discover...
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+              {[
+                { src: `${API_BASE}/api/files/4d432b070d2d411e24a4d77c.jpg`, label: "STUDENT #1" },
+                { src: `${API_BASE}/api/files/964249bf75f7602bc339ad4a.jpg`, label: "STUDENT #2" },
+                { src: `${API_BASE}/api/files/6fe2de6bae918f8dd531bb90.jpg`, label: "STUDENT #3" },
+                { src: `${API_BASE}/api/files/e49830a459f19fb7933d649b.jpg`, label: "STUDENT #4" },
+              ].map(({ src, label }, i) => (
+                <div key={i} className="flex flex-col items-center gap-3">
+                  <p className="text-base sm:text-lg font-black tracking-wide" style={{ color: "#2563eb" }}>{label}</p>
+                  <img
+                    src={src}
+                    alt={label}
+                    className="w-full rounded-2xl"
+                    style={{ display: "block", height: "auto", boxShadow: "0 4px 20px rgba(0,0,0,0.10)" }}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
-        </Section>
+        </section>
 
         {/* ── Modules ── */}
         <Section>
