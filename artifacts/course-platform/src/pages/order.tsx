@@ -424,7 +424,7 @@ export default function OrderPage() {
           <div style={{ maxWidth: 640, margin: "0 auto 0" }}>
             <h2
               style={{ fontFamily: FONT, fontWeight: 800, fontSize: "clamp(20px, 5vw, 28px)", color: "#0f172a", margin: "0 0 10px" }}
-              className="text-[48px] font-black">
+              className="text-[28px] font-extrabold">
               Don't Let This Opportunity Slip Away
             </h2>
             <p style={{ fontFamily: FONT, fontSize: 14, color: "#64748b", lineHeight: 1.6, margin: "0 0 24px" }}>
