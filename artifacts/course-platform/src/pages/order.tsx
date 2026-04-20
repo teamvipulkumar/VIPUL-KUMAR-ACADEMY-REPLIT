@@ -265,7 +265,7 @@ export default function OrderPage() {
 
             <h1 style={{
               fontFamily: FONT, fontWeight: 800, lineHeight: 1.15,
-              fontSize: "clamp(24px, 6vw, 48px)",
+              fontSize: "clamp(28px, 6vw, 48px)",
               color: "#0f172a", margin: "0 0 14px", textTransform: "uppercase", letterSpacing: "-0.01em",
             }}>
               Turn{" "}<span style={{ color: "#2563eb" }}>$0</span>{" "}Into{" "}
