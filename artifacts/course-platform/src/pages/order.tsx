@@ -250,16 +250,26 @@ export default function OrderPage() {
         <Section className="text-center">
           <div className="max-w-3xl mx-auto space-y-4">
             <h2 className="text-2xl sm:text-4xl font-black leading-tight" style={{ color: "#0f172a" }}>
-              What If I Told You...
+              What If I Told <span style={{ color: "#2563eb" }}>You...</span>
             </h2>
-            <p className="text-xl sm:text-2xl font-black leading-tight" style={{ color: "#d97706" }}>
-              You Could Make More In{" "}
-              <span className="underline decoration-wavy decoration-blue-500">ONE Month</span>{" "}
-              Than Most People Make In A Year...
+            <p className="text-xl sm:text-2xl font-black leading-tight" style={{ color: "#0f172a" }}>
+              You Could Make More In ONE Month Than Most People Make In A Year...{" "}
+              <span style={{ color: "#2563eb" }}>Without Any Previous Experience!</span>
             </p>
-            <p className="text-lg font-semibold" style={{ color: "#64748b" }}>
-              Without Any Previous Experience!
-            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-8 max-w-4xl mx-auto">
+            {[
+              `${API_BASE}/api/files/3034c6d598a19edf3010ef49.png`,
+              `${API_BASE}/api/files/037ff30eaf8f7b280256e0ca.png`,
+            ].map((src, i) => (
+              <img
+                key={i}
+                src={src}
+                alt={`Proof screenshot ${i + 1}`}
+                className="w-full rounded-xl"
+                style={{ display: "block", height: "auto", boxShadow: "0 4px 20px rgba(0,0,0,0.10)", border: "1px solid #e2e8f0" }}
+              />
+            ))}
           </div>
         </Section>
 
