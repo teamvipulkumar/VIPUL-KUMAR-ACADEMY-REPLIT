@@ -63,8 +63,8 @@ export default function VslPage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#0a0f1e", color: "#ffffff", fontFamily: "'Montserrat', sans-serif" }}>
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 md:py-20">
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#0a0f1e", color: "#ffffff" }}>
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 md:py-20" style={{ fontFamily: "'Montserrat', sans-serif" }}>
         <div className="w-full max-w-3xl mx-auto text-center space-y-6">
 
           {/* Headline */}
