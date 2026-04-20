@@ -284,7 +284,7 @@ export default function OrderPage() {
                   <img
                     src={src}
                     alt={label}
-                    className="w-full rounded-2xl"
+                    className="w-full rounded-2xl border-t-[2px] border-r-[2px] border-b-[2px] border-l-[2px] border-t-[#c9c9c9] border-r-[#c9c9c9] border-b-[#c9c9c9] border-l-[#c9c9c9]"
                     style={{ display: "block", height: "auto", boxShadow: "0 4px 20px rgba(0,0,0,0.10)" }}
                   />
                 </div>
