@@ -32,7 +32,7 @@ export default function OptinPage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)", color: "var(--foreground)" }}>
       {/* ── Hero / form section ── */}
-      <main className="flex-1 flex items-center justify-center px-4 py-16 md:py-24">
+      <main className="flex-1 flex items-center justify-center px-4 py-8 md:py-12">
         <div className="w-full max-w-2xl mx-auto text-center">
 
           {/* Eyebrow */}
@@ -48,7 +48,7 @@ export default function OptinPage() {
           </h1>
 
           {/* Subheadline */}
-          <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed mb-10">
+          <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed mb-5">
             Learn the exact system I used to build a{" "}
             <span className="text-primary font-semibold">6-figure affiliate marketing business</span>{" "}
             from scratch — even if you're a complete beginner.
