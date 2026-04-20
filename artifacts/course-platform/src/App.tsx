@@ -71,6 +71,7 @@ import NotificationsPage from "@/pages/notifications-page";
 import AdminDashboard from "@/pages/admin/index";
 import AdminCoursesPage from "@/pages/admin/courses";
 import AdminCourseEditPage from "@/pages/admin/course-edit";
+import AdminCourseNewPage from "@/pages/admin/course-new";
 import AdminUsersPage from "@/pages/admin/users";
 import AdminAffiliatesPage from "@/pages/admin/affiliates";
 import AdminPayoutsPage from "@/pages/admin/payouts";
@@ -137,6 +138,7 @@ function Router() {
 
       <Route path="/admin" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminDashboard /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/courses" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminCoursesPage /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/courses/new" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminCourseNewPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/courses/:id/edit" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminCourseEditPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/users" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminUsersPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/affiliates" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminAffiliatesPage /></AdminLayout></ProtectedRoute>} />

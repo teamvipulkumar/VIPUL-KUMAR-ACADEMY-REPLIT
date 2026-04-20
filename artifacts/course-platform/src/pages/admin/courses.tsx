@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { useAdminListCourses, getAdminListCoursesQueryKey, useCreateCourse, useUpdateCourse, useDeleteCourse, CreateCourseBody } from "@workspace/api-client-react";
+import { useAdminListCourses, getAdminListCoursesQueryKey, useUpdateCourse, useDeleteCourse } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Package, BookOpen, Check, Eye, EyeOff } from "lucide-react";
@@ -13,7 +13,6 @@ import { ImageUploader } from "@/components/image-uploader";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-const INITIAL_FORM = { title: "", description: "", thumbnailUrl: "", price: "", compareAtPrice: "", durationMinutes: "", category: "Affiliate Marketing", level: "beginner" as const, status: "draft" as const };
 const INITIAL_BUNDLE_FORM = { name: "", description: "", thumbnailUrl: "", price: "", compareAtPrice: "", isActive: true, courseIds: [] as number[] };
 
 type Tab = "courses" | "bundles";
@@ -47,13 +46,10 @@ export default function AdminCoursesPage() {
 
   /* ── Courses ── */
   const { data: courses, isLoading } = useAdminListCourses({ query: { queryKey: getAdminListCoursesQueryKey() } });
-  const createCourse = useCreateCourse();
   const updateCourse = useUpdateCourse();
   const deleteCourse = useDeleteCourse();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState(INITIAL_FORM);
 
   /* ── Bundles ── */
   const { data: bundles, isLoading: bundlesLoading } = useBundles();
@@ -63,21 +59,6 @@ export default function AdminCoursesPage() {
   const [bundleSaving, setBundleSaving] = useState(false);
 
   /* ── Course handlers ── */
-  const handleCreate = () => {
-    if (!form.title.trim()) { toast({ title: "Course title is required", variant: "destructive" }); return; }
-    const body: CreateCourseBody = {
-      title: form.title, description: form.description,
-      thumbnailUrl: form.thumbnailUrl || null, price: parseFloat(form.price) || 0,
-      category: form.category, level: form.level, status: form.status,
-      ...(form.compareAtPrice ? { compareAtPrice: parseFloat(form.compareAtPrice) } : {}),
-      ...(form.durationMinutes ? { durationMinutes: parseInt(form.durationMinutes, 10) } : {}),
-    };
-    createCourse.mutate({ data: body }, {
-      onSuccess: () => { toast({ title: "Course created!" }); setOpen(false); setForm(INITIAL_FORM); queryClient.invalidateQueries({ queryKey: getAdminListCoursesQueryKey() }); },
-      onError: () => toast({ title: "Failed to create course", variant: "destructive" }),
-    });
-  };
-
   const handleToggleStatus = (id: number, current: string) => {
     const newStatus = current === "published" ? "draft" : "published";
     updateCourse.mutate({ courseId: id, data: { status: newStatus as "draft" | "published" } }, {
@@ -191,78 +172,9 @@ export default function AdminCoursesPage() {
         </div>
 
         {activeTab === "courses" ? (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm"><Plus className="w-4 h-4 mr-2" />New Course</Button>
-            </DialogTrigger>
-            <DialogContent className="bg-card border-border max-w-lg">
-              <DialogHeader><DialogTitle>Create New Course</DialogTitle><DialogDescription>Fill in the details to publish a new course.</DialogDescription></DialogHeader>
-              <div className="space-y-4 py-2">
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">Title *</label>
-                  <Input placeholder="Course title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="bg-background" />
-                </div>
-                <ImageUploader label="Thumbnail / Banner" value={form.thumbnailUrl} onChange={url => setForm(f => ({ ...f, thumbnailUrl: url }))} aspectRatio="video" hint="Optional · JPG, PNG, WebP · Max 10 MB" />
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">Description</label>
-                  <textarea placeholder="What will students learn?" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="w-full p-3 rounded-md bg-background border border-border text-sm resize-none h-24 focus:outline-none focus:ring-2 focus:ring-ring" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">Price (INR ₹)</label>
-                    <Input placeholder="0.00" type="number" min="0" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} className="bg-background" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">Compare At Price (₹)</label>
-                    <Input placeholder="Original price (crossed out)" type="number" min="0" value={form.compareAtPrice} onChange={e => setForm(f => ({ ...f, compareAtPrice: e.target.value }))} className="bg-background" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">Duration (minutes)</label>
-                    <Input placeholder="e.g. 120" type="number" min="0" value={form.durationMinutes} onChange={e => setForm(f => ({ ...f, durationMinutes: e.target.value }))} className="bg-background" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">Category</label>
-                    <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v }))}>
-                      <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Affiliate Marketing">Affiliate Marketing</SelectItem>
-                        <SelectItem value="E-commerce">E-commerce</SelectItem>
-                        <SelectItem value="Dropshipping">Dropshipping</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">Level</label>
-                    <Select value={form.level} onValueChange={v => setForm(f => ({ ...f, level: v as typeof form.level }))}>
-                      <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="beginner">Beginner</SelectItem>
-                        <SelectItem value="intermediate">Intermediate</SelectItem>
-                        <SelectItem value="advanced">Advanced</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">Status</label>
-                    <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as typeof form.status }))}>
-                      <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="published">Published</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <Button className="w-full" onClick={handleCreate} disabled={createCourse.isPending}>
-                  {createCourse.isPending ? "Creating..." : "Create Course"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Link href="/admin/courses/new">
+            <Button size="sm"><Plus className="w-4 h-4 mr-2" />New Course</Button>
+          </Link>
         ) : (
           <Button size="sm" onClick={openCreateBundle}><Plus className="w-4 h-4 mr-2" />New Package</Button>
         )}
