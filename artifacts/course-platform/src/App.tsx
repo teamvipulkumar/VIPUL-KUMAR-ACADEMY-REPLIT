@@ -93,6 +93,7 @@ import BundleCheckoutPage from "@/pages/bundle-checkout";
 import BundleDetailPage from "@/pages/bundle-detail";
 import OptinPage from "@/pages/optin";
 import VslPage from "@/pages/vsl";
+import OrderPage from "@/pages/order";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import TermsOfServicePage from "@/pages/terms-of-service";
 import CookiePolicyPage from "@/pages/cookie-policy";
@@ -124,6 +125,7 @@ function Router() {
 
       <Route path="/optin" component={() => <OptinPage />} />
       <Route path="/vsl" component={() => <VslPage />} />
+      <Route path="/order" component={() => <OrderPage />} />
       <Route path="/privacy-policy" component={() => <AppLayout><PrivacyPolicyPage /></AppLayout>} />
       <Route path="/terms-of-service" component={() => <AppLayout><TermsOfServicePage /></AppLayout>} />
       <Route path="/cookie-policy" component={() => <AppLayout><CookiePolicyPage /></AppLayout>} />

@@ -60,6 +60,15 @@ const SEED_PAGES: Page[] = [
     createdAt: "2026-04-20T00:00:00.000Z",
     views: 0,
   },
+  {
+    id: "builtin-order",
+    title: "Ultimate Affiliate 2.0 — Order Page",
+    slug: "order",
+    type: "order",
+    status: "published",
+    createdAt: "2026-04-20T00:00:00.000Z",
+    views: 0,
+  },
 ];
 
 function loadPages(): Page[] {
