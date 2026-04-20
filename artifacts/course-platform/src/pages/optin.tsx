@@ -135,14 +135,14 @@ export default function OptinPage() {
 
           {/* Trust badges */}
           {!submitted && (
-            <div className="flex flex-nowrap items-center justify-center gap-3 sm:gap-6 mt-8 w-full">
+            <div className="flex flex-nowrap items-center justify-center gap-3 sm:gap-6 mt-3 w-full">
               {TRUST_BADGES.map(({ label, Icon }) => (
                 <span
                   key={label}
                   className="flex items-center gap-1 sm:gap-1.5 font-medium whitespace-nowrap flex-shrink-0"
-                  style={{ color: "var(--muted-foreground)", fontSize: "clamp(9px, 2.5vw, 13px)" }}
+                  style={{ color: "var(--muted-foreground)", fontSize: "clamp(11px, 2.8vw, 14px)" }}
                 >
-                  <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0 text-primary opacity-70" />
+                  <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 text-primary opacity-70" />
                   {label}
                 </span>
               ))}
