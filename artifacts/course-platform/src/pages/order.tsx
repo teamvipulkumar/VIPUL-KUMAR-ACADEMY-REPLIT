@@ -247,8 +247,8 @@ export default function OrderPage() {
         </Section>
 
         {/* ── Promise ── */}
-        <Section className="text-center">
-          <div className="max-w-3xl mx-auto space-y-4">
+        <section className="px-4 py-10 sm:py-14 text-center">
+          <div className="max-w-3xl mx-auto space-y-4 mb-8">
             <h2 className="text-2xl sm:text-4xl font-black leading-tight" style={{ color: "#0f172a" }}>
               What If I Told <span style={{ color: "#2563eb" }}>You...</span>
             </h2>
@@ -257,7 +257,7 @@ export default function OrderPage() {
               <span style={{ color: "#2563eb" }}>Without Any Previous Experience!</span>
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-8 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-7xl mx-auto">
             {[
               `${API_BASE}/api/files/3034c6d598a19edf3010ef49.png`,
               `${API_BASE}/api/files/037ff30eaf8f7b280256e0ca.png`,
@@ -271,7 +271,7 @@ export default function OrderPage() {
               />
             ))}
           </div>
-        </Section>
+        </section>
 
         {/* ── Student Results (Proof) ── */}
         <section className="px-4 py-10 sm:py-14" style={{ background: "#f8fafc", borderTop: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0" }}>
