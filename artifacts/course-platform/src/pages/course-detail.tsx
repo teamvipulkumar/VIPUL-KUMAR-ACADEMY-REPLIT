@@ -126,7 +126,7 @@ export default function CourseDetailPage() {
       <div className="bg-card border border-border rounded-xl p-4">
         <h3 className="font-semibold mb-3 text-sm">This course includes</h3>
         <div className="space-y-2.5">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Clock className="w-3.5 h-3.5 text-primary flex-shrink-0" /><span>{course.durationMinutes} minutes of content</span></div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Clock className="w-3.5 h-3.5 text-primary flex-shrink-0" /><span>{course.durationMinutes ? `${+(course.durationMinutes / 60).toFixed(1)} hours of content` : "Self-paced content"}</span></div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground"><BookOpen className="w-3.5 h-3.5 text-primary flex-shrink-0" /><span>{course.moduleCount} modules</span></div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground"><Award className="w-3.5 h-3.5 text-primary flex-shrink-0" /><span>Certificate of completion</span></div>
         </div>
