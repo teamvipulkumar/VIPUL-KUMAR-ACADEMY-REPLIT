@@ -214,7 +214,8 @@ export default function OrderPage() {
 
         /* ── Student Results: 1 col mobile → 2 col tablet → 4 col desktop ── */
         .grid-students { display: grid; grid-template-columns: 1fr; gap: 14px; }
-        @media (min-width: 560px) { .grid-students { grid-template-columns: repeat(2, 1fr); } }
+        .grid-students .student-img { max-width: 72%; margin: 0 auto; }
+        @media (min-width: 560px) { .grid-students { grid-template-columns: repeat(2, 1fr); } .grid-students .student-img { max-width: 100%; } }
         @media (min-width: 820px) { .grid-students { grid-template-columns: repeat(4, 1fr); } }
 
         /* ── Proof images: 1 col mobile → 2 col tablet+ ── */
@@ -364,7 +365,7 @@ export default function OrderPage() {
               ].map(({ src, label }, i) => (
                 <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
                   <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: 13, color: "#2563eb", letterSpacing: "0.05em", textTransform: "uppercase" }}>{label}</span>
-                  <img src={src} alt={label} style={{
+                  <img src={src} alt={label} className="student-img" style={{
                     display: "block", width: "100%", height: "auto", borderRadius: 12,
                     boxShadow: "0 6px 24px rgba(0,0,0,0.10)", border: "1px solid #e2e8f0",
                   }} />
