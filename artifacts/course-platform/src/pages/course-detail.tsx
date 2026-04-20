@@ -106,7 +106,7 @@ export default function CourseDetailPage() {
                 <button onClick={() => { setAppliedCoupon(null); setCouponCode(""); }} className="text-xs text-muted-foreground hover:text-foreground">Remove</button>
               </div>
             )}
-            <Button className="w-full" size="lg" onClick={handleEnroll}>
+            <Button className="w-full cursor-pointer" size="lg" onClick={handleEnroll}>
               Enroll Now · ₹{discountedPrice.toFixed(2)}
             </Button>
             <p className="text-xs text-muted-foreground text-center mt-2">30-day money-back guarantee</p>
