@@ -5,18 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { X, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
 
-function AcademyLogo({ size = 36 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="40" height="40" rx="10" fill="#2563eb" />
-      <path d="M20 8L32 14v2l-12 6L8 16v-2L20 8z" fill="white" opacity="0.95" />
-      <path d="M12 18.5v7c0 1.5 3.6 4.5 8 4.5s8-3 8-4.5v-7L20 22l-8-3.5z" fill="white" opacity="0.85" />
-      <rect x="31" y="14" width="2" height="10" rx="1" fill="white" opacity="0.7" />
-      <circle cx="32" cy="25" r="2" fill="#60a5fa" />
-    </svg>
-  );
-}
-
 const TRUST_BADGES = [
   "No Upselling",
   "No Webinars",
@@ -41,17 +29,6 @@ export default function OptinPage() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)", color: "var(--foreground)" }}>
-      {/* ── Minimal header ── */}
-      <header className="py-5 flex justify-center border-b border-white/[0.06]" style={{ backgroundColor: "var(--nav-bg)" }}>
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <AcademyLogo size={38} />
-          <div className="leading-none">
-            <p className="font-extrabold text-sm tracking-wide text-foreground">VIPUL KUMAR</p>
-            <p className="font-bold text-[11px] tracking-[0.2em] text-primary uppercase">Academy</p>
-          </div>
-        </Link>
-      </header>
-
       {/* ── Hero / form section ── */}
       <main className="flex-1 flex items-center justify-center px-4 py-16 md:py-24">
         <div className="w-full max-w-2xl mx-auto text-center">
