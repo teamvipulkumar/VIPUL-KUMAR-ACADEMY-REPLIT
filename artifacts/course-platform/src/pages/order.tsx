@@ -201,7 +201,6 @@ function PriceBlock() {
 export default function OrderPage() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "#f8fafc", fontFamily: FONT, color: "#0f172a" }}>
-
       {/* ── Support Bar ── */}
       <div style={{
         textAlign: "center", padding: "10px 16px", fontSize: 12, fontWeight: 600, fontFamily: FONT,
@@ -214,7 +213,6 @@ export default function OrderPage() {
           WhatsApp Us +15557485582 (We're Here To Help)
         </a>
       </div>
-
       <main style={{ flex: 1 }}>
 
         {/* ── Hero ── */}
@@ -424,7 +422,9 @@ export default function OrderPage() {
         {/* ── Final CTA ── */}
         <section style={{ background: "#ffffff", padding: "48px 16px", textAlign: "center", borderTop: "1px solid #e2e8f0" }}>
           <div style={{ maxWidth: 640, margin: "0 auto 0" }}>
-            <h2 style={{ fontFamily: FONT, fontWeight: 800, fontSize: "clamp(20px, 5vw, 28px)", color: "#0f172a", margin: "0 0 10px" }}>
+            <h2
+              style={{ fontFamily: FONT, fontWeight: 800, fontSize: "clamp(20px, 5vw, 28px)", color: "#0f172a", margin: "0 0 10px" }}
+              className="text-[48px] font-black">
               Don't Let This Opportunity Slip Away
             </h2>
             <p style={{ fontFamily: FONT, fontSize: 14, color: "#64748b", lineHeight: 1.6, margin: "0 0 24px" }}>
@@ -447,7 +447,6 @@ export default function OrderPage() {
         </section>
 
       </main>
-
       <SiteFooter />
     </div>
   );
