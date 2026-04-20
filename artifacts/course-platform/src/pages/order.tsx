@@ -383,7 +383,7 @@ export default function OrderPage() {
         <section style={{ background: "#ffffff", padding: "48px 16px" }}>
           <div style={{ maxWidth: 900, margin: "0 auto" }}>
             <SectionHeading sub="10 Power-Packed Modules That Will Transform You From Complete Beginner To Six-Figure Affiliate Marketer">
-              The Complete ULTIMATE AFFILIATE 2.0 System
+              The Complete <span style={{ color: "#2563eb" }}>ULTIMATE AFFILIATE 2.0</span> System
             </SectionHeading>
             <div className="grid-modules">
               <Module num={1} title="Introduction to Affiliate Marketing" desc="Master the fundamentals and discover the untapped potential of affiliate marketing. Learn how complete beginners are making $10K+ monthly." />
