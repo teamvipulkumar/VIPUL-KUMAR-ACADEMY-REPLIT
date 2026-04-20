@@ -30,7 +30,7 @@ function Countdown() {
   const { h, m, s } = useCountdown();
   const box = (v: number, label: string) => (
     <div className="flex flex-col items-center gap-1.5">
-      <div style={{
+      <div className="cd-box" style={{
         width: 64, height: 64,
         background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
         borderRadius: 12,
@@ -129,12 +129,12 @@ function SectionHeading({ children, sub }: { children: React.ReactNode; sub?: st
 /* ─── Module Card ─── */
 function Module({ num, title, desc }: { num: number; title: string; desc: string }) {
   return (
-    <div style={{
+    <div className="module-card" style={{
       display: "flex", gap: 14, padding: "16px 18px", borderRadius: 14,
       background: "#ffffff", border: "1px solid #e8eef4",
       boxShadow: "0 1px 6px rgba(0,0,0,0.05)",
     }}>
-      <div style={{
+      <div className="module-num" style={{
         flexShrink: 0, width: 38, height: 38, borderRadius: 10,
         display: "flex", alignItems: "center", justifyContent: "center",
         background: "linear-gradient(135deg,#1e3a8a,#2563eb)",
@@ -200,7 +200,44 @@ function PriceBlock() {
 /* ─── Main Page ─── */
 export default function OrderPage() {
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "#f8fafc", fontFamily: FONT, color: "#0f172a" }}>
+    <div className="order-page" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "#f8fafc", fontFamily: FONT, color: "#0f172a" }}>
+
+      <style>{`
+        /* ── Modules: 1 col mobile → 2 col tablet+ ── */
+        .grid-modules { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        @media (min-width: 560px) { .grid-modules { grid-template-columns: repeat(2, 1fr); } }
+
+        /* ── Pain Points: 1 col mobile → 3 col desktop ── */
+        .grid-pain { display: grid; grid-template-columns: 1fr; gap: 14px; }
+        @media (min-width: 560px) { .grid-pain { grid-template-columns: repeat(2, 1fr); } }
+        @media (min-width: 820px) { .grid-pain { grid-template-columns: repeat(3, 1fr); } }
+
+        /* ── Student Results: 2 col mobile → 4 col desktop ── */
+        .grid-students { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+        @media (min-width: 820px) { .grid-students { grid-template-columns: repeat(4, 1fr); } }
+
+        /* ── Proof images: 1 col mobile → 2 col tablet+ ── */
+        .grid-proof { display: grid; grid-template-columns: 1fr; gap: 14px; max-width: 1100px; margin: 0 auto; }
+        @media (min-width: 560px) { .grid-proof { grid-template-columns: repeat(2, 1fr); } }
+
+        /* ── Bonuses: 1 col mobile → 2 col tablet+ ── */
+        .grid-bonuses { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        @media (min-width: 480px) { .grid-bonuses { grid-template-columns: repeat(2, 1fr); } }
+
+        /* ── Countdown boxes: smaller on mobile ── */
+        .cd-box { width: 56px !important; height: 56px !important; font-size: 22px !important; border-radius: 10px !important; }
+        @media (min-width: 400px) { .cd-box { width: 64px !important; height: 64px !important; font-size: 26px !important; } }
+
+        /* ── Prevent any horizontal overflow ── */
+        .order-page * { box-sizing: border-box; }
+        .order-page img { max-width: 100%; }
+
+        /* ── Module card: tighter on very small screens ── */
+        @media (max-width: 400px) {
+          .module-card { padding: 12px 12px !important; gap: 10px !important; }
+          .module-num { width: 32px !important; height: 32px !important; font-size: 12px !important; }
+        }
+      `}</style>
       {/* ── Support Bar ── */}
       <div style={{
         textAlign: "center", padding: "10px 16px", fontSize: 12, fontWeight: 600, fontFamily: FONT,
@@ -268,7 +305,7 @@ export default function OrderPage() {
         <section style={{ background: "#f1f5f9", padding: "48px 16px", borderTop: "1px solid #e2e8f0" }}>
           <div style={{ maxWidth: 900, margin: "0 auto" }}>
             <SectionHeading>Are You Tired Of...</SectionHeading>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+            <div className="grid-pain">
               {[
                 { title: "Working 9-5 For Peanuts?", desc: "Trading your precious time for a paycheck that barely covers your bills while your boss gets rich?", emoji: "😤" },
                 { title: "Failed Online Attempts?", desc: 'Tried dropshipping, crypto, courses but nothing worked? Lost money on "gurus" who disappeared with your cash?', emoji: "😔" },
@@ -298,7 +335,7 @@ export default function OrderPage() {
               <span style={{ color: "#2563eb" }}>Without Any Previous Experience!</span>
             </p>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, maxWidth: 1100, margin: "0 auto" }}>
+          <div className="grid-proof">
             {[
               `${API_BASE}/api/files/3034c6d598a19edf3010ef49.png`,
               `${API_BASE}/api/files/037ff30eaf8f7b280256e0ca.png`,
@@ -317,7 +354,7 @@ export default function OrderPage() {
             <SectionHeading sub="These ordinary people followed the exact system you're about to discover...">
               PROOF: Real Student Results
             </SectionHeading>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20 }}>
+            <div className="grid-students">
               {[
                 { src: `${API_BASE}/api/files/4d432b070d2d411e24a4d77c.jpg`, label: "STUDENT #1" },
                 { src: `${API_BASE}/api/files/964249bf75f7602bc339ad4a.jpg`, label: "STUDENT #2" },
@@ -342,7 +379,7 @@ export default function OrderPage() {
             <SectionHeading sub="10 Power-Packed Modules That Will Transform You From Complete Beginner To Six-Figure Affiliate Marketer">
               The Complete ULTIMATE AFFILIATE 2.0 System
             </SectionHeading>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+            <div className="grid-modules">
               <Module num={1} title="Introduction to Affiliate Marketing" desc="Master the fundamentals and discover the untapped potential of affiliate marketing. Learn how complete beginners are making $10K+ monthly." />
               <Module num={2} title="Affiliate Networks & Account Setup" desc="Explore top networks and set up affiliate accounts to start promoting products." />
               <Module num={3} title="Profitable Niche Selection" desc="Discover the 7 most profitable niches generating millions. Use my proprietary research tools to find untapped markets." />
@@ -384,7 +421,7 @@ export default function OrderPage() {
               <p style={{ fontFamily: FONT, fontWeight: 800, fontSize: "clamp(20px, 5vw, 26px)", color: "#0f172a", margin: "0 0 6px" }}>FREE BONUSES 🎁</p>
               <p style={{ fontFamily: FONT, fontWeight: 700, fontSize: 14, color: "#d97706", margin: 0 }}>BONUS: Order Today & Get FREE Access To:</p>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 12 }}>
+            <div className="grid-bonuses">
               {[
                 { title: "Private VIP Community", value: "₹9,999 Value", Icon: Users },
                 { title: "1 Year WhatsApp Support", value: "₹7,999 Value", Icon: Phone },
