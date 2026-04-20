@@ -378,7 +378,7 @@ export default function OrderPage() {
                 { src: `${API_BASE}/api/files/e49830a459f19fb7933d649b.jpg`, label: "STUDENT #4" },
               ].map(({ src, label }, i) => (
                 <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: 13, color: D.blue, letterSpacing: "0.05em", textTransform: "uppercase" }}>{label}</span>
+                  <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: 13, color: "#94a3b8", letterSpacing: "0.05em", textTransform: "uppercase" }}>{label}</span>
                   <img src={src} alt={label} className="student-img" style={{
                     display: "block", width: "100%", height: "auto", borderRadius: 12,
                     boxShadow: "0 6px 24px rgba(0,0,0,0.3)", border: "2px solid #94a3b8",
