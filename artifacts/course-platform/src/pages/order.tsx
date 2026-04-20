@@ -42,7 +42,7 @@ function Countdown() {
       }}>
         {String(v).padStart(2, "0")}
       </div>
-      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8", fontFamily: FONT }}>{label}</span>
+      <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8", fontFamily: FONT }}>{label}</span>
     </div>
   );
   return (
