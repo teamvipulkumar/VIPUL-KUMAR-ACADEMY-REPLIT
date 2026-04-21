@@ -50,6 +50,7 @@ export default function AdminSettingsPage() {
 
   const [googleForm, setGoogleForm] = useState({ clientId: "", clientSecret: "", enabled: false });
   const [showSecret, setShowSecret] = useState(false);
+  const [googleSaving, setGoogleSaving] = useState(false);
 
   const [pixelForm, setPixelForm] = useState({ enabled: false, pixelId: "", accessToken: "" });
   const [showPixelToken, setShowPixelToken] = useState(false);
@@ -107,6 +108,7 @@ export default function AdminSettingsPage() {
   };
 
   const handleSaveGoogle = () => {
+    setGoogleSaving(true);
     updateSettings.mutate({
       data: {
         googleSignInEnabled: googleForm.enabled,
@@ -118,8 +120,9 @@ export default function AdminSettingsPage() {
         toast({ title: "Google Sign-In settings saved!" });
         queryClient.invalidateQueries({ queryKey: getGetAdminSettingsQueryKey() });
         queryClient.invalidateQueries({ queryKey: ["google-config"] });
+        setGoogleSaving(false);
       },
-      onError: () => toast({ title: "Error saving Google settings", variant: "destructive" }),
+      onError: () => { toast({ title: "Error saving Google settings", variant: "destructive" }); setGoogleSaving(false); },
     });
   };
 
@@ -246,7 +249,7 @@ export default function AdminSettingsPage() {
           </CardContent>
         </Card>
 
-        <Button onClick={handleSave} disabled={updateSettings.isPending} className="w-full">
+        <Button type="button" onClick={handleSave} disabled={updateSettings.isPending} className="w-full">
           {updateSettings.isPending ? "Saving..." : "Save Settings"}
         </Button>
 
@@ -288,7 +291,7 @@ export default function AdminSettingsPage() {
                 <span>Maintenance mode is <strong>ON</strong>. All visitors (except admins) will see the maintenance screen until you turn this off.</span>
               </div>
             )}
-            <Button onClick={handleSaveMaintenance} disabled={maintenanceSaving} variant={maintenanceForm.maintenanceMode ? "default" : "outline"} className={`w-full border-border ${maintenanceForm.maintenanceMode ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}`}>
+            <Button type="button" onClick={handleSaveMaintenance} disabled={maintenanceSaving} variant={maintenanceForm.maintenanceMode ? "default" : "outline"} className={`w-full border-border ${maintenanceForm.maintenanceMode ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}`}>
               {maintenanceSaving ? "Saving..." : maintenanceForm.maintenanceMode ? "Save & Keep Maintenance Active" : "Save Maintenance Settings"}
             </Button>
           </CardContent>
@@ -346,8 +349,8 @@ export default function AdminSettingsPage() {
               </div>
             </div>
 
-            <Button onClick={handleSaveGoogle} disabled={updateSettings.isPending} variant="outline" className="w-full border-border">
-              {updateSettings.isPending ? "Saving..." : "Save Google Settings"}
+            <Button type="button" onClick={handleSaveGoogle} disabled={googleSaving} variant="outline" className="w-full border-border">
+              {googleSaving ? "Saving..." : "Save Google Settings"}
             </Button>
           </CardContent>
         </Card>
@@ -424,7 +427,7 @@ export default function AdminSettingsPage() {
               </div>
             </div>
 
-            <Button onClick={handleSavePixel} disabled={pixelSaving} variant="outline" className="w-full border-border">
+            <Button type="button" onClick={handleSavePixel} disabled={pixelSaving} variant="outline" className="w-full border-border">
               {pixelSaving ? "Saving..." : "Save Pixel Settings"}
             </Button>
           </CardContent>
