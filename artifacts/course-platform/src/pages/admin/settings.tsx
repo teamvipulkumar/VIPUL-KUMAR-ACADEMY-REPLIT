@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Chrome, Info, Construction, Check, Megaphone } from "lucide-react";
+import { Eye, EyeOff, Chrome, Info, Construction, Check } from "lucide-react";
 import { useTheme, type Theme } from "@/lib/theme-context";
 
 const THEMES: { id: Theme; label: string; description: string; swatches: string[] }[] = [
@@ -52,10 +52,6 @@ export default function AdminSettingsPage() {
   const [showSecret, setShowSecret] = useState(false);
   const [googleSaving, setGoogleSaving] = useState(false);
 
-  const [pixelForm, setPixelForm] = useState({ enabled: false, pixelId: "", accessToken: "" });
-  const [showPixelToken, setShowPixelToken] = useState(false);
-  const [pixelSaving, setPixelSaving] = useState(false);
-
   useEffect(() => {
     if (settings) {
       setForm({
@@ -74,11 +70,6 @@ export default function AdminSettingsPage() {
         enabled: (settings as Record<string, unknown>).googleSignInEnabled as boolean ?? false,
         clientId: (settings as Record<string, unknown>).googleClientId as string ?? "",
         clientSecret: (settings as Record<string, unknown>).googleClientSecret as string ?? "",
-      });
-      setPixelForm({
-        enabled: (settings as Record<string, unknown>).facebookPixelEnabled as boolean ?? false,
-        pixelId: (settings as Record<string, unknown>).facebookPixelId as string ?? "",
-        accessToken: (settings as Record<string, unknown>).facebookAccessToken as string ?? "",
       });
     }
   }, [settings]);
@@ -123,24 +114,6 @@ export default function AdminSettingsPage() {
         setGoogleSaving(false);
       },
       onError: () => { toast({ title: "Error saving Google settings", variant: "destructive" }); setGoogleSaving(false); },
-    });
-  };
-
-  const handleSavePixel = () => {
-    setPixelSaving(true);
-    updateSettings.mutate({
-      data: {
-        facebookPixelEnabled: pixelForm.enabled,
-        facebookPixelId: pixelForm.pixelId,
-        facebookAccessToken: pixelForm.accessToken,
-      } as Parameters<typeof updateSettings.mutate>[0]["data"],
-    }, {
-      onSuccess: () => {
-        toast({ title: "Facebook Pixel settings saved!" });
-        queryClient.invalidateQueries({ queryKey: getGetAdminSettingsQueryKey() });
-        setPixelSaving(false);
-      },
-      onError: () => { toast({ title: "Error saving Pixel settings", variant: "destructive" }); setPixelSaving(false); },
     });
   };
 
@@ -355,83 +328,6 @@ export default function AdminSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Facebook Pixel */}
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Megaphone className="w-4 h-4 text-blue-500" />
-              Facebook Pixel
-            </CardTitle>
-            <CardDescription>
-              Track ad performance and conversions (PageView, InitiateCheckout, Purchase, Lead, ViewContent) for ROAS optimisation.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Enable Facebook Pixel</p>
-                <p className="text-xs text-muted-foreground">Inject the pixel script across all pages</p>
-              </div>
-              <Switch checked={pixelForm.enabled} onCheckedChange={v => setPixelForm(f => ({ ...f, enabled: v }))} />
-            </div>
-
-            <div className={`space-y-4 transition-opacity ${pixelForm.enabled ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
-              <div>
-                <Label className="text-sm mb-1.5 block">Pixel ID</Label>
-                <Input
-                  value={pixelForm.pixelId}
-                  onChange={e => setPixelForm(f => ({ ...f, pixelId: e.target.value }))}
-                  placeholder="e.g. 1234567890123456"
-                  className="bg-background font-mono text-xs"
-                />
-                <p className="text-xs text-muted-foreground mt-1">Found in your Facebook Events Manager → Pixel settings.</p>
-              </div>
-              <div>
-                <Label className="text-sm mb-1.5 block">
-                  Conversions API Access Token
-                  <span className="ml-2 text-muted-foreground font-normal">(optional — for server-side tracking)</span>
-                </Label>
-                <div className="relative">
-                  <Input
-                    type={showPixelToken ? "text" : "password"}
-                    value={pixelForm.accessToken}
-                    onChange={e => setPixelForm(f => ({ ...f, accessToken: e.target.value }))}
-                    placeholder="EAAxxxxxxxxxxxxxxxx..."
-                    className="bg-background font-mono text-xs pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPixelToken(s => !s)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPixelToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3 space-y-1.5 text-xs text-blue-300">
-                <p className="font-semibold text-blue-200">Events tracked automatically:</p>
-                <ul className="space-y-0.5 list-none">
-                  {[
-                    "PageView — every page navigation",
-                    "ViewContent — course detail page",
-                    "Lead — optin form page",
-                    "InitiateCheckout — checkout page open",
-                    "Purchase — successful payment (with value & currency)",
-                  ].map(e => (
-                    <li key={e} className="flex items-start gap-1.5">
-                      <Check className="w-3 h-3 mt-0.5 flex-shrink-0 text-blue-400" />{e}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            <Button type="button" onClick={handleSavePixel} disabled={pixelSaving} variant="outline" className="w-full border-border">
-              {pixelSaving ? "Saving..." : "Save Pixel Settings"}
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

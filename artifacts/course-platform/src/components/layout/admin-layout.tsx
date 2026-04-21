@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Users, BookOpen, Share2, CreditCard, Tag, Settings, ArrowLeft, Menu, X, ShoppingCart, GraduationCap, Landmark, Mail, Layers, FileText, HardDrive, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Users, BookOpen, Share2, CreditCard, Tag, Settings, ArrowLeft, Menu, X, ShoppingCart, GraduationCap, Landmark, Mail, Layers, FileText, HardDrive, ShieldCheck, Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 
@@ -31,6 +31,7 @@ const PERMISSION_MAP: Record<string, string> = {
   "/admin/payment-gateways": "paymentGateways",
   "/admin/gst-invoicing": "gstInvoicing",
   "/admin/settings": "settings",
+  "/admin/facebook-pixel": "settings",
 };
 
 const navGroups = [
@@ -76,6 +77,7 @@ const navGroups = [
     label: "Configuration",
     items: [
       { href: "/admin/settings", icon: Settings, label: "Settings" },
+      { href: "/admin/facebook-pixel", icon: Megaphone, label: "Facebook Pixel" },
       { href: "/admin/staff", icon: ShieldCheck, label: "Staff & Access" },
     ],
   },

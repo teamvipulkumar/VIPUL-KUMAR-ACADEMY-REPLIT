@@ -100,6 +100,7 @@ import AdminOrdersPage from "@/pages/admin/orders";
 import AdminEnrollmentsPage from "@/pages/admin/enrollments";
 import AdminPaymentGatewaysPage from "@/pages/admin/payment-gateways";
 import AdminSettingsPage from "@/pages/admin/settings";
+import AdminFacebookPixelPage from "@/pages/admin/facebook-pixel";
 import AdminCrmPage from "@/pages/admin/crm";
 import AdminPagesPage from "@/pages/admin/pages";
 import AdminGstInvoicingPage from "@/pages/admin/gst-invoicing";
@@ -173,6 +174,7 @@ function Router() {
       <Route path="/payment/verify" component={() => <PaymentVerifyPage />} />
       <Route path="/verify-email" component={() => <VerifyEmailPage />} />
       <Route path="/admin/settings" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminSettingsPage /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/facebook-pixel" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminFacebookPixelPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/crm" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminCrmPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/pages" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminPagesPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/gst-invoicing" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminGstInvoicingPage /></AdminLayout></ProtectedRoute>} />
