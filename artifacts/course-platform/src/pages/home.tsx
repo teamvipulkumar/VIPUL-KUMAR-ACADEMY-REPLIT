@@ -97,7 +97,7 @@ export default function Home() {
           Premium Business Education
         </div>
 
-        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.08] mb-6">
+        <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.08] mb-6">
           Master the Systems
           <span className="block text-primary">That Print Revenue.</span>
         </h1>
