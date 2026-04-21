@@ -312,3 +312,12 @@ html, body {
 .light .border-l-blue-500  { border-left-color: #2563eb !important; }
 .light .border-l-amber-500 { border-left-color: #d97706 !important; }
 .light .border-l-red-500   { border-left-color: #dc2626 !important; }
+
+/* ── Notification popup: center on mobile ── */
+@media (max-width: 767px) {
+  [data-radix-popper-content-wrapper]:has(.notification-popup) {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    right: auto !important;
+  }
+}
