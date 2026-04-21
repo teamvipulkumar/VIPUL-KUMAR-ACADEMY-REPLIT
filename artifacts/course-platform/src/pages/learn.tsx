@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle, Play, FileText, HelpCircle, ChevronRight, ChevronDown,
   ArrowLeft, Check, Clock, Link2, FileArchive, Lock, BookOpen,
-  ExternalLink, ChevronLeft, Menu, X, Code2,
+  ExternalLink, ChevronLeft, Menu, X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -61,7 +61,7 @@ function LessonIcon({ type, completed }: { type: string; completed: boolean }) {
   if (type === "pdf") return <FileArchive className="w-3.5 h-3.5 text-orange-400 flex-shrink-0" />;
   if (type === "link") return <Link2 className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />;
   if (type === "quiz") return <HelpCircle className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" />;
-  if (type === "embed") return <Code2 className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />;
+  if (type === "embed") return <Play className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />;
   return <FileText className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />;
 }
 
@@ -478,7 +478,7 @@ export default function LearnPage() {
                         </div>
                       ) : (
                         <div className="p-8 bg-card rounded-xl border border-border text-center">
-                          <Code2 className="w-12 h-12 text-cyan-400/50 mx-auto mb-3" />
+                          <Play className="w-12 h-12 text-cyan-400/50 mx-auto mb-3" />
                           <p className="text-muted-foreground text-sm">No embed code configured for this lesson.</p>
                           <p className="text-xs text-muted-foreground/60 mt-1">Add your HTML embed code in the admin editor.</p>
                         </div>
