@@ -3,13 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "wouter";
-import { TrendingUp, Users, BookOpen, BadgeIndianRupee, CheckCircle, ArrowRight, Star, Zap, Shield, Award, Package } from "lucide-react";
+import { TrendingUp, Users, BookOpen, CheckCircle, ArrowRight, Star, Zap, Shield, Award, Package } from "lucide-react";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const STATS = [
   { label: "Active Students", value: "2,400+", icon: Users },
-  { label: "Revenue Generated", value: "₹4.2Cr+", icon: BadgeIndianRupee },
+  { label: "Average Rating", value: "4.9 ★", icon: Star },
   { label: "Courses Available", value: "15+", icon: BookOpen },
   { label: "Avg. Student ROI", value: "640%", icon: TrendingUp },
 ];
