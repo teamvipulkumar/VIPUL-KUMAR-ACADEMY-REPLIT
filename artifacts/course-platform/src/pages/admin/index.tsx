@@ -6,7 +6,6 @@ import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 
 export default function AdminDashboard() {
   const [period, setPeriod] = useState<"7d" | "30d" | "90d" | "1y">("30d");
-  const [chartType, setChartType] = useState<"area" | "bar">("area");
   const { data: analytics } = useGetAdminAnalytics({ query: { queryKey: getGetAdminAnalyticsQueryKey() } });
   const { data: revenue } = useGetRevenueReport({ period }, { query: { queryKey: getGetRevenueReportQueryKey({ period }) } });
 
@@ -18,6 +17,7 @@ export default function AdminDashboard() {
   ];
 
   const tooltipStyle = { background: "#0f172a", border: "1px solid #1e293b", borderRadius: "8px", fontSize: "12px" };
+  const hasData = revenue?.chartData && revenue.chartData.length > 0;
 
   return (
     <div className="p-6">
@@ -40,49 +40,27 @@ export default function AdminDashboard() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 bg-card border-border">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-base">Revenue Overview</CardTitle>
-            <div className="flex items-center gap-2">
-              {/* Chart type toggle */}
-              <div className="flex items-center rounded-md border border-border overflow-hidden h-8">
-                <button
-                  onClick={() => setChartType("area")}
-                  className={`px-2.5 h-full text-xs font-medium transition-colors ${
-                    chartType === "area"
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  }`}
-                >
-                  Area
-                </button>
-                <button
-                  onClick={() => setChartType("bar")}
-                  className={`px-2.5 h-full text-xs font-medium transition-colors border-l border-border ${
-                    chartType === "bar"
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  }`}
-                >
-                  Column
-                </button>
-              </div>
-              <Select value={period} onValueChange={(v) => setPeriod(v as "7d" | "30d" | "90d" | "1y")}>
-                <SelectTrigger className="w-28 h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7d">7 days</SelectItem>
-                  <SelectItem value="30d">30 days</SelectItem>
-                  <SelectItem value="90d">90 days</SelectItem>
-                  <SelectItem value="1y">1 year</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={period} onValueChange={(v) => setPeriod(v as "7d" | "30d" | "90d" | "1y")}>
+              <SelectTrigger className="w-28 h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7d">7 days</SelectItem>
+                <SelectItem value="30d">30 days</SelectItem>
+                <SelectItem value="90d">90 days</SelectItem>
+                <SelectItem value="1y">1 year</SelectItem>
+              </SelectContent>
+            </Select>
           </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold mb-4">₹{(revenue?.totalRevenue ?? 0).toFixed(2)}</div>
-            {revenue?.chartData && revenue.chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
-                {chartType === "area" ? (
-                  <AreaChart data={revenue.chartData}>
+          <CardContent className="space-y-6">
+            <div className="text-xl font-bold">₹{(revenue?.totalRevenue ?? 0).toFixed(2)}</div>
+
+            {/* Area Chart */}
+            <div>
+              <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide">Area</p>
+              {hasData ? (
+                <ResponsiveContainer width="100%" height={180}>
+                  <AreaChart data={revenue!.chartData}>
                     <defs>
                       <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
@@ -95,17 +73,29 @@ export default function AdminDashboard() {
                     <Tooltip contentStyle={tooltipStyle} />
                     <Area type="monotone" dataKey="revenue" stroke="#2563eb" fill="url(#revGrad)" strokeWidth={2} />
                   </AreaChart>
-                ) : (
-                  <BarChart data={revenue.chartData} barCategoryGap="30%">
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-44 flex items-center justify-center text-muted-foreground text-sm">No revenue data yet</div>
+              )}
+            </div>
+
+            {/* Column Chart */}
+            <div>
+              <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide">Column</p>
+              {hasData ? (
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={revenue!.chartData} barCategoryGap="30%">
                     <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                     <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
                     <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(37,99,235,0.08)" }} />
                     <Bar dataKey="revenue" fill="#2563eb" radius={[4, 4, 0, 0]} />
                   </BarChart>
-                )}
-              </ResponsiveContainer>
-            ) : <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">No revenue data yet</div>}
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-44 flex items-center justify-center text-muted-foreground text-sm">No revenue data yet</div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
