@@ -164,7 +164,7 @@ export default function Home() {
                     <div className="group h-full flex flex-col bg-card border border-border rounded-xl overflow-hidden hover:border-primary/40 hover:-translate-y-0.5 transition-all duration-200 shadow-sm hover:shadow-md hover:shadow-primary/5">
                       {course.thumbnailUrl ? (
                         <div className="w-full aspect-video overflow-hidden flex-shrink-0">
-                          <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                          <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
                         </div>
                       ) : (
                         <div className="w-full aspect-video bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center flex-shrink-0">
@@ -213,7 +213,7 @@ export default function Home() {
                     <div className="group h-full flex flex-col bg-card border border-border rounded-xl overflow-hidden hover:border-primary/40 hover:-translate-y-0.5 transition-all duration-200 shadow-sm hover:shadow-md hover:shadow-primary/5">
                       {bundle.thumbnailUrl ? (
                         <div className="w-full aspect-video overflow-hidden flex-shrink-0">
-                          <img src={bundle.thumbnailUrl} alt={bundle.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                          <img src={bundle.thumbnailUrl} alt={bundle.name} className="w-full h-full object-cover" />
                         </div>
                       ) : (
                         <div className="w-full aspect-video bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center flex-shrink-0">
