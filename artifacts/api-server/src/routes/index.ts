@@ -27,12 +27,13 @@ router.get("/pixel-config", async (_req, res): Promise<void> => {
     const [settings] = await db.select({
       facebookPixelEnabled: platformSettingsTable.facebookPixelEnabled,
       facebookPixelId: platformSettingsTable.facebookPixelId,
+      facebookPixelBaseCode: platformSettingsTable.facebookPixelBaseCode,
     }).from(platformSettingsTable).limit(1);
-    if (!settings || !settings.facebookPixelEnabled || !settings.facebookPixelId) {
-      res.json({ enabled: false, pixelId: null });
+    if (!settings || !settings.facebookPixelEnabled) {
+      res.json({ enabled: false, pixelId: null, baseCode: null });
       return;
     }
-    res.json({ enabled: true, pixelId: settings.facebookPixelId });
+    res.json({ enabled: true, pixelId: settings.facebookPixelId, baseCode: settings.facebookPixelBaseCode ?? null });
   } catch {
     res.json({ enabled: false, pixelId: null });
   }

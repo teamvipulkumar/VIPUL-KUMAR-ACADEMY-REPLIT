@@ -38,6 +38,7 @@ export const platformSettingsTable = pgTable("platform_settings", {
   facebookPixelEnabled: boolean("facebook_pixel_enabled").notNull().default(false),
   facebookPixelId: text("facebook_pixel_id"),
   facebookAccessToken: text("facebook_access_token"),
+  facebookPixelBaseCode: text("facebook_pixel_base_code"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

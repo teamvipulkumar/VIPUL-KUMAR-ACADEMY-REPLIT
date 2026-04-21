@@ -8,7 +8,7 @@ import { ThemeProvider } from "@/lib/theme-context";
 import { AppLayout } from "@/components/layout/app-layout";
 import { AdminLayout } from "@/components/layout/admin-layout";
 import NotFound from "@/pages/not-found";
-import { initPixel, fbPageView } from "@/lib/facebook-pixel";
+import { initPixel, injectBaseCode, fbPageView } from "@/lib/facebook-pixel";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -62,8 +62,13 @@ function PixelTracker() {
   useEffect(() => {
     fetch(`${API_BASE}/api/pixel-config`)
       .then(r => r.json())
-      .then(({ enabled, pixelId }: { enabled: boolean; pixelId: string | null }) => {
-        if (enabled && pixelId) initPixel(pixelId);
+      .then(({ enabled, pixelId, baseCode }: { enabled: boolean; pixelId: string | null; baseCode: string | null }) => {
+        if (!enabled) return;
+        if (baseCode) {
+          injectBaseCode(baseCode);
+        } else if (pixelId) {
+          initPixel(pixelId);
+        }
       })
       .catch(() => {});
   }, []);

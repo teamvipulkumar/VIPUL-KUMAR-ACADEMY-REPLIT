@@ -459,7 +459,7 @@ router.get("/settings", requireAdmin, async (req, res): Promise<void> => {
 });
 
 router.put("/settings", requireAdmin, async (req, res): Promise<void> => {
-  const { siteName, siteDescription, commissionRate, currency, stripeEnabled, razorpayEnabled, emailNotificationsEnabled, googleSignInEnabled, googleClientId, googleClientSecret, maintenanceMode, maintenanceMessage, orderPrefix, orderSuffix, showFeaturedCourses, showFeaturedPackages, facebookPixelEnabled, facebookPixelId, facebookAccessToken } = req.body;
+  const { siteName, siteDescription, commissionRate, currency, stripeEnabled, razorpayEnabled, emailNotificationsEnabled, googleSignInEnabled, googleClientId, googleClientSecret, maintenanceMode, maintenanceMessage, orderPrefix, orderSuffix, showFeaturedCourses, showFeaturedPackages, facebookPixelEnabled, facebookPixelId, facebookAccessToken, facebookPixelBaseCode } = req.body;
   const existing = await db.select().from(platformSettingsTable).limit(1);
   const updates: Record<string, unknown> = {};
   if (siteName !== undefined) updates.siteName = siteName;
@@ -481,6 +481,7 @@ router.put("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (facebookPixelEnabled !== undefined) updates.facebookPixelEnabled = facebookPixelEnabled;
   if (facebookPixelId !== undefined) updates.facebookPixelId = facebookPixelId;
   if (facebookAccessToken !== undefined) updates.facebookAccessToken = facebookAccessToken;
+  if (facebookPixelBaseCode !== undefined) updates.facebookPixelBaseCode = facebookPixelBaseCode;
 
   if (existing.length === 0) {
     await db.insert(platformSettingsTable).values({});

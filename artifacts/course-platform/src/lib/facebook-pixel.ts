@@ -7,6 +7,31 @@ declare global {
 
 let initialised = false;
 
+export function injectBaseCode(baseCode: string): void {
+  if (initialised || !baseCode.trim()) return;
+  initialised = true;
+  try {
+    const range = document.createRange();
+    range.selectNode(document.head);
+    const fragment = range.createContextualFragment(baseCode);
+    document.head.appendChild(fragment);
+  } catch {
+    // fallback: extract and exec inline script content
+    const tmp = document.createElement("div");
+    tmp.innerHTML = baseCode;
+    tmp.querySelectorAll("script").forEach(s => {
+      const script = document.createElement("script");
+      if (s.src) {
+        script.src = s.src;
+        script.async = true;
+      } else {
+        script.textContent = s.textContent;
+      }
+      document.head.appendChild(script);
+    });
+  }
+}
+
 export function initPixel(pixelId: string): void {
   if (initialised || !pixelId) return;
   initialised = true;
