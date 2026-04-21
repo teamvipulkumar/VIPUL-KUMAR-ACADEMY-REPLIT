@@ -35,6 +35,9 @@ export const platformSettingsTable = pgTable("platform_settings", {
   orderSuffix: text("order_suffix").notNull().default(""),
   showFeaturedCourses: boolean("show_featured_courses").notNull().default(true),
   showFeaturedPackages: boolean("show_featured_packages").notNull().default(true),
+  facebookPixelEnabled: boolean("facebook_pixel_enabled").notNull().default(false),
+  facebookPixelId: text("facebook_pixel_id"),
+  facebookAccessToken: text("facebook_access_token"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

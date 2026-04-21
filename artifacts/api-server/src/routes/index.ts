@@ -15,10 +15,29 @@ import crmRouter from "./crm";
 import gstRouter from "./gst";
 import bundlesRouter from "./bundles";
 import staffRouter from "./staff";
+import { db } from "@workspace/db";
+import { platformSettingsTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+
+router.get("/pixel-config", async (_req, res): Promise<void> => {
+  try {
+    const [settings] = await db.select({
+      facebookPixelEnabled: platformSettingsTable.facebookPixelEnabled,
+      facebookPixelId: platformSettingsTable.facebookPixelId,
+    }).from(platformSettingsTable).limit(1);
+    if (!settings || !settings.facebookPixelEnabled || !settings.facebookPixelId) {
+      res.json({ enabled: false, pixelId: null });
+      return;
+    }
+    res.json({ enabled: true, pixelId: settings.facebookPixelId });
+  } catch {
+    res.json({ enabled: false, pixelId: null });
+  }
+});
+
 router.use("/auth", authRouter);
 router.use("/courses", coursesRouter);
 router.use("/enrollments", enrollmentsRouter);

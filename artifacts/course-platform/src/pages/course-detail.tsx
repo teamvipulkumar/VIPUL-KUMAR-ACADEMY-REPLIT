@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useGetCourse, getGetCourseQueryKey, useValidateCoupon } from "@workspace/api-client-react";
+import { fbTrack } from "@/lib/facebook-pixel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,18 @@ export default function CourseDetailPage() {
   const { data: course, isLoading } = useGetCourse(courseId, {
     query: { queryKey: getGetCourseQueryKey(courseId), enabled: courseId > 0 }
   });
+
+  useEffect(() => {
+    if (course) {
+      fbTrack("ViewContent", {
+        content_type: "product",
+        content_ids: [String(courseId)],
+        content_name: course.title,
+        currency: "INR",
+        value: course.price,
+      });
+    }
+  }, [course?.id]);
   const validateCoupon = useValidateCoupon();
 
   const price = parseFloat(String(course?.price ?? 0));

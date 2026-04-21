@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/lib/theme-context";
 import { AppLayout } from "@/components/layout/app-layout";
 import { AdminLayout } from "@/components/layout/admin-layout";
 import NotFound from "@/pages/not-found";
+import { initPixel, fbPageView } from "@/lib/facebook-pixel";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -52,6 +53,25 @@ function RefTracker() {
         localStorage.setItem(VKA_REF_KEY, JSON.stringify({ code: ref, expiry }));
       });
   }, []);
+  return null;
+}
+
+function PixelTracker() {
+  const [location] = useLocation();
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/pixel-config`)
+      .then(r => r.json())
+      .then(({ enabled, pixelId }: { enabled: boolean; pixelId: string | null }) => {
+        if (enabled && pixelId) initPixel(pixelId);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fbPageView();
+  }, [location]);
+
   return null;
 }
 
@@ -174,6 +194,7 @@ function App() {
       <AuthProvider>
         <TooltipProvider>
           <RefTracker />
+          <PixelTracker />
           <MaintenanceOverlay />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Router />

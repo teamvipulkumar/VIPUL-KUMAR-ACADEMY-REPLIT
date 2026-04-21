@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { useGetCourse, useValidateCoupon } from "@workspace/api-client-react";
+import { fbTrack } from "@/lib/facebook-pixel";
 import { useQueryClient } from "@tanstack/react-query";
 import { SiteFooter } from "@/components/layout/app-layout";
 import { getStoredRef } from "@/App";
@@ -400,6 +401,11 @@ export default function CheckoutPage() {
 
   // Fire InitiateCheckout FB pixel event when checkout page opens
   useEffect(() => {
+    fbTrack("InitiateCheckout", {
+      content_type: "product",
+      content_ids: [String(courseId)],
+      currency: "INR",
+    });
     const ref = getStoredRef();
     if (!ref) return;
     fetch(`${API_BASE}/api/affiliate/pixel/initiate-checkout`, {
@@ -443,6 +449,13 @@ export default function CheckoutPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Checkout failed");
+      fbTrack("Purchase", {
+        value: discountedPrice,
+        currency: "INR",
+        content_type: "product",
+        content_ids: [String(courseId)],
+        content_name: course?.title ?? "",
+      });
       setSuccess({
         isNewUser: data.isNewUser,
         tempPassword: data.tempPassword,

@@ -3,6 +3,7 @@ import { useLocation, useSearch } from "wouter";
 import { Loader2, CheckCircle2, XCircle, AlertCircle, BookOpen, Copy, Eye, EyeOff, KeyRound, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { fbTrack } from "@/lib/facebook-pixel";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -69,6 +70,13 @@ export default function PaymentVerifyPage() {
             }
           } catch { /* ignore */ }
 
+          fbTrack("Purchase", {
+            value: data.amount ?? 0,
+            currency: data.currency ?? "INR",
+            content_type: "product",
+            content_ids: data.courseId ? [String(data.courseId)] : data.bundleId ? [String(data.bundleId)] : [],
+            content_name: data.courseTitle ?? data.bundleName ?? "",
+          });
           setState("success");
           setSuccessData({ courseId: data.courseId, courseTitle: data.courseTitle, bundleId: data.bundleId, bundleName: data.bundleName, courseCount: data.courseCount, newUser });
         } else if (data.pending) {
