@@ -223,7 +223,7 @@ export default function LearnPage() {
 
         {/* ── Sidebar — overlay on mobile, push on desktop ── */}
         {sidebarOpen && (
-          <aside className="fixed md:relative inset-y-0 left-0 z-30 md:z-auto w-80 md:w-72 border-r border-border bg-card flex-shrink-0 flex flex-col overflow-hidden shadow-2xl md:shadow-none mt-14 md:mt-0">
+          <aside className="fixed md:relative top-13 bottom-0 left-0 md:inset-auto z-30 md:z-auto w-80 md:w-72 border-r border-border bg-card flex-shrink-0 flex flex-col overflow-hidden shadow-2xl md:shadow-none">
             {/* Sidebar header */}
             <div className="px-4 py-3 border-b border-border bg-card flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-primary flex-shrink-0" />
