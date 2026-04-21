@@ -183,9 +183,9 @@ export function Navbar() {
 
   return (
     <>
-      <header className={`fixed top-0 left-0 right-0 z-50 w-full border-b transition-all duration-300 ${
+      <header className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${
         scrolled ? "shadow-[0_2px_20px_0_rgba(0,0,0,0.15)]" : ""
-      }`} style={{ backgroundColor: "var(--nav-bg)", borderColor: "var(--nav-border)" }}>
+      }`} style={{ backgroundColor: "var(--nav-bg)" }}>
         <div className={`max-w-screen-xl mx-auto flex items-center px-4 md:px-8 gap-4 transition-all duration-300 ${scrolled ? "h-12" : "h-16"}`}>
 
           {/* ── Logo (left) ── */}
