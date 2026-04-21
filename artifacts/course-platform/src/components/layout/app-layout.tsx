@@ -174,18 +174,21 @@ export function Navbar() {
     ...(isAdmin ? [{ href: "/admin", label: "Admin", icon: ShieldCheck }] : []),
   ];
 
+  const isHomepage = location === "/";
+  const isTransparent = isHomepage && !scrolled && !mobileOpen;
+
   const linkClass = (href: string) =>
     `relative py-1 text-sm font-medium transition-colors hover:text-foreground after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:rounded-full after:bg-primary after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:duration-200 ${
       location === href
         ? "text-foreground after:scale-x-100"
-        : "text-foreground/60"
+        : isTransparent ? "text-white/75" : "text-foreground/60"
     }`;
 
   return (
     <>
-      <header className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${
-        scrolled ? "shadow-[0_2px_20px_0_rgba(0,0,0,0.15)]" : ""
-      }`} style={{ backgroundColor: "var(--nav-bg)" }}>
+      <header className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-500 ${
+        scrolled ? "shadow-[0_4px_24px_0_rgba(0,0,0,0.25)]" : ""
+      }`} style={{ backgroundColor: isTransparent ? "transparent" : "var(--nav-bg)" }}>
         <div className={`max-w-screen-xl mx-auto flex items-center px-4 md:px-8 gap-4 transition-all duration-300 ${scrolled ? "h-12" : "h-16"}`}>
 
           {/* ── Logo (left) ── */}
