@@ -68,6 +68,26 @@ export const emailSendsTable = pgTable("email_sends", {
   sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const emailListsTable = pgTable("email_lists", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  type: text("type", { enum: ["manual", "optin", "enrolled", "all_subscribers"] }).notNull().default("manual"),
+  isSystem: boolean("is_system").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const emailListMembersTable = pgTable("email_list_members", {
+  id: serial("id").primaryKey(),
+  listId: integer("list_id").notNull().references(() => emailListsTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  subscribedAt: timestamp("subscribed_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertEmailListSchema = createInsertSchema(emailListsTable).omit({ id: true, createdAt: true });
+export type InsertEmailList = z.infer<typeof insertEmailListSchema>;
+export type EmailList = typeof emailListsTable.$inferSelect;
+
 export const insertSmtpSettingsSchema = createInsertSchema(smtpSettingsTable).omit({ id: true, updatedAt: true });
 export type InsertSmtpSettings = z.infer<typeof insertSmtpSettingsSchema>;
 export type SmtpSettings = typeof smtpSettingsTable.$inferSelect;

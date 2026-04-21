@@ -4,8 +4,9 @@ import { db } from "@workspace/db";
 import {
   smtpSettingsTable, emailTemplatesTable, emailCampaignsTable,
   emailAutomationRulesTable, emailSendsTable, usersTable, enrollmentsTable,
+  emailListsTable, emailListMembersTable,
 } from "@workspace/db";
-import { eq, count, sql, and, notInArray } from "drizzle-orm";
+import { eq, count, sql, and, notInArray, inArray } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth";
 
 const router = Router();
@@ -726,6 +727,116 @@ router.get("/sends", requireAdmin, async (req, res): Promise<void> => {
     .orderBy(sql`${emailSendsTable.sentAt} desc`)
     .limit(parseInt(limit));
   res.json(sends);
+});
+
+/* ──────────────── LISTS ──────────────── */
+
+/* Get all lists with member counts */
+router.get("/lists", requireAdmin, async (req, res): Promise<void> => {
+  const lists = await db.select().from(emailListsTable).orderBy(emailListsTable.createdAt);
+  const counts = await db
+    .select({ listId: emailListMembersTable.listId, cnt: count() })
+    .from(emailListMembersTable)
+    .groupBy(emailListMembersTable.listId);
+  const countMap: Record<number, number> = {};
+  for (const r of counts) countMap[r.listId] = r.cnt;
+  res.json(lists.map(l => ({ ...l, memberCount: countMap[l.id] ?? 0 })));
+});
+
+/* Create a list */
+router.post("/lists", requireAdmin, async (req, res): Promise<void> => {
+  const { name, description = "", type = "manual" } = req.body as { name: string; description?: string; type?: string };
+  if (!name?.trim()) { res.status(400).json({ error: "Name is required" }); return; }
+  const [list] = await db.insert(emailListsTable).values({ name: name.trim(), description, type: type as any }).returning();
+  res.json(list);
+});
+
+/* Delete a list (non-system only) */
+router.delete("/lists/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  const [list] = await db.select().from(emailListsTable).where(eq(emailListsTable.id, id)).limit(1);
+  if (!list) { res.status(404).json({ error: "Not found" }); return; }
+  if (list.isSystem) { res.status(400).json({ error: "Cannot delete system lists" }); return; }
+  await db.delete(emailListsTable).where(eq(emailListsTable.id, id));
+  res.json({ ok: true });
+});
+
+/* Get members of a list */
+router.get("/lists/:id/members", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  const members = await db
+    .select({
+      id: usersTable.id, name: usersTable.name, email: usersTable.email,
+      role: usersTable.role, subscribedAt: emailListMembersTable.subscribedAt,
+    })
+    .from(emailListMembersTable)
+    .innerJoin(usersTable, eq(emailListMembersTable.userId, usersTable.id))
+    .where(eq(emailListMembersTable.listId, id))
+    .orderBy(sql`${emailListMembersTable.subscribedAt} desc`);
+  res.json(members);
+});
+
+/* Add members to a list (by userId array) */
+router.post("/lists/:id/members", requireAdmin, async (req, res): Promise<void> => {
+  const listId = parseInt(req.params.id);
+  const { userIds } = req.body as { userIds: number[] };
+  if (!Array.isArray(userIds) || userIds.length === 0) { res.status(400).json({ error: "userIds required" }); return; }
+  const rows = userIds.map(userId => ({ listId, userId }));
+  await db.insert(emailListMembersTable).values(rows).onConflictDoNothing();
+  res.json({ ok: true, added: rows.length });
+});
+
+/* Remove a member from a list */
+router.delete("/lists/:id/members/:userId", requireAdmin, async (req, res): Promise<void> => {
+  const listId = parseInt(req.params.id);
+  const userId = parseInt(req.params.userId);
+  await db.delete(emailListMembersTable).where(
+    and(eq(emailListMembersTable.listId, listId), eq(emailListMembersTable.userId, userId))
+  );
+  res.json({ ok: true });
+});
+
+/* Sync a smart list (enrolled / all_subscribers) */
+router.post("/lists/:id/sync", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  const [list] = await db.select().from(emailListsTable).where(eq(emailListsTable.id, id)).limit(1);
+  if (!list) { res.status(404).json({ error: "Not found" }); return; }
+
+  let userIds: number[] = [];
+  if (list.type === "all_subscribers") {
+    const users = await db.select({ id: usersTable.id }).from(usersTable);
+    userIds = users.map(u => u.id);
+  } else if (list.type === "enrolled") {
+    const enrollments = await db.select({ userId: enrollmentsTable.userId }).from(enrollmentsTable);
+    userIds = [...new Set(enrollments.map(e => e.userId))];
+  } else {
+    res.status(400).json({ error: "Only smart lists can be synced" }); return;
+  }
+
+  if (userIds.length > 0) {
+    const rows = userIds.map(userId => ({ listId: id, userId }));
+    await db.insert(emailListMembersTable).values(rows).onConflictDoNothing();
+  }
+
+  const [{ cnt }] = await db.select({ cnt: count() }).from(emailListMembersTable).where(eq(emailListMembersTable.listId, id));
+  res.json({ ok: true, synced: userIds.length, total: cnt });
+});
+
+/* Search users not in a list (for adding members) */
+router.get("/lists/:id/search-users", requireAdmin, async (req, res): Promise<void> => {
+  const listId = parseInt(req.params.id);
+  const { q = "" } = req.query as Record<string, string>;
+  const existing = await db.select({ userId: emailListMembersTable.userId }).from(emailListMembersTable).where(eq(emailListMembersTable.listId, listId));
+  const existingIds = existing.map(e => e.userId);
+  const users = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email })
+    .from(usersTable)
+    .where(
+      existingIds.length > 0
+        ? and(sql`(${usersTable.name} ilike ${'%' + q + '%'} OR ${usersTable.email} ilike ${'%' + q + '%'})`, notInArray(usersTable.id, existingIds))
+        : sql`(${usersTable.name} ilike ${'%' + q + '%'} OR ${usersTable.email} ilike ${'%' + q + '%'})`
+    )
+    .limit(20);
+  res.json(users);
 });
 
 export default router;

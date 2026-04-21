@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2 } from "lucide-react";
+import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,13 +14,14 @@ async function apiFetch(path: string, opts?: RequestInit) {
   return fetch(`${API_BASE}${path}`, { credentials: "include", ...opts });
 }
 
-type Tab = "dashboard" | "campaigns" | "automation" | "templates" | "subscribers" | "smtp";
+type Tab = "dashboard" | "campaigns" | "automation" | "templates" | "subscribers" | "smtp" | "lists";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "dashboard", label: "Dashboard", icon: <BarChart2 className="w-4 h-4" /> },
   { id: "campaigns", label: "Campaigns", icon: <Send className="w-4 h-4" /> },
   { id: "automation", label: "Automation", icon: <Zap className="w-4 h-4" /> },
   { id: "templates", label: "Templates", icon: <FileText className="w-4 h-4" /> },
+  { id: "lists", label: "Lists", icon: <List className="w-4 h-4" /> },
   { id: "subscribers", label: "Subscribers", icon: <Users className="w-4 h-4" /> },
   { id: "smtp", label: "SMTP", icon: <Server className="w-4 h-4" /> },
 ];
@@ -156,6 +157,7 @@ export default function AdminCrmPage() {
           {tab === "campaigns" && <CampaignsTab />}
           {tab === "automation" && <AutomationTab />}
           {tab === "templates" && <TemplatesTab />}
+          {tab === "lists" && <ListsTab />}
           {tab === "subscribers" && <SubscribersTab />}
           {tab === "smtp" && <SmtpTab />}
         </div>
@@ -1059,6 +1061,282 @@ function SubscribersTab() {
             <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Previous</Button>
             <Button variant="outline" size="sm" disabled={(page + 1) * limit >= total} onClick={() => setPage(p => p + 1)}>Next</Button>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════ LISTS ══════════════════════════════════════════════ */
+const LIST_TYPE_META: Record<string, { label: string; color: string; description: string }> = {
+  all_subscribers: { label: "All Subscribers", color: "bg-blue-500/10 text-blue-400 border-blue-500/20", description: "Every registered user" },
+  enrolled:        { label: "Enrolled",         color: "bg-green-500/10 text-green-400 border-green-500/20", description: "Users with at least one enrollment" },
+  optin:           { label: "Optin",            color: "bg-purple-500/10 text-purple-400 border-purple-500/20", description: "Opted-in via landing/optin pages" },
+  manual:          { label: "Manual",           color: "bg-amber-500/10 text-amber-400 border-amber-500/20", description: "Manually managed" },
+};
+
+function ListsTab() {
+  const { toast } = useToast();
+  const [lists, setLists] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [syncing, setSyncing] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const [viewList, setViewList] = useState<any | null>(null);
+  const [members, setMembers] = useState<any[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [searchQ, setSearchQ] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [addingUsers, setAddingUsers] = useState<number[]>([]);
+
+  const [form, setForm] = useState({ name: "", description: "", type: "manual" });
+  const [showCreate, setShowCreate] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const r = await apiFetch("/api/crm/lists");
+    if (r.ok) setLists(await r.json());
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const openList = async (list: any) => {
+    setViewList(list);
+    setMembersLoading(true);
+    setSearchQ(""); setSearchResults([]);
+    const r = await apiFetch(`/api/crm/lists/${list.id}/members`);
+    if (r.ok) setMembers(await r.json());
+    setMembersLoading(false);
+  };
+
+  const syncList = async (list: any) => {
+    setSyncing(list.id);
+    const r = await apiFetch(`/api/crm/lists/${list.id}/sync`, { method: "POST" });
+    if (r.ok) {
+      const d = await r.json();
+      toast({ title: "Synced", description: `${d.total} members in list.` });
+      load();
+      if (viewList?.id === list.id) openList(list);
+    } else toast({ title: "Error", description: "Sync failed", variant: "destructive" });
+    setSyncing(null);
+  };
+
+  const deleteList = async (id: number) => {
+    if (!confirm("Delete this list? Members will also be removed.")) return;
+    setDeleting(id);
+    const r = await apiFetch(`/api/crm/lists/${id}`, { method: "DELETE" });
+    if (r.ok) { toast({ title: "Deleted" }); load(); if (viewList?.id === id) setViewList(null); }
+    else { const d = await r.json(); toast({ title: "Error", description: d.error, variant: "destructive" }); }
+    setDeleting(null);
+  };
+
+  const createList = async () => {
+    if (!form.name.trim()) return;
+    setCreating(true);
+    const r = await apiFetch("/api/crm/lists", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (r.ok) { toast({ title: "List created" }); setShowCreate(false); setForm({ name: "", description: "", type: "manual" }); load(); }
+    else toast({ title: "Error", variant: "destructive" });
+    setCreating(false);
+  };
+
+  const searchUsers = async (q: string) => {
+    setSearchQ(q);
+    if (!q.trim() || !viewList) { setSearchResults([]); return; }
+    setSearching(true);
+    const r = await apiFetch(`/api/crm/lists/${viewList.id}/search-users?q=${encodeURIComponent(q)}`);
+    if (r.ok) setSearchResults(await r.json());
+    setSearching(false);
+  };
+
+  const addUser = async (userId: number) => {
+    if (!viewList) return;
+    setAddingUsers(a => [...a, userId]);
+    const r = await apiFetch(`/api/crm/lists/${viewList.id}/members`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userIds: [userId] }) });
+    if (r.ok) {
+      toast({ title: "Added" });
+      setSearchResults(s => s.filter(u => u.id !== userId));
+      const mr = await apiFetch(`/api/crm/lists/${viewList.id}/members`);
+      if (mr.ok) setMembers(await mr.json());
+      load();
+    }
+    setAddingUsers(a => a.filter(i => i !== userId));
+  };
+
+  const removeMember = async (userId: number) => {
+    if (!viewList) return;
+    const r = await apiFetch(`/api/crm/lists/${viewList.id}/members/${userId}`, { method: "DELETE" });
+    if (r.ok) { setMembers(m => m.filter(u => u.id !== userId)); load(); }
+  };
+
+  /* ── Member detail view ── */
+  if (viewList) return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="sm" className="gap-1.5 cursor-pointer" onClick={() => setViewList(null)}>
+          <ChevronLeft className="w-4 h-4" />Back
+        </Button>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-lg font-bold text-foreground">{viewList.name}</h2>
+          {viewList.description && <p className="text-xs text-muted-foreground">{viewList.description}</p>}
+        </div>
+        <Badge variant="outline" className={`text-xs ${LIST_TYPE_META[viewList.type]?.color}`}>
+          {LIST_TYPE_META[viewList.type]?.label ?? viewList.type}
+        </Badge>
+        {(viewList.type === "enrolled" || viewList.type === "all_subscribers") && (
+          <Button size="sm" variant="outline" className="gap-1.5 cursor-pointer" onClick={() => syncList(viewList)} disabled={syncing === viewList.id}>
+            <RotateCcw className={`w-3.5 h-3.5 ${syncing === viewList.id ? "animate-spin" : ""}`} />Sync
+          </Button>
+        )}
+      </div>
+
+      {/* Add member search (manual lists only) */}
+      {viewList.type === "manual" || viewList.type === "optin" ? (
+        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+          <p className="text-sm font-semibold">Add Members</p>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input placeholder="Search by name or email…" value={searchQ} onChange={e => searchUsers(e.target.value)} className="pl-8 h-8 text-sm" />
+          </div>
+          {searching && <p className="text-xs text-muted-foreground">Searching…</p>}
+          {searchResults.length > 0 && (
+            <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+              {searchResults.map(u => (
+                <div key={u.id} className="flex items-center gap-3 px-3 py-2.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{u.name}</p>
+                    <p className="text-xs text-muted-foreground">{u.email}</p>
+                  </div>
+                  <Button size="sm" variant="outline" className="gap-1 cursor-pointer h-7 px-2 text-xs" onClick={() => addUser(u.id)} disabled={addingUsers.includes(u.id)}>
+                    <UserPlus className="w-3 h-3" />Add
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {/* Members list */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <p className="text-sm font-semibold">{members.length} Member{members.length !== 1 ? "s" : ""}</p>
+        </div>
+        {membersLoading ? (
+          <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+        ) : members.length === 0 ? (
+          <div className="py-12 text-center text-sm text-muted-foreground">No members yet. {(viewList.type === "enrolled" || viewList.type === "all_subscribers") ? "Click Sync to populate." : "Search above to add."}</div>
+        ) : (
+          <div className="divide-y divide-border">
+            {members.map(m => (
+              <div key={m.id} className="flex items-center gap-3 px-4 py-3">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
+                  {m.name?.charAt(0)?.toUpperCase() ?? "?"}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">{m.name}</p>
+                  <p className="text-xs text-muted-foreground">{m.email}</p>
+                </div>
+                <Badge variant="outline" className="text-[10px] capitalize hidden sm:flex">{m.role}</Badge>
+                <span className="text-[11px] text-muted-foreground hidden md:block">{new Date(m.subscribedAt).toLocaleDateString("en-IN")}</span>
+                <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer h-7 w-7 p-0" onClick={() => removeMember(m.id)}>
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  /* ── Lists overview ── */
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold">Email Lists</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Organise your contacts into targeted lists for campaigns.</p>
+        </div>
+        <Button size="sm" className="gap-1.5 cursor-pointer" onClick={() => setShowCreate(true)}>
+          <Plus className="w-4 h-4" />New List
+        </Button>
+      </div>
+
+      {/* Create form */}
+      {showCreate && (
+        <div className="bg-card border border-primary/30 rounded-xl p-5 space-y-4">
+          <p className="text-sm font-semibold">Create New List</p>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-xs mb-1.5 block">List Name *</Label>
+              <Input placeholder="e.g. VIP Members" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="h-8 text-sm" />
+            </div>
+            <div>
+              <Label className="text-xs mb-1.5 block">Type</Label>
+              <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                className="w-full h-8 rounded-md border border-border bg-background px-2 text-sm text-foreground">
+                <option value="manual">Manual</option>
+                <option value="optin">Optin</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs mb-1.5 block">Description</Label>
+            <Input placeholder="Optional description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="h-8 text-sm" />
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={createList} disabled={creating} className="cursor-pointer">
+              {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Create List"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setShowCreate(false)} className="cursor-pointer">Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {lists.map(list => {
+            const meta = LIST_TYPE_META[list.type] ?? LIST_TYPE_META.manual;
+            return (
+              <div key={list.id} className="bg-card border border-border rounded-xl p-4 flex flex-col gap-3 hover:border-primary/30 transition-colors">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">{list.name}</p>
+                    {list.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{list.description}</p>}
+                  </div>
+                  {list.isSystem && <Badge variant="outline" className="text-[10px] text-muted-foreground border-border flex-shrink-0">System</Badge>}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className={`text-[10px] ${meta.color}`}>{meta.label}</Badge>
+                  <span className="text-xs text-muted-foreground ml-auto font-semibold">{list.memberCount} members</span>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1 border-t border-border">
+                  <Button size="sm" variant="outline" className="flex-1 h-7 text-xs gap-1.5 cursor-pointer" onClick={() => openList(list)}>
+                    <Eye className="w-3 h-3" />View
+                  </Button>
+                  {(list.type === "enrolled" || list.type === "all_subscribers") && (
+                    <Button size="sm" variant="outline" className="h-7 w-7 p-0 cursor-pointer" onClick={() => syncList(list)} disabled={syncing === list.id} title="Sync">
+                      <RotateCcw className={`w-3 h-3 ${syncing === list.id ? "animate-spin" : ""}`} />
+                    </Button>
+                  )}
+                  {!list.isSystem && (
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer" onClick={() => deleteList(list.id)} disabled={deleting === list.id}>
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {lists.length === 0 && !loading && (
+            <p className="col-span-3 text-center text-sm text-muted-foreground py-12">No lists yet. Create your first one above.</p>
+          )}
         </div>
       )}
     </div>
