@@ -1035,6 +1035,11 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
       amount: String(amountInPaise),
       currency: "inr",
       "payment_method_types[]": "card",
+      description: course.title,
+      "metadata[course_id]": String(course.id),
+      "metadata[course_title]": course.title,
+      "metadata[customer_email]": email.toLowerCase().trim(),
+      "metadata[customer_name]": fullName.trim(),
     });
     const r = await fetch("https://api.stripe.com/v1/payment_intents", {
       method: "POST",
