@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Check, Info } from "lucide-react";
+import { Check, ExternalLink, Globe, Zap } from "lucide-react";
 
 export default function AdminFacebookPixelPage() {
   const { data: settings } = useGetAdminSettings({ query: { queryKey: getGetAdminSettingsQueryKey() } });
@@ -15,8 +15,7 @@ export default function AdminFacebookPixelPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const [form, setForm] = useState({ enabled: false, pixelId: "", accessToken: "" });
-  const [showToken, setShowToken] = useState(false);
+  const [form, setForm] = useState({ enabled: false, pixelId: "" });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -24,7 +23,6 @@ export default function AdminFacebookPixelPage() {
       setForm({
         enabled: (settings as Record<string, unknown>).facebookPixelEnabled as boolean ?? false,
         pixelId: (settings as Record<string, unknown>).facebookPixelId as string ?? "",
-        accessToken: (settings as Record<string, unknown>).facebookAccessToken as string ?? "",
       });
     }
   }, [settings]);
@@ -35,7 +33,6 @@ export default function AdminFacebookPixelPage() {
       data: {
         facebookPixelEnabled: form.enabled,
         facebookPixelId: form.pixelId,
-        facebookAccessToken: form.accessToken,
       } as Parameters<typeof updateSettings.mutate>[0]["data"],
     }, {
       onSuccess: () => {
@@ -50,68 +47,46 @@ export default function AdminFacebookPixelPage() {
     });
   };
 
+  const testEventsUrl = `https://www.facebook.com/events_manager2/list/pixel/${form.pixelId}/test_events`;
+
   return (
     <div className="p-6 max-w-2xl">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Facebook Pixel</h1>
-        <p className="text-muted-foreground">Track ad performance and conversions for ROAS optimisation.</p>
+        <p className="text-muted-foreground">Browser-based tracking — events fire directly in the visitor's browser via the Meta pixel script.</p>
       </div>
 
       <div className="space-y-6">
-        {/* Enable toggle */}
+
+        {/* Config card */}
         <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="text-base">Pixel Configuration</CardTitle>
-            <CardDescription>Enter your Pixel ID from Facebook Events Manager to start tracking.</CardDescription>
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4 text-blue-400" />
+              <CardTitle className="text-base">Pixel Configuration</CardTitle>
+            </div>
+            <CardDescription>Enter your Pixel ID from Facebook Events Manager. No server-side token needed — all events run in the browser.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Enable Facebook Pixel</p>
-                <p className="text-xs text-muted-foreground">Inject the pixel script across all pages</p>
+                <p className="text-xs text-muted-foreground">Injects the Meta pixel script on every page load</p>
               </div>
               <Switch checked={form.enabled} onCheckedChange={v => setForm(f => ({ ...f, enabled: v }))} />
             </div>
 
-            <div className={`space-y-4 transition-opacity ${form.enabled ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
-              <div>
-                <Label className="text-sm mb-1.5 block">Pixel ID</Label>
-                <Input
-                  value={form.pixelId}
-                  onChange={e => setForm(f => ({ ...f, pixelId: e.target.value }))}
-                  placeholder="e.g. 1234567890123456"
-                  className="bg-background font-mono text-xs"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Found in your Facebook Events Manager → Data Sources → Pixel settings.
-                </p>
-              </div>
-
-              <div>
-                <Label className="text-sm mb-1.5 block">
-                  Conversions API Access Token
-                  <span className="ml-2 text-muted-foreground font-normal text-xs">(optional — for server-side tracking)</span>
-                </Label>
-                <div className="relative">
-                  <Input
-                    type={showToken ? "text" : "password"}
-                    value={form.accessToken}
-                    onChange={e => setForm(f => ({ ...f, accessToken: e.target.value }))}
-                    placeholder="EAAxxxxxxxxxxxxxxxx..."
-                    className="bg-background font-mono text-xs pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowToken(s => !s)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Generate in Events Manager → Settings → Conversions API → Generate Access Token.
-                </p>
-              </div>
+            <div>
+              <Label className="text-sm mb-1.5 block">Pixel ID</Label>
+              <Input
+                value={form.pixelId}
+                onChange={e => setForm(f => ({ ...f, pixelId: e.target.value }))}
+                placeholder="e.g. 1234567890123456"
+                className="bg-background font-mono"
+              />
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Found in Events Manager → Data Sources → your Pixel → Settings tab.
+              </p>
             </div>
 
             <Button type="button" onClick={handleSave} disabled={saving} className="w-full">
@@ -120,32 +95,75 @@ export default function AdminFacebookPixelPage() {
           </CardContent>
         </Card>
 
-        {/* Events info */}
+        {/* Test Events card */}
         <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Info className="w-4 h-4 text-blue-400" />
-              Events Tracked Automatically
-            </CardTitle>
-            <CardDescription>These events fire on their respective pages without any extra setup.</CardDescription>
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-amber-400" />
+              <CardTitle className="text-base">Test Events with Meta</CardTitle>
+            </div>
+            <CardDescription>
+              Use Meta's URL-based Test Events tool to verify all events are firing correctly before running ads.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 space-y-2 text-xs text-amber-200">
+              <p className="font-semibold text-amber-100">How to test:</p>
+              <ol className="space-y-1.5 list-none">
+                {[
+                  "Save your Pixel ID above and make sure the toggle is ON",
+                  "Click \"Open Test Events\" below — it opens Meta Events Manager",
+                  "Go to the Test Events tab, select Website as the channel",
+                  "Enter your site URL and click \"Test Events\"",
+                  "Browse your site, add to cart, complete a purchase — events appear live",
+                ].map((step, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span className="w-4 h-4 rounded-full bg-amber-500/30 text-amber-200 text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full border-amber-500/30 text-amber-300 hover:bg-amber-500/10 gap-2"
+              disabled={!form.pixelId}
+              onClick={() => window.open(testEventsUrl, "_blank")}
+            >
+              <ExternalLink className="w-4 h-4" />
+              Open Test Events in Meta Events Manager
+            </Button>
+            {!form.pixelId && (
+              <p className="text-xs text-muted-foreground text-center">Enter and save your Pixel ID first to enable this button</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Events tracked */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-base">Events Tracked Automatically</CardTitle>
+            <CardDescription>All events fire in the visitor's browser — no server configuration needed.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {[
-                { event: "PageView", where: "Every page navigation", detail: "Fires automatically on every route change" },
-                { event: "ViewContent", where: "Course detail page", detail: "Includes course name, price and currency" },
-                { event: "Lead", where: "Optin form submission", detail: "Fires when a user submits the lead capture form" },
-                { event: "InitiateCheckout", where: "Checkout page open", detail: "Includes course ID and currency" },
-                { event: "Purchase", where: "Successful payment", detail: "Includes value, currency and course name — fires for all gateways" },
-              ].map(({ event, where, detail }) => (
+                { event: "PageView", trigger: "Every page / route change", note: "Fires on every navigation automatically" },
+                { event: "ViewContent", trigger: "Course detail page", note: "content_type: product, includes course name & price" },
+                { event: "Lead", trigger: "Optin form submission", note: "Fires when a visitor submits a lead capture form" },
+                { event: "InitiateCheckout", trigger: "Checkout page load", note: "Fires when the checkout page opens" },
+                { event: "Purchase", trigger: "Successful payment", note: "Includes value & currency — fires for all payment gateways" },
+              ].map(({ event, trigger, note }) => (
                 <div key={event} className="flex items-start gap-3 p-3 rounded-lg bg-background border border-border">
                   <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <Check className="w-3 h-3 text-primary" />
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground font-mono">{event}</p>
-                    <p className="text-xs text-muted-foreground">{where}</p>
-                    <p className="text-xs text-muted-foreground/70 mt-0.5">{detail}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold font-mono text-foreground">{event}</p>
+                    <p className="text-xs text-muted-foreground">{trigger}</p>
+                    <p className="text-xs text-muted-foreground/60 mt-0.5">{note}</p>
                   </div>
                 </div>
               ))}
@@ -153,27 +171,6 @@ export default function AdminFacebookPixelPage() {
           </CardContent>
         </Card>
 
-        {/* Setup guide */}
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="text-base">How to Get Your Pixel ID</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-xs text-muted-foreground">
-            {[
-              "Go to Facebook Business Manager (business.facebook.com)",
-              "Navigate to Events Manager → Data Sources",
-              "Select your Pixel (or create one if you don't have it)",
-              "Copy the Pixel ID shown at the top of the page",
-              "Paste it in the Pixel ID field above and enable the toggle",
-              "Click Save Pixel Settings",
-            ].map((step, i) => (
-              <div key={i} className="flex items-start gap-2.5">
-                <span className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
-                <span>{step}</span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
