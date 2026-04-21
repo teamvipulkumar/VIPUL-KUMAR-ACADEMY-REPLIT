@@ -794,7 +794,7 @@ export default function BundleCheckoutPage() {
     <div className="flex-1 py-8 px-4">
       <div className="max-w-5xl mx-auto">
         {/* Top bar */}
-        <div className="flex items-center justify-center mb-8">
+        <div className="flex items-center justify-start mb-8">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Lock className="w-3.5 h-3.5 text-green-400" />
             <span>Secure Checkout</span>
