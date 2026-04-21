@@ -71,12 +71,12 @@ html, body {
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --nav-bg: #070c1a;
+  --nav-bg: #0b1120;
   --nav-border: rgba(255,255,255,0.06);
-  --dropdown-bg: #0d1424;
+  --dropdown-bg: #0b1120;
   --dropdown-border: rgba(255,255,255,0.10);
   --footer-bg: #040810;
-  --mobile-drawer-bg: #070c1a;
+  --mobile-drawer-bg: #0b1120;
 
   /* Deep Navy Background */
   --background: 222 47% 7%;
