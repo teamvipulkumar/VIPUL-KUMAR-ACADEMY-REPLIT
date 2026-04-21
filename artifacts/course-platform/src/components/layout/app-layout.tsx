@@ -59,7 +59,7 @@ function NotificationPopup({ iconSize = "w-4 h-4" }: { iconSize?: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="relative w-9 h-9 p-0 rounded-lg hover:bg-white/5">
+        <Button variant="ghost" size="sm" className="relative w-9 h-9 p-0 rounded-lg hover:bg-white/5 cursor-pointer">
           <Bell className={`${iconSize} text-foreground/70`} />
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 bg-primary text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold leading-none">
@@ -225,7 +225,7 @@ export function Navbar() {
                 <NotificationPopup iconSize="w-4 h-4" />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="gap-2 h-9 px-2 rounded-lg hover:bg-white/5">
+                    <Button variant="ghost" size="sm" className="gap-2 h-9 px-2 rounded-lg hover:bg-white/5 cursor-pointer">
                       <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
                         {user?.name?.charAt(0).toUpperCase()}
                       </div>
