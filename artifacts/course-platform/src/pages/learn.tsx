@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useRoute, Link } from "wouter";
+import { useRoute } from "wouter";
 import {
   useGetCourse, getGetCourseQueryKey,
   useGetCourseProgress, getGetCourseProgressQueryKey,
@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle, Play, FileText, HelpCircle, ChevronRight, ChevronDown,
-  ArrowLeft, Check, Clock, Link2, FileArchive, Lock, BookOpen,
+  Check, Clock, Link2, FileArchive, Lock, BookOpen,
   ExternalLink, ChevronLeft, Menu, X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -177,12 +177,6 @@ export default function LearnPage() {
     <div className="min-h-screen bg-background flex flex-col" style={{ fontFamily: "var(--font-sans)" }}>
       {/* ── Top navigation bar ── */}
       <header className="h-13 border-b border-border bg-card/95 backdrop-blur-sm flex items-center px-4 gap-3 flex-shrink-0 z-10 sticky top-0">
-        <Link href={`/courses/${courseId}`}>
-          <Button variant="ghost" size="sm" className="text-xs gap-1.5 text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="w-3.5 h-3.5" />Back
-          </Button>
-        </Link>
-
         <button
           className="flex-shrink-0 h-8 w-8 rounded-lg hover:bg-background flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => setSidebarOpen(o => !o)}
