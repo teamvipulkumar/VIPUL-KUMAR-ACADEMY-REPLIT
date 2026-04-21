@@ -760,7 +760,7 @@ export default function CheckoutPage() {
                 <div className="space-y-3.5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div className="space-y-1.5">
-                      <Label htmlFor="fullName">Full Name <span className="text-red-400">*</span></Label>
+                      <Label htmlFor="fullName">Full Name</Label>
                       <Input
                         id="fullName"
                         placeholder="John Doe"
@@ -772,7 +772,7 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="email">Email Address <span className="text-red-400">*</span></Label>
+                      <Label htmlFor="email">Email Address</Label>
                       <Input
                         id="email"
                         type="email"
@@ -787,7 +787,7 @@ export default function CheckoutPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div className="space-y-1.5">
-                      <Label htmlFor="mobile">Mobile Number <span className="text-red-400">*</span></Label>
+                      <Label htmlFor="mobile">Mobile Number</Label>
                       <div className="flex">
                         <span className="inline-flex items-center px-3 border border-r-0 border-border bg-card rounded-l-md text-xs text-muted-foreground">+91</span>
                         <Input
@@ -802,7 +802,7 @@ export default function CheckoutPage() {
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="state">State <span className="text-red-400">*</span></Label>
+                      <Label htmlFor="state">State</Label>
                       <select
                         id="state"
                         value={form.state}
