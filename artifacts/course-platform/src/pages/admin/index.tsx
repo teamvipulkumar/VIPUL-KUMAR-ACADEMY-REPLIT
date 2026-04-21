@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ComposedChart, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  RadialBarChart, RadialBar, Legend,
+  PieChart, Pie, Cell,
 } from "recharts";
 
 export default function AdminDashboard() {
@@ -32,33 +32,16 @@ export default function AdminDashboard() {
   const tooltipStyle = { background: "#0f172a", border: "1px solid #1e293b", borderRadius: "8px", fontSize: "12px" };
   const hasData = revenue?.chartData && revenue.chartData.length > 0;
 
-  /* ── Radial chart data (normalise to 0-100 scale for display) ── */
-  const maxVal = Math.max(
-    summary?.enrollments ?? 0,
-    summary?.newUsers ?? 0,
-    1,
-  );
-  const revenueMax = Math.max(summary?.revenue ?? 0, 1);
+  /* ── Donut chart: normalise all three onto a comparable unit scale ── */
+  const revenueScaled = (summary?.revenue ?? 0) / 100;  // scale ₹ down to same magnitude as counts
+  const enrollments  = summary?.enrollments ?? 0;
+  const newUsers     = summary?.newUsers     ?? 0;
+  const totalUnits   = revenueScaled + enrollments + newUsers || 1;
 
-  const radialData = [
-    {
-      name: "Revenue",
-      value: Math.round(((summary?.revenue ?? 0) / revenueMax) * 100),
-      rawValue: `₹${(summary?.revenue ?? 0).toFixed(2)}`,
-      fill: "#2563eb",
-    },
-    {
-      name: "Enrollments",
-      value: Math.round(((summary?.enrollments ?? 0) / maxVal) * 100),
-      rawValue: summary?.enrollments ?? 0,
-      fill: "#10b981",
-    },
-    {
-      name: "New Users",
-      value: Math.round(((summary?.newUsers ?? 0) / maxVal) * 100),
-      rawValue: summary?.newUsers ?? 0,
-      fill: "#f59e0b",
-    },
+  const donutData = [
+    { name: "Revenue",     value: revenueScaled, rawValue: `₹${(summary?.revenue ?? 0).toFixed(2)}`, color: "#2563eb" },
+    { name: "Enrollments", value: enrollments,   rawValue: enrollments,                               color: "#10b981" },
+    { name: "New Users",   value: newUsers,       rawValue: newUsers,                                  color: "#f59e0b" },
   ];
 
   return (
@@ -162,54 +145,71 @@ export default function AdminDashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row items-center gap-8">
-            {/* Radial chart */}
-            <div className="flex-shrink-0">
-              <ResponsiveContainer width={260} height={260}>
-                <RadialBarChart
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={45}
-                  outerRadius={115}
-                  barSize={18}
-                  data={radialData}
-                  startAngle={90}
-                  endAngle={-270}
+          <div className="flex flex-col md:flex-row items-center gap-10">
+            {/* Single donut chart */}
+            <div className="relative flex-shrink-0 flex items-center justify-center" style={{ width: 240, height: 240 }}>
+              <PieChart width={240} height={240}>
+                <Pie
+                  data={donutData}
+                  cx={115}
+                  cy={115}
+                  innerRadius={72}
+                  outerRadius={110}
+                  paddingAngle={3}
+                  dataKey="value"
+                  strokeWidth={0}
                 >
-                  <RadialBar
-                    background={{ fill: "rgba(255,255,255,0.04)" }}
-                    dataKey="value"
-                    cornerRadius={8}
-                  />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (!active || !payload?.length) return null;
-                      const d = payload[0].payload;
-                      return (
-                        <div style={tooltipStyle} className="px-3 py-2">
-                          <p className="font-semibold text-xs" style={{ color: d.fill }}>{d.name}</p>
-                          <p className="text-xs text-foreground">{d.rawValue}</p>
-                        </div>
-                      );
-                    }}
-                  />
-                </RadialBarChart>
-              </ResponsiveContainer>
+                  {donutData.map((entry) => (
+                    <Cell key={entry.name} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null;
+                    const d = payload[0].payload;
+                    return (
+                      <div style={tooltipStyle} className="px-3 py-2">
+                        <p className="font-semibold text-xs mb-0.5" style={{ color: d.color }}>{d.name}</p>
+                        <p className="text-xs text-foreground font-medium">{d.rawValue}</p>
+                      </div>
+                    );
+                  }}
+                />
+              </PieChart>
+              {/* Centre label */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-xs text-muted-foreground leading-none mb-1">Total</span>
+                <span className="text-lg font-bold leading-none">
+                  {enrollments + newUsers}
+                </span>
+                <span className="text-[10px] text-muted-foreground mt-1">users + enrolled</span>
+              </div>
             </div>
 
             {/* Legend + values */}
-            <div className="flex-1 space-y-4 w-full">
-              {radialData.map((item) => (
-                <div key={item.name} className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2.5">
-                    <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.fill }} />
-                    <span className="text-sm text-muted-foreground">{item.name}</span>
+            <div className="flex-1 space-y-5 w-full">
+              {donutData.map((item) => {
+                const pct = totalUnits > 0 ? Math.round((item.value / totalUnits) * 100) : 0;
+                return (
+                  <div key={item.name}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color }} />
+                        <span className="text-sm font-medium">{item.name}</span>
+                      </div>
+                      <span className="text-sm font-bold">{item.rawValue}</span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%`, backgroundColor: item.color }}
+                      />
+                    </div>
                   </div>
-                  <span className="text-sm font-semibold">{item.rawValue}</span>
-                </div>
-              ))}
-              <p className="text-xs text-muted-foreground pt-2">
-                Data for the selected period. Each ring shows relative activity.
+                );
+              })}
+              <p className="text-xs text-muted-foreground pt-1">
+                Showing activity for the selected period.
               </p>
             </div>
           </div>
