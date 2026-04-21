@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Plus, Trash2, ChevronDown, ChevronRight, Save, ArrowLeft,
   Play, FileText, Link2, FileArchive, HelpCircle, Pencil,
-  ImageIcon, Clock, Eye, EyeOff, GripVertical, AlertCircle, Code2,
+  ImageIcon, Clock, Eye, EyeOff, GripVertical, AlertCircle,
 } from "lucide-react";
 import { ImageUploader } from "@/components/image-uploader";
 
@@ -29,7 +29,7 @@ const LESSON_ICONS: Record<LessonType, React.ReactNode> = {
   pdf: <FileArchive className="w-3.5 h-3.5 text-orange-400" />,
   link: <Link2 className="w-3.5 h-3.5 text-purple-400" />,
   quiz: <HelpCircle className="w-3.5 h-3.5 text-yellow-400" />,
-  embed: <Code2 className="w-3.5 h-3.5 text-cyan-400" />,
+  embed: <Play className="w-3.5 h-3.5 text-cyan-400" />,
 };
 
 const LESSON_TYPE_LABELS: Record<LessonType, string> = {
@@ -577,7 +577,7 @@ export default function AdminCourseEditPage() {
                 <div className="space-y-3">
                   <div>
                     <label className="text-sm font-medium mb-1.5 flex items-center gap-1.5 block">
-                      <Code2 className="w-3.5 h-3.5 text-cyan-400" />
+                      <Play className="w-3.5 h-3.5 text-cyan-400" />
                       Embed Code
                     </label>
                     <Textarea
@@ -588,7 +588,7 @@ export default function AdminCourseEditPage() {
                       spellCheck={false}
                     />
                     <div className="mt-2 p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-lg flex items-start gap-2.5">
-                      <Code2 className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
+                      <Play className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="text-xs font-medium text-cyan-400">Supports any embed code</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
