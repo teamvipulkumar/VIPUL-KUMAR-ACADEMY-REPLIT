@@ -969,4 +969,181 @@ router.post("/initiate", async (req, res): Promise<void> => {
   }
 });
 
+// ── Stripe: Create Order ──────────────────────────────────────────────────────
+router.post("/stripe/create-order", async (req, res): Promise<void> => {
+  const { courseId, email, fullName, state, mobile, couponCode, affiliateRef } = req.body;
+  if (!courseId || !email || !fullName) {
+    res.status(400).json({ error: "courseId, email, and fullName are required" }); return;
+  }
+
+  const [gw] = await db.select().from(paymentGatewaysTable).where(
+    and(eq(paymentGatewaysTable.name, "stripe"), eq(paymentGatewaysTable.isActive, true))
+  ).limit(1);
+  if (!gw) { res.status(400).json({ error: "Stripe is not configured or inactive" }); return; }
+
+  let userId: number;
+  let isNewUser = false;
+  let tempPassword: string | undefined;
+
+  const existingToken = req.cookies?.token;
+  if (existingToken) {
+    try { const payload = verifyToken(existingToken); userId = payload.userId; }
+    catch { userId = 0; }
+  } else { userId = 0; }
+
+  if (!userId) {
+    const [existingUser] = await db.select().from(usersTable)
+      .where(eq(usersTable.email, email.toLowerCase().trim())).limit(1);
+    if (existingUser) {
+      userId = existingUser.id;
+    } else {
+      tempPassword = nanoid(10);
+      const hashed = await bcrypt.hash(tempPassword, 10);
+      const referralCode = nanoid(8).toUpperCase();
+      const [newUser] = await db.insert(usersTable).values({
+        email: email.toLowerCase().trim(), password: hashed,
+        name: fullName.trim(), referralCode, role: "student",
+      }).returning();
+      userId = newUser.id;
+      isNewUser = true;
+    }
+  }
+
+  const [course] = await db.select().from(coursesTable)
+    .where(eq(coursesTable.id, parseInt(courseId))).limit(1);
+  if (!course) { res.status(404).json({ error: "Course not found" }); return; }
+
+  let amount = parseFloat(course.price);
+  if (couponCode) {
+    const [coupon] = await db.select().from(couponsTable)
+      .where(eq(couponsTable.code, couponCode.toUpperCase())).limit(1);
+    if (coupon && coupon.isActive && (!coupon.expiresAt || coupon.expiresAt > new Date()) &&
+        (!coupon.maxUses || coupon.usedCount < coupon.maxUses)) {
+      if (!coupon.courseId || coupon.courseId === parseInt(courseId)) {
+        const discount = parseFloat(String(coupon.discountValue));
+        amount = coupon.discountType === "percentage"
+          ? amount * (1 - discount / 100)
+          : Math.max(0, amount - discount);
+      }
+    }
+  }
+
+  const amountInPaise = Math.round(amount * 100);
+
+  try {
+    const body = new URLSearchParams({
+      amount: String(amountInPaise),
+      currency: "inr",
+      "payment_method_types[]": "card",
+    });
+    const r = await fetch("https://api.stripe.com/v1/payment_intents", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${gw.secretKey}`, "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+    const intent = await r.json() as { client_secret: string; id: string; error?: { message: string } };
+    if (!r.ok) throw new Error(intent.error?.message ?? "Stripe PaymentIntent failed");
+
+    const sessionId = nanoid(32);
+    await db.insert(paymentsTable).values({
+      userId, courseId: parseInt(courseId),
+      amount: String(amount.toFixed(2)), currency: "INR",
+      status: "pending", gateway: "stripe",
+      sessionId, paymentId: intent.id,
+      couponCode: couponCode || null, affiliateRef: affiliateRef || null,
+      billingName: fullName?.trim() || null, billingEmail: email?.toLowerCase().trim() || null,
+      billingMobile: mobile?.trim() || null, billingState: state || null,
+    });
+
+    const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (freshUser) {
+      const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
+      res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+    }
+
+    const { password: _p, ...safeUser } = freshUser!;
+    res.json({
+      clientSecret: intent.client_secret, publishableKey: gw.apiKey,
+      sessionId, paymentIntentId: intent.id, amount,
+      isNewUser, tempPassword, user: safeUser,
+      courseTitle: course.title, courseId: parseInt(courseId),
+    });
+  } catch (err: unknown) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+// ── Stripe: Verify Payment ────────────────────────────────────────────────────
+router.post("/stripe/verify", async (req, res): Promise<void> => {
+  const { paymentIntentId, sessionId } = req.body;
+  if (!paymentIntentId || !sessionId) {
+    res.status(400).json({ error: "paymentIntentId and sessionId are required" }); return;
+  }
+
+  const [payment] = await db.select().from(paymentsTable)
+    .where(eq(paymentsTable.sessionId, sessionId)).limit(1);
+  if (!payment) { res.status(404).json({ error: "Payment session not found" }); return; }
+
+  const [gw] = await db.select().from(paymentGatewaysTable).where(
+    and(eq(paymentGatewaysTable.name, "stripe"), eq(paymentGatewaysTable.isActive, true))
+  ).limit(1);
+  if (!gw) { res.status(400).json({ error: "Stripe gateway not configured" }); return; }
+
+  const r = await fetch(`https://api.stripe.com/v1/payment_intents/${paymentIntentId}`, {
+    headers: { Authorization: `Bearer ${gw.secretKey}` },
+  });
+  const intent = await r.json() as { status: string; error?: { message: string } };
+  if (!r.ok) { res.status(400).json({ error: (intent as { error?: { message: string } }).error?.message ?? "Failed to verify Stripe payment" }); return; }
+
+  if (intent.status !== "succeeded") {
+    res.status(400).json({ error: `Payment not completed. Stripe status: ${intent.status}` }); return;
+  }
+
+  if (payment.status === "completed") {
+    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+    const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+    const { password: _p2, ...safeUser } = freshUser!;
+    res.json({ success: true, alreadyEnrolled: true, courseId: payment.courseId, courseTitle: course?.title, user: safeUser });
+    return;
+  }
+
+  await db.update(paymentsTable).set({ status: "completed", paymentId: paymentIntentId })
+    .where(eq(paymentsTable.id, payment.id));
+  generateGstInvoice(payment.id).catch(() => {});
+
+  const [existing] = await db.select().from(enrollmentsTable)
+    .where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId)))
+    .limit(1);
+
+  if (!existing) {
+    await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId: payment.courseId });
+    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+    await db.insert(notificationsTable).values({
+      userId: payment.userId, title: "Enrollment Confirmed!",
+      message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success",
+    });
+    const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+    if (buyer) {
+      triggerAutomation("purchase", buyer.id, buyer.email, {
+        name: buyer.name, email: buyer.email,
+        course_name: course?.title ?? "",
+        amount: String(parseFloat(String(payment.amount)).toFixed(2)),
+      }).catch(() => {});
+      await recordAffiliateCommission(payment.affiliateRef, payment.userId, payment.courseId, parseFloat(String(payment.amount)));
+    }
+  }
+
+  if (payment.couponCode) {
+    const [coupon] = await db.select().from(couponsTable)
+      .where(eq(couponsTable.code, payment.couponCode)).limit(1);
+    if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 })
+      .where(eq(couponsTable.id, coupon.id));
+  }
+
+  const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+  const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+  const { password: _p3, ...safeUser } = freshUser!;
+  res.json({ success: true, courseId: payment.courseId, courseTitle: course?.title, user: safeUser });
+});
+
 export default router;

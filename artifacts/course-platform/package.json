@@ -76,6 +76,7 @@
   },
   "dependencies": {
     "@react-oauth/google": "^0.13.5",
+    "@stripe/stripe-js": "^9.2.0",
     "@tiptap/core": "^3.22.3",
     "@tiptap/extension-color": "^3.22.3",
     "@tiptap/extension-font-family": "^3.22.3",

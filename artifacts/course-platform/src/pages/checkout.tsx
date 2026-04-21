@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { loadStripe } from "@stripe/stripe-js";
 import { useRoute, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { useGetCourse, useValidateCoupon } from "@workspace/api-client-react";
@@ -272,6 +273,167 @@ function PaymentModal({ gateway, amount, courseName, onClose, onPay }: PaymentMo
   );
 }
 
+// ── Stripe Data Type ──────────────────────────────────────────────────────────
+type StripeData = {
+  clientSecret: string;
+  publishableKey: string;
+  sessionId: string;
+  paymentIntentId: string;
+  amount: number;
+  isNewUser: boolean;
+  tempPassword?: string;
+  user: { name: string; email: string };
+  courseTitle: string;
+  courseId: number;
+};
+
+// ── Real Stripe Checkout Modal ────────────────────────────────────────────────
+function StripeCheckoutModal({
+  stripeData, courseName, onSuccess, onClose,
+}: { stripeData: StripeData; courseName: string; onSuccess: (paymentIntentId: string) => void; onClose: () => void }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stripeRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cardElementRef = useRef<any>(null);
+  const [cardReady, setCardReady] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [cardError, setCardError] = useState("");
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    loadStripe(stripeData.publishableKey).then(stripe => {
+      if (!stripe || !mounted || !cardRef.current) return;
+      stripeRef.current = stripe;
+      const elements = stripe.elements({ clientSecret: stripeData.clientSecret });
+      const cardEl = elements.create("card", {
+        style: {
+          base: {
+            color: "#f1f5f9",
+            fontFamily: "inherit",
+            fontSize: "14px",
+            "::placeholder": { color: "#64748b" },
+            iconColor: "#94a3b8",
+          },
+          invalid: { color: "#f87171" },
+        },
+      });
+      cardEl.mount(cardRef.current);
+      cardElementRef.current = cardEl;
+      cardEl.on("ready", () => { if (mounted) setCardReady(true); });
+      cardEl.on("change", (e: { error?: { message: string } }) => {
+        if (mounted) setCardError(e.error?.message ?? "");
+      });
+    });
+    return () => {
+      mounted = false;
+      cardElementRef.current?.unmount?.();
+    };
+  }, [stripeData.clientSecret, stripeData.publishableKey]);
+
+  const handlePay = async () => {
+    if (!stripeRef.current || !cardElementRef.current) return;
+    setProcessing(true);
+    setCardError("");
+    try {
+      const { error, paymentIntent } = await stripeRef.current.confirmCardPayment(
+        stripeData.clientSecret,
+        { payment_method: { card: cardElementRef.current } }
+      );
+      if (error) {
+        setCardError(error.message ?? "Payment failed");
+        return;
+      }
+      if (paymentIntent?.status === "succeeded") {
+        onSuccess(paymentIntent.id);
+      } else {
+        setCardError(`Unexpected payment status: ${paymentIntent?.status}`);
+      }
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  return (
+    <div ref={overlayRef} className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={e => { if (e.target === overlayRef.current && !processing) onClose(); }}>
+      <div className="bg-[#0d1424] border border-white/10 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="px-5 pt-5 pb-4 flex items-center justify-between bg-[#635BFF]/10 border-b border-[#635BFF]/20">
+          <div className="flex items-center gap-2.5">
+            <img src={`${import.meta.env.BASE_URL}stripe-logo.png`} alt="Stripe" className="w-8 h-8 object-contain rounded" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+            <div>
+              <p className="font-bold text-sm text-foreground">Stripe Checkout</p>
+              <p className="text-xs text-muted-foreground">{courseName}</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="font-bold text-lg text-foreground">₹{stripeData.amount.toFixed(2)}</p>
+            <div className="flex items-center gap-1 text-[10px] text-green-400 justify-end">
+              <Lock className="w-2.5 h-2.5" />Secure
+            </div>
+          </div>
+        </div>
+
+        {/* Processing overlay */}
+        {processing && (
+          <div className="px-5 py-10 text-center space-y-4">
+            <div className="w-14 h-14 rounded-full border-4 border-primary/20 border-t-primary animate-spin mx-auto" />
+            <p className="font-semibold text-foreground">Processing Payment...</p>
+            <p className="text-xs text-muted-foreground">Please do not close this window</p>
+          </div>
+        )}
+
+        {/* Card form */}
+        {!processing && (
+          <div className="p-5 space-y-4">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1.5 block">Card Details</Label>
+              {/* Stripe hosted card element mounts here */}
+              <div
+                ref={cardRef}
+                className="bg-background border border-border rounded-lg px-3 py-3 min-h-[42px]"
+              />
+              {!cardReady && (
+                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" />Loading secure card fields...
+                </p>
+              )}
+            </div>
+
+            {cardError && (
+              <div className="flex items-center gap-2 text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />{cardError}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2 pt-1">
+              <Button
+                onClick={handlePay}
+                disabled={!cardReady || processing}
+                className="w-full bg-[#635BFF] hover:bg-[#5349e8] gap-2 font-semibold"
+              >
+                <Lock className="w-4 h-4" />Pay ₹{stripeData.amount.toFixed(2)} Securely
+              </Button>
+              <button type="button" onClick={onClose} disabled={processing}
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-center gap-1">
+                <X className="w-3 h-3" />Cancel
+              </button>
+            </div>
+
+            <div className="flex items-center justify-center gap-3 text-[10px] text-muted-foreground pt-1 border-t border-border">
+              <span className="flex items-center gap-1"><Shield className="w-3 h-3 text-green-400" />SSL Encrypted</span>
+              <span>·</span>
+              <span className="flex items-center gap-1"><CreditCard className="w-3 h-3" />Powered by Stripe</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Success Screen ────────────────────────────────────────────────────────────
 function SuccessScreen({ result, onContinue }: { result: SuccessResult; onContinue: () => void }) {
   const [copied, setCopied] = useState(false);
@@ -351,6 +513,7 @@ export default function CheckoutPage() {
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState<SuccessResult | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [stripeData, setStripeData] = useState<StripeData | null>(null);
   const [orderSummaryOpen, setOrderSummaryOpen] = useState(false);
 
   const [form, setForm] = useState({
@@ -474,6 +637,71 @@ export default function CheckoutPage() {
       setProcessing(false);
     }
   };
+
+  // ── Real Stripe Payment ────────────────────────────────────────────────────
+  const handleStripePayment = useCallback(async () => {
+    setProcessing(true);
+    const affiliateRef = getStoredRef() || undefined;
+    try {
+      const res = await fetch(`${API_BASE}/api/payments/stripe/create-order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          courseId,
+          email: form.email.trim(),
+          fullName: form.fullName.trim(),
+          state: form.state,
+          mobile: form.mobile.trim(),
+          couponCode: appliedCoupon?.code || undefined,
+          affiliateRef,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to initiate Stripe payment");
+      setStripeData(data as StripeData);
+    } catch (err: unknown) {
+      toast({ title: "Stripe payment failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setProcessing(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseId, form, appliedCoupon]);
+
+  const handleStripeVerify = useCallback(async (paymentIntentId: string) => {
+    if (!stripeData) return;
+    setProcessing(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/payments/stripe/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ paymentIntentId, sessionId: stripeData.sessionId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Payment verification failed");
+      fbTrack("Purchase", {
+        value: discountedPrice,
+        currency: "INR",
+        content_type: "product",
+        content_ids: [String(courseId)],
+        content_name: course?.title ?? "",
+      });
+      setStripeData(null);
+      setSuccess({
+        isNewUser: stripeData.isNewUser,
+        tempPassword: stripeData.tempPassword,
+        user: stripeData.user,
+        courseId: stripeData.courseId,
+        courseTitle: stripeData.courseTitle,
+      });
+    } catch (err: unknown) {
+      toast({ title: "Payment verification failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setProcessing(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stripeData, discountedPrice, courseId, course?.title]);
 
   // ── Real Cashfree Payment ──────────────────────────────────────────────────
   const handleCashfreePayment = async () => {
@@ -651,6 +879,11 @@ export default function CheckoutPage() {
     }
     if (!form.state) {
       toast({ title: "Please select your state", variant: "destructive" }); return;
+    }
+    // Real Stripe — Stripe Elements card form
+    if (gateway === "stripe") {
+      handleStripePayment();
+      return;
     }
     // Real Cashfree — redirect to hosted checkout (no simulation modal)
     if (gateway === "cashfree") {
@@ -1018,6 +1251,15 @@ export default function CheckoutPage() {
           setShowPaymentModal(false);
           await executePayment();
         }}
+      />
+    )}
+
+    {stripeData && (
+      <StripeCheckoutModal
+        stripeData={stripeData}
+        courseName={course.title}
+        onSuccess={handleStripeVerify}
+        onClose={() => setStripeData(null)}
       />
     )}
     </>
