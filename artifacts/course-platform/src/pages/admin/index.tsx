@@ -2,10 +2,11 @@ import { useState } from "react";
 import { useGetAdminAnalytics, getGetAdminAnalyticsQueryKey, useGetRevenueReport, getGetRevenueReportQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 export default function AdminDashboard() {
   const [period, setPeriod] = useState<"7d" | "30d" | "90d" | "1y">("30d");
+  const [chartType, setChartType] = useState<"area" | "bar">("area");
   const { data: analytics } = useGetAdminAnalytics({ query: { queryKey: getGetAdminAnalyticsQueryKey() } });
   const { data: revenue } = useGetRevenueReport({ period }, { query: { queryKey: getGetRevenueReportQueryKey({ period }) } });
 
@@ -15,6 +16,8 @@ export default function AdminDashboard() {
     { label: "Total Revenue", value: `₹${(analytics?.totalRevenue ?? 0).toFixed(2)}`, trend: `₹${(analytics?.revenueThisMonth ?? 0).toFixed(2)} this month` },
     { label: "Total Courses", value: analytics?.totalCourses ?? 0, trend: "Published & Drafts" },
   ];
+
+  const tooltipStyle = { background: "#0f172a", border: "1px solid #1e293b", borderRadius: "8px", fontSize: "12px" };
 
   return (
     <div className="p-6">
@@ -37,30 +40,70 @@ export default function AdminDashboard() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 bg-card border-border">
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
             <CardTitle className="text-base">Revenue Overview</CardTitle>
-            <Select value={period} onValueChange={(v) => setPeriod(v as "7d" | "30d" | "90d" | "1y")}>
-              <SelectTrigger className="w-28 h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7d">7 days</SelectItem>
-                <SelectItem value="30d">30 days</SelectItem>
-                <SelectItem value="90d">90 days</SelectItem>
-                <SelectItem value="1y">1 year</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              {/* Chart type toggle */}
+              <div className="flex items-center rounded-md border border-border overflow-hidden h-8">
+                <button
+                  onClick={() => setChartType("area")}
+                  className={`px-2.5 h-full text-xs font-medium transition-colors ${
+                    chartType === "area"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  Area
+                </button>
+                <button
+                  onClick={() => setChartType("bar")}
+                  className={`px-2.5 h-full text-xs font-medium transition-colors border-l border-border ${
+                    chartType === "bar"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  Column
+                </button>
+              </div>
+              <Select value={period} onValueChange={(v) => setPeriod(v as "7d" | "30d" | "90d" | "1y")}>
+                <SelectTrigger className="w-28 h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7d">7 days</SelectItem>
+                  <SelectItem value="30d">30 days</SelectItem>
+                  <SelectItem value="90d">90 days</SelectItem>
+                  <SelectItem value="1y">1 year</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-xl font-bold mb-4">₹{(revenue?.totalRevenue ?? 0).toFixed(2)}</div>
             {revenue?.chartData && revenue.chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={revenue.chartData}>
-                  <defs><linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} /><stop offset="95%" stopColor="#2563eb" stopOpacity={0} /></linearGradient></defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#64748b" }} />
-                  <YAxis tick={{ fontSize: 10, fill: "#64748b" }} />
-                  <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: "8px", fontSize: "12px" }} />
-                  <Area type="monotone" dataKey="revenue" stroke="#2563eb" fill="url(#revGrad)" strokeWidth={2} />
-                </AreaChart>
+                {chartType === "area" ? (
+                  <AreaChart data={revenue.chartData}>
+                    <defs>
+                      <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#64748b" }} />
+                    <YAxis tick={{ fontSize: 10, fill: "#64748b" }} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Area type="monotone" dataKey="revenue" stroke="#2563eb" fill="url(#revGrad)" strokeWidth={2} />
+                  </AreaChart>
+                ) : (
+                  <BarChart data={revenue.chartData} barCategoryGap="30%">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(37,99,235,0.08)" }} />
+                    <Bar dataKey="revenue" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                )}
               </ResponsiveContainer>
             ) : <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">No revenue data yet</div>}
           </CardContent>
