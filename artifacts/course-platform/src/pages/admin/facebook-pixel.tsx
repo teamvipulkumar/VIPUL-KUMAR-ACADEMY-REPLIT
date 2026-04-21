@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Check, ExternalLink, Globe, Zap, AlertTriangle } from "lucide-react";
+import { Check, ExternalLink, Globe, Zap } from "lucide-react";
 
 export default function AdminFacebookPixelPage() {
   const { data: settings } = useGetAdminSettings({ query: { queryKey: getGetAdminSettingsQueryKey() } });
@@ -116,63 +116,6 @@ export default function AdminFacebookPixelPage() {
             <Button type="button" onClick={handleSave} disabled={saving} className="w-full">
               {saving ? "Saving..." : "Save Pixel Settings"}
             </Button>
-          </CardContent>
-        </Card>
-
-        {/* Traffic permissions — root cause fix */}
-        <Card className="border-red-500/50 bg-card">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-400" />
-              <CardTitle className="text-base text-red-300">Fix: Traffic Permission Settings (Events Blocked)</CardTitle>
-            </div>
-            <CardDescription className="text-red-400/80">
-              If you see <span className="font-mono text-xs bg-red-500/10 px-1 rounded">Pixel is unavailable due to traffic permission settings</span> in your browser console, Meta is blocking all pixel events from your domain. This must be fixed in Meta Events Manager.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 space-y-2 text-xs text-red-200">
-              <p className="font-semibold text-red-100">How to fix — remove domain restrictions:</p>
-              <ol className="space-y-2 list-none">
-                {[
-                  { step: "Open Meta Events Manager", link: { label: "business.facebook.com/events_manager", url: "https://business.facebook.com/events_manager2" } },
-                  { step: "Click on your Pixel → go to the Settings tab", link: null },
-                  { step: "Scroll to the \"Traffic\" or \"Domain Restrictions\" section", link: null },
-                  { step: "Remove all domain restrictions — OR add your website domain to the allowed list", link: null },
-                  { step: "Save changes. Events will start flowing immediately.", link: null },
-                ].map(({ step, link }, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <span className="w-4 h-4 rounded-full bg-red-500/30 text-red-200 text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
-                    <span>
-                      {step}
-                      {link && (
-                        <a href={link.url} target="_blank" rel="noopener noreferrer"
-                          className="ml-1 text-red-300 underline underline-offset-2 hover:text-red-100">
-                          {link.label}
-                        </a>
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full gap-2 border-red-500/30 text-red-300 hover:bg-red-500/10"
-              onClick={() => window.open(
-                form.pixelId
-                  ? `https://www.facebook.com/events_manager2/list/pixel/${form.pixelId}/settings`
-                  : "https://business.facebook.com/events_manager2",
-                "_blank"
-              )}
-            >
-              <ExternalLink className="w-4 h-4" />
-              Open Pixel Settings in Meta Events Manager
-            </Button>
-            <p className="text-xs text-muted-foreground/60 text-center">
-              Meta reference: <a href="https://www.facebook.com/business/help/572690630080597" target="_blank" rel="noopener noreferrer" className="underline underline-offset-1 hover:text-foreground">facebook.com/business/help/572690630080597</a>
-            </p>
           </CardContent>
         </Card>
 
