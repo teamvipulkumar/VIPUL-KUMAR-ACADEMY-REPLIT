@@ -823,6 +823,24 @@ export const GetRevenueReportResponse = zod.object({
 });
 
 /**
+ * @summary Get period-based summary (enrollments, revenue, new users)
+ */
+export const getAdminPeriodSummaryQueryPeriodDefault = `30d`;
+
+export const GetAdminPeriodSummaryQueryParams = zod.object({
+  period: zod
+    .enum(["7d", "14d", "30d"])
+    .default(getAdminPeriodSummaryQueryPeriodDefault),
+});
+
+export const GetAdminPeriodSummaryResponse = zod.object({
+  period: zod.string(),
+  revenue: zod.number(),
+  enrollments: zod.number(),
+  newUsers: zod.number(),
+});
+
+/**
  * @summary List all affiliates (admin)
  */
 export const AdminListAffiliatesResponseItem = zod.object({

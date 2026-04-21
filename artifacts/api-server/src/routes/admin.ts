@@ -306,6 +306,28 @@ router.get("/revenue", requireAdmin, async (req, res): Promise<void> => {
   res.json({ period, totalRevenue, chartData, byGateway });
 });
 
+router.get("/period-summary", requireAdmin, async (req, res): Promise<void> => {
+  const { period = "30d" } = req.query as Record<string, string>;
+  const days = period === "7d" ? 7 : period === "14d" ? 14 : 30;
+  const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  const [[revenueResult], [enrollmentsResult], [newUsersResult]] = await Promise.all([
+    db.select({ total: sum(paymentsTable.amount) }).from(paymentsTable)
+      .where(and(eq(paymentsTable.status, "completed"), gte(paymentsTable.createdAt, startDate))),
+    db.select({ count: count() }).from(enrollmentsTable)
+      .where(gte(enrollmentsTable.enrolledAt, startDate)),
+    db.select({ count: count() }).from(usersTable)
+      .where(gte(usersTable.createdAt, startDate)),
+  ]);
+
+  res.json({
+    period,
+    revenue: parseFloat(String(revenueResult?.total ?? 0)),
+    enrollments: enrollmentsResult?.count ?? 0,
+    newUsers: newUsersResult?.count ?? 0,
+  });
+});
+
 router.get("/affiliates", requireAdmin, async (req, res): Promise<void> => {
   const users = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, referralCode: usersTable.referralCode }).from(usersTable);
   const affiliateData = await Promise.all(users.map(async (u) => {

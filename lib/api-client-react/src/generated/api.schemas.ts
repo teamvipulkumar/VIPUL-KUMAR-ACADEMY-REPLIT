@@ -57,10 +57,7 @@ export interface User {
   avatarUrl?: string | null;
   referralCode: string;
   isBanned: boolean;
-  emailVerified: boolean;
   createdAt: string;
-  isStaff?: boolean;
-  staffPermissions?: Record<string, boolean> | null;
 }
 
 export interface AuthResponse {
@@ -470,6 +467,13 @@ export interface RevenueReport {
   byGateway: RevenueReportByGateway;
 }
 
+export interface AdminPeriodSummary {
+  period: string;
+  revenue: number;
+  enrollments: number;
+  newUsers: number;
+}
+
 export interface PlatformSettings {
   siteName: string;
   siteDescription: string;
@@ -634,6 +638,19 @@ export const GetRevenueReportPeriod = {
   "30d": "30d",
   "90d": "90d",
   "1y": "1y",
+} as const;
+
+export type GetAdminPeriodSummaryParams = {
+  period?: GetAdminPeriodSummaryPeriod;
+};
+
+export type GetAdminPeriodSummaryPeriod =
+  (typeof GetAdminPeriodSummaryPeriod)[keyof typeof GetAdminPeriodSummaryPeriod];
+
+export const GetAdminPeriodSummaryPeriod = {
+  "7d": "7d",
+  "14d": "14d",
+  "30d": "30d",
 } as const;
 
 export type AdminListEnrollmentsParams = {

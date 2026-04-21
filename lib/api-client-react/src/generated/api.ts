@@ -22,6 +22,7 @@ import type {
   AdminEnrollment,
   AdminListEnrollmentsParams,
   AdminListUsersParams,
+  AdminPeriodSummary,
   AdminUpdateUserBody,
   AffiliateDashboard,
   AffiliateUser,
@@ -43,6 +44,7 @@ import type {
   Enrollment,
   ErrorResponse,
   ForgotPasswordBody,
+  GetAdminPeriodSummaryParams,
   GetRecentActivityParams,
   GetRevenueReportParams,
   HealthStatus,
@@ -3263,6 +3265,106 @@ export function useGetRevenueReport<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetRevenueReportQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get period-based summary (enrollments, revenue, new users)
+ */
+export const getGetAdminPeriodSummaryUrl = (
+  params?: GetAdminPeriodSummaryParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/period-summary?${stringifiedParams}`
+    : `/api/admin/period-summary`;
+};
+
+export const getAdminPeriodSummary = async (
+  params?: GetAdminPeriodSummaryParams,
+  options?: RequestInit,
+): Promise<AdminPeriodSummary> => {
+  return customFetch<AdminPeriodSummary>(getGetAdminPeriodSummaryUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAdminPeriodSummaryQueryKey = (
+  params?: GetAdminPeriodSummaryParams,
+) => {
+  return [`/api/admin/period-summary`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetAdminPeriodSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminPeriodSummary>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetAdminPeriodSummaryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminPeriodSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetAdminPeriodSummaryQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAdminPeriodSummary>>
+  > = ({ signal }) =>
+    getAdminPeriodSummary(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminPeriodSummary>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminPeriodSummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminPeriodSummary>>
+>;
+export type GetAdminPeriodSummaryQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get period-based summary (enrollments, revenue, new users)
+ */
+
+export function useGetAdminPeriodSummary<
+  TData = Awaited<ReturnType<typeof getAdminPeriodSummary>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetAdminPeriodSummaryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminPeriodSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminPeriodSummaryQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

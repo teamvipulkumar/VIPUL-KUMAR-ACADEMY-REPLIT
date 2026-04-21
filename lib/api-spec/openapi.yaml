@@ -826,6 +826,26 @@ paths:
               schema:
                 $ref: "#/components/schemas/RevenueReport"
 
+  /admin/period-summary:
+    get:
+      operationId: getAdminPeriodSummary
+      tags: [admin]
+      summary: Get period-based summary (enrollments, revenue, new users)
+      parameters:
+        - in: query
+          name: period
+          schema:
+            type: string
+            enum: [7d, 14d, 30d]
+            default: 30d
+      responses:
+        "200":
+          description: Period summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPeriodSummary"
+
   /admin/affiliates:
     get:
       operationId: adminListAffiliates
@@ -1821,6 +1841,19 @@ components:
               type: number
           required: [stripe, razorpay]
       required: [period, totalRevenue, chartData, byGateway]
+
+    AdminPeriodSummary:
+      type: object
+      properties:
+        period:
+          type: string
+        revenue:
+          type: number
+        enrollments:
+          type: integer
+        newUsers:
+          type: integer
+      required: [period, revenue, enrollments, newUsers]
 
     ChartDataPoint:
       type: object

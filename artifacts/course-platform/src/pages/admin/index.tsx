@@ -1,13 +1,26 @@
 import { useState } from "react";
-import { useGetAdminAnalytics, getGetAdminAnalyticsQueryKey, useGetRevenueReport, getGetRevenueReportQueryKey } from "@workspace/api-client-react";
+import {
+  useGetAdminAnalytics, getGetAdminAnalyticsQueryKey,
+  useGetRevenueReport, getGetRevenueReportQueryKey,
+  useGetAdminPeriodSummary, getGetAdminPeriodSummaryQueryKey,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ComposedChart, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import {
+  ComposedChart, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  RadialBarChart, RadialBar, Legend,
+} from "recharts";
 
 export default function AdminDashboard() {
   const [period, setPeriod] = useState<"7d" | "30d" | "90d" | "1y">("30d");
+  const [summaryPeriod, setSummaryPeriod] = useState<"7d" | "14d" | "30d">("30d");
+
   const { data: analytics } = useGetAdminAnalytics({ query: { queryKey: getGetAdminAnalyticsQueryKey() } });
   const { data: revenue } = useGetRevenueReport({ period }, { query: { queryKey: getGetRevenueReportQueryKey({ period }) } });
+  const { data: summary } = useGetAdminPeriodSummary(
+    { period: summaryPeriod },
+    { query: { queryKey: getGetAdminPeriodSummaryQueryKey({ period: summaryPeriod }) } },
+  );
 
   const stats = [
     { label: "Total Users", value: analytics?.totalUsers ?? 0, trend: `+${analytics?.newUsersThisMonth ?? 0} this month` },
@@ -18,6 +31,35 @@ export default function AdminDashboard() {
 
   const tooltipStyle = { background: "#0f172a", border: "1px solid #1e293b", borderRadius: "8px", fontSize: "12px" };
   const hasData = revenue?.chartData && revenue.chartData.length > 0;
+
+  /* ── Radial chart data (normalise to 0-100 scale for display) ── */
+  const maxVal = Math.max(
+    summary?.enrollments ?? 0,
+    summary?.newUsers ?? 0,
+    1,
+  );
+  const revenueMax = Math.max(summary?.revenue ?? 0, 1);
+
+  const radialData = [
+    {
+      name: "Revenue",
+      value: Math.round(((summary?.revenue ?? 0) / revenueMax) * 100),
+      rawValue: `₹${(summary?.revenue ?? 0).toFixed(2)}`,
+      fill: "#2563eb",
+    },
+    {
+      name: "Enrollments",
+      value: Math.round(((summary?.enrollments ?? 0) / maxVal) * 100),
+      rawValue: summary?.enrollments ?? 0,
+      fill: "#10b981",
+    },
+    {
+      name: "New Users",
+      value: Math.round(((summary?.newUsers ?? 0) / maxVal) * 100),
+      rawValue: summary?.newUsers ?? 0,
+      fill: "#f59e0b",
+    },
+  ];
 
   return (
     <div className="p-6">
@@ -38,7 +80,8 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      {/* ── Row 1: Revenue chart + Top Courses ── */}
+      <div className="grid lg:grid-cols-3 gap-6 mb-6">
         <Card className="lg:col-span-2 bg-card border-border">
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-base">Revenue Overview</CardTitle>
@@ -97,6 +140,81 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Row 2: Period Summary Radial Chart ── */}
+      <Card className="bg-card border-border">
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardTitle className="text-base">Period Summary</CardTitle>
+          <div className="flex items-center rounded-md border border-border overflow-hidden h-8">
+            {(["7d", "14d", "30d"] as const).map((p, idx) => (
+              <button
+                key={p}
+                onClick={() => setSummaryPeriod(p)}
+                className={`px-3 h-full text-xs font-medium transition-colors ${idx > 0 ? "border-l border-border" : ""} ${
+                  summaryPeriod === p
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                {p === "7d" ? "Last 7 days" : p === "14d" ? "Last 14 days" : "Last 30 days"}
+              </button>
+            ))}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row items-center gap-8">
+            {/* Radial chart */}
+            <div className="flex-shrink-0">
+              <ResponsiveContainer width={260} height={260}>
+                <RadialBarChart
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={45}
+                  outerRadius={115}
+                  barSize={18}
+                  data={radialData}
+                  startAngle={90}
+                  endAngle={-270}
+                >
+                  <RadialBar
+                    background={{ fill: "rgba(255,255,255,0.04)" }}
+                    dataKey="value"
+                    cornerRadius={8}
+                  />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const d = payload[0].payload;
+                      return (
+                        <div style={tooltipStyle} className="px-3 py-2">
+                          <p className="font-semibold text-xs" style={{ color: d.fill }}>{d.name}</p>
+                          <p className="text-xs text-foreground">{d.rawValue}</p>
+                        </div>
+                      );
+                    }}
+                  />
+                </RadialBarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Legend + values */}
+            <div className="flex-1 space-y-4 w-full">
+              {radialData.map((item) => (
+                <div key={item.name} className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2.5">
+                    <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.fill }} />
+                    <span className="text-sm text-muted-foreground">{item.name}</span>
+                  </div>
+                  <span className="text-sm font-semibold">{item.rawValue}</span>
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground pt-2">
+                Data for the selected period. Each ring shows relative activity.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
