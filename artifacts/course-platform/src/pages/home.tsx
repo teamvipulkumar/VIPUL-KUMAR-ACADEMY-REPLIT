@@ -247,7 +247,7 @@ export default function Home() {
         </section>
       )}
       {/* 3 Simple Steps */}
-      <section className="relative py-20 px-6 overflow-hidden border-b border-border bg-background">
+      <section className="relative py-14 px-6 overflow-hidden border-b border-border/50 bg-background">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,hsl(var(--primary)/0.08)_0%,transparent_70%)]" />
         <div className="relative container mx-auto max-w-4xl text-center">
           <h2 className="text-3xl md:text-4xl font-extrabold mb-3">
@@ -257,25 +257,32 @@ export default function Home() {
           <p className="text-muted-foreground text-sm md:text-base mb-14 max-w-md mx-auto">
             Getting started with <span className="text-foreground font-medium">Vipul Kumar Academy</span> is easy. Begin your learning journey in minutes.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
-            {([
-              { num: "01", Icon: BookOpen, title: "Browse & Choose", desc: "Explore our curated collection of premium courses across multiple categories and find the perfect fit for your goals." },
-              { num: "02", Icon: Play,     title: "Enroll & Learn",  desc: "Get instant access to course materials, video lectures, and hands-on projects. Learn at your own pace." },
-              { num: "03", Icon: Trophy,   title: "Earn & Grow",     desc: "Complete courses, earn certificates, and grow your career with new in-demand skills." },
-            ] as const).map(({ num, Icon, title, desc }) => (
-              <div key={num} className="flex flex-col items-center text-center">
-                <div className="relative mb-6">
-                  <div className="w-20 h-20 rounded-2xl bg-card border border-border flex items-center justify-center shadow-lg">
-                    <Icon className="w-8 h-8 text-primary" strokeWidth={1.5} />
+
+          {/* step cards + connector line */}
+          <div className="relative">
+            {/* horizontal line through icon centers — desktop only */}
+            <div className="hidden md:block absolute top-10 left-[calc(100%/6)] right-[calc(100%/6)] h-px bg-border" />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
+              {([
+                { num: "01", Icon: BookOpen, title: "Browse & Choose", desc: "Explore our curated collection of premium courses across multiple categories and find the perfect fit for your goals." },
+                { num: "02", Icon: Play,     title: "Enroll & Learn",  desc: "Get instant access to course materials, video lectures, and hands-on projects. Learn at your own pace." },
+                { num: "03", Icon: Trophy,   title: "Earn & Grow",     desc: "Complete courses, earn certificates, and grow your career with new in-demand skills." },
+              ] as const).map(({ num, Icon, title, desc }) => (
+                <div key={num} className="flex flex-col items-center text-center">
+                  <div className="relative mb-6 z-10">
+                    <div className="w-20 h-20 rounded-2xl bg-card border border-border flex items-center justify-center shadow-lg">
+                      <Icon className="w-8 h-8 text-primary" strokeWidth={1.5} />
+                    </div>
+                    <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-md">
+                      <span className="text-[10px] font-bold text-primary-foreground leading-none">{num}</span>
+                    </div>
                   </div>
-                  <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-md">
-                    <span className="text-[10px] font-bold text-primary-foreground leading-none">{num}</span>
-                  </div>
+                  <h3 className="font-bold text-base mb-2 text-foreground">{title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed max-w-[220px]">{desc}</p>
                 </div>
-                <h3 className="font-bold text-base mb-2 text-foreground">{title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed max-w-[220px]">{desc}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>
