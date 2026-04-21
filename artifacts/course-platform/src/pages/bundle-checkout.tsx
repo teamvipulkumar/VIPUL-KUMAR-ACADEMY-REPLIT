@@ -250,58 +250,80 @@ type BundleStripeData = {
 function BundleStripeCheckoutModal({
   stripeData, onSuccess, onClose,
 }: { stripeData: BundleStripeData; onSuccess: (paymentIntentId: string) => void; onClose: () => void }) {
-  const cardRef = useRef<HTMLDivElement>(null);
+  const mountRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const stripeRef = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cardElementRef = useRef<any>(null);
-  const [cardReady, setCardReady] = useState(false);
+  const elementsRef = useRef<any>(null);
+  const [ready, setReady] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [cardError, setCardError] = useState("");
+  const [payError, setPayError] = useState("");
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let mounted = true;
     loadStripe(stripeData.publishableKey).then(stripe => {
-      if (!stripe || !mounted || !cardRef.current) return;
+      if (!stripe || !mounted || !mountRef.current) return;
       stripeRef.current = stripe;
-      const elements = stripe.elements({ clientSecret: stripeData.clientSecret });
-      const cardEl = elements.create("card", {
-        style: {
-          base: {
-            color: "#f1f5f9", fontFamily: "inherit", fontSize: "14px",
-            "::placeholder": { color: "#64748b" }, iconColor: "#94a3b8",
+      const elements = stripe.elements({
+        clientSecret: stripeData.clientSecret,
+        appearance: {
+          theme: "night",
+          variables: {
+            colorPrimary: "#635BFF",
+            colorBackground: "#0f1629",
+            colorText: "#f1f5f9",
+            colorTextSecondary: "#94a3b8",
+            colorDanger: "#f87171",
+            colorSuccess: "#4ade80",
+            fontFamily: "Inter, system-ui, sans-serif",
+            fontSizeBase: "14px",
+            borderRadius: "8px",
+            spacingUnit: "4px",
           },
-          invalid: { color: "#f87171" },
+          rules: {
+            ".Input": { border: "1px solid #1e293b", backgroundColor: "#0d1424", color: "#f1f5f9" },
+            ".Input:focus": { border: "1px solid #635BFF", boxShadow: "0 0 0 2px rgba(99,91,255,0.2)" },
+            ".Label": { color: "#94a3b8", fontSize: "12px", fontWeight: "500" },
+            ".Tab": { border: "1px solid #1e293b", backgroundColor: "#0d1424" },
+            ".Tab:hover": { backgroundColor: "#1e293b" },
+            ".Tab--selected": { border: "1px solid #635BFF", backgroundColor: "#635BFF15" },
+            ".TabIcon--selected": { fill: "#635BFF" },
+            ".TabLabel--selected": { color: "#635BFF" },
+          },
         },
       });
-      cardEl.mount(cardRef.current);
-      cardElementRef.current = cardEl;
-      cardEl.on("ready", () => { if (mounted) setCardReady(true); });
-      cardEl.on("change", (e: { error?: { message: string } }) => {
-        if (mounted) setCardError(e.error?.message ?? "");
-      });
+      elementsRef.current = elements;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const paymentEl = (elements as any).create("payment", { layout: "tabs" });
+      paymentEl.mount(mountRef.current);
+      paymentEl.on("ready", () => { if (mounted) setReady(true); });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      paymentEl.on("change", (e: any) => { if (mounted) setPayError(e.error?.message ?? ""); });
     });
     return () => {
       mounted = false;
-      cardElementRef.current?.unmount?.();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      elementsRef.current?.getElement?.("payment" as any)?.unmount?.();
     };
   }, [stripeData.clientSecret, stripeData.publishableKey]);
 
   const handlePay = async () => {
-    if (!stripeRef.current || !cardElementRef.current) return;
+    if (!stripeRef.current || !elementsRef.current) return;
     setProcessing(true);
-    setCardError("");
+    setPayError("");
     try {
-      const { error, paymentIntent } = await stripeRef.current.confirmCardPayment(
-        stripeData.clientSecret,
-        { payment_method: { card: cardElementRef.current } }
-      );
-      if (error) { setCardError(error.message ?? "Payment failed"); return; }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error, paymentIntent } = await (stripeRef.current as any).confirmPayment({
+        elements: elementsRef.current,
+        confirmParams: { return_url: window.location.href },
+        redirect: "if_required",
+      });
+      if (error) { setPayError(error.message ?? "Payment failed"); return; }
       if (paymentIntent?.status === "succeeded") {
         onSuccess(paymentIntent.id);
       } else {
-        setCardError(`Unexpected payment status: ${paymentIntent?.status}`);
+        setPayError(`Unexpected payment status: ${paymentIntent?.status}`);
       }
     } finally {
       setProcessing(false);
@@ -309,64 +331,54 @@ function BundleStripeCheckoutModal({
   };
 
   return (
-    <div ref={overlayRef} className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+    <div ref={overlayRef} className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={e => { if (e.target === overlayRef.current && !processing) onClose(); }}>
-      <div className="bg-[#0d1424] border border-white/10 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
-        <div className="px-5 pt-5 pb-4 flex items-center justify-between bg-[#635BFF]/10 border-b border-[#635BFF]/20">
-          <div className="flex items-center gap-2.5">
-            <img src={`${import.meta.env.BASE_URL}stripe-logo.png`} alt="Stripe" className="w-8 h-8 object-contain rounded" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-            <div>
-              <p className="font-bold text-sm text-foreground">Stripe Checkout</p>
-              <p className="text-xs text-muted-foreground truncate max-w-[160px]">{stripeData.bundleName}</p>
-            </div>
+      <div className="bg-[#0f1629] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+        <div className="px-6 pt-5 pb-4 flex items-center justify-between border-b border-white/8">
+          <div>
+            <p className="font-bold text-base text-foreground">{stripeData.bundleName}</p>
+            <p className="text-2xl font-bold text-[#635BFF] mt-0.5">₹{stripeData.amount.toFixed(2)}</p>
           </div>
-          <div className="text-right">
-            <p className="font-bold text-lg text-foreground">₹{stripeData.amount.toFixed(2)}</p>
-            <div className="flex items-center gap-1 text-[10px] text-green-400 justify-end"><Lock className="w-2.5 h-2.5" />Secure</div>
-          </div>
+          <button type="button" onClick={onClose} disabled={processing}
+            className="text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-white/5 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        {processing && (
-          <div className="px-5 py-10 text-center space-y-4">
-            <div className="w-14 h-14 rounded-full border-4 border-primary/20 border-t-primary animate-spin mx-auto" />
-            <p className="font-semibold text-foreground">Processing Payment...</p>
-            <p className="text-xs text-muted-foreground">Please do not close this window</p>
-          </div>
-        )}
+        <div className="px-6 py-5">
+          {!ready && !processing && (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-8">
+              <AlertCircle className="w-4 h-4 animate-pulse" />Loading secure payment form...
+            </div>
+          )}
+          <div ref={mountRef} className={ready ? "block" : "hidden"} />
 
-        {!processing && (
-          <div className="p-5 space-y-4">
-            <div>
-              <Label className="text-xs text-muted-foreground mb-1.5 block">Card Details</Label>
-              <div ref={cardRef} className="bg-background border border-border rounded-lg px-3 py-3 min-h-[42px]" />
-              {!cardReady && (
-                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />Loading secure card fields...
-                </p>
-              )}
+          {processing && (
+            <div className="text-center py-8 space-y-3">
+              <div className="w-12 h-12 rounded-full border-4 border-[#635BFF]/20 border-t-[#635BFF] animate-spin mx-auto" />
+              <p className="font-semibold text-foreground">Processing Payment...</p>
+              <p className="text-xs text-muted-foreground">Please do not close this window</p>
             </div>
-            {cardError && (
-              <div className="flex items-center gap-2 text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">
-                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />{cardError}
-              </div>
-            )}
-            <div className="flex flex-col gap-2 pt-1">
-              <Button onClick={handlePay} disabled={!cardReady || processing}
-                className="w-full bg-[#635BFF] hover:bg-[#5349e8] gap-2 font-semibold">
-                <Lock className="w-4 h-4" />Pay ₹{stripeData.amount.toFixed(2)} Securely
-              </Button>
-              <button type="button" onClick={onClose} disabled={processing}
-                className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-center gap-1">
-                <X className="w-3 h-3" />Cancel
-              </button>
+          )}
+
+          {payError && (
+            <div className="flex items-center gap-2 text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2 mt-3">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />{payError}
             </div>
-            <div className="flex items-center justify-center gap-3 text-[10px] text-muted-foreground pt-1 border-t border-border">
-              <span className="flex items-center gap-1"><Shield className="w-3 h-3 text-green-400" />SSL Encrypted</span>
-              <span>·</span>
-              <span className="flex items-center gap-1"><CreditCard className="w-3 h-3" />Powered by Stripe</span>
-            </div>
-          </div>
-        )}
+          )}
+
+          {!processing && (
+            <Button onClick={handlePay} disabled={!ready || processing}
+              className="w-full mt-4 bg-[#635BFF] hover:bg-[#5349e8] h-11 font-semibold text-sm gap-2">
+              <Lock className="w-4 h-4" />Pay ₹{stripeData.amount.toFixed(2)}
+            </Button>
+          )}
+        </div>
+
+        <div className="px-6 pb-4 flex items-center justify-center gap-2 text-[11px] text-muted-foreground border-t border-white/8 pt-3">
+          <Shield className="w-3 h-3 text-green-400" />
+          <span>Secured by Stripe · 256-bit SSL</span>
+        </div>
       </div>
     </div>
   );
