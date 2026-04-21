@@ -494,7 +494,7 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
   if (payment.status === "completed") {
     // Payment was already processed (by webhook or previous verify call) — show success, not "already enrolled"
     const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
-    res.json({ success: true, enrolled: true, courseId: payment.courseId, courseTitle: course?.title });
+    res.json({ success: true, enrolled: true, courseId: payment.courseId, courseTitle: course?.title, amount: parseFloat(String(payment.amount)), currency: "INR" });
     return;
   }
 
@@ -539,7 +539,7 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
           const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
           if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
         }
-        res.json({ success: true, enrolled: true, bundleId: payment.bundleId, bundleName: bundle?.name, courseCount: bundleCourses.length });
+        res.json({ success: true, enrolled: true, bundleId: payment.bundleId, bundleName: bundle?.name, courseCount: bundleCourses.length, amount: parseFloat(String(payment.amount)), currency: "INR" });
         return;
       }
 
@@ -559,7 +559,7 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
       }
 
       const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
-      res.json({ success: true, enrolled: true, courseId: payment.courseId, courseTitle: course?.title });
+      res.json({ success: true, enrolled: true, courseId: payment.courseId, courseTitle: course?.title, amount: parseFloat(String(payment.amount)), currency: "INR" });
     } else if (status === "ACTIVE") {
       res.json({ success: false, pending: true, status, message: "Payment is pending. Please wait." });
     } else {
@@ -780,7 +780,7 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
   if (!payment) { res.status(404).json({ error: "Payment record not found" }); return; }
   if (payment.status === "completed") {
     const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
-    res.json({ success: true, enrolled: true, courseId: payment.courseId, courseTitle: course?.title });
+    res.json({ success: true, enrolled: true, courseId: payment.courseId, courseTitle: course?.title, amount: parseFloat(String(payment.amount)), currency: "INR" });
     return;
   }
 
@@ -825,7 +825,7 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
           const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
           if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
         }
-        res.json({ success: true, enrolled: true, bundleId: payment.bundleId, bundleName: bundle?.name, courseCount: bundleCourses.length });
+        res.json({ success: true, enrolled: true, bundleId: payment.bundleId, bundleName: bundle?.name, courseCount: bundleCourses.length, amount: parseFloat(String(payment.amount)), currency: "INR" });
         return;
       }
 
@@ -846,7 +846,7 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
       }
 
       const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
-      res.json({ success: true, enrolled: true, courseId: payment.courseId, courseTitle: course?.title });
+      res.json({ success: true, enrolled: true, courseId: payment.courseId, courseTitle: course?.title, amount: parseFloat(String(payment.amount)), currency: "INR" });
     } else if (resultStatus === "PENDING") {
       res.json({ success: false, pending: true, status: resultStatus, message: "Payment is pending. Please wait a moment and try again." });
     } else {

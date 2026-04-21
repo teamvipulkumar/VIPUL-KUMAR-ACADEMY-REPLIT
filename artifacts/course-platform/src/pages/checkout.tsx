@@ -399,12 +399,17 @@ export default function CheckoutPage() {
     if (!success && course?.isEnrolled) navigate(`/learn/${courseId}`);
   }, [course?.isEnrolled, success]);
 
-  // Fire InitiateCheckout FB pixel event when checkout page opens
+  // Fire InitiateCheckout FB pixel event once the course price has loaded (avoid value: 0)
+  const initCheckoutFired = useRef(false);
   useEffect(() => {
+    if (initCheckoutFired.current || price <= 0) return;
+    initCheckoutFired.current = true;
     fbTrack("InitiateCheckout", {
+      value: discountedPrice,
+      currency: "INR",
+      num_items: 1,
       content_type: "product",
       content_ids: [String(courseId)],
-      currency: "INR",
     });
     const ref = getStoredRef();
     if (!ref) return;
@@ -413,7 +418,7 @@ export default function CheckoutPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ affiliateRef: ref }),
     }).catch(() => {});
-  }, []);
+  }, [price, discountedPrice, courseId]);
 
   const handleApplyCoupon = () => {
     if (!couponCode.trim()) return;
