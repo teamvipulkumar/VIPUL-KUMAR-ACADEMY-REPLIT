@@ -12,8 +12,8 @@ import {
 } from "recharts";
 
 export default function AdminDashboard() {
-  const [period, setPeriod] = useState<"7d" | "30d" | "90d" | "1y">("30d");
-  const [summaryPeriod, setSummaryPeriod] = useState<"7d" | "14d" | "30d">("30d");
+  const [period, setPeriod] = useState<"7d" | "30d" | "90d" | "1y">("7d");
+  const [summaryPeriod, setSummaryPeriod] = useState<"7d" | "14d" | "30d">("7d");
 
   const { data: analytics } = useGetAdminAnalytics({ query: { queryKey: getGetAdminAnalyticsQueryKey() } });
   const { data: revenue } = useGetRevenueReport({ period }, { query: { queryKey: getGetRevenueReportQueryKey({ period }) } });
