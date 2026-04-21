@@ -71,8 +71,7 @@ html, body {
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --nav-bg: rgba(7, 12, 26, 0.82);
-  --nav-bg-solid: rgba(7, 12, 26, 0.97);
+  --nav-bg: #070c1a;
   --nav-border: rgba(255,255,255,0.06);
   --dropdown-bg: #0d1424;
   --dropdown-border: rgba(255,255,255,0.10);
@@ -147,8 +146,7 @@ html, body {
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .06);
 
-  --nav-bg: rgba(255, 255, 255, 0.85);
-  --nav-bg-solid: rgba(255, 255, 255, 0.98);
+  --nav-bg: #ffffff;
   --nav-border: rgba(0,0,0,0.08);
   --dropdown-bg: #ffffff;
   --dropdown-border: rgba(0,0,0,0.10);
@@ -227,8 +225,7 @@ html, body {
   --elevate-1: rgba(64, 138, 113, 0.06);
   --elevate-2: rgba(64, 138, 113, 0.12);
 
-  --nav-bg: rgba(9, 20, 19, 0.82);
-  --nav-bg-solid: rgba(9, 20, 19, 0.97);
+  --nav-bg: #091413;
   --nav-border: rgba(176, 228, 204, 0.08);
   --dropdown-bg: #0e1e1c;
   --dropdown-border: rgba(176, 228, 204, 0.12);

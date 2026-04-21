@@ -5,7 +5,7 @@ import { useTheme } from "@/lib/theme-context";
 import { Button } from "@/components/ui/button";
 import { useLogout, useListNotifications, getListNotificationsQueryKey, getGetMeQueryKey, useMarkNotificationRead, useMarkAllNotificationsRead } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Bell, Menu, X, BookOpen, Share2, GraduationCap, LogOut, ShieldCheck, ChevronRight, Mail, Youtube, Twitter, Linkedin, Instagram, CheckCheck, Sun, Moon, ArrowRight, Star, Award, Users } from "lucide-react";
+import { Bell, Menu, X, BookOpen, Share2, GraduationCap, LogOut, ShieldCheck, ChevronRight, Mail, Youtube, Twitter, Linkedin, Instagram, CheckCheck, Sun, Moon } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EmailVerificationBanner } from "@/components/email-verification-banner";
 
@@ -141,7 +141,7 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
+    const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -149,12 +149,14 @@ export function Navbar() {
   const handleLogout = () => {
     logout.mutate(undefined, {
       onSuccess: () => {
+        // Instantly clear auth state so UI updates immediately without a refresh
         queryClient.setQueryData(getGetMeQueryKey(), null);
         queryClient.removeQueries({ queryKey: getGetMeQueryKey() });
         setMobileOpen(false);
         setLocation("/");
       },
       onError: () => {
+        // Even on error, clear client-side auth state and redirect
         queryClient.setQueryData(getGetMeQueryKey(), null);
         queryClient.removeQueries({ queryKey: getGetMeQueryKey() });
         setMobileOpen(false);
@@ -165,80 +167,41 @@ export function Navbar() {
 
   const navLinks = [
     { href: "/courses", label: "Courses", icon: BookOpen },
-    { href: "/about-us", label: "About", icon: Award },
     ...(isAuthenticated ? [
       { href: "/my-courses", label: "My Learning", icon: GraduationCap },
       { href: "/affiliate", label: "Affiliate", icon: Share2 },
-    ] : [
-      { href: "/affiliate", label: "Earn with Us", icon: Share2 },
-    ]),
+    ] : []),
     ...(isAdmin ? [{ href: "/admin", label: "Admin", icon: ShieldCheck }] : []),
   ];
 
   const linkClass = (href: string) =>
     `relative py-1 text-sm font-medium transition-colors hover:text-foreground after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:rounded-full after:bg-primary after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:duration-200 ${
-      location === href ? "text-foreground after:scale-x-100" : "text-foreground/55"
+      location === href
+        ? "text-foreground after:scale-x-100"
+        : "text-foreground/60"
     }`;
-
-  const isScrolledOrOpen = scrolled || mobileOpen;
 
   return (
     <>
-      {/* ── Trust bar (desktop only) ── */}
-      <div className={`hidden md:flex items-center justify-center gap-5 px-4 py-1.5 text-[11px] font-medium border-b transition-all duration-300 ${scrolled ? "h-0 overflow-hidden opacity-0 border-transparent py-0" : "opacity-100"}`}
-        style={{ backgroundColor: "var(--nav-bg)", borderColor: "var(--nav-border)" }}>
-        <div className="flex items-center gap-1.5 text-muted-foreground/70">
-          <div className="flex gap-px">
-            {[1,2,3,4,5].map(i => <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />)}
-          </div>
-          <span>4.9/5 · Rated by 2,400+ students</span>
-        </div>
-        <div className="w-px h-3.5 bg-border/50" />
-        <div className="flex items-center gap-1.5 text-muted-foreground/70">
-          <Award className="w-3 h-3 text-primary/70" />
-          <span>Industry-recognized certificates</span>
-        </div>
-        <div className="w-px h-3.5 bg-border/50" />
-        <div className="flex items-center gap-1.5 text-muted-foreground/70">
-          <Users className="w-3 h-3 text-primary/70" />
-          <span>Community of 2,400+ operators</span>
-        </div>
-      </div>
+      <header className={`fixed top-0 left-0 right-0 z-50 w-full border-b transition-all duration-300 ${
+        scrolled ? "shadow-[0_2px_20px_0_rgba(0,0,0,0.15)]" : ""
+      }`} style={{ backgroundColor: "var(--nav-bg)", borderColor: "var(--nav-border)" }}>
+        <div className={`max-w-screen-xl mx-auto flex items-center px-4 md:px-8 gap-4 transition-all duration-300 ${scrolled ? "h-12" : "h-16"}`}>
 
-      {/* ── Main navbar ── */}
-      <header className={`sticky top-0 left-0 right-0 z-50 w-full border-b transition-all duration-300 ${
-        isScrolledOrOpen
-          ? "shadow-[0_4px_32px_0_rgba(0,0,0,0.22)] backdrop-blur-xl"
-          : "backdrop-blur-md"
-      }`} style={{ backgroundColor: isScrolledOrOpen ? "var(--nav-bg-solid)" : "var(--nav-bg)", borderColor: "var(--nav-border)" }}>
-
-        {/* Subtle gradient accent line at bottom */}
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent pointer-events-none" />
-
-        <div className={`max-w-screen-xl mx-auto flex items-center px-4 md:px-8 gap-6 transition-all duration-300 ${scrolled ? "h-13" : "h-16"}`}>
-
-          {/* ── Logo ── */}
-          <Link href="/" className="flex items-center gap-3 flex-shrink-0 group" onClick={() => setMobileOpen(false)}>
-            <div className={`transition-all duration-300 ${scrolled ? "scale-[0.88] origin-left" : "scale-100"}`}>
-              <AcademyLogo size={36} />
+          {/* ── Logo (left) ── */}
+          <Link href="/" className="flex items-center gap-2.5 flex-shrink-0 group" onClick={() => setMobileOpen(false)}>
+            <div className={`transition-all duration-300 ${scrolled ? "scale-[0.85] origin-left" : "scale-100"}`}>
+              <AcademyLogo size={34} />
             </div>
             <div className="leading-none">
-              <div className="font-black text-[15px] tracking-[0.06em] text-foreground whitespace-nowrap">
-                VIPUL KUMAR
-              </div>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="font-bold text-[9px] tracking-[0.28em] text-primary uppercase whitespace-nowrap">Academy</span>
-                <span className="w-1 h-1 rounded-full bg-primary/50 flex-shrink-0" />
-                <span className="font-semibold text-[9px] tracking-[0.15em] text-muted-foreground/60 uppercase whitespace-nowrap">Est. 2020</span>
-              </div>
+              <span className="font-extrabold text-sm tracking-wide text-foreground whitespace-nowrap">VIPUL KUMAR</span>
+              <br />
+              <span className="font-bold text-[11px] tracking-[0.18em] text-primary uppercase whitespace-nowrap">Academy</span>
             </div>
           </Link>
 
-          {/* ── Divider ── */}
-          <div className="hidden lg:block w-px h-6 bg-border/60 flex-shrink-0" />
-
-          {/* ── Desktop nav ── */}
-          <nav className="hidden md:flex items-center gap-6 flex-1">
+          {/* ── Center nav (desktop) ── */}
+          <nav className="hidden md:flex items-center gap-7 flex-1 justify-end">
             {navLinks.map(link => (
               <Link key={link.href} href={link.href} className={linkClass(link.href)}>
                 {link.label}
@@ -246,15 +209,15 @@ export function Navbar() {
             ))}
           </nav>
 
-          {/* ── Right actions ── */}
+          {/* ── Right actions (desktop) ── */}
           <div className="hidden md:flex items-center gap-2 ml-auto flex-shrink-0">
             {!isAuthenticated ? (
               <>
-                <Button variant="ghost" size="sm" asChild className="text-foreground/60 hover:text-foreground text-sm h-9 px-4">
-                  <Link href="/login">Sign In</Link>
+                <Button variant="ghost" size="sm" asChild className="text-foreground/70 hover:text-foreground">
+                  <Link href="/login">Log in</Link>
                 </Button>
-                <Button size="sm" asChild className="h-9 px-5 text-sm font-semibold bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/25 rounded-lg gap-1.5">
-                  <Link href="/register">Start Learning <ArrowRight className="w-3.5 h-3.5" /></Link>
+                <Button size="sm" asChild className="bg-primary hover:bg-primary/90 text-white font-semibold px-4 rounded-lg">
+                  <Link href="/register">Get Started</Link>
                 </Button>
               </>
             ) : (
@@ -262,21 +225,20 @@ export function Navbar() {
                 <NotificationPopup iconSize="w-4 h-4" />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="gap-2 h-9 px-2.5 rounded-lg hover:bg-white/5">
-                      <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-white flex-shrink-0 ring-2 ring-primary/20">
+                    <Button variant="ghost" size="sm" className="gap-2 h-9 px-2 rounded-lg hover:bg-white/5">
+                      <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
                         {user?.name?.charAt(0).toUpperCase()}
                       </div>
                       <span className="hidden lg:block text-sm font-medium text-foreground/80">{user?.name?.split(" ")[0]}</span>
-                      <ChevronRight className="hidden lg:block w-3.5 h-3.5 text-muted-foreground/50 rotate-90" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56 border" style={{ backgroundColor: "var(--dropdown-bg)", borderColor: "var(--dropdown-border)" }}>
-                    <div className="px-3 py-2.5 border-b mb-1" style={{ borderColor: "var(--dropdown-border)" }}>
+                    <div className="px-3 py-2 border-b mb-1" style={{ borderColor: "var(--dropdown-border)" }}>
                       <p className="text-xs font-semibold text-foreground truncate">{user?.name}</p>
                       <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                     </div>
                     <DropdownMenuItem asChild><Link href="/my-courses">My Learning</Link></DropdownMenuItem>
-                    <DropdownMenuItem asChild><Link href="/affiliate">Affiliate Program</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/affiliate">Affiliate</Link></DropdownMenuItem>
                     {isAdmin && (
                       <>
                         <DropdownMenuSeparator />
@@ -325,25 +287,14 @@ export function Navbar() {
         </div>
       </header>
 
-      {/* ── Mobile drawer ── */}
+      {/* ── Mobile full-screen drawer ── */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <nav className="absolute top-[65px] left-0 right-0 border-b shadow-2xl max-h-[calc(100vh-65px)] overflow-y-auto" style={{ backgroundColor: "var(--mobile-drawer-bg)", borderColor: "var(--nav-border)" }}>
-
-            {/* Brand trust strip */}
-            {!isAuthenticated && (
-              <div className="flex items-center justify-center gap-1.5 px-5 py-2.5 border-b border-white/5 bg-primary/5">
-                <div className="flex gap-px">
-                  {[1,2,3,4,5].map(i => <Star key={i} className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />)}
-                </div>
-                <span className="text-xs font-medium text-muted-foreground/80">4.9/5 · 2,400+ students enrolled</span>
-              </div>
-            )}
-
+          <nav className="absolute top-16 left-0 right-0 border-b shadow-2xl max-h-[calc(100vh-4rem)] overflow-y-auto" style={{ backgroundColor: "var(--mobile-drawer-bg)", borderColor: "var(--nav-border)" }}>
             {isAuthenticated && (
               <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5">
-                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-white ring-2 ring-primary/20">
+                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-white">
                   {user?.name?.charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -353,7 +304,7 @@ export function Navbar() {
               </div>
             )}
 
-            <div className="py-1.5">
+            <div className="py-2">
               {navLinks.map(link => (
                 <Link key={link.href} href={link.href} onClick={() => setMobileOpen(false)}>
                   <div className={`flex items-center gap-3 px-5 py-3.5 text-sm font-medium transition-colors ${
@@ -363,22 +314,21 @@ export function Navbar() {
                   }`}>
                     <link.icon className="w-4 h-4 flex-shrink-0" />
                     {link.label}
-                    <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground/40" />
+                    <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground/50" />
                   </div>
                 </Link>
               ))}
             </div>
 
-            <div className="px-4 py-4 border-t border-white/5 space-y-2.5">
+            <div className="px-4 py-4 border-t border-white/5 space-y-2">
               {!isAuthenticated ? (
                 <>
-                  <Button className="w-full h-11 bg-primary hover:bg-primary/90 font-semibold text-sm shadow-md shadow-primary/20 gap-2" asChild onClick={() => setMobileOpen(false)}>
-                    <Link href="/register">Start Learning Free <ArrowRight className="w-4 h-4" /></Link>
+                  <Button className="w-full bg-primary hover:bg-primary/90 font-semibold" asChild onClick={() => setMobileOpen(false)}>
+                    <Link href="/register">Get Started Free</Link>
                   </Button>
-                  <Button variant="outline" className="w-full h-11 border-white/10 hover:bg-white/5 text-sm font-medium" asChild onClick={() => setMobileOpen(false)}>
-                    <Link href="/login">Sign In</Link>
+                  <Button variant="outline" className="w-full border-white/10 hover:bg-white/5" asChild onClick={() => setMobileOpen(false)}>
+                    <Link href="/login">Log In</Link>
                   </Button>
-                  <p className="text-center text-[11px] text-muted-foreground/50 pt-1">No credit card required · 30-day guarantee</p>
                 </>
               ) : (
                 <Button
