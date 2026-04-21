@@ -355,30 +355,30 @@ export default function Home() {
       </section>
 
       {/* ── FINAL CTA ────────────────────────────────────────────────────── */}
-      <section className="relative py-24 px-6 overflow-hidden">
+      <section className="relative py-14 md:py-24 px-4 sm:px-6 overflow-hidden">
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_50%,hsl(var(--primary)/0.12),transparent)]" />
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_40%_40%_at_50%_50%,hsl(var(--primary)/0.06),transparent)]" />
         <div className="max-w-2xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/8 px-4 py-1.5 text-xs font-semibold tracking-wide text-primary uppercase mb-6">
-            <Zap className="w-3 h-3" /> Limited Seats — Enroll Today
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/8 px-3 py-1 text-[10px] sm:text-xs font-semibold tracking-widest text-primary uppercase mb-5 sm:mb-6">
+            <Zap className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0" /> Limited Seats — Enroll Today
           </div>
-          <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 leading-tight">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 leading-tight">
             Stop Consuming.<br />Start Executing.
           </h2>
-          <p className="text-muted-foreground text-base mb-10 max-w-lg mx-auto leading-relaxed">
+          <p className="text-muted-foreground text-sm sm:text-base mb-7 md:mb-10 max-w-xs sm:max-w-lg mx-auto leading-relaxed">
             The difference between reading about revenue and actually earning it is execution.
             Get the exact blueprints used by real operators — starting today.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button size="lg" className="h-12 px-10 text-sm font-semibold shadow-lg shadow-primary/25" asChild>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center w-full max-w-xs sm:max-w-none mx-auto">
+            <Button size="lg" className="h-11 sm:h-12 px-8 sm:px-10 text-sm font-semibold shadow-lg shadow-primary/25 w-full sm:w-auto" asChild>
               <Link href="/register">Create Free Account <ArrowRight className="w-4 h-4 ml-2" /></Link>
             </Button>
-            <Button size="lg" variant="outline" className="h-12 px-10 text-sm border-border/60 hover:border-border" asChild>
+            <Button size="lg" variant="outline" className="h-11 sm:h-12 px-8 sm:px-10 text-sm border-border/60 hover:border-border w-full sm:w-auto" asChild>
               <Link href="/courses">Browse Courses</Link>
             </Button>
           </div>
-          <p className="mt-6 text-xs text-muted-foreground/60">
-            No credit card required to register · 30-day money-back guarantee
+          <p className="mt-5 text-xs text-muted-foreground/60">
+            No credit card required · 30-day money-back guarantee
           </p>
         </div>
       </section>
