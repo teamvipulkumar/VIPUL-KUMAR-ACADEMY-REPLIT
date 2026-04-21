@@ -218,7 +218,7 @@ export default function LearnPage() {
       <div className="flex flex-1 overflow-hidden relative">
         {/* ── Mobile sidebar backdrop ── */}
         {sidebarOpen && (
-          <div className="md:hidden fixed inset-0 z-20 bg-black/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
+          <div className="md:hidden fixed top-13 left-0 right-0 bottom-0 z-20 bg-black/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
         )}
 
         {/* ── Sidebar — overlay on mobile, push on desktop ── */}
