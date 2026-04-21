@@ -175,41 +175,6 @@ export default function Home() {
         </div>
         </section>
       )}
-      {/* 3 Simple Steps */}
-      <section className="relative py-20 px-6 overflow-hidden" style={{ background: "radial-gradient(ellipse 80% 55% at 50% 0%, rgba(30,58,138,0.3) 0%, transparent 70%), #060d1f" }}>
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:32px_32px]" />
-        <div className="relative container mx-auto max-w-4xl text-center">
-          <h2 className="text-3xl md:text-4xl font-extrabold mb-3">
-            Start Learning in{" "}
-            <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">3 Simple Steps</span>
-          </h2>
-          <p className="text-muted-foreground text-sm md:text-base mb-14 max-w-md mx-auto">
-            Getting started with <span className="text-foreground font-medium">Vipul Kumar Academy</span> is easy. Begin your learning journey in minutes.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
-            {([
-              { num: "01", Icon: BookOpen, title: "Browse & Choose", desc: "Explore our curated collection of premium courses across multiple categories and find the perfect fit for your goals." },
-              { num: "02", Icon: Play,     title: "Enroll & Learn",  desc: "Get instant access to course materials, video lectures, and hands-on projects. Learn at your own pace." },
-              { num: "03", Icon: Trophy,   title: "Earn & Grow",     desc: "Complete courses, earn certificates, and grow your career with new in-demand skills." },
-            ] as const).map(({ num, Icon, title, desc }) => (
-              <div key={num} className="flex flex-col items-center text-center">
-                <div className="relative mb-6">
-                  <div className="w-20 h-20 rounded-2xl flex items-center justify-center"
-                    style={{ background: "linear-gradient(135deg,#0f1f45 0%,#162050 100%)", boxShadow: "0 0 0 1px rgba(99,139,255,0.18), 0 8px 32px rgba(30,58,138,0.45)" }}>
-                    <Icon className="w-8 h-8 text-blue-400" strokeWidth={1.5} />
-                  </div>
-                  <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-900/60">
-                    <span className="text-[10px] font-bold text-white leading-none">{num}</span>
-                  </div>
-                </div>
-                <h3 className="font-bold text-base mb-2">{title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed max-w-[220px]">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Packages */}
       {showPackages && (bundlesLoading || (bundles && bundles.length > 0)) && (
         <section className="py-20 px-6 bg-card/30 border-y border-border">
@@ -281,6 +246,40 @@ export default function Home() {
           </div>
         </section>
       )}
+      {/* 3 Simple Steps */}
+      <section className="relative py-20 px-6 overflow-hidden border-b border-border bg-background">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,hsl(var(--primary)/0.08)_0%,transparent_70%)]" />
+        <div className="relative container mx-auto max-w-4xl text-center">
+          <h2 className="text-3xl md:text-4xl font-extrabold mb-3">
+            Start Learning in{" "}
+            <span className="text-primary">3 Simple Steps</span>
+          </h2>
+          <p className="text-muted-foreground text-sm md:text-base mb-14 max-w-md mx-auto">
+            Getting started with <span className="text-foreground font-medium">Vipul Kumar Academy</span> is easy. Begin your learning journey in minutes.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
+            {([
+              { num: "01", Icon: BookOpen, title: "Browse & Choose", desc: "Explore our curated collection of premium courses across multiple categories and find the perfect fit for your goals." },
+              { num: "02", Icon: Play,     title: "Enroll & Learn",  desc: "Get instant access to course materials, video lectures, and hands-on projects. Learn at your own pace." },
+              { num: "03", Icon: Trophy,   title: "Earn & Grow",     desc: "Complete courses, earn certificates, and grow your career with new in-demand skills." },
+            ] as const).map(({ num, Icon, title, desc }) => (
+              <div key={num} className="flex flex-col items-center text-center">
+                <div className="relative mb-6">
+                  <div className="w-20 h-20 rounded-2xl bg-card border border-border flex items-center justify-center shadow-lg">
+                    <Icon className="w-8 h-8 text-primary" strokeWidth={1.5} />
+                  </div>
+                  <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-md">
+                    <span className="text-[10px] font-bold text-primary-foreground leading-none">{num}</span>
+                  </div>
+                </div>
+                <h3 className="font-bold text-base mb-2 text-foreground">{title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-[220px]">{desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Features */}
       <section className="py-20 px-6 bg-card/30 border-y border-border">
         <div className="container mx-auto max-w-5xl">
