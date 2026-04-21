@@ -217,7 +217,7 @@ function StatCard2({ label, value, color, sub }: { icon?: React.ReactNode; label
   return (
     <div className="bg-card border border-border rounded-xl p-4 flex flex-col items-center justify-center text-center gap-1">
       <p className="text-muted-foreground text-[14px] font-semibold">{label}</p>
-      <p className={`${color} text-[24px] font-bold`}>{value}</p>
+      <p className="text-[#05df72] text-[24px] font-bold">{value}</p>
       {sub && <p className="text-[10px] text-muted-foreground/60">{sub}</p>}
     </div>
   );
