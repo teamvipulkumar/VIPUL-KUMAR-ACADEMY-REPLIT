@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronRight, Play, Lock, FileText, HelpCircle, Tag, Check, Clock, BookOpen, Award } from "lucide-react";
+import { ChevronDown, ChevronRight, Play, Lock, FileText, HelpCircle, Tag, Check, Clock, BookOpen, Award, Link2 } from "lucide-react";
 
 export default function CourseDetailPage() {
   const [, params] = useRoute("/courses/:id");
@@ -68,7 +68,10 @@ export default function CourseDetailPage() {
 
   const lessonIcon = (type: string) => {
     if (type === "video") return <Play className="w-3.5 h-3.5" />;
+    if (type === "embed") return <Play className="w-3.5 h-3.5" />;
     if (type === "pdf") return <FileText className="w-3.5 h-3.5" />;
+    if (type === "text") return <FileText className="w-3.5 h-3.5" />;
+    if (type === "link") return <Link2 className="w-3.5 h-3.5" />;
     if (type === "quiz") return <HelpCircle className="w-3.5 h-3.5" />;
     return <FileText className="w-3.5 h-3.5" />;
   };
