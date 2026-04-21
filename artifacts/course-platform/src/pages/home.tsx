@@ -1,50 +1,63 @@
 import { useListCourses, getListCoursesQueryKey } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "wouter";
-import { TrendingUp, Users, BookOpen, CheckCircle, ArrowRight, Star, Zap, Shield, Award, Package, Play, Trophy } from "lucide-react";
+import {
+  TrendingUp, Users, BookOpen, CheckCircle, ArrowRight, Star,
+  Zap, Shield, Award, Package, Play, Trophy, Quote,
+} from "lucide-react";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const STATS = [
   { label: "Active Students", value: "2,400+", icon: Users },
-  { label: "Average Rating", value: "4.9 ★", icon: Star },
-  { label: "Courses Available", value: "15+", icon: BookOpen },
-  { label: "Avg. Student ROI", value: "640%", icon: TrendingUp },
+  { label: "Average Rating",  value: "4.9 / 5", icon: Star },
+  { label: "Courses Available", value: "15+",  icon: BookOpen },
+  { label: "Avg. Student ROI", value: "640%",  icon: TrendingUp },
 ];
 
 const FEATURES = [
-  { icon: Zap, title: "Action-First Curriculum", desc: "No fluff. Every module is built around one executable action that moves your business forward." },
-  { icon: Shield, title: "Proven by Operators", desc: "All content is created and vetted by people who actively run the businesses they teach." },
-  { icon: Award, title: "Lifetime Access", desc: "Buy once, access forever. Get all future updates to the course at no additional cost." },
-  { icon: TrendingUp, title: "Affiliate Program", desc: "Earn 50% commission on every referral. Share your link and earn while you learn." },
+  { icon: Zap,      title: "Action-First Curriculum", desc: "No fluff. Every module is built around one executable action that moves your business forward." },
+  { icon: Shield,   title: "Proven by Operators",     desc: "All content is created and vetted by people who actively run the businesses they teach." },
+  { icon: Award,    title: "Lifetime Access",          desc: "Buy once, access forever. Get all future updates at no additional cost." },
+  { icon: TrendingUp, title: "50% Affiliate Commission", desc: "Earn on every referral. Share your link and build a passive income stream alongside your skills." },
 ];
 
 const TESTIMONIALS = [
-  { name: "Arjun M.", role: "Affiliate Marketer", text: "I finally understood how to build a proper funnel, craft compelling offers, and drive targeted traffic. The step-by-step structure made every concept click.", stars: 5 },
-  { name: "Priya S.", role: "E-commerce Founder", text: "The course taught me product research, supplier negotiation, and how to set up a store that converts. Skills I could immediately put into practice.", stars: 5 },
-  { name: "Rohan K.", role: "Dropshipper", text: "Learned how to analyse winning products, manage ad creatives, and build reliable supplier relationships. It changed how I think about the whole business.", stars: 5 },
+  { name: "Arjun M.", role: "Affiliate Marketer",  initials: "AM", text: "I finally understood how to build a proper funnel, craft compelling offers, and drive targeted traffic. The step-by-step structure made every concept click.", stars: 5 },
+  { name: "Priya S.", role: "E-commerce Founder",  initials: "PS", text: "The course taught me product research, supplier negotiation, and how to set up a store that converts. Skills I could immediately put into practice.", stars: 5 },
+  { name: "Rohan K.", role: "Dropshipper",          initials: "RK", text: "Learned how to analyse winning products, manage ad creatives, and build reliable supplier relationships. It changed how I think about the whole business.", stars: 5 },
 ];
 
+const STEPS = [
+  { num: "01", Icon: BookOpen, title: "Browse & Choose", desc: "Explore our curated collection of premium courses and find the perfect fit for your goals." },
+  { num: "02", Icon: Play,     title: "Enroll & Learn",  desc: "Get instant access to video lectures and hands-on projects. Learn at your own pace." },
+  { num: "03", Icon: Trophy,   title: "Earn & Grow",     desc: "Complete courses, earn certificates, and build in-demand skills that generate real income." },
+] as const;
+
 const levelColors: Record<string, string> = {
-  beginner: "bg-green-500/10 text-green-400 border-green-500/20",
-  intermediate: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-  advanced: "bg-red-500/10 text-red-400 border-red-500/20",
+  beginner:     "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  intermediate: "bg-amber-500/10  text-amber-400  border-amber-500/20",
+  advanced:     "bg-rose-500/10   text-rose-400   border-rose-500/20",
 };
 
-type BundleCourse = { id: number; title: string; };
+type BundleCourse = { id: number; title: string };
 type Bundle = {
   id: number; name: string; slug: string; description: string | null;
   thumbnailUrl: string | null; price: number; compareAtPrice: number | null;
   isActive: boolean; courses: BundleCourse[];
 };
-
 type HomepageVisibility = { showFeaturedCourses: boolean; showFeaturedPackages: boolean };
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-xs font-semibold tracking-[0.18em] uppercase text-primary mb-3">{children}</p>
+  );
+}
 
 export default function Home() {
   const { data: coursesData, isLoading } = useListCourses({ limit: 3 }, {
-    query: { queryKey: getListCoursesQueryKey({ limit: 3 }) }
+    query: { queryKey: getListCoursesQueryKey({ limit: 3 }) },
   });
 
   const { data: bundles, isLoading: bundlesLoading } = useQuery<Bundle[]>({
@@ -66,124 +79,127 @@ export default function Home() {
     staleTime: 30_000,
   });
 
-  const showCourses = visibility?.showFeaturedCourses ?? true;
+  const showCourses  = visibility?.showFeaturedCourses  ?? true;
   const showPackages = visibility?.showFeaturedPackages ?? true;
 
   return (
     <div className="flex flex-col">
-      {/* Hero */}
-      <section className="relative py-14 md:py-24 px-4 md:px-12 flex flex-col items-center text-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-radial from-primary/10 via-transparent to-transparent pointer-events-none" />
-        <div className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary mb-8">
-          <Star className="w-3.5 h-3.5 mr-2 fill-primary" />
+
+      {/* ── HERO ─────────────────────────────────────────────────────────── */}
+      <section className="relative isolate py-20 md:py-32 px-6 flex flex-col items-center text-center overflow-hidden">
+        {/* layered background glows */}
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,hsl(var(--primary)/0.18),transparent)]" />
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 -z-10 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+
+        {/* eyebrow badge */}
+        <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/8 px-4 py-1.5 text-xs font-semibold tracking-wide text-primary uppercase mb-8 shadow-sm">
+          <Star className="w-3 h-3 fill-primary" />
           Premium Business Education
         </div>
-        <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight mb-6 max-w-4xl">
-          Master the Systems{" "}
-          <span className="text-primary block">That Print Revenue.</span>
+
+        <h1 className="text-5xl sm:text-6xl md:text-[5.5rem] font-extrabold tracking-tight leading-[1.05] mb-6 max-w-4xl">
+          Master the Systems
+          <span className="block text-primary">That Print Revenue.</span>
         </h1>
-        <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl">
-          Actionable, data-driven courses on Affiliate Marketing, E-commerce, and Dropshipping. Built by operators — for operators.
+
+        <p className="text-base md:text-xl text-muted-foreground mb-10 max-w-xl leading-relaxed">
+          Actionable, data-driven courses on Affiliate Marketing, E-commerce, and Dropshipping —
+          built by operators, for operators.
         </p>
-        <div className="flex flex-col sm:flex-row gap-4">
-          <Button size="lg" className="h-12 px-10 text-base font-semibold" asChild>
-            <Link href="/courses">
-              Explore the Catalog <ArrowRight className="w-4 h-4 ml-2" />
-            </Link>
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button size="lg" className="h-12 px-9 text-sm font-semibold shadow-lg shadow-primary/20" asChild>
+            <Link href="/courses">Explore the Catalog <ArrowRight className="w-4 h-4 ml-2" /></Link>
           </Button>
-          <Button size="lg" variant="outline" className="h-12 px-10 text-base" asChild>
+          <Button size="lg" variant="outline" className="h-12 px-9 text-sm border-border/60 hover:border-border" asChild>
             <Link href="/affiliate">Join the Affiliate Program</Link>
           </Button>
         </div>
 
-        {/* Trust bar */}
-        <div className="mt-12 flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
-          {["No fluff", "Real numbers", "30-day guarantee", "Lifetime access"].map(t => (
+        <div className="mt-12 flex flex-wrap justify-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
+          {["No fluff. Just execution", "30-day money-back guarantee", "Lifetime access & free updates"].map(t => (
             <div key={t} className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-green-500" />
+              <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
               <span>{t}</span>
             </div>
           ))}
         </div>
       </section>
-      {/* Stats */}
-      <section className="border-y border-border bg-card/50 py-12 px-6">
+
+      {/* ── STATS BAR ────────────────────────────────────────────────────── */}
+      <section className="bg-card/40 border-y border-border/60 py-10 px-6">
         <div className="container mx-auto max-w-4xl grid grid-cols-2 md:grid-cols-4 gap-8">
-          {STATS.map(s => (
-            <div key={s.label} className="text-center">
-              <s.icon className="w-5 h-5 text-primary mx-auto mb-2" />
-              <div className="text-2xl md:text-3xl font-extrabold text-foreground">{s.value}</div>
-              <div className="text-xs text-muted-foreground mt-1">{s.label}</div>
+          {STATS.map((s, i) => (
+            <div key={s.label} className={`text-center ${i < 3 ? "md:border-r md:border-border/50" : ""}`}>
+              <div className="text-3xl md:text-4xl font-extrabold text-foreground tracking-tight">{s.value}</div>
+              <div className="text-xs text-muted-foreground mt-1.5 font-medium">{s.label}</div>
             </div>
           ))}
         </div>
       </section>
-      {/* Featured Courses */}
-      {showCourses && (
-        <section className="py-20 px-6">
-        <div className="container mx-auto max-w-5xl">
-          <div className="flex justify-between items-end mb-10">
-            <div>
-              <h2 className="text-3xl font-bold tracking-tight mb-2">Featured Courses</h2>
-              <p className="text-muted-foreground">The exact playbooks to start scaling.</p>
-            </div>
-            <Button variant="ghost" size="sm" className="text-primary" asChild>
-              <Link href="/courses">View all <ArrowRight className="w-3.5 h-3.5 ml-1" /></Link>
-            </Button>
-          </div>
 
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[1, 2, 3].map(i => <div key={i} className="h-80 bg-card rounded-xl animate-pulse" />)}
+      {/* ── FEATURED COURSES ─────────────────────────────────────────────── */}
+      {showCourses && (
+        <section className="py-20 px-6 bg-background">
+          <div className="container mx-auto max-w-5xl">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
+              <div>
+                <SectionLabel>Our Courses</SectionLabel>
+                <h2 className="text-3xl font-extrabold tracking-tight mb-1">Featured Courses</h2>
+                <p className="text-muted-foreground text-sm">The exact playbooks to start scaling today.</p>
+              </div>
+              <Button variant="ghost" size="sm" className="text-primary hover:text-primary self-start sm:self-auto shrink-0" asChild>
+                <Link href="/courses">View all courses <ArrowRight className="w-3.5 h-3.5 ml-1" /></Link>
+              </Button>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {(coursesData?.courses ?? []).map(course => (
-                <Link href={`/courses/${course.id}`} key={course.id}>
-                  <Card className="h-full flex flex-col bg-card border-border hover:border-primary/50 transition-all duration-200 cursor-pointer group overflow-hidden">
-                    {course.thumbnailUrl ? (
-                      <div className="w-full aspect-video overflow-hidden rounded-t-xl flex-shrink-0">
-                        <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
+
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[1, 2, 3].map(i => <div key={i} className="h-80 bg-card rounded-xl animate-pulse" />)}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {(coursesData?.courses ?? []).map(course => (
+                  <Link href={`/courses/${course.id}`} key={course.id}>
+                    <div className="group h-full flex flex-col bg-card border border-border rounded-xl overflow-hidden hover:border-primary/40 hover:-translate-y-0.5 transition-all duration-200 shadow-sm hover:shadow-md hover:shadow-primary/5">
+                      {course.thumbnailUrl ? (
+                        <div className="w-full aspect-video overflow-hidden flex-shrink-0">
+                          <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        </div>
+                      ) : (
+                        <div className="w-full aspect-video bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center flex-shrink-0">
+                          <span className="text-6xl font-black text-primary/15 select-none">{course.category.charAt(0)}</span>
+                        </div>
+                      )}
+                      <div className="p-5 flex flex-col flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-[10px] font-semibold tracking-widest uppercase text-primary truncate">{course.category}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold capitalize flex-shrink-0 ${levelColors[course.level] ?? ""}`}>{course.level}</span>
+                        </div>
+                        <h3 className="font-bold text-base leading-snug group-hover:text-primary transition-colors line-clamp-2 mb-2">{course.title}</h3>
+                        <p className="text-xs text-muted-foreground line-clamp-2 flex-1 leading-relaxed">{course.description}</p>
+                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-border/60">
+                          <span className="text-lg font-extrabold">₹{course.price}</span>
+                          <Button size="sm" className="h-8 px-4 text-xs font-semibold">Enroll Now</Button>
+                        </div>
                       </div>
-                    ) : (
-                      <div className="w-full aspect-video bg-gradient-to-br from-primary/20 to-blue-900/30 flex items-center justify-center rounded-t-xl flex-shrink-0">
-                        <span className="text-5xl font-black text-primary/20 select-none">{course.category.charAt(0)}</span>
-                      </div>
-                    )}
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs text-primary font-medium uppercase tracking-wider truncate">{course.category}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize flex-shrink-0 ${levelColors[course.level] ?? ""}`}>{course.level}</span>
-                      </div>
-                      <CardTitle className="text-base leading-snug group-hover:text-primary transition-colors line-clamp-2 min-h-[2.5rem]">{course.title}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pb-2 flex-1">
-                      <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">{course.description}</p>
-                      <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
-                        <span>{Math.round(course.durationMinutes / 60)}h of content</span>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="pt-0 flex items-center justify-between mt-auto">
-                      <span className="text-lg font-bold">₹{course.price}</span>
-                      <Button size="sm" className="text-xs h-8 px-4">Enroll now</Button>
-                    </CardFooter>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
         </section>
       )}
-      {/* Packages */}
+
+      {/* ── FEATURED PACKAGES ────────────────────────────────────────────── */}
       {showPackages && (bundlesLoading || (bundles && bundles.length > 0)) && (
-        <section className="py-20 px-6 bg-card/30 border-y border-border">
+        <section className="py-20 px-6 bg-card/25 border-y border-border/60">
           <div className="container mx-auto max-w-5xl">
-            <div className="flex justify-between items-end mb-10">
-              <div>
-                <h2 className="text-3xl font-bold tracking-tight mb-2">Featured Packages</h2>
-                <p className="text-muted-foreground">Package deals with maximum value at a lower price.</p>
-              </div>
+            <div className="mb-10">
+              <SectionLabel>Value Bundles</SectionLabel>
+              <h2 className="text-3xl font-extrabold tracking-tight mb-1">Featured Packages</h2>
+              <p className="text-muted-foreground text-sm">Maximum value. Bundled for serious learners.</p>
             </div>
 
             {bundlesLoading ? (
@@ -194,51 +210,49 @@ export default function Home() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {(bundles ?? []).map(bundle => (
                   <Link href={`/bundles/${bundle.id}`} key={bundle.id}>
-                    <Card className="h-full flex flex-col bg-card border-border hover:border-primary/50 transition-all duration-200 cursor-pointer group overflow-hidden">
+                    <div className="group h-full flex flex-col bg-card border border-border rounded-xl overflow-hidden hover:border-primary/40 hover:-translate-y-0.5 transition-all duration-200 shadow-sm hover:shadow-md hover:shadow-primary/5">
                       {bundle.thumbnailUrl ? (
-                        <div className="w-full aspect-video overflow-hidden rounded-t-xl flex-shrink-0">
-                          <img src={bundle.thumbnailUrl} alt={bundle.name} className="w-full h-full object-cover" />
+                        <div className="w-full aspect-video overflow-hidden flex-shrink-0">
+                          <img src={bundle.thumbnailUrl} alt={bundle.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                         </div>
                       ) : (
-                        <div className="w-full aspect-video bg-gradient-to-br from-primary/20 to-blue-900/30 flex items-center justify-center rounded-t-xl flex-shrink-0">
-                          <Package className="w-12 h-12 text-primary/30" />
+                        <div className="w-full aspect-video bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center flex-shrink-0">
+                          <Package className="w-10 h-10 text-primary/25" />
                         </div>
                       )}
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs text-primary font-medium uppercase tracking-wider">Package</span>
-                          <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-primary/10 text-primary border-primary/20 flex-shrink-0">
+                      <div className="p-5 flex flex-col flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-[10px] font-semibold tracking-widest uppercase text-primary">Package</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full border font-semibold bg-primary/10 text-primary border-primary/20 flex-shrink-0">
                             {bundle.courses.length} {bundle.courses.length === 1 ? "course" : "courses"}
                           </span>
                         </div>
-                        <CardTitle className="text-base leading-snug group-hover:text-primary transition-colors line-clamp-2 min-h-[2.5rem]">{bundle.name}</CardTitle>
-                      </CardHeader>
-                      <CardContent className="pb-2 flex-1">
-                        <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">{bundle.description}</p>
+                        <h3 className="font-bold text-base leading-snug group-hover:text-primary transition-colors line-clamp-2 mb-2">{bundle.name}</h3>
+                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{bundle.description}</p>
                         {bundle.courses.length > 0 && (
-                          <ul className="mt-3 space-y-1">
+                          <ul className="mt-3 space-y-1.5">
                             {bundle.courses.slice(0, 3).map(c => (
                               <li key={c.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
+                                <CheckCircle className="w-3 h-3 text-emerald-500 flex-shrink-0" />
                                 <span className="truncate">{c.title}</span>
                               </li>
                             ))}
                             {bundle.courses.length > 3 && (
-                              <li className="text-xs text-muted-foreground pl-4.5">+{bundle.courses.length - 3} more</li>
+                              <li className="text-xs text-muted-foreground/70 pl-4">+{bundle.courses.length - 3} more included</li>
                             )}
                           </ul>
                         )}
-                      </CardContent>
-                      <CardFooter className="pt-0 flex items-center justify-between mt-auto">
-                        <div>
-                          <span className="text-lg font-bold">₹{bundle.price}</span>
-                          {bundle.compareAtPrice && (
-                            <span className="text-sm text-muted-foreground line-through ml-2">₹{bundle.compareAtPrice}</span>
-                          )}
+                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-border/60 mt-auto">
+                          <div>
+                            <span className="text-lg font-extrabold">₹{bundle.price}</span>
+                            {bundle.compareAtPrice && (
+                              <span className="text-xs text-muted-foreground line-through ml-2">₹{bundle.compareAtPrice}</span>
+                            )}
+                          </div>
+                          <Button size="sm" className="h-8 px-4 text-xs font-semibold">Get Package</Button>
                         </div>
-                        <Button size="sm" className="text-xs h-8 px-4">Get Package</Button>
-                      </CardFooter>
-                    </Card>
+                      </div>
+                    </div>
                   </Link>
                 ))}
               </div>
@@ -246,40 +260,34 @@ export default function Home() {
           </div>
         </section>
       )}
-      {/* 3 Simple Steps */}
-      <section className="relative py-14 px-6 overflow-hidden border-b border-border/50 bg-background">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,hsl(var(--primary)/0.08)_0%,transparent_70%)]" />
+
+      {/* ── 3 SIMPLE STEPS ───────────────────────────────────────────────── */}
+      <section className="relative py-20 px-6 overflow-hidden bg-background border-b border-border/60">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_0%,hsl(var(--primary)/0.07),transparent)]" />
         <div className="relative container mx-auto max-w-4xl text-center">
-          <h2 className="text-3xl md:text-4xl font-extrabold mb-3">
-            Start Learning in{" "}
-            <span className="text-primary">3 Simple Steps</span>
+          <SectionLabel>How It Works</SectionLabel>
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">
+            Start Learning in <span className="text-primary">3 Simple Steps</span>
           </h2>
-          <p className="text-muted-foreground text-sm md:text-base mb-14 max-w-md mx-auto">
-            Getting started with <span className="text-foreground font-medium">Vipul Kumar Academy</span> is easy. Begin your learning journey in minutes.
+          <p className="text-muted-foreground text-sm mb-14 max-w-sm mx-auto leading-relaxed">
+            Getting started is easy. Begin your learning journey in minutes.
           </p>
 
-          {/* step cards + connector line */}
           <div className="relative">
-            {/* horizontal line through icon centers — desktop only */}
-            <div className="hidden md:block absolute top-10 left-[calc(100%/6)] right-[calc(100%/6)] h-px bg-border" />
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
-              {([
-                { num: "01", Icon: BookOpen, title: "Browse & Choose", desc: "Explore our curated collection of premium courses across multiple categories and find the perfect fit for your goals." },
-                { num: "02", Icon: Play,     title: "Enroll & Learn",  desc: "Get instant access to course materials, video lectures, and hands-on projects. Learn at your own pace." },
-                { num: "03", Icon: Trophy,   title: "Earn & Grow",     desc: "Complete courses, earn certificates, and grow your career with new in-demand skills." },
-              ] as const).map(({ num, Icon, title, desc }) => (
+            <div className="hidden md:block absolute top-10 left-[calc(100%/6)] right-[calc(100%/6)] h-px bg-border/70" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8">
+              {STEPS.map(({ num, Icon, title, desc }) => (
                 <div key={num} className="flex flex-col items-center text-center">
-                  <div className="relative mb-6 z-10">
-                    <div className="w-20 h-20 rounded-2xl bg-card border border-border flex items-center justify-center shadow-lg">
+                  <div className="relative mb-5 z-10">
+                    <div className="w-20 h-20 rounded-2xl bg-card border border-border flex items-center justify-center shadow-md">
                       <Icon className="w-8 h-8 text-primary" strokeWidth={1.5} />
                     </div>
-                    <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-md">
+                    <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center ring-2 ring-background">
                       <span className="text-[10px] font-bold text-primary-foreground leading-none">{num}</span>
                     </div>
                   </div>
-                  <h3 className="font-bold text-base mb-2 text-foreground">{title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed max-w-[220px]">{desc}</p>
+                  <h3 className="font-bold text-sm mb-1.5 text-foreground">{title}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed max-w-[200px]">{desc}</p>
                 </div>
               ))}
             </div>
@@ -287,70 +295,94 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features */}
-      <section className="py-20 px-6 bg-card/30 border-y border-border">
+      {/* ── WHY VKA ──────────────────────────────────────────────────────── */}
+      <section className="py-20 px-6 bg-card/25 border-b border-border/60">
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-3">Why Vipul Kumar Academy?</h2>
-            <p className="text-muted-foreground max-w-lg mx-auto">We built the platform we wished existed when we were starting out.</p>
+            <SectionLabel>Why Choose Us</SectionLabel>
+            <h2 className="text-3xl font-extrabold tracking-tight mb-2">Built Different. On Purpose.</h2>
+            <p className="text-muted-foreground text-sm max-w-md mx-auto">
+              We built the platform we wished existed when we were starting out.
+            </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {FEATURES.map(f => (
-              <div key={f.title} className="flex gap-4 p-6 rounded-xl bg-card border border-border">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <div key={f.title} className="flex gap-4 p-5 rounded-xl bg-card border border-border/70 hover:border-primary/30 transition-colors duration-200">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <f.icon className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-1">{f.title}</h3>
-                  <p className="text-sm text-muted-foreground">{f.desc}</p>
+                  <h3 className="font-semibold text-sm mb-1">{f.title}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
       </section>
-      {/* Testimonials */}
-      <section className="py-20 px-6">
+
+      {/* ── TESTIMONIALS ─────────────────────────────────────────────────── */}
+      <section className="py-20 px-6 bg-background border-b border-border/60">
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-3">What Students Say</h2>
-            <p className="text-muted-foreground">Real results from real operators.</p>
+            <SectionLabel>Student Results</SectionLabel>
+            <h2 className="text-3xl font-extrabold tracking-tight mb-2">Real People. Real Revenue.</h2>
+            <p className="text-muted-foreground text-sm">Hear directly from operators who've taken the courses.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {TESTIMONIALS.map(t => (
-              <div key={t.name} className="p-6 rounded-xl bg-card border border-border">
-                <div className="flex gap-0.5 mb-4">
+              <div key={t.name} className="relative p-6 rounded-xl bg-card border border-border/70 flex flex-col">
+                <Quote className="w-6 h-6 text-primary/20 mb-3 flex-shrink-0" />
+                <div className="flex gap-0.5 mb-3">
                   {Array.from({ length: t.stars }).map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                   ))}
                 </div>
-                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">"{t.text}"</p>
-                <div>
-                  <p className="text-sm font-semibold">{t.name}</p>
-                  <p className="text-xs text-muted-foreground">{t.role}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed flex-1">"{t.text}"</p>
+                <div className="flex items-center gap-3 mt-5 pt-4 border-t border-border/50">
+                  <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
+                    <span className="text-[10px] font-bold text-primary">{t.initials}</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">{t.name}</p>
+                    <p className="text-[11px] text-muted-foreground">{t.role}</p>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         </div>
       </section>
-      {/* Final CTA */}
-      <section className="py-24 px-6 bg-gradient-to-b from-primary/10 to-background border-t border-border">
+
+      {/* ── FINAL CTA ────────────────────────────────────────────────────── */}
+      <section className="relative py-24 px-6 overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_50%,hsl(var(--primary)/0.12),transparent)]" />
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_40%_40%_at_50%_50%,hsl(var(--primary)/0.06),transparent)]" />
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-4xl font-bold mb-4">Stop consuming. Start executing.</h2>
-          <p className="text-muted-foreground text-lg mb-8">
-            The difference between reading and revenue is execution. Get the exact blueprints today.
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/8 px-4 py-1.5 text-xs font-semibold tracking-wide text-primary uppercase mb-6">
+            <Zap className="w-3 h-3" /> Limited Seats — Enroll Today
+          </div>
+          <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 leading-tight">
+            Stop Consuming.<br />Start Executing.
+          </h2>
+          <p className="text-muted-foreground text-base mb-10 max-w-lg mx-auto leading-relaxed">
+            The difference between reading about revenue and actually earning it is execution.
+            Get the exact blueprints used by real operators — starting today.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="h-14 px-10 text-base font-semibold" asChild>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button size="lg" className="h-12 px-10 text-sm font-semibold shadow-lg shadow-primary/25" asChild>
               <Link href="/register">Create Free Account <ArrowRight className="w-4 h-4 ml-2" /></Link>
             </Button>
-            <Button size="lg" variant="outline" className="h-14 px-10 text-base" asChild>
+            <Button size="lg" variant="outline" className="h-12 px-10 text-sm border-border/60 hover:border-border" asChild>
               <Link href="/courses">Browse Courses</Link>
             </Button>
           </div>
+          <p className="mt-6 text-xs text-muted-foreground/60">
+            No credit card required to register · 30-day money-back guarantee
+          </p>
         </div>
       </section>
+
     </div>
   );
 }
