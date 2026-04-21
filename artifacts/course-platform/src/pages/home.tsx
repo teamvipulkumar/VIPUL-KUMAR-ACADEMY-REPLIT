@@ -86,40 +86,40 @@ export default function Home() {
     <div className="flex flex-col">
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      <section className="relative isolate py-20 md:py-32 px-6 flex flex-col items-center text-center overflow-hidden">
+      <section className="relative isolate py-12 md:py-32 px-4 sm:px-6 flex flex-col items-center text-center overflow-hidden">
         {/* layered background glows */}
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,hsl(var(--primary)/0.18),transparent)]" />
         <div className="pointer-events-none absolute bottom-0 left-0 right-0 -z-10 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
         {/* eyebrow badge */}
-        <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/8 px-4 py-1.5 text-xs font-semibold tracking-wide text-primary uppercase mb-8 shadow-sm">
-          <Star className="w-3 h-3 fill-primary" />
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/8 px-3 py-1 text-[10px] sm:text-xs font-semibold tracking-widest text-primary uppercase mb-5 sm:mb-8 shadow-sm">
+          <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-primary flex-shrink-0" />
           Premium Business Education
         </div>
 
-        <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.08] mb-6">
+        <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.08] mb-5 md:mb-6">
           Master the Systems
           <span className="block text-primary">That Print Revenue.</span>
         </h1>
 
-        <p className="text-base md:text-xl text-muted-foreground mb-10 max-w-xl leading-relaxed">
-          Actionable, data-driven courses on Affiliate Marketing, E-commerce, and Dropshipping —
+        <p className="text-sm sm:text-base md:text-xl text-muted-foreground mb-7 md:mb-10 max-w-xs sm:max-w-xl leading-relaxed">
+          Actionable courses on Affiliate Marketing, E-commerce, and Dropshipping —
           built by operators, for operators.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Button size="lg" className="h-12 px-9 text-sm font-semibold shadow-lg shadow-primary/20" asChild>
+        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs sm:max-w-none sm:w-auto">
+          <Button size="lg" className="h-11 sm:h-12 px-7 sm:px-9 text-sm font-semibold shadow-lg shadow-primary/20 w-full sm:w-auto" asChild>
             <Link href="/courses">Explore the Catalog <ArrowRight className="w-4 h-4 ml-2" /></Link>
           </Button>
-          <Button size="lg" variant="outline" className="h-12 px-9 text-sm border-border/60 hover:border-border" asChild>
+          <Button size="lg" variant="outline" className="h-11 sm:h-12 px-7 sm:px-9 text-sm border-border/60 hover:border-border w-full sm:w-auto" asChild>
             <Link href="/affiliate">Join the Affiliate Program</Link>
           </Button>
         </div>
 
-        <div className="mt-12 flex flex-wrap justify-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
+        <div className="mt-8 flex flex-col sm:flex-row sm:flex-wrap justify-center gap-y-2 sm:gap-y-3 gap-x-8 text-xs sm:text-sm text-muted-foreground">
           {["No fluff. Just execution", "30-day money-back guarantee", "Lifetime access & free updates"].map(t => (
-            <div key={t} className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+            <div key={t} className="flex items-center justify-center gap-1.5 sm:gap-2">
+              <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 flex-shrink-0" />
               <span>{t}</span>
             </div>
           ))}
