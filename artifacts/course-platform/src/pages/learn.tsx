@@ -364,10 +364,6 @@ export default function LearnPage() {
                   <div className="flex items-start justify-between gap-4 mb-6">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <Badge variant="outline" className="text-xs capitalize gap-1">
-                          <LessonIcon type={selectedLesson.type} completed={false} />
-                          {selectedLesson.type}
-                        </Badge>
                         {selectedLesson.durationMinutes && (
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
                             <Clock className="w-3 h-3" />{selectedLesson.durationMinutes} min
