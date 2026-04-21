@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useGetAdminAnalytics, getGetAdminAnalyticsQueryKey, useGetRevenueReport, getGetRevenueReportQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { ComposedChart, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 export default function AdminDashboard() {
   const [period, setPeriod] = useState<"7d" | "30d" | "90d" | "1y">("30d");
@@ -52,50 +52,28 @@ export default function AdminDashboard() {
               </SelectContent>
             </Select>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="text-xl font-bold">₹{(revenue?.totalRevenue ?? 0).toFixed(2)}</div>
-
-            {/* Area Chart */}
-            <div>
-              <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide">Area</p>
-              {hasData ? (
-                <ResponsiveContainer width="100%" height={180}>
-                  <AreaChart data={revenue!.chartData}>
-                    <defs>
-                      <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#64748b" }} />
-                    <YAxis tick={{ fontSize: 10, fill: "#64748b" }} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Area type="monotone" dataKey="revenue" stroke="#2563eb" fill="url(#revGrad)" strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-44 flex items-center justify-center text-muted-foreground text-sm">No revenue data yet</div>
-              )}
-            </div>
-
-            {/* Column Chart */}
-            <div>
-              <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide">Column</p>
-              {hasData ? (
-                <ResponsiveContainer width="100%" height={180}>
-                  <BarChart data={revenue!.chartData} barCategoryGap="30%">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(37,99,235,0.08)" }} />
-                    <Bar dataKey="revenue" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-44 flex items-center justify-center text-muted-foreground text-sm">No revenue data yet</div>
-              )}
-            </div>
+          <CardContent>
+            <div className="text-xl font-bold mb-4">₹{(revenue?.totalRevenue ?? 0).toFixed(2)}</div>
+            {hasData ? (
+              <ResponsiveContainer width="100%" height={200}>
+                <ComposedChart data={revenue!.chartData} barCategoryGap="35%">
+                  <defs>
+                    <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(37,99,235,0.06)" }} />
+                  <Bar dataKey="revenue" fill="#2563eb" radius={[4, 4, 0, 0]} fillOpacity={0.85} />
+                  <Area type="monotone" dataKey="revenue" stroke="#818cf8" fill="url(#revGrad)" strokeWidth={2} dot={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">No revenue data yet</div>
+            )}
           </CardContent>
         </Card>
 
