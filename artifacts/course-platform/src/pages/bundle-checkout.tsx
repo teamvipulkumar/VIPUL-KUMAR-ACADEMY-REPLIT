@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Shield, Lock, Check, Tag, CreditCard, ChevronLeft, ChevronDown, ChevronUp,
+  Shield, Lock, Check, Tag, CreditCard, ChevronDown, ChevronUp,
   BookOpen, Eye, EyeOff, PartyPopper, Copy, X, Smartphone, Wallet,
   AlertCircle, Package,
 } from "lucide-react";
@@ -794,10 +794,7 @@ export default function BundleCheckoutPage() {
     <div className="flex-1 py-8 px-4">
       <div className="max-w-5xl mx-auto">
         {/* Top bar */}
-        <div className="flex items-center justify-between mb-8">
-          <button onClick={() => navigate("/courses")} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <ChevronLeft className="w-4 h-4" />Back to Courses
-          </button>
+        <div className="flex items-center justify-center mb-8">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Lock className="w-3.5 h-3.5 text-green-400" />
             <span>Secure Checkout</span>
