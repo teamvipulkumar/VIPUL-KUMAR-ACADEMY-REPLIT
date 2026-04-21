@@ -164,8 +164,8 @@ export default function CourseDetailPage() {
           {/* Mobile: stacked layout */}
           <div className="block md:hidden">
             {course.thumbnailUrl ? (
-              <div className="w-full aspect-video overflow-hidden rounded-xl mb-5">
-                <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
+              <div className="w-full aspect-video mb-5">
+                <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover rounded-xl" style={{ transform: "translateZ(0)" }} />
               </div>
             ) : (
               <div className="w-full aspect-video bg-gradient-to-br from-primary/20 to-blue-900/30 rounded-xl mb-5 flex items-center justify-center">
@@ -185,8 +185,8 @@ export default function CourseDetailPage() {
           <div className="hidden md:grid md:grid-cols-3 gap-8 items-start">
             <div className="md:col-span-2">
               {course.thumbnailUrl ? (
-                <div className="w-full aspect-video overflow-hidden rounded-xl mb-5">
-                  <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
+                <div className="w-full aspect-video mb-5">
+                  <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover rounded-xl" style={{ transform: "translateZ(0)" }} />
                 </div>
               ) : (
                 <div className="w-full aspect-video bg-gradient-to-br from-primary/20 to-blue-900/30 rounded-xl mb-5 flex items-center justify-center">
