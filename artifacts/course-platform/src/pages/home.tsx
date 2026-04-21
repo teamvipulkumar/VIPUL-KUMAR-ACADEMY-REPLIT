@@ -18,7 +18,7 @@ const FEATURES = [
   { icon: Zap, title: "Action-First Curriculum", desc: "No fluff. Every module is built around one executable action that moves your business forward." },
   { icon: Shield, title: "Proven by Operators", desc: "All content is created and vetted by people who actively run the businesses they teach." },
   { icon: Award, title: "Lifetime Access", desc: "Buy once, access forever. Get all future updates to the course at no additional cost." },
-  { icon: TrendingUp, title: "Affiliate Program", desc: "Earn 20% commission on every referral. Share your link and earn while you learn." },
+  { icon: TrendingUp, title: "Affiliate Program", desc: "Earn 50% commission on every referral. Share your link and earn while you learn." },
 ];
 
 const TESTIMONIALS = [
