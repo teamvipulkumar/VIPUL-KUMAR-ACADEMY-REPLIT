@@ -296,7 +296,7 @@ function AffiliateDashboard({ user }: { user: any }) {
           <button
             key={t.id}
             onClick={() => navClick(t.id)}
-            className={`w-full flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-all text-left ${
+            className={`w-full flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-all text-left cursor-pointer ${
               tab === t.id
                 ? "bg-primary/10 text-primary border-r-2 border-r-primary"
                 : "text-muted-foreground hover:text-foreground hover:bg-white/5"
@@ -317,7 +317,7 @@ function AffiliateDashboard({ user }: { user: any }) {
           </div>
         </div>
         <Link href="/">
-          <button className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full px-1 py-1">
+          <button className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full px-1 py-1 cursor-pointer">
             <ChevronRight className="w-3.5 h-3.5 rotate-180" />Back to Site
           </button>
         </Link>
@@ -345,7 +345,7 @@ function AffiliateDashboard({ user }: { user: any }) {
         <div className="px-4 sm:px-6 py-6">
           {/* Mobile: inline breadcrumb row (no second header) */}
           <div className="lg:hidden flex items-center gap-2 mb-5">
-            <button onClick={() => setSidebarOpen(true)} className="text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0">
+            <button onClick={() => setSidebarOpen(true)} className="text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0 cursor-pointer">
               <Menu className="w-4 h-4" />
             </button>
             <span className="text-xs text-muted-foreground">Affiliate</span>
@@ -426,7 +426,7 @@ function AffiliateDashboard({ user }: { user: any }) {
                       <button
                         key={d}
                         onClick={() => setChartDays(d)}
-                        className={`text-xs px-2.5 py-1 rounded-md font-medium transition-all ${
+                        className={`text-xs px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer ${
                           chartDays === d
                             ? "bg-primary text-white"
                             : "text-muted-foreground hover:text-foreground"
@@ -781,7 +781,7 @@ function CustomLinkGenerator({ referralCode }: { referralCode: string }) {
             <span className="text-xs font-mono text-primary flex-1 truncate">{generatedUrl}</span>
             <button
               onClick={copyGenerated}
-              className={`flex-shrink-0 flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg font-medium transition-all ${
+              className={`flex-shrink-0 flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
                 copiedGenerated
                   ? "bg-green-500/15 text-green-400 border border-green-500/20"
                   : "bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
@@ -1123,7 +1123,7 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
                 <button
                   type="button"
                   onClick={e => { e.stopPropagation(); setPanPhotoUrl(""); }}
-                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-red-500/80 transition-colors opacity-0 group-hover:opacity-100"
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-red-500/80 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -1133,7 +1133,7 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="w-full h-32 rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 text-muted-foreground"
+                className="w-full h-32 rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 text-muted-foreground cursor-pointer"
               >
                 {uploading ? (
                   <><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="text-xs text-primary">Uploading…</span></>
@@ -1360,7 +1360,7 @@ function PixelTab({ pixel, onSaved }: { pixel: any; onSaved: (p: any) => void })
               <button
                 type="button"
                 onClick={() => setShowToken(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               >
                 {showToken
                   ? <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
@@ -1562,7 +1562,7 @@ function BankTab({ bank, onSaved }: { bank: any; onSaved: (b: any) => void }) {
               <Input type={showAcc ? "text" : "password"} value={form.accountNumber}
                 onChange={e => setForm(f => ({ ...f, accountNumber: e.target.value }))}
                 placeholder="Enter account number" className="bg-background border-border pr-9 font-mono" />
-              <button className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowAcc(v => !v)}>
+              <button className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer" onClick={() => setShowAcc(v => !v)}>
                 {showAcc ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               </button>
             </div>
