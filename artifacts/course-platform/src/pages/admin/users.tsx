@@ -151,7 +151,7 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
       <DialogContent className="sm:max-w-2xl bg-[#0d1424] border-white/10 max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Download className="w-4 h-4 text-primary" />Import Users</DialogTitle>
-          <DialogDescription>Upload a CSV file to bulk-create users. Maximum 500 rows per import.</DialogDescription>
+          <DialogDescription>Upload a CSV file to bulk-create users. No row limit.</DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 pr-1">
@@ -211,7 +211,7 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
                   <>
                     <Download className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
                     <p className="text-sm font-medium text-foreground">Drop your CSV here or click to browse</p>
-                    <p className="text-xs text-muted-foreground mt-1">Supports .csv files up to 500 rows</p>
+                    <p className="text-xs text-muted-foreground mt-1">Supports .csv files of any size</p>
                   </>
                 )}
               </div>

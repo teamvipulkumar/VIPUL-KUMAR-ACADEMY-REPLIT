@@ -187,9 +187,6 @@ router.post("/users/import", requireAdmin, async (req, res): Promise<void> => {
   if (!Array.isArray(rows) || rows.length === 0) {
     res.status(400).json({ error: "Provide a non-empty users array" }); return;
   }
-  if (rows.length > 500) {
-    res.status(400).json({ error: "Maximum 500 users per import" }); return;
-  }
 
   if (enrollCourseId) {
     const [course] = await db.select({ id: coursesTable.id }).from(coursesTable).where(eq(coursesTable.id, enrollCourseId)).limit(1);
