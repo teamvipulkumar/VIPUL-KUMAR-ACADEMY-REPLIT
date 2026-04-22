@@ -133,7 +133,7 @@ export default function AdminDashboard() {
               <button
                 key={p}
                 onClick={() => setSummaryPeriod(p)}
-                className={`px-3 h-full text-xs font-medium transition-colors ${idx > 0 ? "border-l border-border" : ""} ${
+                className={`px-3 h-full text-xs font-medium transition-colors cursor-pointer ${idx > 0 ? "border-l border-border" : ""} ${
                   summaryPeriod === p
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
