@@ -537,89 +537,6 @@ function BackupSmtpAccounts() {
     setTestingId(null); load();
   };
 
-  const BackupForm = () => (
-    <div className="bg-card border border-primary/30 rounded-xl p-5 space-y-4">
-      <p className="text-sm font-semibold">{editing ? `Edit: ${editing.name}` : "Add Backup SMTP Account"}</p>
-
-      {/* Presets */}
-      <div>
-        <p className="text-xs text-muted-foreground mb-2">Quick presets</p>
-        <div className="flex flex-wrap gap-2">
-          {SMTP_PRESETS.map(p => (
-            <button key={p.label} onClick={() => setForm(f => ({ ...f, host: p.host, port: p.port, secure: p.secure, name: f.name || p.label }))}
-              className="px-3 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors cursor-pointer">
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Account Name *</Label>
-          <Input value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. Backup Brevo" className="h-9" autoFocus />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Priority (1 = highest)</Label>
-          <Input type="number" min={1} value={form.priority} onChange={e => set("priority", e.target.value)} className="h-9" />
-          <p className="text-[10px] text-muted-foreground">Lower number = tried first after primary fails</p>
-        </div>
-      </div>
-
-      <div className="grid sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">SMTP Host *</Label>
-          <Input value={form.host} onChange={e => set("host", e.target.value)} placeholder="smtp.brevo.com" className="h-9" />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Port</Label>
-          <Input value={form.port} onChange={e => set("port", e.target.value)} placeholder="587" className="h-9" />
-        </div>
-      </div>
-      <div className="grid sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Username / Email *</Label>
-          <Input value={form.username} onChange={e => set("username", e.target.value)} placeholder="you@domain.com" className="h-9" />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Password {editing ? "(leave blank to keep)" : "*"}</Label>
-          <Input type="password" value={form.password} onChange={e => set("password", e.target.value)} placeholder={editing ? "Leave blank to keep current" : "Enter password"} className="h-9" />
-          {editing?.passwordSet && !form.password && <p className="text-xs text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Saved — leave blank to keep</p>}
-        </div>
-      </div>
-      <div className="grid sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">From Name</Label>
-          <Input value={form.fromName} onChange={e => set("fromName", e.target.value)} placeholder="VK Academy" className="h-9" />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">From Email</Label>
-          <Input value={form.fromEmail} onChange={e => set("fromEmail", e.target.value)} placeholder="noreply@domain.com" className="h-9" />
-        </div>
-      </div>
-      <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
-        <div>
-          <p className="text-sm font-medium">Active</p>
-          <p className="text-xs text-muted-foreground">When disabled, this backup won't be used as a fallback</p>
-        </div>
-        <Switch checked={form.isActive} onCheckedChange={v => set("isActive", v)} />
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1.5 p-3 bg-background rounded-lg border border-border">
-          <span className="text-sm font-medium">SSL/TLS</span>
-          <Switch checked={form.secure} onCheckedChange={v => set("secure", v)} />
-        </div>
-        <div className="flex gap-2 flex-1">
-          <Button onClick={save} disabled={saving} className="flex-1 gap-2 cursor-pointer">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-            {saving ? "Saving…" : editing ? "Update Account" : "Add Account"}
-          </Button>
-          <Button variant="outline" className="cursor-pointer" onClick={() => { setAdding(false); setEditing(null); setForm(emptyBackupForm()); }} disabled={saving}>Cancel</Button>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div className="border-t border-border pt-6 space-y-5 mt-2">
       <div className="flex items-start justify-between gap-4">
@@ -637,7 +554,87 @@ function BackupSmtpAccounts() {
         <span>The system sends via your <strong>primary SMTP</strong> above. If that fails, it automatically tries each backup in order of priority (lowest number first) until one succeeds.</span>
       </div>
 
-      {(adding || editing) && <BackupForm />}
+      {(adding || editing) && (
+        <div className="bg-card border border-primary/30 rounded-xl p-5 space-y-4">
+          <p className="text-sm font-semibold">{editing ? `Edit: ${editing.name}` : "Add Backup SMTP Account"}</p>
+
+          <div>
+            <p className="text-xs text-muted-foreground mb-2">Quick presets</p>
+            <div className="flex flex-wrap gap-2">
+              {SMTP_PRESETS.map(p => (
+                <button key={p.label} onClick={() => setForm(f => ({ ...f, host: p.host, port: p.port, secure: p.secure, name: f.name || p.label }))}
+                  className="px-3 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors cursor-pointer">
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Account Name *</Label>
+              <Input value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. Backup Brevo" className="h-9" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Priority (1 = highest)</Label>
+              <Input type="number" min={1} value={form.priority} onChange={e => set("priority", e.target.value)} className="h-9" />
+              <p className="text-[10px] text-muted-foreground">Lower number = tried first after primary fails</p>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">SMTP Host *</Label>
+              <Input value={form.host} onChange={e => set("host", e.target.value)} placeholder="smtp.brevo.com" className="h-9" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Port</Label>
+              <Input value={form.port} onChange={e => set("port", e.target.value)} placeholder="587" className="h-9" />
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Username / Email *</Label>
+              <Input value={form.username} onChange={e => set("username", e.target.value)} placeholder="you@domain.com" className="h-9" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Password {editing ? "(leave blank to keep)" : "*"}</Label>
+              <Input type="password" value={form.password} onChange={e => set("password", e.target.value)} placeholder={editing ? "Leave blank to keep current" : "Enter password"} className="h-9" />
+              {editing?.passwordSet && !form.password && <p className="text-xs text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Saved — leave blank to keep</p>}
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">From Name</Label>
+              <Input value={form.fromName} onChange={e => set("fromName", e.target.value)} placeholder="VK Academy" className="h-9" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">From Email</Label>
+              <Input value={form.fromEmail} onChange={e => set("fromEmail", e.target.value)} placeholder="noreply@domain.com" className="h-9" />
+            </div>
+          </div>
+          <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
+            <div>
+              <p className="text-sm font-medium">Active</p>
+              <p className="text-xs text-muted-foreground">When disabled, this backup won't be used as a fallback</p>
+            </div>
+            <Switch checked={form.isActive} onCheckedChange={v => set("isActive", v)} />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 p-3 bg-background rounded-lg border border-border">
+              <span className="text-sm font-medium">SSL/TLS</span>
+              <Switch checked={form.secure} onCheckedChange={v => set("secure", v)} />
+            </div>
+            <div className="flex gap-2 flex-1">
+              <Button onClick={save} disabled={saving} className="flex-1 gap-2 cursor-pointer">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                {saving ? "Saving…" : editing ? "Update Account" : "Add Account"}
+              </Button>
+              <Button variant="outline" className="cursor-pointer" onClick={() => { setAdding(false); setEditing(null); setForm(emptyBackupForm()); }} disabled={saving}>Cancel</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
