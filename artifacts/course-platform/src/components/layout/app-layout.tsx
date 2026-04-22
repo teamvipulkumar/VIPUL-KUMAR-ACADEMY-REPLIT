@@ -237,6 +237,7 @@ export function Navbar() {
                       <p className="text-xs font-semibold text-foreground truncate">{user?.name}</p>
                       <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                     </div>
+                    <DropdownMenuItem asChild><Link href="/profile">My Profile</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/my-courses">My Learning</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link href="/affiliate">Affiliate</Link></DropdownMenuItem>
                     {isAdmin && (

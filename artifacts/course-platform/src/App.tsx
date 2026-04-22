@@ -92,6 +92,7 @@ import LearnPage from "@/pages/learn";
 import AffiliatePage from "@/pages/affiliate";
 import PaymentsPage from "@/pages/payments-page";
 import NotificationsPage from "@/pages/notifications-page";
+import ProfilePage from "@/pages/profile-page";
 
 import AdminDashboard from "@/pages/admin/index";
 import AdminCoursesPage from "@/pages/admin/courses";
@@ -149,6 +150,7 @@ function Router() {
       <Route path="/affiliate" component={() => <AppLayout noFooter><ProtectedRoute><AffiliatePage /></ProtectedRoute></AppLayout>} />
       <Route path="/payments" component={() => <AppLayout><ProtectedRoute><PaymentsPage /></ProtectedRoute></AppLayout>} />
       <Route path="/notifications" component={() => <AppLayout><ProtectedRoute><NotificationsPage /></ProtectedRoute></AppLayout>} />
+      <Route path="/profile" component={() => <AppLayout><ProtectedRoute><ProfilePage /></ProtectedRoute></AppLayout>} />
 
       <Route path="/optin" component={() => <OptinPage />} />
       <Route path="/vsl" component={() => <VslPage />} />
