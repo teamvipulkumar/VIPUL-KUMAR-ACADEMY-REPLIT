@@ -16,7 +16,7 @@ const router = Router();
 type AuthedRequest = Request & { user: JwtPayload };
 
 router.get("/users", requireAdmin, async (req, res): Promise<void> => {
-  const { search, role, limit = "20", offset = "0" } = req.query as Record<string, string>;
+  const { search, role, status, limit = "50", offset = "0" } = req.query as Record<string, string>;
   let query = db.select({
     id: usersTable.id, email: usersTable.email, name: usersTable.name,
     role: usersTable.role, avatarUrl: usersTable.avatarUrl, referralCode: usersTable.referralCode,
@@ -27,10 +27,12 @@ router.get("/users", requireAdmin, async (req, res): Promise<void> => {
   const conditions = [];
   if (search) conditions.push(or(ilike(usersTable.name, `%${search}%`), ilike(usersTable.email, `%${search}%`))!);
   if (role) conditions.push(eq(usersTable.role, role as "admin" | "student" | "affiliate"));
+  if (status === "active") conditions.push(eq(usersTable.isBanned, false));
+  if (status === "banned") conditions.push(eq(usersTable.isBanned, true));
   if (conditions.length > 0) query = query.where(and(...conditions));
 
   const [users, totalResult] = await Promise.all([
-    query.limit(parseInt(limit)).offset(parseInt(offset)),
+    query.orderBy(desc(usersTable.createdAt)).limit(parseInt(limit)).offset(parseInt(offset)),
     db.select({ count: count() }).from(usersTable).where(conditions.length > 0 ? and(...conditions) : undefined),
   ]);
   res.json({ users, total: totalResult[0]?.count ?? 0, limit: parseInt(limit), offset: parseInt(offset) });

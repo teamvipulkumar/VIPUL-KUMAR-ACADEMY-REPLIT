@@ -685,12 +685,75 @@ function BulkConfirmDialog({
   );
 }
 
+const PAGE_SIZE = 50;
+
+function Pagination({ page, total, pageSize, onChange }: { page: number; total: number; pageSize: number; onChange: (p: number) => void }) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  if (totalPages <= 1) return null;
+
+  const getPages = () => {
+    const pages: (number | "...")[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (page > 3) pages.push("...");
+      for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
+      if (page < totalPages - 2) pages.push("...");
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
+  return (
+    <div className="flex items-center justify-between mt-4 px-1">
+      <p className="text-xs text-muted-foreground">
+        Showing {Math.min((page - 1) * pageSize + 1, total)}–{Math.min(page * pageSize, total)} of {total} users
+      </p>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onChange(page - 1)}
+          disabled={page === 1}
+          className="h-8 px-2.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-card disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors border border-border"
+        >
+          ← Prev
+        </button>
+        {getPages().map((p, i) =>
+          p === "..." ? (
+            <span key={`dot-${i}`} className="h-8 w-8 flex items-center justify-center text-xs text-muted-foreground">…</span>
+          ) : (
+            <button
+              key={p}
+              onClick={() => onChange(p as number)}
+              className={`h-8 w-8 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                p === page
+                  ? "bg-primary text-white"
+                  : "text-muted-foreground hover:text-foreground hover:bg-card border border-border"
+              }`}
+            >
+              {p}
+            </button>
+          )
+        )}
+        <button
+          onClick={() => onChange(page + 1)}
+          disabled={page === totalPages}
+          className="h-8 px-2.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-card disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors border border-border"
+        >
+          Next →
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [role, setRole] = useState("all");
   const [status, setStatus] = useState("all");
+  const [page, setPage] = useState(1);
 
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -701,23 +764,52 @@ export default function AdminUsersPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkDialog, setBulkDialog] = useState<"delete" | "ban" | "unban" | null>(null);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [globalCounts, setGlobalCounts] = useState({ total: 0, admin: 0, staff: 0, student: 0, affiliate: 0 });
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const offset = (page - 1) * PAGE_SIZE;
   const { data, isLoading } = useAdminListUsers(
-    { search: debouncedSearch || undefined, role: role === "all" ? undefined : role, limit: 100, offset: 0 },
-    { query: { queryKey: getAdminListUsersQueryKey({ search: debouncedSearch, role }) } }
+    {
+      search: debouncedSearch || undefined,
+      role: role === "all" ? undefined : role,
+      status: status === "all" ? undefined : status,
+      limit: PAGE_SIZE,
+      offset,
+    } as Parameters<typeof useAdminListUsers>[0],
+    { query: { queryKey: getAdminListUsersQueryKey({ search: debouncedSearch, role, status, limit: PAGE_SIZE, offset }) } }
   );
 
   const banUser = useBanUser();
 
+  // Fetch global role counts (unfiltered) once and on refresh
+  const fetchGlobalCounts = () => {
+    Promise.all(
+      ["", "admin", "staff", "student", "affiliate"].map(r =>
+        fetch(`${API_BASE}/api/admin/users?limit=1&offset=0${r ? `&role=${r}` : ""}`, { credentials: "include" })
+          .then(res => res.json()).then(d => d.total ?? 0).catch(() => 0)
+      )
+    ).then(([total, admin, staff, student, affiliate]) => {
+      setGlobalCounts({ total, admin, staff, student, affiliate });
+    });
+  };
+
+  useEffect(() => { fetchGlobalCounts(); }, []);
+
   const handleSearch = (v: string) => {
     setSearch(v);
+    setPage(1);
     setTimeout(() => setDebouncedSearch(v), 400);
   };
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: getAdminListUsersQueryKey({}) });
+  const handleRoleChange = (v: string) => { setRole(v); setPage(1); setSelectedIds(new Set()); };
+  const handleStatusChange = (v: string) => { setStatus(v); setPage(1); setSelectedIds(new Set()); };
+
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: getAdminListUsersQueryKey({}) });
+    fetchGlobalCounts();
+  };
 
   const handleExport = async () => {
     try {
@@ -792,20 +884,10 @@ export default function AdminUsersPage() {
     }
   };
 
-  // Client-side status filter
-  const users = (data?.users ?? []).filter(u => {
-    if (status === "active") return !u.isBanned;
-    if (status === "banned") return u.isBanned;
-    return true;
-  });
+  const users = data?.users ?? [];
+  const filteredTotal = data?.total ?? 0;
 
-  const roleCounts = {
-    total: data?.total ?? 0,
-    admin: (data?.users ?? []).filter(u => u.role === "admin").length,
-    staff: (data?.users ?? []).filter(u => u.role === "staff").length,
-    student: (data?.users ?? []).filter(u => u.role === "student").length,
-    affiliate: (data?.users ?? []).filter(u => u.role === "affiliate").length,
-  };
+  const roleCounts = globalCounts;
 
   return (
     <div className="p-4 md:p-6 max-w-full">
@@ -855,7 +937,7 @@ export default function AdminUsersPage() {
             className="pl-9 bg-card border-border"
           />
         </div>
-        <Select value={role} onValueChange={setRole}>
+        <Select value={role} onValueChange={handleRoleChange}>
           <SelectTrigger className="w-full sm:w-36 bg-card border-border"><SelectValue placeholder="All Roles" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Roles</SelectItem>
@@ -865,7 +947,7 @@ export default function AdminUsersPage() {
             <SelectItem value="affiliate">Affiliate</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={status} onValueChange={setStatus}>
+        <Select value={status} onValueChange={handleStatusChange}>
           <SelectTrigger className="w-full sm:w-36 bg-card border-border"><SelectValue placeholder="All Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
@@ -1020,6 +1102,8 @@ export default function AdminUsersPage() {
           </table>
         </div>
       )}
+
+      <Pagination page={page} total={filteredTotal} pageSize={PAGE_SIZE} onChange={p => { setPage(p); setSelectedIds(new Set()); }} />
 
       {/* Dialogs */}
       <AddUserDialog open={addOpen} onClose={() => setAddOpen(false)} onSuccess={refresh} />
