@@ -246,7 +246,7 @@ function SmtpTab() {
   const [testing, setTesting] = useState(false);
   const [testEmail, setTestEmail] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ host: "", port: "587", secure: false, username: "", password: "", fromName: "VK Academy", fromEmail: "", isActive: false });
+  const [form, setForm] = useState({ name: "Primary SMTP", host: "", port: "587", secure: false, username: "", password: "", fromName: "VK Academy", fromEmail: "", isActive: false });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -255,7 +255,7 @@ function SmtpTab() {
       const data = await res.json();
       if (data) {
         setSmtp(data);
-        setForm(f => ({ ...f, host: data.host, port: String(data.port), secure: data.secure, username: data.username, fromName: data.fromName, fromEmail: data.fromEmail, isActive: data.isActive, password: "" }));
+        setForm(f => ({ ...f, name: data.name || "Primary SMTP", host: data.host, port: String(data.port), secure: data.secure, username: data.username, fromName: data.fromName, fromEmail: data.fromEmail, isActive: data.isActive, password: "" }));
         setShowForm(false);
       } else {
         setShowForm(true);
@@ -334,7 +334,7 @@ function SmtpTab() {
           {smtp && !showForm && (
             <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between gap-4">
               <div className="space-y-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground">Settings Saved</p>
+                <p className="text-sm font-semibold text-foreground">{smtp.name || "Primary SMTP"}</p>
                 <p className="text-xs text-muted-foreground truncate">
                   {smtp.host}:{smtp.port} · {smtp.username} · From: {smtp.fromName} &lt;{smtp.fromEmail}&gt;
                 </p>
@@ -344,7 +344,7 @@ function SmtpTab() {
                 </div>
               </div>
               <Button variant="outline" size="sm" className="flex-shrink-0 gap-1.5" onClick={() => {
-                setForm({ host: smtp.host, port: String(smtp.port), secure: smtp.secure, username: smtp.username, password: "", fromName: smtp.fromName, fromEmail: smtp.fromEmail, isActive: smtp.isActive });
+                setForm({ name: smtp.name || "Primary SMTP", host: smtp.host, port: String(smtp.port), secure: smtp.secure, username: smtp.username, password: "", fromName: smtp.fromName, fromEmail: smtp.fromEmail, isActive: smtp.isActive });
                 setShowForm(true);
               }}>
                 <Edit2 className="w-3.5 h-3.5" />
@@ -370,6 +370,11 @@ function SmtpTab() {
               </div>
 
               <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Account Name</Label>
+                  <Input value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. Primary Brevo, Main Gmail" className="bg-background border-border" />
+                  <p className="text-[10px] text-muted-foreground">A label to identify this SMTP provider (e.g. "Primary Brevo")</p>
+                </div>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">SMTP Host</Label>
@@ -422,7 +427,7 @@ function SmtpTab() {
                   </Button>
                   {smtp && (
                     <Button variant="outline" onClick={() => {
-                      setForm({ host: smtp.host, port: String(smtp.port), secure: smtp.secure, username: smtp.username, password: "", fromName: smtp.fromName, fromEmail: smtp.fromEmail, isActive: smtp.isActive });
+                      setForm({ name: smtp.name || "Primary SMTP", host: smtp.host, port: String(smtp.port), secure: smtp.secure, username: smtp.username, password: "", fromName: smtp.fromName, fromEmail: smtp.fromEmail, isActive: smtp.isActive });
                       setShowForm(false);
                     }} disabled={saving}>
                       Cancel
@@ -484,6 +489,7 @@ function BackupSmtpAccounts() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [testingId, setTestingId] = useState<number | null>(null);
+  const [promotingId, setPromotingId] = useState<number | null>(null);
   const [testEmail, setTestEmail] = useState("");
   const [form, setForm] = useState(emptyBackupForm());
 
@@ -525,6 +531,20 @@ function BackupSmtpAccounts() {
     await apiFetch(`/api/admin/crm/smtp/accounts/${id}`, { method: "DELETE" });
     toast({ title: "Backup SMTP removed" }); load();
     setDeleting(null);
+  };
+
+  const promoteAccount = async (acc: any) => {
+    if (!confirm(`Set "${acc.name}" as the new Primary SMTP? The current primary will become a backup.`)) return;
+    setPromotingId(acc.id);
+    const r = await apiFetch(`/api/admin/crm/smtp/accounts/${acc.id}/promote`, { method: "POST" });
+    if (r.ok) {
+      toast({ title: `"${acc.name}" is now the Primary SMTP`, description: "The previous primary has been moved to backups." });
+      load();
+    } else {
+      const e = await r.json().catch(() => ({}));
+      toast({ title: e.error ?? "Failed to promote", variant: "destructive" });
+    }
+    setPromotingId(null);
   };
 
   const testAccount = async (id: number) => {
@@ -679,7 +699,10 @@ function BackupSmtpAccounts() {
                   {acc.lastError && <p className="text-[11px] text-red-400 mt-1 line-clamp-1" title={acc.lastError}>⚠ {acc.lastError}</p>}
                   {acc.lastTestedAt && !acc.lastError && <p className="text-[11px] text-green-400 mt-0.5">✓ Last tested: {new Date(acc.lastTestedAt).toLocaleString()}</p>}
                 </div>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
+                <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
+                  <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs gap-1 cursor-pointer border-primary/30 text-primary hover:bg-primary/10" disabled={promotingId === acc.id} onClick={() => promoteAccount(acc)} title="Make this the primary SMTP">
+                    {promotingId === acc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <ArrowRight className="w-3 h-3" />}Set Primary
+                  </Button>
                   <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs gap-1 cursor-pointer" disabled={testingId === acc.id} onClick={() => testAccount(acc.id)}>
                     {testingId === acc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}Test
                   </Button>

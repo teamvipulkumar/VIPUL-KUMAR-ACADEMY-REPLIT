@@ -141,9 +141,9 @@ router.get("/smtp", requireAdmin, async (_req, res): Promise<void> => {
 });
 
 router.put("/smtp", requireAdmin, async (req, res): Promise<void> => {
-  const { host, port, secure, username, password, fromName, fromEmail, isActive } = req.body;
+  const { name, host, port, secure, username, password, fromName, fromEmail, isActive } = req.body;
   const existing = await getSmtp();
-  const values: Record<string, unknown> = { host, port: parseInt(String(port)) || 587, secure: !!secure, username, fromName, fromEmail, isActive: !!isActive };
+  const values: Record<string, unknown> = { name: name || "Primary SMTP", host, port: parseInt(String(port)) || 587, secure: !!secure, username, fromName, fromEmail, isActive: !!isActive };
   if (password) values.password = password;
 
   if (existing) {
@@ -273,6 +273,45 @@ router.put("/smtp/accounts/:id", requireAdmin, async (req, res): Promise<void> =
 router.delete("/smtp/accounts/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   await db.delete(smtpAccountsTable).where(eq(smtpAccountsTable.id, id));
+  res.json({ success: true });
+});
+
+/* Promote a backup account to primary (swaps with current primary) */
+router.post("/smtp/accounts/:id/promote", requireAdmin, async (req, res): Promise<void> => {
+  const backupId = parseInt(req.params.id);
+  const [backup] = await db.select().from(smtpAccountsTable).where(eq(smtpAccountsTable.id, backupId)).limit(1);
+  if (!backup) { res.status(404).json({ error: "Account not found" }); return; }
+
+  const primary = await getSmtp();
+
+  // If there's a current primary with actual config, demote it to a backup account
+  if (primary?.host) {
+    await db.insert(smtpAccountsTable).values({
+      name: primary.name || "Previous Primary",
+      host: primary.host, port: primary.port, secure: primary.secure,
+      username: primary.username, password: primary.password,
+      fromName: primary.fromName, fromEmail: primary.fromEmail,
+      priority: 1, isActive: true,
+    });
+  }
+
+  // Promote the backup to primary
+  const newPrimaryValues: Record<string, unknown> = {
+    name: backup.name, host: backup.host, port: backup.port, secure: backup.secure,
+    username: backup.username, password: backup.password,
+    fromName: backup.fromName, fromEmail: backup.fromEmail,
+    isActive: backup.isActive,
+  };
+
+  if (primary) {
+    await db.update(smtpSettingsTable).set(newPrimaryValues).where(eq(smtpSettingsTable.id, primary.id));
+  } else {
+    await db.insert(smtpSettingsTable).values(newPrimaryValues as any);
+  }
+
+  // Remove the backup (it's now primary)
+  await db.delete(smtpAccountsTable).where(eq(smtpAccountsTable.id, backupId));
+
   res.json({ success: true });
 });
 

@@ -5,6 +5,7 @@ import { usersTable } from "./users";
 
 export const smtpSettingsTable = pgTable("smtp_settings", {
   id: serial("id").primaryKey(),
+  name: text("name").notNull().default("Primary SMTP"),
   host: text("host").notNull().default(""),
   port: integer("port").notNull().default(587),
   secure: boolean("secure").notNull().default(false),
