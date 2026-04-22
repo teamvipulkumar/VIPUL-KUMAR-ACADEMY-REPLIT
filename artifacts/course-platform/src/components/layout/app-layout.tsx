@@ -251,7 +251,7 @@ export function Navbar() {
                       <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-1 mb-1">Preferences</p>
                       <button
                         onClick={toggleTheme}
-                        className="w-full flex items-center justify-between px-2 py-1.5 rounded-md text-sm text-foreground hover:bg-accent transition-colors"
+                        className="w-full flex items-center justify-between px-2 py-1.5 rounded-md text-sm text-foreground hover:bg-accent transition-colors cursor-pointer"
                       >
                         <span className="flex items-center gap-2">
                           {theme === "dark" ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
