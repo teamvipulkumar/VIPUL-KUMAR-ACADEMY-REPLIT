@@ -110,21 +110,21 @@ export function ImageUploader({
               <button
                 type="button"
                 onClick={e => { e.stopPropagation(); setPickerOpen(true); }}
-                className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-sm rounded-xl px-3 py-2 flex items-center gap-2 text-white text-xs font-medium hover:bg-white/30"
+                className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-sm rounded-xl px-3 py-2 flex items-center gap-2 text-white text-xs font-medium hover:bg-white/30 cursor-pointer"
               >
                 <FolderOpen className="w-3.5 h-3.5" />Library
               </button>
               <button
                 type="button"
                 onClick={e => { e.stopPropagation(); inputRef.current?.click(); }}
-                className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-sm rounded-xl px-3 py-2 flex items-center gap-2 text-white text-xs font-medium hover:bg-white/30"
+                className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/20 backdrop-blur-sm rounded-xl px-3 py-2 flex items-center gap-2 text-white text-xs font-medium hover:bg-white/30 cursor-pointer"
               >
                 <Upload className="w-3.5 h-3.5" />Upload
               </button>
             </div>
             {/* Remove button */}
             <button
-              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80 z-10"
+              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80 z-10 cursor-pointer"
               onClick={e => { e.stopPropagation(); onChange(""); }}
               title="Remove image"
               type="button"
@@ -153,7 +153,7 @@ export function ImageUploader({
                       <button
                         type="button"
                         onClick={e => { e.stopPropagation(); setPickerOpen(true); }}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors flex items-center gap-1.5 font-medium"
+                        className="text-xs px-3 py-1.5 rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors flex items-center gap-1.5 font-medium cursor-pointer"
                       >
                         <FolderOpen className="w-3 h-3" />From Library
                       </button>
@@ -161,7 +161,7 @@ export function ImageUploader({
                       <button
                         type="button"
                         onClick={e => { e.stopPropagation(); inputRef.current?.click(); }}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-card border border-border hover:border-primary/40 transition-colors flex items-center gap-1.5 font-medium text-foreground"
+                        className="text-xs px-3 py-1.5 rounded-lg bg-card border border-border hover:border-primary/40 transition-colors flex items-center gap-1.5 font-medium text-foreground cursor-pointer"
                       >
                         <Upload className="w-3 h-3" />Upload
                       </button>
