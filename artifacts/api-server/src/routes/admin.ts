@@ -193,37 +193,60 @@ router.post("/users/import", requireAdmin, async (req, res): Promise<void> => {
     if (!course) { res.status(404).json({ error: "Course not found" }); return; }
   }
 
-  const created: number[] = [];
   const errors: Array<{ row: number; email: string; error: string }> = [];
 
+  // 1. Validate all rows upfront
+  type ValidRow = { idx: number; name: string; email: string; password: string; role: "admin" | "student" | "affiliate" };
+  const valid: ValidRow[] = [];
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     if (!r.name?.trim() || !r.email?.trim() || !r.password?.trim()) {
       errors.push({ row: i + 1, email: r.email ?? "", error: "name, email, and password are required" }); continue;
     }
-    const emailLower = r.email.trim().toLowerCase();
-    const role = (["admin", "student", "affiliate"].includes(r.role ?? "")) ? r.role as string : "student";
-    try {
-      const [existing] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, emailLower)).limit(1);
-      if (existing) { errors.push({ row: i + 1, email: emailLower, error: "Email already exists" }); continue; }
-      const hashed = await bcrypt.hash(r.password.trim(), 10);
-      const referralCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-      const [user] = await db.insert(usersTable).values({ name: r.name.trim(), email: emailLower, password: hashed, role: role as "admin" | "student" | "affiliate", referralCode }).returning({ id: usersTable.id });
-      created.push(user.id);
-    } catch {
-      errors.push({ row: i + 1, email: emailLower, error: "Database error" });
+    const role = (["admin", "student", "affiliate"].includes(r.role ?? "")) ? r.role as "admin" | "student" | "affiliate" : "student";
+    valid.push({ idx: i + 1, name: r.name.trim(), email: r.email.trim().toLowerCase(), password: r.password.trim(), role });
+  }
+
+  // 2. Bulk check existing emails in one query
+  if (valid.length > 0) {
+    const emailList = valid.map(r => r.email);
+    const existing = await db.select({ email: usersTable.email }).from(usersTable).where(inArray(usersTable.email, emailList));
+    const existingSet = new Set(existing.map(e => e.email));
+    const dupes = valid.filter(r => existingSet.has(r.email));
+    dupes.forEach(r => errors.push({ row: r.idx, email: r.email, error: "Email already exists" }));
+    valid.splice(0, valid.length, ...valid.filter(r => !existingSet.has(r.email)));
+  }
+
+  // 3. Hash passwords in parallel (concurrency = 20, cost = 8 for speed)
+  const CONCURRENCY = 20;
+  type HashedRow = ValidRow & { hashed: string };
+  const hashed: HashedRow[] = [];
+  for (let i = 0; i < valid.length; i += CONCURRENCY) {
+    const chunk = valid.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(chunk.map(async r => ({ ...r, hashed: await bcrypt.hash(r.password, 8) })));
+    hashed.push(...results);
+  }
+
+  // 4. Bulk insert all users in one query
+  const created: number[] = [];
+  if (hashed.length > 0) {
+    const CHUNK = 500;
+    for (let i = 0; i < hashed.length; i += CHUNK) {
+      const chunk = hashed.slice(i, i + CHUNK);
+      const inserted = await db.insert(usersTable).values(
+        chunk.map(r => ({ name: r.name, email: r.email, password: r.hashed, role: r.role, referralCode: Math.random().toString(36).substring(2, 10).toUpperCase() }))
+      ).returning({ id: usersTable.id });
+      inserted.forEach(u => created.push(u.id));
     }
   }
 
+  // 5. Bulk enroll
   let enrolled = 0;
   if (enrollCourseId && created.length > 0) {
-    const enrollValues = created.map(userId => ({ userId, courseId: enrollCourseId }));
     try {
-      await db.insert(enrollmentsTable).values(enrollValues).onConflictDoNothing();
+      await db.insert(enrollmentsTable).values(created.map(userId => ({ userId, courseId: enrollCourseId }))).onConflictDoNothing();
       enrolled = created.length;
-    } catch {
-      // enrollment step failed silently — users were still created
-    }
+    } catch { /* enrollment failed silently — users still created */ }
   }
 
   res.json({ created: created.length, enrolled, errors, total: rows.length });
