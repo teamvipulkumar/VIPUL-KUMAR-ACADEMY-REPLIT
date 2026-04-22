@@ -997,7 +997,7 @@ export default function AdminUsersPage() {
                           <DropdownMenuContent align="end" className="w-44 bg-[#0d1424] border-white/10">
                             <DropdownMenuItem
                               onClick={() => handleBan(u.id, !u.isBanned, u.name)}
-                              className={u.isBanned ? "text-green-400 focus:text-green-400 focus:bg-green-500/10" : "text-orange-400 focus:text-orange-400 focus:bg-orange-500/10"}
+                              className={`cursor-pointer ${u.isBanned ? "text-green-400 focus:text-green-400 focus:bg-green-500/10" : "text-orange-400 focus:text-orange-400 focus:bg-orange-500/10"}`}
                             >
                               {u.isBanned ? <CheckCircle className="w-3.5 h-3.5 mr-2" /> : <XCircle className="w-3.5 h-3.5 mr-2" />}
                               {u.isBanned ? "Unban User" : "Ban User"}
@@ -1005,7 +1005,7 @@ export default function AdminUsersPage() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => setDeletingUser(u)}
-                              className="text-red-400 focus:text-red-400 focus:bg-red-500/10"
+                              className="cursor-pointer text-red-400 focus:text-red-400 focus:bg-red-500/10"
                             >
                               <Trash2 className="w-3.5 h-3.5 mr-2" />Delete User
                             </DropdownMenuItem>
