@@ -11,7 +11,7 @@ A full-stack SaaS course-selling platform with dark/blue premium theme. Built on
 - **Package manager**: pnpm
 - **Frontend**: React + Vite (artifacts/course-platform) — Wouter router, TanStack Query, Tailwind CSS, shadcn/ui
 - **API**: Express 5 (artifacts/api-server) — JWT auth via httpOnly cookies, Pino logging
-- **Database**: PostgreSQL + Drizzle ORM (lib/db)
+- **Database**: Supabase PostgreSQL + Drizzle ORM (lib/db) — uses `SUPABASE_DATABASE_URL` (takes priority over `DATABASE_URL`)
 - **API codegen**: Orval — generates React Query hooks from OpenAPI spec (lib/api-spec → lib/api-client-react)
 - **Validation**: Zod (zod/v4), drizzle-zod
 
