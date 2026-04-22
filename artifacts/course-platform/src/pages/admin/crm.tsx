@@ -182,7 +182,7 @@ function DashboardTab() {
       apiFetch("/api/admin/crm/stats").then(r => r.json()),
       apiFetch("/api/admin/crm/sends?limit=20").then(r => r.json()),
     ]);
-    setStats(s); setSends(l);
+    setStats(s); setSends(Array.isArray(l) ? l : []);
     setLoading(false);
   }, []);
 
