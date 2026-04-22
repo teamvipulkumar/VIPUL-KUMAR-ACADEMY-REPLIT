@@ -1595,7 +1595,7 @@ function SalesTab() {
             <button
               key={p.id}
               onClick={() => setPeriod(p.id)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors cursor-pointer ${
                 period === p.id
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-card text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
@@ -1821,7 +1821,7 @@ function SettingsTab() {
             <button
               key={opt.days}
               onClick={() => setSettings(s => ({ ...s, payoutPeriodDays: opt.days }))}
-              className={`px-3 py-2.5 rounded-lg border text-xs font-medium transition-all text-center ${
+              className={`px-3 py-2.5 rounded-lg border text-xs font-medium transition-all text-center cursor-pointer ${
                 settings.payoutPeriodDays === opt.days
                   ? "bg-primary/15 border-primary/40 text-primary"
                   : "bg-background border-border text-muted-foreground hover:text-foreground hover:border-border/80"
