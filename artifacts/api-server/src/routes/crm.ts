@@ -7,6 +7,7 @@ import {
   emailListsTable, emailListMembersTable,
   contactTagsTable, contactTagAssignmentsTable,
   emailSequencesTable, emailSequenceStepsTable, emailSequenceEnrollmentsTable,
+  automationFunnelsTable, automationFunnelStepsTable,
 } from "@workspace/db";
 import { eq, count, sql, and, notInArray, inArray, asc } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth";
@@ -1334,5 +1335,155 @@ router.post("/sequences/process", requireAdmin, async (_req, res): Promise<void>
   await processScheduledCampaigns();
   res.json({ success: true, message: "Processed sequences and scheduled campaigns" });
 });
+
+/* ══════════════════════════════ AUTOMATION FUNNELS ══════════════════════════════ */
+
+router.get("/funnels", requireAdmin, async (_req, res): Promise<void> => {
+  const funnels = await db.select().from(automationFunnelsTable).orderBy(asc(automationFunnelsTable.createdAt));
+  const steps = await db.select().from(automationFunnelStepsTable).orderBy(asc(automationFunnelStepsTable.stepOrder));
+  const result = funnels.map(f => ({
+    ...f,
+    steps: steps.filter(s => s.funnelId === f.id),
+  }));
+  res.json(result);
+});
+
+router.post("/funnels", requireAdmin, async (req, res): Promise<void> => {
+  const { name, triggerType, triggerConfig } = req.body;
+  if (!name || !triggerType) { res.status(400).json({ error: "name and triggerType required" }); return; }
+  const [funnel] = await db.insert(automationFunnelsTable).values({ name, triggerType, triggerConfig: triggerConfig ?? {} }).returning();
+  res.json({ ...funnel, steps: [] });
+});
+
+router.get("/funnels/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  const [funnel] = await db.select().from(automationFunnelsTable).where(eq(automationFunnelsTable.id, id)).limit(1);
+  if (!funnel) { res.status(404).json({ error: "Funnel not found" }); return; }
+  const steps = await db.select().from(automationFunnelStepsTable).where(eq(automationFunnelStepsTable.funnelId, id)).orderBy(asc(automationFunnelStepsTable.stepOrder));
+  res.json({ ...funnel, steps });
+});
+
+router.put("/funnels/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  const { name, triggerType, triggerConfig, status } = req.body;
+  const updates: Record<string, unknown> = {};
+  if (name !== undefined) updates.name = name;
+  if (triggerType !== undefined) updates.triggerType = triggerType;
+  if (triggerConfig !== undefined) updates.triggerConfig = triggerConfig;
+  if (status !== undefined) updates.status = status;
+  const [updated] = await db.update(automationFunnelsTable).set(updates).where(eq(automationFunnelsTable.id, id)).returning();
+  if (!updated) { res.status(404).json({ error: "Funnel not found" }); return; }
+  const steps = await db.select().from(automationFunnelStepsTable).where(eq(automationFunnelStepsTable.funnelId, id)).orderBy(asc(automationFunnelStepsTable.stepOrder));
+  res.json({ ...updated, steps });
+});
+
+router.delete("/funnels/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  await db.delete(automationFunnelsTable).where(eq(automationFunnelsTable.id, id));
+  res.json({ success: true });
+});
+
+router.post("/funnels/:id/steps", requireAdmin, async (req, res): Promise<void> => {
+  const funnelId = parseInt(req.params.id);
+  const { actionType, config, insertAfterOrder } = req.body;
+  if (!actionType) { res.status(400).json({ error: "actionType required" }); return; }
+
+  // Shift existing steps after insertion point
+  const insertOrder = typeof insertAfterOrder === "number" ? insertAfterOrder + 1 : 9999;
+  await db.execute(sql`UPDATE automation_funnel_steps SET step_order = step_order + 1 WHERE funnel_id = ${funnelId} AND step_order >= ${insertOrder}`);
+
+  const [step] = await db.insert(automationFunnelStepsTable).values({ funnelId, actionType, config: config ?? {}, stepOrder: insertOrder }).returning();
+  res.json(step);
+});
+
+router.put("/funnels/:id/steps/:stepId", requireAdmin, async (req, res): Promise<void> => {
+  const stepId = parseInt(req.params.stepId);
+  const { actionType, config } = req.body;
+  const updates: Record<string, unknown> = {};
+  if (actionType !== undefined) updates.actionType = actionType;
+  if (config !== undefined) updates.config = config;
+  const [updated] = await db.update(automationFunnelStepsTable).set(updates).where(eq(automationFunnelStepsTable.id, stepId)).returning();
+  if (!updated) { res.status(404).json({ error: "Step not found" }); return; }
+  res.json(updated);
+});
+
+router.delete("/funnels/:id/steps/:stepId", requireAdmin, async (req, res): Promise<void> => {
+  const stepId = parseInt(req.params.stepId);
+  const funnelId = parseInt(req.params.id);
+  const [removed] = await db.delete(automationFunnelStepsTable).where(eq(automationFunnelStepsTable.id, stepId)).returning();
+  if (removed) {
+    await db.execute(sql`UPDATE automation_funnel_steps SET step_order = step_order - 1 WHERE funnel_id = ${funnelId} AND step_order > ${removed.stepOrder}`);
+  }
+  res.json({ success: true });
+});
+
+/* Execute all published funnels for a given trigger + userId */
+export async function triggerFunnel(triggerType: string, userId: number, triggerConfig: Record<string, unknown> = {}) {
+  const funnels = await db.select().from(automationFunnelsTable)
+    .where(and(eq(automationFunnelsTable.triggerType, triggerType), eq(automationFunnelsTable.status, "published")));
+
+  for (const funnel of funnels) {
+    const cfg = funnel.triggerConfig as Record<string, unknown>;
+    // For tag_applied / list_added, only fire if IDs match
+    if (triggerType === "tag_applied" && cfg.tagId && cfg.tagId !== triggerConfig.tagId) continue;
+    if (triggerType === "list_added" && cfg.listId && cfg.listId !== triggerConfig.listId) continue;
+
+    const steps = await db.select().from(automationFunnelStepsTable)
+      .where(eq(automationFunnelStepsTable.funnelId, funnel.id))
+      .orderBy(asc(automationFunnelStepsTable.stepOrder));
+
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (!user) continue;
+
+    let cumulativeDelayMs = 0;
+    for (const step of steps) {
+      const config = step.config as Record<string, unknown>;
+      if (step.actionType === "end") break;
+
+      if (step.actionType === "wait") {
+        const days = Number(config.days ?? 0);
+        const hours = Number(config.hours ?? 0);
+        cumulativeDelayMs += (days * 86400 + hours * 3600) * 1000;
+        continue;
+      }
+
+      const execute = async () => {
+        if (step.actionType === "apply_list" && config.listId) {
+          const listId = Number(config.listId);
+          const existing = await db.select().from(emailListMembersTable)
+            .where(and(eq(emailListMembersTable.listId, listId), eq(emailListMembersTable.userId, userId))).limit(1);
+          if (!existing.length) await db.insert(emailListMembersTable).values({ listId, userId });
+        } else if (step.actionType === "remove_list" && config.listId) {
+          const listId = Number(config.listId);
+          await db.delete(emailListMembersTable).where(and(eq(emailListMembersTable.listId, listId), eq(emailListMembersTable.userId, userId)));
+        } else if (step.actionType === "apply_tag" && config.tagId) {
+          const tagId = Number(config.tagId);
+          const existing = await db.select().from(contactTagAssignmentsTable)
+            .where(and(eq(contactTagAssignmentsTable.tagId, tagId), eq(contactTagAssignmentsTable.userId, userId))).limit(1);
+          if (!existing.length) await db.insert(contactTagAssignmentsTable).values({ tagId, userId });
+        } else if (step.actionType === "remove_tag" && config.tagId) {
+          const tagId = Number(config.tagId);
+          await db.delete(contactTagAssignmentsTable).where(and(eq(contactTagAssignmentsTable.tagId, tagId), eq(contactTagAssignmentsTable.userId, userId)));
+        } else if (step.actionType === "send_email") {
+          let subject = String(config.subject ?? "");
+          let html = String(config.body ?? "");
+          if (config.mode === "template" && config.templateId) {
+            const [tpl] = await db.select().from(emailTemplatesTable).where(eq(emailTemplatesTable.id, Number(config.templateId))).limit(1);
+            if (tpl) { subject = tpl.subject; html = tpl.htmlBody; }
+          }
+          subject = subject.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
+          html = html.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
+          await sendEmailWithFallback(user.email, subject, html);
+        }
+      };
+
+      if (cumulativeDelayMs > 0) {
+        setTimeout(execute, cumulativeDelayMs);
+      } else {
+        await execute();
+      }
+    }
+  }
+}
 
 export default router;

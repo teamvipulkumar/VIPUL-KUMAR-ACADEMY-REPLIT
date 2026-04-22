@@ -156,6 +156,26 @@ export const emailSequenceEnrollmentsTable = pgTable("email_sequence_enrollments
   nextSendAt: timestamp("next_send_at", { withTimezone: true }),
 }, (t) => [unique("ese_uniq").on(t.sequenceId, t.userId)]);
 
+/* ─── Automation Funnels ─── */
+export const automationFunnelsTable = pgTable("automation_funnels", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  triggerType: text("trigger_type").notNull().default("user_signup"),
+  triggerConfig: jsonb("trigger_config").notNull().default({}),
+  status: text("status", { enum: ["draft", "published"] }).notNull().default("draft"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export const automationFunnelStepsTable = pgTable("automation_funnel_steps", {
+  id: serial("id").primaryKey(),
+  funnelId: integer("funnel_id").notNull().references(() => automationFunnelsTable.id, { onDelete: "cascade" }),
+  stepOrder: integer("step_order").notNull().default(0),
+  actionType: text("action_type").notNull(),
+  config: jsonb("config").notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /* ─── Zod schemas & types ─── */
 export const insertEmailListSchema = createInsertSchema(emailListsTable).omit({ id: true, createdAt: true });
 export type InsertEmailList = z.infer<typeof insertEmailListSchema>;

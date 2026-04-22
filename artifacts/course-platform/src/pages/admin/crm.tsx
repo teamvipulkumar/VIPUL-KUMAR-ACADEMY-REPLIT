@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter, ShieldCheck } from "lucide-react";
+import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter, ShieldCheck, ShoppingCart, Flag, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -981,84 +981,554 @@ function TemplatesTab() {
 }
 
 /* ══════════════════════════════════════════════ AUTOMATION ══════════════════════════════════════════════ */
+
+const FUNNEL_TRIGGERS = [
+  { type: "user_signup",   label: "User Signs Up",        icon: UserPlus,      color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/20",   desc: "Fires when a new user registers" },
+  { type: "new_purchase",  label: "Purchase Completed",   icon: ShoppingCart,  color: "text-green-400",  bg: "bg-green-500/10",  border: "border-green-500/20",  desc: "Fires when any purchase is completed" },
+  { type: "tag_applied",   label: "Tag Applied",          icon: Tag,           color: "text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/20", desc: "Fires when a tag is applied to a contact" },
+  { type: "list_added",    label: "Added to List",        icon: List,          color: "text-amber-400",  bg: "bg-amber-500/10",  border: "border-amber-500/20",  desc: "Fires when a contact is added to a list" },
+];
+
+const FUNNEL_ACTIONS = [
+  { type: "wait",         label: "Wait",             icon: Clock,          color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20",   desc: "Pause X days / hours" },
+  { type: "apply_list",   label: "Apply List",       icon: Plus,           color: "text-blue-400",    bg: "bg-blue-500/10",    border: "border-blue-500/20",    desc: "Add contact to a list" },
+  { type: "remove_list",  label: "Remove From List", icon: Minus,          color: "text-rose-400",    bg: "bg-rose-500/10",    border: "border-rose-500/20",    desc: "Remove contact from a list" },
+  { type: "apply_tag",    label: "Apply Tag",        icon: Tag,            color: "text-violet-400",  bg: "bg-violet-500/10",  border: "border-violet-500/20",  desc: "Add a tag to the contact" },
+  { type: "remove_tag",   label: "Remove Tag",       icon: Tag,            color: "text-orange-400",  bg: "bg-orange-500/10",  border: "border-orange-500/20",  desc: "Remove a tag from the contact" },
+  { type: "send_email",   label: "Send Email",       icon: Mail,           color: "text-green-400",   bg: "bg-green-500/10",   border: "border-green-500/20",   desc: "Send custom or template email" },
+  { type: "end",          label: "End Funnel",       icon: Flag,           color: "text-muted-foreground", bg: "bg-muted/20", border: "border-border",          desc: "Stop execution for this contact" },
+];
+
+function stepSummaryLabel(step: any): string {
+  const c: Record<string, any> = step.config ?? {};
+  switch (step.actionType) {
+    case "wait":        return `Wait ${c.days ?? 0}d ${c.hours ?? 0}h`;
+    case "apply_list":  return c.listName ? `Add to "${c.listName}"` : "Add to list (not configured)";
+    case "remove_list": return c.listName ? `Remove from "${c.listName}"` : "Remove from list (not configured)";
+    case "apply_tag":   return c.tagName  ? `Apply tag "${c.tagName}"` : "Apply tag (not configured)";
+    case "remove_tag":  return c.tagName  ? `Remove tag "${c.tagName}"` : "Remove tag (not configured)";
+    case "send_email":  return c.mode === "template" ? `Template: ${c.templateName ?? "none"}` : `Subject: ${c.subject ?? ""}`;
+    case "end":         return "Funnel ends here";
+    default: return "";
+  }
+}
+
 function AutomationTab() {
   const { toast } = useToast();
-  const [rules, setRules] = useState<any[]>([]);
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  /* ── View state ── */
+  const [view, setView] = useState<"list" | "builder">("list");
+  const [funnels, setFunnels] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  /* ── Reference data ── */
+  const [lists, setLists] = useState<any[]>([]);
+  const [tags, setTags] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<any[]>([]);
+
+  /* ── Active funnel / builder state ── */
+  const [activeFunnelId, setActiveFunnelId] = useState<number | null>(null);
+  const [funnelName, setFunnelName] = useState("");
+  const [funnelStatus, setFunnelStatus] = useState<"draft" | "published">("draft");
+  const [triggerType, setTriggerType] = useState("user_signup");
+  const [triggerConfig, setTriggerConfig] = useState<Record<string, any>>({});
+  const [editingTrigger, setEditingTrigger] = useState(false);
+  const [steps, setSteps] = useState<any[]>([]);
+  const [addingAfterId, setAddingAfterId] = useState<string | null>(null); // "trigger" | `step-${stepId}`
+  const [editingStepId, setEditingStepId] = useState<number | null>(null);
+  const [stepDraft, setStepDraft] = useState<Record<string, any>>({});
+
+  /* ── Create modal ── */
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newTrigger, setNewTrigger] = useState("user_signup");
+
+  /* ── Load ── */
+  const loadAll = useCallback(async () => {
     setLoading(true);
-    const [r, t] = await Promise.all([
-      apiFetch("/api/admin/crm/automation").then(res => res.json()),
-      apiFetch("/api/admin/crm/templates").then(res => res.json()),
+    const [f, l, t, tp] = await Promise.all([
+      apiFetch("/api/admin/crm/funnels").then(r => r.json()),
+      apiFetch("/api/admin/crm/lists").then(r => r.json()),
+      apiFetch("/api/admin/crm/tags").then(r => r.json()),
+      apiFetch("/api/admin/crm/templates").then(r => r.json()),
     ]);
-    setRules(r); setTemplates(t.filter((t: any) => t.isActive));
+    setFunnels(Array.isArray(f) ? f : []);
+    setLists(Array.isArray(l) ? l : []);
+    setTags(Array.isArray(t) ? t : []);
+    setTemplates(Array.isArray(tp) ? tp.filter((x: any) => x.isActive) : []);
     setLoading(false);
   }, []);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadAll(); }, [loadAll]);
 
-  const update = async (event: string, patch: Partial<{ templateId: number | null; isEnabled: boolean; delayMinutes: number }>) => {
-    setSaving(event);
-    setRules(prev => prev.map(r => r.event === event ? { ...r, ...patch } : r));
-    const rule = rules.find(r => r.event === event);
-    const merged = { ...rule, ...patch };
-    const res = await apiFetch(`/api/admin/crm/automation/${event}`, {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ templateId: merged.templateId, isEnabled: merged.isEnabled, delayMinutes: merged.delayMinutes }),
-    });
-    if (res.ok) toast({ title: "Automation updated" });
-    else toast({ title: "Failed to update", variant: "destructive" });
-    setSaving(null);
+  /* ── Open builder ── */
+  const openFunnel = (f: any) => {
+    setActiveFunnelId(f.id);
+    setFunnelName(f.name);
+    setFunnelStatus(f.status);
+    setTriggerType(f.triggerType);
+    setTriggerConfig(f.triggerConfig ?? {});
+    setSteps(f.steps ?? []);
+    setEditingStepId(null);
+    setEditingTrigger(false);
+    setAddingAfterId(null);
+    setView("builder");
   };
 
-  return (
-    <div className="space-y-5">
-      <div><h2 className="text-xl font-bold text-foreground">Email Automation</h2><p className="text-sm text-muted-foreground mt-0.5">Toggle event-triggered emails and assign templates to each trigger.</p></div>
+  /* ── Create funnel ── */
+  const createFunnel = async () => {
+    if (!newName.trim()) return;
+    setSaving(true);
+    const res = await apiFetch("/api/admin/crm/funnels", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName.trim(), triggerType: newTrigger }),
+    }).then(r => r.json());
+    setSaving(false);
+    setShowCreate(false); setNewName(""); setNewTrigger("user_signup");
+    setFunnels(prev => [...prev, { ...res, steps: [] }]);
+    openFunnel({ ...res, steps: [] });
+  };
 
-      <div className="p-3 bg-blue-500/5 border border-blue-500/15 rounded-xl">
-        <p className="text-xs text-blue-400 flex items-center gap-1.5"><Info className="w-3 h-3 flex-shrink-0" />Automation uses your active SMTP settings. Make sure SMTP is configured and enabled before turning on automations.</p>
+  /* ── Delete funnel ── */
+  const deleteFunnel = async (id: number) => {
+    if (!confirm("Delete this automation funnel? This cannot be undone.")) return;
+    await apiFetch(`/api/admin/crm/funnels/${id}`, { method: "DELETE" });
+    setFunnels(prev => prev.filter(f => f.id !== id));
+    if (activeFunnelId === id) { setView("list"); setActiveFunnelId(null); }
+    toast({ title: "Funnel deleted" });
+  };
+
+  /* ── Save funnel meta ── */
+  const saveMeta = async (patch: Partial<{ name: string; status: string; triggerType: string; triggerConfig: object }>) => {
+    if (!activeFunnelId) return;
+    setSaving(true);
+    const res = await apiFetch(`/api/admin/crm/funnels/${activeFunnelId}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }).then(r => r.json());
+    setSaving(false);
+    setFunnels(prev => prev.map(f => f.id === activeFunnelId ? { ...f, ...res } : f));
+    toast({ title: "Saved" });
+  };
+
+  /* ── Add step ── */
+  const addStep = async (actionType: string) => {
+    if (!activeFunnelId) return;
+    const defaultConfig: Record<string, any> = actionType === "wait" ? { days: 1, hours: 0 } : {};
+    let insertAfterOrder = -1;
+    if (addingAfterId && addingAfterId.startsWith("step-")) {
+      const stepId = parseInt(addingAfterId.replace("step-", ""));
+      const s = steps.find(x => x.id === stepId);
+      if (s) insertAfterOrder = s.stepOrder;
+    } else if (addingAfterId === "trigger") {
+      insertAfterOrder = -1;
+    } else {
+      insertAfterOrder = steps.length > 0 ? steps[steps.length - 1].stepOrder : -1;
+    }
+    const added = await apiFetch(`/api/admin/crm/funnels/${activeFunnelId}/steps`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actionType, config: defaultConfig, insertAfterOrder }),
+    }).then(r => r.json());
+    const fresh = await apiFetch(`/api/admin/crm/funnels/${activeFunnelId}`).then(r => r.json());
+    setSteps(fresh.steps ?? []);
+    setAddingAfterId(null);
+    if (actionType !== "end") { setEditingStepId(added.id); setStepDraft({ ...defaultConfig }); }
+  };
+
+  /* ── Update step ── */
+  const updateStep = async (stepId: number, config: Record<string, any>) => {
+    if (!activeFunnelId) return;
+    await apiFetch(`/api/admin/crm/funnels/${activeFunnelId}/steps/${stepId}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ config }),
+    });
+    setSteps(prev => prev.map(s => s.id === stepId ? { ...s, config } : s));
+    setEditingStepId(null);
+    toast({ title: "Step saved" });
+  };
+
+  /* ── Delete step ── */
+  const deleteStep = async (stepId: number) => {
+    if (!activeFunnelId) return;
+    await apiFetch(`/api/admin/crm/funnels/${activeFunnelId}/steps/${stepId}`, { method: "DELETE" });
+    setSteps(prev => prev.filter(s => s.id !== stepId));
+    if (editingStepId === stepId) setEditingStepId(null);
+  };
+
+  if (loading) return <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+
+  /* ════════════ ACTION PICKER (shared snippet) ════════════ */
+  const ActionPicker = ({ afterId }: { afterId: string }) => addingAfterId === afterId ? (
+    <div className="w-full my-1 p-3 bg-card border border-primary/20 rounded-xl shadow-lg">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-medium text-foreground">Choose an action to add:</p>
+        <button onClick={() => setAddingAfterId(null)} className="text-muted-foreground hover:text-foreground cursor-pointer"><X className="w-3.5 h-3.5" /></button>
       </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        {FUNNEL_ACTIONS.map(a => {
+          const Icon = a.icon;
+          return (
+            <button key={a.type} onClick={() => addStep(a.type)}
+              className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer text-left transition-colors hover:border-primary/30 hover:bg-primary/5 ${a.bg} ${a.border}`}>
+              <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${a.color}`} />
+              <div><p className={`text-xs font-semibold ${a.color}`}>{a.label}</p><p className="text-[10px] text-muted-foreground leading-tight">{a.desc}</p></div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  ) : null;
 
-      {loading ? <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div> : (
-        <div className="space-y-3">
-          {rules.map(rule => {
-            const meta = EVENT_META[rule.event];
-            return (
-              <div key={rule.event} className="bg-card border border-border rounded-xl p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline" className={`text-[10px] border ${meta.badge}`}>{rule.event.replace("_", " ")}</Badge>
-                      <span className="text-sm font-semibold text-foreground">{meta.label}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{meta.description}</p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {saving === rule.event && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
-                    <Switch checked={rule.isEnabled} onCheckedChange={v => update(rule.event, { isEnabled: v })} />
-                  </div>
+  /* ════════════ BUILDER VIEW ════════════ */
+  if (view === "builder" && activeFunnelId !== null) {
+    const triggerDef = FUNNEL_TRIGGERS.find(t => t.type === triggerType) ?? FUNNEL_TRIGGERS[0];
+    const TriggerIcon = triggerDef.icon;
+
+    return (
+      <div className="space-y-4">
+        {/* ── Header ── */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={() => { setView("list"); setActiveFunnelId(null); }}
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
+            <ChevronLeft className="w-4 h-4" />Funnels
+          </button>
+          <span className="text-muted-foreground text-sm">/</span>
+          <input value={funnelName} onChange={e => setFunnelName(e.target.value)}
+            onBlur={() => saveMeta({ name: funnelName })}
+            className="font-bold text-foreground bg-transparent border-none outline-none text-base focus:underline decoration-dashed underline-offset-2 min-w-0 flex-1" />
+          <div className="flex items-center gap-2 ml-auto">
+            {saving && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+            <button onClick={() => { const s = funnelStatus === "draft" ? "published" : "draft"; setFunnelStatus(s); saveMeta({ status: s }); }}
+              className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border cursor-pointer transition-colors ${
+                funnelStatus === "published" ? "bg-green-500/10 border-green-500/30 text-green-400" : "bg-muted/50 border-border text-muted-foreground hover:text-foreground"
+              }`}>
+              {funnelStatus === "published" ? <><CheckCircle2 className="w-3 h-3" />Published</> : <><Pause className="w-3 h-3" />Draft</>}
+            </button>
+            <button onClick={() => deleteFunnel(activeFunnelId)}
+              className="p-1.5 text-muted-foreground hover:text-red-400 cursor-pointer rounded-md hover:bg-red-500/10 transition-colors">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-3 bg-blue-500/5 border border-blue-500/15 rounded-xl">
+          <p className="text-xs text-blue-400 flex items-center gap-1.5">
+            <Info className="w-3 h-3 flex-shrink-0" />
+            {funnelStatus === "published" ? "This funnel is live and will run for new contacts." : "This funnel is in draft mode — it won't run until published."}
+          </p>
+        </div>
+
+        {/* ── Flow canvas ── */}
+        <div className="flex flex-col items-center gap-0 max-w-md mx-auto pb-8">
+
+          {/* Trigger card */}
+          <div className={`w-full rounded-xl border-2 p-4 ${triggerDef.bg} ${triggerDef.border}`}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge variant="outline" className={`text-[10px] border ${triggerDef.border} ${triggerDef.color}`}>TRIGGER</Badge>
+                  <TriggerIcon className={`w-3.5 h-3.5 ${triggerDef.color}`} />
+                  <span className="text-sm font-semibold text-foreground">{triggerDef.label}</span>
                 </div>
-                <div className="mt-3 grid sm:grid-cols-2 gap-3">
+                {!editingTrigger && (
+                  <p className="text-xs text-muted-foreground">
+                    {triggerType === "tag_applied" && triggerConfig.tagName ? `When tag "${triggerConfig.tagName}" is applied`
+                      : triggerType === "list_added" && triggerConfig.listName ? `When added to "${triggerConfig.listName}"`
+                      : triggerDef.desc}
+                  </p>
+                )}
+              </div>
+              <button onClick={() => setEditingTrigger(v => !v)} className={`p-1 cursor-pointer rounded transition-colors ${editingTrigger ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+                <Edit2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            {editingTrigger && (
+              <div className="mt-3 space-y-3 border-t border-border pt-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Trigger Type</Label>
+                  <select value={triggerType} onChange={e => { setTriggerType(e.target.value); setTriggerConfig({}); }}
+                    className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground">
+                    {FUNNEL_TRIGGERS.map(t => <option key={t.type} value={t.type}>{t.label}</option>)}
+                  </select>
+                </div>
+                {triggerType === "tag_applied" && (
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Email Template</Label>
-                    <select value={rule.templateId ?? ""} onChange={e => update(rule.event, { templateId: e.target.value ? parseInt(e.target.value) : null })}
+                    <Label className="text-xs text-muted-foreground">Tag</Label>
+                    <select value={triggerConfig.tagId ?? ""} onChange={e => { const t = tags.find(x => x.id === parseInt(e.target.value)); setTriggerConfig(t ? { tagId: t.id, tagName: t.name } : {}); }}
                       className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground">
-                      <option value="">— No template selected —</option>
-                      {templates.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      <option value="">— Select tag —</option>
+                      {tags.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
                   </div>
+                )}
+                {triggerType === "list_added" && (
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Delay (minutes after event)</Label>
-                    <Input type="number" min={0} value={rule.delayMinutes} onChange={e => setRules(prev => prev.map(r => r.event === rule.event ? { ...r, delayMinutes: parseInt(e.target.value) || 0 } : r))}
-                      onBlur={e => update(rule.event, { delayMinutes: parseInt(e.target.value) || 0 })}
-                      className="bg-background border-border h-9" />
+                    <Label className="text-xs text-muted-foreground">List</Label>
+                    <select value={triggerConfig.listId ?? ""} onChange={e => { const l = lists.find(x => x.id === parseInt(e.target.value)); setTriggerConfig(l ? { listId: l.id, listName: l.name } : {}); }}
+                      className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground">
+                      <option value="">— Select list —</option>
+                      {lists.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    </select>
+                  </div>
+                )}
+                <Button size="sm" onClick={() => { saveMeta({ triggerType, triggerConfig }); setEditingTrigger(false); }}>
+                  Save Trigger
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Add after trigger */}
+          <div className="flex flex-col items-center">
+            <div className="w-px h-4 bg-border" />
+            <button onClick={() => setAddingAfterId(addingAfterId === "trigger" ? null : "trigger")}
+              className={`w-6 h-6 rounded-full border flex items-center justify-center cursor-pointer transition-colors ${addingAfterId === "trigger" ? "bg-primary/20 border-primary/50 text-primary" : "bg-card border-border text-muted-foreground hover:bg-primary/10 hover:border-primary/40 hover:text-primary"}`}>
+              <Plus className="w-3 h-3" />
+            </button>
+            <div className="w-px h-4 bg-border" />
+          </div>
+          {ActionPicker({ afterId: "trigger" })}
+
+          {/* Steps */}
+          {steps.map((step, idx) => {
+            const actionDef = FUNNEL_ACTIONS.find(a => a.type === step.actionType) ?? FUNNEL_ACTIONS[0];
+            const ActionIcon = actionDef.icon;
+            const isEditing = editingStepId === step.id;
+            const c: Record<string, any> = isEditing ? stepDraft : (step.config ?? {});
+            const afterId = `step-${step.id}`;
+
+            return (
+              <div key={step.id} className="flex flex-col items-center w-full">
+                {/* Step card */}
+                <div className={`w-full rounded-xl border p-4 transition-colors ${isEditing ? "border-primary/40 bg-primary/5" : "bg-card border-border hover:border-border/80"}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <Badge variant="outline" className={`text-[10px] border ${actionDef.border} ${actionDef.color}`}>Step {idx + 1}</Badge>
+                        <ActionIcon className={`w-3.5 h-3.5 ${actionDef.color}`} />
+                        <span className="text-sm font-semibold text-foreground">{actionDef.label}</span>
+                      </div>
+                      {!isEditing && <p className="text-xs text-muted-foreground">{stepSummaryLabel(step)}</p>}
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {!isEditing && step.actionType !== "end" && (
+                        <button onClick={() => { setEditingStepId(step.id); setStepDraft({ ...(step.config ?? {}) }); }}
+                          className="p-1 text-muted-foreground hover:text-foreground cursor-pointer rounded transition-colors">
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      <button onClick={() => deleteStep(step.id)}
+                        className="p-1 text-muted-foreground hover:text-red-400 cursor-pointer rounded transition-colors">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Step edit form */}
+                  {isEditing && (
+                    <div className="mt-3 space-y-3 border-t border-border pt-3">
+                      {step.actionType === "wait" && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Days</Label>
+                            <Input type="number" min={0} value={c.days ?? 0} onChange={e => setStepDraft(p => ({ ...p, days: parseInt(e.target.value) || 0 }))} className="bg-background border-border h-9" />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Hours</Label>
+                            <Input type="number" min={0} max={23} value={c.hours ?? 0} onChange={e => setStepDraft(p => ({ ...p, hours: parseInt(e.target.value) || 0 }))} className="bg-background border-border h-9" />
+                          </div>
+                        </div>
+                      )}
+                      {(step.actionType === "apply_list" || step.actionType === "remove_list") && (
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">List</Label>
+                          <select value={c.listId ?? ""} onChange={e => { const l = lists.find(x => x.id === parseInt(e.target.value)); setStepDraft(p => ({ ...p, listId: l?.id, listName: l?.name })); }}
+                            className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground">
+                            <option value="">— Select list —</option>
+                            {lists.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                          </select>
+                        </div>
+                      )}
+                      {(step.actionType === "apply_tag" || step.actionType === "remove_tag") && (
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Tag</Label>
+                          <select value={c.tagId ?? ""} onChange={e => { const t = tags.find(x => x.id === parseInt(e.target.value)); setStepDraft(p => ({ ...p, tagId: t?.id, tagName: t?.name })); }}
+                            className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground">
+                            <option value="">— Select tag —</option>
+                            {tags.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                          </select>
+                        </div>
+                      )}
+                      {step.actionType === "send_email" && (
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Mode</Label>
+                            <select value={c.mode ?? "template"} onChange={e => setStepDraft(p => ({ ...p, mode: e.target.value }))}
+                              className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground">
+                              <option value="template">Use Template</option>
+                              <option value="custom">Custom Email</option>
+                            </select>
+                          </div>
+                          {(c.mode ?? "template") === "template" ? (
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Template</Label>
+                              <select value={c.templateId ?? ""} onChange={e => { const t = templates.find(x => x.id === parseInt(e.target.value)); setStepDraft(p => ({ ...p, templateId: t?.id, templateName: t?.name })); }}
+                                className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground">
+                                <option value="">— Select template —</option>
+                                {templates.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                              </select>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Subject</Label>
+                                <Input value={c.subject ?? ""} onChange={e => setStepDraft(p => ({ ...p, subject: e.target.value }))} className="bg-background border-border h-9" />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Body (HTML or plain text)</Label>
+                                <textarea value={c.body ?? ""} onChange={e => setStepDraft(p => ({ ...p, body: e.target.value }))} rows={5}
+                                  className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm text-foreground resize-y font-mono" />
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                      <div className="flex gap-2 pt-1">
+                        <Button size="sm" onClick={() => updateStep(step.id, stepDraft)}>Save Step</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditingStepId(null)}>Cancel</Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Connector + add button below each step */}
+                <div className="flex flex-col items-center">
+                  <div className="w-px h-4 bg-border" />
+                  <button onClick={() => setAddingAfterId(addingAfterId === afterId ? null : afterId)}
+                    className={`w-6 h-6 rounded-full border flex items-center justify-center cursor-pointer transition-colors ${addingAfterId === afterId ? "bg-primary/20 border-primary/50 text-primary" : "bg-card border-border text-muted-foreground hover:bg-primary/10 hover:border-primary/40 hover:text-primary"}`}>
+                    <Plus className="w-3 h-3" />
+                  </button>
+                  <div className="w-px h-4 bg-border" />
+                </div>
+                {ActionPicker({ afterId })}
+              </div>
+            );
+          })}
+
+          {/* End of funnel stub */}
+          <div className="w-full rounded-xl border border-dashed border-border bg-muted/10 p-3 text-center">
+            <Flag className="w-4 h-4 text-muted-foreground mx-auto mb-1 opacity-40" />
+            <p className="text-xs text-muted-foreground">End of funnel</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ════════════ LIST VIEW ════════════ */
+  return (
+    <div className="space-y-5">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-xl font-bold text-foreground">Automation Funnels</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Build visual automation sequences triggered by user actions.</p>
+        </div>
+        <Button size="sm" onClick={() => setShowCreate(true)} className="flex items-center gap-1.5">
+          <Plus className="w-4 h-4" />New Funnel
+        </Button>
+      </div>
+
+      {/* Create form */}
+      {showCreate && (
+        <div className="p-4 bg-card border border-border rounded-xl space-y-4">
+          <h3 className="font-semibold text-foreground text-sm">Create Automation Funnel</h3>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Funnel Name</Label>
+              <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Welcome Sequence"
+                className="bg-background border-border" onKeyDown={e => e.key === "Enter" && createFunnel()} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Trigger</Label>
+              <select value={newTrigger} onChange={e => setNewTrigger(e.target.value)}
+                className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground">
+                {FUNNEL_TRIGGERS.map(t => <option key={t.type} value={t.type}>{t.label}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={createFunnel} disabled={saving || !newName.trim()}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create Funnel"}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => { setShowCreate(false); setNewName(""); }}>Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {funnels.length === 0 && !showCreate && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <Zap className="w-10 h-10 text-muted-foreground mb-3 opacity-30" />
+          <p className="text-sm font-medium text-foreground">No automation funnels yet</p>
+          <p className="text-xs text-muted-foreground mt-1">Create a funnel to automate user journeys after key events.</p>
+          <Button size="sm" className="mt-4" onClick={() => setShowCreate(true)}>
+            <Plus className="w-4 h-4 mr-1.5" />Create First Funnel
+          </Button>
+        </div>
+      )}
+
+      {/* Funnel cards */}
+      {funnels.length > 0 && (
+        <div className="grid sm:grid-cols-2 gap-3">
+          {funnels.map(f => {
+            const trig = FUNNEL_TRIGGERS.find(t => t.type === f.triggerType) ?? FUNNEL_TRIGGERS[0];
+            const TrigIcon = trig.icon;
+            const stepCount = (f.steps ?? []).length;
+            return (
+              <div key={f.id} className="bg-card border border-border rounded-xl p-4 hover:border-primary/20 transition-colors group">
+                <div className="flex items-start gap-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${trig.bg} ${trig.border} border`}>
+                    <TrigIcon className={`w-4 h-4 ${trig.color}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                      <h3 className="text-sm font-semibold text-foreground truncate">{f.name}</h3>
+                      {f.status === "published"
+                        ? <Badge variant="outline" className="text-[10px] border border-green-500/30 text-green-400">Published</Badge>
+                        : <Badge variant="outline" className="text-[10px] border border-border text-muted-foreground">Draft</Badge>
+                      }
+                    </div>
+                    <p className="text-xs text-muted-foreground">{trig.label} · {stepCount} step{stepCount !== 1 ? "s" : ""}</p>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => openFunnel(f)}
+                      className="p-1.5 text-muted-foreground hover:text-foreground cursor-pointer rounded-md hover:bg-muted/50 transition-colors" title="Edit">
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => deleteFunnel(f.id)}
+                      className="p-1.5 text-muted-foreground hover:text-red-400 cursor-pointer rounded-md hover:bg-red-500/10 transition-colors" title="Delete">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
-                {rule.isEnabled && !rule.templateId && (
-                  <p className="text-[11px] text-amber-400 flex items-center gap-1 mt-2"><AlertCircle className="w-3 h-3" />No template assigned — automation is on but won't send</p>
+                {/* Step preview */}
+                {stepCount > 0 && (
+                  <div className="mt-3 pt-3 border-t border-border flex flex-wrap gap-1">
+                    {(f.steps ?? []).slice(0, 4).map((s: any, i: number) => {
+                      const a = FUNNEL_ACTIONS.find(x => x.type === s.actionType);
+                      return a ? (
+                        <span key={i} className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md border ${a.bg} ${a.border} ${a.color}`}>
+                          {i + 1}. {a.label}
+                        </span>
+                      ) : null;
+                    })}
+                    {stepCount > 4 && <span className="text-[10px] text-muted-foreground self-center">+{stepCount - 4} more</span>}
+                  </div>
                 )}
+                <button onClick={() => openFunnel(f)}
+                  className="mt-3 w-full text-xs text-primary hover:underline cursor-pointer text-left flex items-center gap-1">
+                  <Edit2 className="w-3 h-3" />Open Funnel Builder
+                </button>
               </div>
             );
           })}

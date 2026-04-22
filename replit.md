@@ -67,7 +67,7 @@ A full-stack SaaS course-selling platform with dark/blue premium theme. Built on
 
 ## DB Schema (lib/db/src/schema/)
 
-Tables: users, courses, modules, lessons, enrollments, payments, affiliates (referrals + payouts), coupons, notifications, platform_settings
+Tables: users, courses, modules, lessons, enrollments, payments, affiliates (referrals + payouts), coupons, notifications, platform_settings, smtp_settings, smtp_accounts, email_lists, email_list_members, contact_tags, contact_tag_assignments, email_campaigns, email_automation_rules, email_sequences, email_sequence_steps, email_sequence_enrollments, email_sends, email_templates, **automation_funnels, automation_funnel_steps**
 
 ## Features
 
@@ -80,3 +80,9 @@ Tables: users, courses, modules, lessons, enrollments, payments, affiliates (ref
 - Admin analytics with revenue chart (recharts)
 - Notification system
 - Platform settings (commission rate, enabled gateways)
+- CRM: email lists, tags, campaigns, sequences, SMTP with multi-account fallback
+- **Visual Automation Funnel Builder** (FluentCRM-style): create funnels with trigger → action steps flow
+  - Trigger types: user_signup, new_purchase, tag_applied, list_added
+  - Action types: wait (X days/hours), apply_list, remove_list, apply_tag, remove_tag, send_email, end
+  - Draft/Published toggle; steps added/edited/deleted inline via visual flow UI
+  - Execution engine: `triggerFunnel()` in crm.ts for programmatic firing
