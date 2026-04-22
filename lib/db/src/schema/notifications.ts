@@ -41,6 +41,7 @@ export const platformSettingsTable = pgTable("platform_settings", {
   facebookPixelBaseCode: text("facebook_pixel_base_code"),
   siteLogo: text("site_logo"),
   logoSize: integer("logo_size").notNull().default(34),
+  logoSizeMobile: integer("logo_size_mobile").notNull().default(28),
   favicon: text("favicon"),
   metaTitle: text("meta_title"),
   metaDescription: text("meta_description"),

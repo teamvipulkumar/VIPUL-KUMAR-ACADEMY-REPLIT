@@ -53,7 +53,7 @@ export default function AdminSettingsPage() {
   const [googleSaving, setGoogleSaving] = useState(false);
 
   const [brandingForm, setBrandingForm] = useState({
-    siteLogo: "", logoSize: 34, favicon: "", metaTitle: "", metaDescription: "",
+    siteName: "", siteLogo: "", logoSize: 34, logoSizeMobile: 28, favicon: "", metaTitle: "", metaDescription: "",
   });
   const [brandingSaving, setBrandingSaving] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
@@ -82,8 +82,10 @@ export default function AdminSettingsPage() {
         clientSecret: (settings as Record<string, unknown>).googleClientSecret as string ?? "",
       });
       setBrandingForm({
+        siteName: settings.siteName ?? "",
         siteLogo: (settings as Record<string, unknown>).siteLogo as string ?? "",
         logoSize: (settings as Record<string, unknown>).logoSize as number ?? 34,
+        logoSizeMobile: (settings as Record<string, unknown>).logoSizeMobile as number ?? 28,
         favicon: (settings as Record<string, unknown>).favicon as string ?? "",
         metaTitle: (settings as Record<string, unknown>).metaTitle as string ?? "",
         metaDescription: (settings as Record<string, unknown>).metaDescription as string ?? "",
@@ -150,8 +152,10 @@ export default function AdminSettingsPage() {
     setBrandingSaving(true);
     updateSettings.mutate({
       data: {
+        siteName: brandingForm.siteName,
         siteLogo: brandingForm.siteLogo,
         logoSize: brandingForm.logoSize,
+        logoSizeMobile: brandingForm.logoSizeMobile,
         favicon: brandingForm.favicon,
         metaTitle: brandingForm.metaTitle,
         metaDescription: brandingForm.metaDescription,
@@ -247,6 +251,18 @@ export default function AdminSettingsPage() {
           </CardHeader>
           <CardContent className="space-y-6">
 
+            {/* Platform Name */}
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Platform Name</Label>
+              <Input
+                value={brandingForm.siteName}
+                onChange={e => setBrandingForm(f => ({ ...f, siteName: e.target.value }))}
+                placeholder="e.g. Vipul Kumar Academy"
+                className="bg-background border-border"
+              />
+              <p className="text-[11px] text-muted-foreground">Displayed in the navbar, emails and browser tab</p>
+            </div>
+
             {/* Site Logo */}
             <div className="space-y-3">
               <Label className="text-sm font-medium">Site Logo</Label>
@@ -293,23 +309,39 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
 
-              {/* Logo size slider */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs text-muted-foreground">Logo Size</Label>
-                  <span className="text-xs font-mono text-foreground">{brandingForm.logoSize}px</span>
+              {/* Logo size sliders */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Desktop */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs text-muted-foreground">Desktop Size</Label>
+                    <span className="text-xs font-mono text-foreground">{brandingForm.logoSize}px</span>
+                  </div>
+                  <input
+                    type="range" min={16} max={80} step={2}
+                    value={brandingForm.logoSize}
+                    onChange={e => setBrandingForm(f => ({ ...f, logoSize: parseInt(e.target.value) }))}
+                    className="w-full accent-primary cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>16px</span><span>80px</span>
+                  </div>
                 </div>
-                <input
-                  type="range"
-                  min={16}
-                  max={80}
-                  step={2}
-                  value={brandingForm.logoSize}
-                  onChange={e => setBrandingForm(f => ({ ...f, logoSize: parseInt(e.target.value) }))}
-                  className="w-full accent-primary cursor-pointer"
-                />
-                <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>16px</span><span>80px</span>
+                {/* Mobile */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs text-muted-foreground">Mobile Size</Label>
+                    <span className="text-xs font-mono text-foreground">{brandingForm.logoSizeMobile}px</span>
+                  </div>
+                  <input
+                    type="range" min={12} max={60} step={2}
+                    value={brandingForm.logoSizeMobile}
+                    onChange={e => setBrandingForm(f => ({ ...f, logoSizeMobile: parseInt(e.target.value) }))}
+                    className="w-full accent-primary cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>12px</span><span>60px</span>
+                  </div>
                 </div>
               </div>
             </div>

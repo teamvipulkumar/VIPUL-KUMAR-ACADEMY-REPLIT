@@ -503,7 +503,7 @@ router.get("/settings", requireAdmin, async (req, res): Promise<void> => {
 });
 
 router.put("/settings", requireAdmin, async (req, res): Promise<void> => {
-  const { siteName, siteDescription, commissionRate, currency, stripeEnabled, razorpayEnabled, emailNotificationsEnabled, googleSignInEnabled, googleClientId, googleClientSecret, maintenanceMode, maintenanceMessage, orderPrefix, orderSuffix, showFeaturedCourses, showFeaturedPackages, facebookPixelEnabled, facebookPixelId, facebookAccessToken, facebookPixelBaseCode, siteLogo, logoSize, favicon, metaTitle, metaDescription } = req.body;
+  const { siteName, siteDescription, commissionRate, currency, stripeEnabled, razorpayEnabled, emailNotificationsEnabled, googleSignInEnabled, googleClientId, googleClientSecret, maintenanceMode, maintenanceMessage, orderPrefix, orderSuffix, showFeaturedCourses, showFeaturedPackages, facebookPixelEnabled, facebookPixelId, facebookAccessToken, facebookPixelBaseCode, siteLogo, logoSize, logoSizeMobile, favicon, metaTitle, metaDescription } = req.body;
   const existing = await db.select().from(platformSettingsTable).limit(1);
   const updates: Record<string, unknown> = {};
   if (siteName !== undefined) updates.siteName = siteName;
@@ -528,6 +528,7 @@ router.put("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (facebookPixelBaseCode !== undefined) updates.facebookPixelBaseCode = facebookPixelBaseCode;
   if (siteLogo !== undefined) updates.siteLogo = siteLogo;
   if (logoSize !== undefined) updates.logoSize = Number(logoSize);
+  if (logoSizeMobile !== undefined) updates.logoSizeMobile = Number(logoSizeMobile);
   if (favicon !== undefined) updates.favicon = favicon;
   if (metaTitle !== undefined) updates.metaTitle = metaTitle;
   if (metaDescription !== undefined) updates.metaDescription = metaDescription;
