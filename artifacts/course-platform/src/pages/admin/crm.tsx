@@ -1045,6 +1045,7 @@ function AutomationTab() {
   const [activeFunnelId, setActiveFunnelId] = useState<number | null>(null);
   const [funnelName, setFunnelName] = useState("");
   const [funnelStatus, setFunnelStatus] = useState<"draft" | "published">("draft");
+  const [funnelIsActive, setFunnelIsActive] = useState(false);
   const [triggerType, setTriggerType] = useState("user_signup");
   const [triggerConfig, setTriggerConfig] = useState<Record<string, any>>({});
   const [editingTrigger, setEditingTrigger] = useState(false);
@@ -1080,6 +1081,7 @@ function AutomationTab() {
     setActiveFunnelId(f.id);
     setFunnelName(f.name);
     setFunnelStatus(f.status);
+    setFunnelIsActive(!!f.isActive);
     setTriggerType(f.triggerType);
     setTriggerConfig(f.triggerConfig ?? {});
     setSteps(f.steps ?? []);
@@ -1110,6 +1112,23 @@ function AutomationTab() {
     setFunnels(prev => prev.filter(f => f.id !== id));
     if (activeFunnelId === id) { setView("list"); setActiveFunnelId(null); }
     toast({ title: "Funnel deleted" });
+  };
+
+  const toggleFunnelActive = async (id: number, currentActive: boolean) => {
+    const next = !currentActive;
+    setFunnels(prev => prev.map(f => f.id === id ? { ...f, isActive: next } : f));
+    if (activeFunnelId === id) setFunnelIsActive(next);
+    const res = await apiFetch(`/api/admin/crm/funnels/${id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: next }),
+    }).then(r => r.json()).catch(() => null);
+    if (!res) {
+      setFunnels(prev => prev.map(f => f.id === id ? { ...f, isActive: currentActive } : f));
+      if (activeFunnelId === id) setFunnelIsActive(currentActive);
+      toast({ title: "Failed to update", variant: "destructive" });
+    } else {
+      toast({ title: next ? "Funnel activated" : "Funnel paused" });
+    }
   };
 
   /* ── Save funnel meta ── */
@@ -1218,6 +1237,18 @@ function AutomationTab() {
               }`}>
               {funnelStatus === "published" ? <><CheckCircle2 className="w-3 h-3" />Published</> : <><Pause className="w-3 h-3" />Draft</>}
             </button>
+            {/* Active / Paused toggle */}
+            <button
+              onClick={() => toggleFunnelActive(activeFunnelId, funnelIsActive)}
+              title={funnelIsActive ? "Pause this funnel" : "Activate this funnel"}
+              className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border cursor-pointer transition-colors ${
+                funnelIsActive
+                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
+                  : "bg-muted/50 border-border text-muted-foreground hover:text-foreground"
+              }`}>
+              <span className={`inline-block w-1.5 h-1.5 rounded-full ${funnelIsActive ? "bg-emerald-400" : "bg-muted-foreground"}`} />
+              {funnelIsActive ? "Active" : "Paused"}
+            </button>
             <button onClick={() => deleteFunnel(activeFunnelId)}
               className="p-1.5 text-muted-foreground hover:text-red-400 cursor-pointer rounded-md hover:bg-red-500/10 transition-colors">
               <Trash2 className="w-4 h-4" />
@@ -1228,7 +1259,12 @@ function AutomationTab() {
         <div className="p-3 bg-blue-500/5 border border-blue-500/15 rounded-xl">
           <p className="text-xs text-blue-400 flex items-center gap-1.5">
             <Info className="w-3 h-3 flex-shrink-0" />
-            {funnelStatus === "published" ? "This funnel is live and will run for new contacts." : "This funnel is in draft mode — it won't run until published."}
+            {funnelStatus !== "published"
+              ? "This funnel is in draft mode — it won't run until published."
+              : funnelIsActive
+                ? "This funnel is active and live — it will run automatically for matching contacts."
+                : "This funnel is published but paused — toggle it Active to start running."
+            }
           </p>
         </div>
 
@@ -1541,7 +1577,7 @@ function AutomationTab() {
             const TrigIcon = trig.icon;
             const stepCount = (f.steps ?? []).length;
             return (
-              <div key={f.id} className="bg-card border border-border rounded-xl p-4 hover:border-primary/20 transition-colors group">
+              <div key={f.id} className={`bg-card border rounded-xl p-4 transition-colors group ${f.isActive ? "border-primary/30 hover:border-primary/50" : "border-border hover:border-border/80 opacity-75"}`}>
                 <div className="flex items-start gap-3">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${trig.bg} ${trig.border} border`}>
                     <TrigIcon className={`w-4 h-4 ${trig.color}`} />
@@ -1556,15 +1592,25 @@ function AutomationTab() {
                     </div>
                     <p className="text-xs text-muted-foreground">{trig.label} · {stepCount} step{stepCount !== 1 ? "s" : ""}</p>
                   </div>
-                  <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => openFunnel(f)}
-                      className="p-1.5 text-muted-foreground hover:text-foreground cursor-pointer rounded-md hover:bg-muted/50 transition-colors" title="Edit">
-                      <Edit2 className="w-3.5 h-3.5" />
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* Toggle switch */}
+                    <button
+                      onClick={e => { e.stopPropagation(); toggleFunnelActive(f.id, !!f.isActive); }}
+                      title={f.isActive ? "Pause funnel" : "Activate funnel"}
+                      className={`relative inline-flex h-5 w-9 cursor-pointer items-center rounded-full transition-colors focus:outline-none ${f.isActive ? "bg-green-500" : "bg-muted"}`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${f.isActive ? "translate-x-4" : "translate-x-0.5"}`} />
                     </button>
-                    <button onClick={() => deleteFunnel(f.id)}
-                      className="p-1.5 text-muted-foreground hover:text-red-400 cursor-pointer rounded-md hover:bg-red-500/10 transition-colors" title="Delete">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => openFunnel(f)}
+                        className="p-1.5 text-muted-foreground hover:text-foreground cursor-pointer rounded-md hover:bg-muted/50 transition-colors" title="Edit">
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => deleteFunnel(f.id)}
+                        className="p-1.5 text-muted-foreground hover:text-red-400 cursor-pointer rounded-md hover:bg-red-500/10 transition-colors" title="Delete">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
                 {/* Step preview */}
