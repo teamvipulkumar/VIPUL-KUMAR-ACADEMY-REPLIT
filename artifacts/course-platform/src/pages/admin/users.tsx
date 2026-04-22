@@ -312,16 +312,16 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
         </div>
 
         <DialogFooter className="gap-2 mt-4 flex-shrink-0">
-          <Button variant="outline" onClick={() => { onClose(); resetDialog(); }} className="border-white/10">
+          <Button variant="outline" onClick={() => { onClose(); resetDialog(); }} className="border-white/10 cursor-pointer">
             {result ? "Close" : "Cancel"}
           </Button>
           {!result && (
-            <Button onClick={handleImport} disabled={loading || rows.length === 0} className="bg-primary gap-2">
+            <Button onClick={handleImport} disabled={loading || rows.length === 0} className="bg-primary gap-2 cursor-pointer">
               {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Importing...</> : <><Download className="w-4 h-4" />Import {rows.length > 0 ? `${rows.length} Users` : "Users"}</>}
             </Button>
           )}
           {result && (
-            <Button onClick={() => { resetDialog(); }} variant="outline" className="border-white/10 gap-2">
+            <Button onClick={() => { resetDialog(); }} variant="outline" className="border-white/10 gap-2 cursor-pointer">
               <Download className="w-4 h-4" />Import Another File
             </Button>
           )}
@@ -394,8 +394,8 @@ function AddUserDialog({ open, onClose, onSuccess }: { open: boolean; onClose: (
             </Select>
           </div>
           <DialogFooter className="gap-2 mt-4">
-            <Button type="button" variant="outline" onClick={onClose} className="border-white/10">Cancel</Button>
-            <Button type="submit" disabled={loading} className="bg-primary">
+            <Button type="button" variant="outline" onClick={onClose} className="border-white/10 cursor-pointer">Cancel</Button>
+            <Button type="submit" disabled={loading} className="bg-primary cursor-pointer">
               {loading ? "Creating..." : "Create User"}
             </Button>
           </DialogFooter>
@@ -485,8 +485,8 @@ function EditUserDialog({ user, onClose, onSuccess }: { user: User; onClose: () 
             <Input type="password" placeholder="Enter new password to reset..." value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} className="bg-card border-border" />
           </div>
           <DialogFooter className="gap-2 mt-4">
-            <Button type="button" variant="outline" onClick={onClose} className="border-white/10">Cancel</Button>
-            <Button type="submit" disabled={loading} className="bg-primary">
+            <Button type="button" variant="outline" onClick={onClose} className="border-white/10 cursor-pointer">Cancel</Button>
+            <Button type="submit" disabled={loading} className="bg-primary cursor-pointer">
               {loading ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
@@ -597,7 +597,7 @@ function ViewProfileDialog({ userId, onClose }: { userId: number; onClose: () =>
           <div className="py-8 text-center text-muted-foreground">User not found.</div>
         )}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} className="border-white/10">Close</Button>
+          <Button variant="outline" onClick={onClose} className="border-white/10 cursor-pointer">Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -636,8 +636,8 @@ function DeleteDialog({ user, onClose, onSuccess }: { user: User; onClose: () =>
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2 mt-2">
-          <Button variant="outline" onClick={onClose} className="border-white/10">Cancel</Button>
-          <Button variant="destructive" onClick={handleDelete} disabled={loading}>
+          <Button variant="outline" onClick={onClose} className="border-white/10 cursor-pointer">Cancel</Button>
+          <Button variant="destructive" onClick={handleDelete} disabled={loading} className="cursor-pointer">
             {loading ? "Deleting..." : "Delete User"}
           </Button>
         </DialogFooter>
@@ -669,12 +669,12 @@ function BulkConfirmDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2 mt-2">
-          <Button variant="outline" onClick={onClose} className="border-white/10" disabled={loading}>Cancel</Button>
+          <Button variant="outline" onClick={onClose} className="border-white/10 cursor-pointer" disabled={loading}>Cancel</Button>
           <Button
             variant={isDelete ? "destructive" : "default"}
             onClick={onConfirm}
             disabled={loading}
-            className={!isDelete ? (isBan ? "bg-orange-600 hover:bg-orange-700" : "bg-green-600 hover:bg-green-700") : ""}
+            className={`cursor-pointer ${!isDelete ? (isBan ? "bg-orange-600 hover:bg-orange-700" : "bg-green-600 hover:bg-green-700") : ""}`}
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
             {isDelete ? "Delete" : isBan ? "Trash (Ban)" : "Restore"} {count} User{count !== 1 ? "s" : ""}
@@ -822,7 +822,7 @@ export default function AdminUsersPage() {
           <Button variant="outline" onClick={() => setImportOpen(true)} className="border-border gap-2 cursor-pointer">
             <Download className="w-4 h-4" />Import CSV
           </Button>
-          <Button onClick={() => setAddOpen(true)} className="bg-primary hover:bg-primary/90 gap-2">
+          <Button onClick={() => setAddOpen(true)} className="bg-primary hover:bg-primary/90 gap-2 cursor-pointer">
             <UserPlus className="w-4 h-4" />Add User
           </Button>
         </div>
@@ -880,17 +880,17 @@ export default function AdminUsersPage() {
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl border border-white/10 backdrop-blur-md" style={{ background: "rgba(13,20,36,0.95)" }}>
           <span className="text-sm font-semibold text-foreground">{selectedIds.size} selected</span>
           <div className="w-px h-5 bg-border" />
-          <Button size="sm" variant="ghost" className="gap-1.5 text-orange-400 hover:bg-orange-500/10 hover:text-orange-300 h-8" onClick={() => setBulkDialog("ban")}>
+          <Button size="sm" variant="ghost" className="gap-1.5 text-orange-400 hover:bg-orange-500/10 hover:text-orange-300 h-8 cursor-pointer" onClick={() => setBulkDialog("ban")}>
             <Ban className="w-3.5 h-3.5" />Trash
           </Button>
-          <Button size="sm" variant="ghost" className="gap-1.5 text-green-400 hover:bg-green-500/10 hover:text-green-300 h-8" onClick={() => setBulkDialog("unban")}>
+          <Button size="sm" variant="ghost" className="gap-1.5 text-green-400 hover:bg-green-500/10 hover:text-green-300 h-8 cursor-pointer" onClick={() => setBulkDialog("unban")}>
             <CheckCircle className="w-3.5 h-3.5" />Restore
           </Button>
-          <Button size="sm" variant="ghost" className="gap-1.5 text-red-400 hover:bg-red-500/10 hover:text-red-300 h-8" onClick={() => setBulkDialog("delete")}>
+          <Button size="sm" variant="ghost" className="gap-1.5 text-red-400 hover:bg-red-500/10 hover:text-red-300 h-8 cursor-pointer" onClick={() => setBulkDialog("delete")}>
             <Trash2 className="w-3.5 h-3.5" />Delete
           </Button>
           <div className="w-px h-5 bg-border" />
-          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={() => setSelectedIds(new Set())}>
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground cursor-pointer" onClick={() => setSelectedIds(new Set())}>
             <X className="w-4 h-4" />
           </Button>
         </div>
@@ -912,7 +912,7 @@ export default function AdminUsersPage() {
                 <th className="px-4 py-3 w-10">
                   <button
                     onClick={() => toggleAll(users)}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                   >
                     {users.length > 0 && users.every(u => selectedIds.has(u.id))
                       ? <CheckSquare className="w-4 h-4 text-primary" />
@@ -934,7 +934,7 @@ export default function AdminUsersPage() {
                   <tr key={u.id} className={`hover:bg-card/40 transition-colors group ${isSelected ? "bg-primary/5" : ""}`}>
                     {/* Checkbox */}
                     <td className="px-4 py-3 w-10">
-                      <button onClick={() => toggleSelect(u.id)} className="text-muted-foreground hover:text-foreground transition-colors">
+                      <button onClick={() => toggleSelect(u.id)} className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                         {isSelected ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
                       </button>
                     </td>
@@ -974,7 +974,7 @@ export default function AdminUsersPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-white/5"
+                          className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-white/5 cursor-pointer"
                           onClick={() => setViewingUser(u)}
                         >
                           <Eye className="w-3.5 h-3.5 mr-1" />View
@@ -982,7 +982,7 @@ export default function AdminUsersPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-8 px-2.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/10"
+                          className="h-8 px-2.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 cursor-pointer"
                           onClick={() => setEditingUser(u)}
                         >
                           <Pencil className="w-3.5 h-3.5 mr-1" />Edit
@@ -990,7 +990,7 @@ export default function AdminUsersPage() {
 
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-white/5">
+                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-white/5 cursor-pointer">
                               <MoreHorizontal className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
