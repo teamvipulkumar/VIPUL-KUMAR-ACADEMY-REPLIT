@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, ProtectedRoute } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
+import { BrandingProvider } from "@/lib/branding-context";
 import { AppLayout } from "@/components/layout/app-layout";
 import { AdminLayout } from "@/components/layout/admin-layout";
 import NotFound from "@/pages/not-found";
@@ -200,6 +201,7 @@ function App() {
   return (
     <ThemeProvider>
     <QueryClientProvider client={queryClient}>
+      <BrandingProvider>
       <AuthProvider>
         <TooltipProvider>
           <RefTracker />
@@ -211,6 +213,7 @@ function App() {
           <Toaster />
         </TooltipProvider>
       </AuthProvider>
+      </BrandingProvider>
     </QueryClientProvider>
     </ThemeProvider>
   );

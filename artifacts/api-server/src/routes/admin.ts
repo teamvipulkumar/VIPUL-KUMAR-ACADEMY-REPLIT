@@ -969,4 +969,22 @@ router.get("/public/homepage-visibility", async (_req, res): Promise<void> => {
   res.json(settings[0]);
 });
 
+/* ── Public: site branding (no auth required) ── */
+router.get("/public/branding", async (_req, res): Promise<void> => {
+  const settings = await db.select({
+    siteName: platformSettingsTable.siteName,
+    siteLogo: platformSettingsTable.siteLogo,
+    logoSize: platformSettingsTable.logoSize,
+    logoSizeMobile: platformSettingsTable.logoSizeMobile,
+    favicon: platformSettingsTable.favicon,
+    metaTitle: platformSettingsTable.metaTitle,
+    metaDescription: platformSettingsTable.metaDescription,
+  }).from(platformSettingsTable).limit(1);
+  if (settings.length === 0) {
+    res.json({ siteName: "Academy", siteLogo: null, logoSize: 34, logoSizeMobile: 28, favicon: null, metaTitle: null, metaDescription: null });
+    return;
+  }
+  res.json(settings[0]);
+});
+
 export default router;

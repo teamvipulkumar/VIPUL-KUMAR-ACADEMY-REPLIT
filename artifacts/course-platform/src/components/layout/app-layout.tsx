@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
+import { useBranding } from "@/lib/branding-context";
 import { Button } from "@/components/ui/button";
 import { useLogout, useListNotifications, getListNotificationsQueryKey, getGetMeQueryKey, useMarkNotificationRead, useMarkAllNotificationsRead } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -133,6 +134,7 @@ function NotificationPopup({ iconSize = "w-4 h-4" }: { iconSize?: string }) {
 export function Navbar() {
   const { user, isAuthenticated, isAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const branding = useBranding();
   const [, setLocation] = useLocation();
   const [location] = useLocation();
   const logout = useLogout();
@@ -190,14 +192,33 @@ export function Navbar() {
 
           {/* ── Logo (left) ── */}
           <Link href="/" className="flex items-center gap-2.5 flex-shrink-0 group" onClick={() => setMobileOpen(false)}>
-            <div className={`transition-all duration-300 ${scrolled ? "scale-[0.85] origin-left" : "scale-100"}`}>
-              <AcademyLogo size={34} />
+            <div className={`transition-all duration-300 flex-shrink-0 ${scrolled ? "scale-[0.85] origin-left" : "scale-100"}`}>
+              {branding.siteLogo ? (
+                <>
+                  <img
+                    src={branding.siteLogo}
+                    alt={branding.siteName}
+                    className="hidden md:block object-contain"
+                    style={{ height: branding.logoSize, width: "auto", maxWidth: branding.logoSize * 4 }}
+                  />
+                  <img
+                    src={branding.siteLogo}
+                    alt={branding.siteName}
+                    className="block md:hidden object-contain"
+                    style={{ height: branding.logoSizeMobile, width: "auto", maxWidth: branding.logoSizeMobile * 4 }}
+                  />
+                </>
+              ) : (
+                <AcademyLogo size={34} />
+              )}
             </div>
-            <div className="leading-none">
-              <span className="font-extrabold text-sm tracking-wide text-foreground whitespace-nowrap">VIPUL KUMAR</span>
-              <br />
-              <span className="font-bold text-[11px] tracking-[0.18em] text-primary uppercase whitespace-nowrap">Academy</span>
-            </div>
+            {!branding.siteLogo && (
+              <div className="leading-none">
+                <span className="font-extrabold text-sm tracking-wide text-foreground whitespace-nowrap">
+                  {branding.siteName}
+                </span>
+              </div>
+            )}
           </Link>
 
           {/* ── Center nav (desktop) ── */}
@@ -350,6 +371,7 @@ export function Navbar() {
 
 export function SiteFooter() {
   const year = new Date().getFullYear();
+  const branding = useBranding();
 
   const footerNav = {
     platform: [
@@ -388,11 +410,21 @@ export function SiteFooter() {
           {/* Brand column */}
           <div className="sm:col-span-2 lg:col-span-1">
             <Link href="/" className="inline-flex items-center gap-2.5 mb-4 group">
-              <AcademyLogo size={36} />
-              <div className="leading-none">
-                <p className="font-extrabold text-sm tracking-wide text-foreground">VIPUL KUMAR</p>
-                <p className="font-bold text-[11px] tracking-[0.2em] text-primary uppercase">Academy</p>
-              </div>
+              {branding.siteLogo ? (
+                <img
+                  src={branding.siteLogo}
+                  alt={branding.siteName}
+                  className="object-contain"
+                  style={{ height: branding.logoSize, width: "auto", maxWidth: branding.logoSize * 4 }}
+                />
+              ) : (
+                <>
+                  <AcademyLogo size={36} />
+                  <div className="leading-none">
+                    <p className="font-extrabold text-sm tracking-wide text-foreground">{branding.siteName}</p>
+                  </div>
+                </>
+              )}
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mb-5">
               Premium online education platform for aspiring entrepreneurs. Master affiliate marketing, e-commerce, and dropshipping — built by operators.
@@ -473,7 +505,7 @@ export function SiteFooter() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           {/* Copyright */}
           <p className="text-xs text-muted-foreground/60 text-center sm:text-left">
-            &copy; {year} Vipul Kumar Academy. All rights reserved. Made with ♥ in India.
+            &copy; {year} {branding.siteName}. All rights reserved.
           </p>
 
           {/* Legal quick links */}
