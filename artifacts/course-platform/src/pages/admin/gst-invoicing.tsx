@@ -456,7 +456,7 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
               {invoice.isInterstate ? "Interstate · IGST" : "Intra-state · CGST+SGST"}
             </span>
           </div>
-          <Button onClick={handlePrint} className="bg-blue-700 hover:bg-blue-800 text-white gap-2">
+          <Button onClick={handlePrint} className="bg-blue-700 hover:bg-blue-800 text-white gap-2 cursor-pointer">
             <Printer className="h-4 w-4" /> Print / Save PDF
           </Button>
         </div>
@@ -955,7 +955,7 @@ export default function AdminGstInvoicingPage() {
           <button
             key={t.id}
             onClick={() => setTab(t.id as Tab)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
               tab === t.id ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground hover:bg-background"
             }`}
           >
@@ -991,16 +991,16 @@ export default function AdminGstInvoicingPage() {
               <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
               <SelectContent>{years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
             </Select>
-            <Button variant="outline" onClick={loadInvoices} disabled={invLoading}>
+            <Button variant="outline" onClick={loadInvoices} disabled={invLoading} className="cursor-pointer">
               <RefreshCw className={`h-4 w-4 mr-1 ${invLoading ? "animate-spin" : ""}`} /> Refresh
             </Button>
-            <Button variant="outline" onClick={exportCsv} disabled={invoices.length === 0}>
+            <Button variant="outline" onClick={exportCsv} disabled={invoices.length === 0} className="cursor-pointer">
               <Download className="h-4 w-4 mr-1" /> Export CSV
             </Button>
-            <Button variant="outline" onClick={downloadAllInvoices} disabled={invoices.length === 0} title="Open all filtered invoices in a print window — save as PDF from there">
+            <Button variant="outline" onClick={downloadAllInvoices} disabled={invoices.length === 0} title="Open all filtered invoices in a print window — save as PDF from there" className="cursor-pointer">
               <Printer className="h-4 w-4 mr-1" /> Download Invoices
             </Button>
-            <Button onClick={generateAll} disabled={generating} className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button onClick={generateAll} disabled={generating} className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer">
               {generating ? <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> : <FileText className="h-4 w-4 mr-1" />}
               Generate Missing
             </Button>
@@ -1058,13 +1058,13 @@ export default function AdminGstInvoicingPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => openInvoice(inv)} title="View invoice">
+                          <Button size="sm" variant="ghost" onClick={() => openInvoice(inv)} title="View invoice" className="cursor-pointer">
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                            className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 cursor-pointer"
                             onClick={() => printInvoice(inv)}
                             disabled={printingId === inv.id}
                             title="Print / Save as PDF"
@@ -1073,7 +1073,7 @@ export default function AdminGstInvoicingPage() {
                               ? <RefreshCw className="h-4 w-4 animate-spin" />
                               : <Printer className="h-4 w-4" />}
                           </Button>
-                          <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-400 hover:bg-red-500/10" onClick={() => setDeleteTarget(inv)} title="Delete invoice">
+                          <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-400 hover:bg-red-500/10 cursor-pointer" onClick={() => setDeleteTarget(inv)} title="Delete invoice">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -1099,7 +1099,7 @@ export default function AdminGstInvoicingPage() {
               <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
               <SelectContent>{years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
             </Select>
-            <Button variant="outline" onClick={loadMonthly} disabled={monthlyLoading}>
+            <Button variant="outline" onClick={loadMonthly} disabled={monthlyLoading} className="cursor-pointer">
               <RefreshCw className={`h-4 w-4 mr-1 ${monthlyLoading ? "animate-spin" : ""}`} /> Refresh
             </Button>
           </div>
@@ -1172,7 +1172,7 @@ export default function AdminGstInvoicingPage() {
                   {fyMonths.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Button variant="outline" onClick={loadStatewise} disabled={stateLoading}>
+              <Button variant="outline" onClick={loadStatewise} disabled={stateLoading} className="cursor-pointer">
                 <RefreshCw className={`h-4 w-4 mr-1 ${stateLoading ? "animate-spin" : ""}`} /> Refresh
               </Button>
             </div>
@@ -1374,7 +1374,7 @@ export default function AdminGstInvoicingPage() {
                       </span>
                     </label>
                     {settings.stampUrl && (
-                      <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-400 w-fit px-2" onClick={() => setSettings(s => ({ ...s, stampUrl: null }))}>
+                      <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-400 w-fit px-2 cursor-pointer" onClick={() => setSettings(s => ({ ...s, stampUrl: null }))}>
                         <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
                       </Button>
                     )}
@@ -1384,10 +1384,10 @@ export default function AdminGstInvoicingPage() {
               </div>
 
               <div className="flex gap-3 pt-2">
-                <Button onClick={saveSettings} disabled={settingsSaving} className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Button onClick={saveSettings} disabled={settingsSaving} className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer">
                   {settingsSaving ? "Saving…" : "Save Settings"}
                 </Button>
-                <Button variant="outline" onClick={loadSettings} disabled={settingsLoading}>Reset</Button>
+                <Button variant="outline" onClick={loadSettings} disabled={settingsLoading} className="cursor-pointer">Reset</Button>
               </div>
             </Fragment>
           )}
@@ -1438,8 +1438,8 @@ export default function AdminGstInvoicingPage() {
               <p className="text-xs text-red-500">This action cannot be undone. The invoice record will be permanently removed.</p>
             </div>
             <div className="flex justify-end gap-3 pt-1">
-              <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
-              <Button variant="destructive" onClick={confirmDeleteInvoice} disabled={deleting}>
+              <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting} className="cursor-pointer">Cancel</Button>
+              <Button variant="destructive" onClick={confirmDeleteInvoice} disabled={deleting} className="cursor-pointer">
                 {deleting ? "Deleting…" : "Delete Invoice"}
               </Button>
             </div>
