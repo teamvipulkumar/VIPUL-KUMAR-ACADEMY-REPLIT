@@ -181,7 +181,7 @@ function GatewayCard({ gw, onSave, onRemove, onTest }: {
               <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.isActive ? "translate-x-4" : "translate-x-0.5"}`} />
             </button>
           )}
-          <Button variant="ghost" size="sm" className="px-2 h-8" onClick={() => setExpanded(e => !e)}>
+          <Button variant="ghost" size="sm" className="px-2 h-8 cursor-pointer" onClick={() => setExpanded(e => !e)}>
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </Button>
         </div>
@@ -289,18 +289,18 @@ function GatewayCard({ gw, onSave, onRemove, onTest }: {
 
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            <Button onClick={handleSave} disabled={saving || (!isMasked(form.secretKey) && !!form.secretKey && !!form.apiKey && form.secretKey === form.apiKey)} size="sm" className="bg-primary gap-1.5">
+            <Button onClick={handleSave} disabled={saving || (!isMasked(form.secretKey) && !!form.secretKey && !!form.apiKey && form.secretKey === form.apiKey)} size="sm" className="bg-primary gap-1.5 cursor-pointer">
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
               {saving ? "Saving..." : "Save Configuration"}
             </Button>
             {gw.isConfigured && (
-              <Button onClick={handleTest} disabled={testing} variant="outline" size="sm" className="border-border gap-1.5">
+              <Button onClick={handleTest} disabled={testing} variant="outline" size="sm" className="border-border gap-1.5 cursor-pointer">
                 {testing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 text-yellow-400" />}
                 {testing ? "Testing..." : "Test Connection"}
               </Button>
             )}
             {gw.isConfigured && (
-              <Button onClick={handleRemove} disabled={removing} variant="ghost" size="sm" className="text-red-400 hover:text-red-300 hover:bg-red-400/10 gap-1.5 ml-auto">
+              <Button onClick={handleRemove} disabled={removing} variant="ghost" size="sm" className="text-red-400 hover:text-red-300 hover:bg-red-400/10 gap-1.5 ml-auto cursor-pointer">
                 {removing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
                 Remove
               </Button>
