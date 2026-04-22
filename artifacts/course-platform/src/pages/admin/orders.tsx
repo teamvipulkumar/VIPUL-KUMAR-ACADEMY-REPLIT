@@ -332,6 +332,38 @@ function BulkDeleteDialog({
   );
 }
 
+const PAGE_SIZE = 50;
+
+function Pagination({ page, total, pageSize, onChange }: { page: number; total: number; pageSize: number; onChange: (p: number) => void }) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  if (totalPages <= 1) return null;
+  const getPages = (): (number | "...")[] => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pages: (number | "...")[] = [1];
+    if (page > 3) pages.push("...");
+    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
+    if (page < totalPages - 2) pages.push("...");
+    pages.push(totalPages);
+    return pages;
+  };
+  return (
+    <div className="flex items-center justify-between mt-4 px-1">
+      <p className="text-xs text-muted-foreground">
+        Showing {Math.min((page - 1) * pageSize + 1, total)}–{Math.min(page * pageSize, total)} of {total} orders
+      </p>
+      <div className="flex items-center gap-1">
+        <button onClick={() => onChange(page - 1)} disabled={page === 1} className="h-8 px-2.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-card disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors border border-border">← Prev</button>
+        {getPages().map((p, i) => p === "..." ? (
+          <span key={`d${i}`} className="h-8 w-8 flex items-center justify-center text-xs text-muted-foreground">…</span>
+        ) : (
+          <button key={p} onClick={() => onChange(p as number)} className={`h-8 w-8 rounded-lg text-xs font-medium transition-colors cursor-pointer ${p === page ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground hover:bg-card border border-border"}`}>{p}</button>
+        ))}
+        <button onClick={() => onChange(page + 1)} disabled={page === totalPages} className="h-8 px-2.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-card disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors border border-border">Next →</button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -342,6 +374,7 @@ export default function AdminOrdersPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [gateway, setGateway] = useState("all");
+  const [page, setPage] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [refundingOrder, setRefundingOrder] = useState<Order | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Order | null>(null);
@@ -353,14 +386,15 @@ export default function AdminOrdersPage() {
 
   const { toast } = useToast();
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (p = page) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (status !== "all") params.set("status", status);
       if (gateway !== "all") params.set("gateway", gateway);
-      params.set("limit", "100");
+      params.set("limit", String(PAGE_SIZE));
+      params.set("offset", String((p - 1) * PAGE_SIZE));
       const res = await fetch(`${API_BASE}/api/admin/orders?${params}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch orders");
       const data = await res.json();
@@ -374,12 +408,17 @@ export default function AdminOrdersPage() {
     }
   };
 
-  useEffect(() => { fetchOrders(); }, [debouncedSearch, status, gateway]);
+  useEffect(() => { fetchOrders(page); }, [debouncedSearch, status, gateway, page]);
 
   const handleSearch = (v: string) => {
     setSearch(v);
+    setPage(1);
+    setSelectedIds(new Set());
     setTimeout(() => setDebouncedSearch(v), 400);
   };
+
+  const handleStatusChange = (v: string) => { setStatus(v); setPage(1); setSelectedIds(new Set()); };
+  const handleGatewayChange = (v: string) => { setGateway(v); setPage(1); setSelectedIds(new Set()); };
 
   const handleDeleteOrder = async () => {
     if (!deleteTarget) return;
@@ -391,7 +430,8 @@ export default function AdminOrdersPage() {
       if (!res.ok) throw new Error();
       toast({ title: `Order ${formatOrderNo(deleteTarget.id)} deleted permanently` });
       setDeleteTarget(null);
-      fetchOrders();
+      setPage(1);
+      fetchOrders(1);
     } catch {
       toast({ title: "Failed to delete order", variant: "destructive" });
     } finally {
@@ -439,7 +479,8 @@ export default function AdminOrdersPage() {
       toast({ title: `${count} order${count !== 1 ? "s" : ""} deleted permanently` });
       setSelectedIds(new Set());
       setBulkDialogOpen(false);
-      fetchOrders();
+      setPage(1);
+      fetchOrders(1);
     } catch (err: unknown) {
       toast({ title: "Error", description: (err as Error).message, variant: "destructive" });
     } finally {
@@ -508,7 +549,7 @@ export default function AdminOrdersPage() {
             className="pl-9 bg-card border-border"
           />
         </div>
-        <Select value={status} onValueChange={setStatus}>
+        <Select value={status} onValueChange={handleStatusChange}>
           <SelectTrigger className="w-full sm:w-40 bg-card border-border"><SelectValue placeholder="All Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
@@ -518,7 +559,7 @@ export default function AdminOrdersPage() {
             <SelectItem value="refunded">Refunded</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={gateway} onValueChange={setGateway}>
+        <Select value={gateway} onValueChange={handleGatewayChange}>
           <SelectTrigger className="w-full sm:w-40 bg-card border-border"><SelectValue placeholder="All Gateways" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Gateways</SelectItem>
@@ -684,11 +725,9 @@ export default function AdminOrdersPage() {
         </div>
       )}
 
-      {/* Showing count */}
+      {/* Pagination */}
       {orders.length > 0 && (
-        <div className="mt-3 text-right text-xs text-muted-foreground">
-          Showing {orders.length} of {total} orders
-        </div>
+        <Pagination page={page} total={total} pageSize={PAGE_SIZE} onChange={p => { setPage(p); setSelectedIds(new Set()); }} />
       )}
 
       {/* Dialogs */}

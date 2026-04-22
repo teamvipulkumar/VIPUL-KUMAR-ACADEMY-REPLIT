@@ -230,6 +230,38 @@ function RemoveDialog({
   );
 }
 
+const PAGE_SIZE = 50;
+
+function Pagination({ page, total, pageSize, onChange }: { page: number; total: number; pageSize: number; onChange: (p: number) => void }) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  if (totalPages <= 1) return null;
+  const getPages = (): (number | "...")[] => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pages: (number | "...")[] = [1];
+    if (page > 3) pages.push("...");
+    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
+    if (page < totalPages - 2) pages.push("...");
+    pages.push(totalPages);
+    return pages;
+  };
+  return (
+    <div className="flex items-center justify-between mt-4 px-1">
+      <p className="text-xs text-muted-foreground">
+        Showing {Math.min((page - 1) * pageSize + 1, total)}–{Math.min(page * pageSize, total)} of {total} enrollments
+      </p>
+      <div className="flex items-center gap-1">
+        <button onClick={() => onChange(page - 1)} disabled={page === 1} className="h-8 px-2.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-card disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors border border-border">← Prev</button>
+        {getPages().map((p, i) => p === "..." ? (
+          <span key={`d${i}`} className="h-8 w-8 flex items-center justify-center text-xs text-muted-foreground">…</span>
+        ) : (
+          <button key={p} onClick={() => onChange(p as number)} className={`h-8 w-8 rounded-lg text-xs font-medium transition-colors cursor-pointer ${p === page ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground hover:bg-card border border-border"}`}>{p}</button>
+        ))}
+        <button onClick={() => onChange(page + 1)} disabled={page === totalPages} className="h-8 px-2.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-card disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors border border-border">Next →</button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AdminEnrollmentsPage() {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
@@ -240,17 +272,19 @@ export default function AdminEnrollmentsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [courseFilter, setCourseFilter] = useState("all");
   const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [page, setPage] = useState(1);
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [removing, setRemoving] = useState<Enrollment | null>(null);
   const { toast } = useToast();
 
-  const fetchEnrollments = async () => {
+  const fetchEnrollments = async (p = page) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (courseFilter !== "all") params.set("courseId", courseFilter);
-      params.set("limit", "200");
+      params.set("limit", String(PAGE_SIZE));
+      params.set("offset", String((p - 1) * PAGE_SIZE));
       const res = await fetch(`${API_BASE}/api/admin/enrollments?${params}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
@@ -271,12 +305,15 @@ export default function AdminEnrollmentsPage() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => { fetchEnrollments(); }, [debouncedSearch, courseFilter]);
+  useEffect(() => { fetchEnrollments(page); }, [debouncedSearch, courseFilter, page]);
 
   const handleSearch = (v: string) => {
     setSearch(v);
+    setPage(1);
     setTimeout(() => setDebouncedSearch(v), 400);
   };
+
+  const handleCourseFilter = (v: string) => { setCourseFilter(v); setPage(1); };
 
   const statCards = [
     { label: "Total Enrollments", value: stats.total, icon: GraduationCap, color: "text-blue-400", bg: "bg-blue-400/10" },
@@ -323,7 +360,7 @@ export default function AdminEnrollmentsPage() {
             className="pl-9 bg-card border-border"
           />
         </div>
-        <Select value={courseFilter} onValueChange={setCourseFilter}>
+        <Select value={courseFilter} onValueChange={handleCourseFilter}>
           <SelectTrigger className="w-full sm:w-52 bg-card border-border">
             <SelectValue placeholder="All Courses" />
           </SelectTrigger>
@@ -420,22 +457,20 @@ export default function AdminEnrollmentsPage() {
       )}
 
       {enrollments.length > 0 && (
-        <div className="mt-3 text-right text-xs text-muted-foreground">
-          Showing {enrollments.length} of {total} enrollments
-        </div>
+        <Pagination page={page} total={total} pageSize={PAGE_SIZE} onChange={p => setPage(p)} />
       )}
 
       {enrollOpen && (
         <EnrollDialog
           onClose={() => setEnrollOpen(false)}
-          onSuccess={fetchEnrollments}
+          onSuccess={() => { setPage(1); fetchEnrollments(1); }}
         />
       )}
       {removing && (
         <RemoveDialog
           enrollment={removing}
           onClose={() => setRemoving(null)}
-          onSuccess={fetchEnrollments}
+          onSuccess={() => { setPage(1); fetchEnrollments(1); }}
         />
       )}
     </div>
