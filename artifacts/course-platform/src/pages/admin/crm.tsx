@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter } from "lucide-react";
+import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -454,7 +454,253 @@ function SmtpTab() {
               </>
             )}
           </div>
+
+          {/* Backup SMTP Accounts */}
+          <BackupSmtpAccounts />
         </>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════ BACKUP SMTP ACCOUNTS ══════════════════════════════════════════════ */
+const SMTP_PRESETS = [
+  { label: "Brevo", host: "smtp-relay.brevo.com", port: "587", secure: false },
+  { label: "Gmail", host: "smtp.gmail.com", port: "587", secure: false },
+  { label: "Outlook", host: "smtp.office365.com", port: "587", secure: false },
+  { label: "SendGrid", host: "smtp.sendgrid.net", port: "587", secure: false },
+  { label: "Mailgun", host: "smtp.mailgun.org", port: "587", secure: false },
+  { label: "Zoho", host: "smtp.zoho.com", port: "587", secure: false },
+];
+
+const emptyBackupForm = () => ({ name: "", host: "", port: "587", secure: false, username: "", password: "", fromName: "", fromEmail: "", priority: "2", isActive: true });
+
+function BackupSmtpAccounts() {
+  const { toast } = useToast();
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<any | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const [testingId, setTestingId] = useState<number | null>(null);
+  const [testEmail, setTestEmail] = useState("");
+  const [form, setForm] = useState(emptyBackupForm());
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const r = await apiFetch("/api/admin/crm/smtp/accounts");
+    if (r.ok) setAccounts(await r.json());
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
+
+  const save = async () => {
+    if (!form.host.trim() || !form.username.trim()) { toast({ title: "Host and username are required", variant: "destructive" }); return; }
+    if (!editing && !form.password.trim()) { toast({ title: "Password is required for new accounts", variant: "destructive" }); return; }
+    setSaving(true);
+    if (editing) {
+      const r = await apiFetch(`/api/admin/crm/smtp/accounts/${editing.id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, port: parseInt(form.port) || 587, priority: parseInt(form.priority) || 1 }),
+      });
+      if (r.ok) { toast({ title: "Backup SMTP updated" }); setEditing(null); load(); }
+      else { const e = await r.json().catch(() => ({})); toast({ title: e.error ?? "Failed to save", variant: "destructive" }); }
+    } else {
+      const r = await apiFetch("/api/admin/crm/smtp/accounts", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, port: parseInt(form.port) || 587, priority: parseInt(form.priority) || 1 }),
+      });
+      if (r.ok) { toast({ title: "Backup SMTP added" }); setAdding(false); setForm(emptyBackupForm()); load(); }
+      else { const e = await r.json().catch(() => ({})); toast({ title: e.error ?? "Failed to add", variant: "destructive" }); }
+    }
+    setSaving(false);
+  };
+
+  const del = async (id: number) => {
+    if (!confirm("Remove this backup SMTP account?")) return;
+    setDeleting(id);
+    await apiFetch(`/api/admin/crm/smtp/accounts/${id}`, { method: "DELETE" });
+    toast({ title: "Backup SMTP removed" }); load();
+    setDeleting(null);
+  };
+
+  const testAccount = async (id: number) => {
+    if (!testEmail.trim()) { toast({ title: "Enter a recipient email first", variant: "destructive" }); return; }
+    setTestingId(id);
+    const r = await apiFetch(`/api/admin/crm/smtp/accounts/${id}/test`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: testEmail }) });
+    const data = await r.json().catch(() => ({}));
+    if (r.ok) toast({ title: "Test email sent!", description: `Check ${testEmail}` });
+    else toast({ title: data.error ?? "Test failed", variant: "destructive" });
+    setTestingId(null); load();
+  };
+
+  const BackupForm = () => (
+    <div className="bg-card border border-primary/30 rounded-xl p-5 space-y-4">
+      <p className="text-sm font-semibold">{editing ? `Edit: ${editing.name}` : "Add Backup SMTP Account"}</p>
+
+      {/* Presets */}
+      <div>
+        <p className="text-xs text-muted-foreground mb-2">Quick presets</p>
+        <div className="flex flex-wrap gap-2">
+          {SMTP_PRESETS.map(p => (
+            <button key={p.label} onClick={() => setForm(f => ({ ...f, host: p.host, port: p.port, secure: p.secure, name: f.name || p.label }))}
+              className="px-3 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors cursor-pointer">
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Account Name *</Label>
+          <Input value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. Backup Brevo" className="h-9" autoFocus />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Priority (1 = highest)</Label>
+          <Input type="number" min={1} value={form.priority} onChange={e => set("priority", e.target.value)} className="h-9" />
+          <p className="text-[10px] text-muted-foreground">Lower number = tried first after primary fails</p>
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">SMTP Host *</Label>
+          <Input value={form.host} onChange={e => set("host", e.target.value)} placeholder="smtp.brevo.com" className="h-9" />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Port</Label>
+          <Input value={form.port} onChange={e => set("port", e.target.value)} placeholder="587" className="h-9" />
+        </div>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Username / Email *</Label>
+          <Input value={form.username} onChange={e => set("username", e.target.value)} placeholder="you@domain.com" className="h-9" />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Password {editing ? "(leave blank to keep)" : "*"}</Label>
+          <Input type="password" value={form.password} onChange={e => set("password", e.target.value)} placeholder={editing ? "Leave blank to keep current" : "Enter password"} className="h-9" />
+          {editing?.passwordSet && !form.password && <p className="text-xs text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Saved — leave blank to keep</p>}
+        </div>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">From Name</Label>
+          <Input value={form.fromName} onChange={e => set("fromName", e.target.value)} placeholder="VK Academy" className="h-9" />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">From Email</Label>
+          <Input value={form.fromEmail} onChange={e => set("fromEmail", e.target.value)} placeholder="noreply@domain.com" className="h-9" />
+        </div>
+      </div>
+      <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
+        <div>
+          <p className="text-sm font-medium">Active</p>
+          <p className="text-xs text-muted-foreground">When disabled, this backup won't be used as a fallback</p>
+        </div>
+        <Switch checked={form.isActive} onCheckedChange={v => set("isActive", v)} />
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 p-3 bg-background rounded-lg border border-border">
+          <span className="text-sm font-medium">SSL/TLS</span>
+          <Switch checked={form.secure} onCheckedChange={v => set("secure", v)} />
+        </div>
+        <div className="flex gap-2 flex-1">
+          <Button onClick={save} disabled={saving} className="flex-1 gap-2 cursor-pointer">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+            {saving ? "Saving…" : editing ? "Update Account" : "Add Account"}
+          </Button>
+          <Button variant="outline" className="cursor-pointer" onClick={() => { setAdding(false); setEditing(null); setForm(emptyBackupForm()); }} disabled={saving}>Cancel</Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="border-t border-border pt-6 space-y-5 mt-2">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-base font-bold flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-primary" />Backup SMTP Accounts</h3>
+          <p className="text-sm text-muted-foreground mt-0.5">If your primary SMTP fails, these accounts are tried in priority order as fallbacks.</p>
+        </div>
+        {!adding && !editing && (
+          <Button size="sm" className="gap-1.5 flex-shrink-0 cursor-pointer" onClick={() => setAdding(true)}><Plus className="w-4 h-4" />Add Backup</Button>
+        )}
+      </div>
+
+      <div className="p-3 bg-blue-500/5 border border-blue-500/15 rounded-xl text-xs text-blue-400 flex items-start gap-2">
+        <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+        <span>The system sends via your <strong>primary SMTP</strong> above. If that fails, it automatically tries each backup in order of priority (lowest number first) until one succeeds.</span>
+      </div>
+
+      {(adding || editing) && <BackupForm />}
+
+      {loading ? (
+        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+      ) : accounts.length === 0 ? (
+        <div className="bg-card border border-dashed border-border rounded-xl py-10 text-center">
+          <Server className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+          <p className="text-sm font-medium mb-1">No backup SMTPs configured</p>
+          <p className="text-xs text-muted-foreground mb-3">Add a backup SMTP to ensure email delivery even if your primary fails.</p>
+          <Button size="sm" variant="outline" onClick={() => setAdding(true)} className="gap-1.5 cursor-pointer"><Plus className="w-4 h-4" />Add Backup SMTP</Button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {/* Test email input shared across all accounts */}
+          <div className="flex gap-2 items-center">
+            <div className="relative flex-1">
+              <TestTube className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="Enter email to test any backup account…" className="pl-9 h-9 text-sm bg-background" />
+            </div>
+          </div>
+          {accounts.map(acc => (
+            <div key={acc.id} className={`bg-card border rounded-xl p-4 transition-colors ${acc.isActive ? "border-border" : "border-dashed border-border opacity-60"}`}>
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 mt-0.5">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${acc.isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                    {acc.priority}
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-sm">{acc.name}</p>
+                    {acc.isActive ? (
+                      <Badge variant="outline" className="text-[10px] text-green-400 border-green-400/30 bg-green-400/5">Active</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] text-muted-foreground">Disabled</Badge>
+                    )}
+                    {acc.lastError && (
+                      <Badge variant="outline" className="text-[10px] text-red-400 border-red-400/30 bg-red-400/5 max-w-[180px] truncate" title={acc.lastError}>Last error</Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">{acc.host}:{acc.port} · {acc.username}</p>
+                  <p className="text-xs text-muted-foreground">From: {acc.fromName} &lt;{acc.fromEmail}&gt;</p>
+                  {acc.lastError && <p className="text-[11px] text-red-400 mt-1 line-clamp-1" title={acc.lastError}>⚠ {acc.lastError}</p>}
+                  {acc.lastTestedAt && !acc.lastError && <p className="text-[11px] text-green-400 mt-0.5">✓ Last tested: {new Date(acc.lastTestedAt).toLocaleString()}</p>}
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs gap-1 cursor-pointer" disabled={testingId === acc.id} onClick={() => testAccount(acc.id)}>
+                    {testingId === acc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}Test
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-8 w-8 p-0 cursor-pointer" onClick={() => {
+                    setEditing(acc);
+                    setForm({ name: acc.name, host: acc.host, port: String(acc.port), secure: acc.secure, username: acc.username, password: "", fromName: acc.fromName, fromEmail: acc.fromEmail, priority: String(acc.priority), isActive: acc.isActive });
+                    setAdding(false);
+                  }}>
+                    <Edit2 className="w-3 h-3" />
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer" disabled={deleting === acc.id} onClick={() => del(acc.id)}>
+                    {deleting === acc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

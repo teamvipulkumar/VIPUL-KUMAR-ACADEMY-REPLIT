@@ -2,7 +2,7 @@ import { Router } from "express";
 import nodemailer from "nodemailer";
 import { db } from "@workspace/db";
 import {
-  smtpSettingsTable, emailTemplatesTable, emailCampaignsTable,
+  smtpSettingsTable, smtpAccountsTable, emailTemplatesTable, emailCampaignsTable,
   emailAutomationRulesTable, emailSendsTable, usersTable, enrollmentsTable,
   emailListsTable, emailListMembersTable,
   contactTagsTable, contactTagAssignmentsTable,
@@ -33,16 +33,57 @@ export async function createTransporter(smtp: typeof smtpSettingsTable.$inferSel
   } as nodemailer.TransportOptions);
 }
 
-export function buildFrom(smtp: typeof smtpSettingsTable.$inferSelect) {
+export function buildFrom(smtp: { fromName: string; fromEmail: string }) {
   return `"${smtp.fromName}" <${smtp.fromEmail}>`;
+}
+
+/** Try sending via a single account, return error message on failure */
+async function trySend(account: { host: string; port: number; secure: boolean; username: string; password: string; fromName: string; fromEmail: string }, to: string, subject: string, html: string): Promise<string | null> {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: account.host, port: account.port, secure: account.secure,
+      auth: { user: account.username, pass: account.password },
+      connectionTimeout: 15000, greetingTimeout: 10000, socketTimeout: 20000,
+      tls: { rejectUnauthorized: false, minVersion: "TLSv1.2" },
+      ...(account.secure ? {} : { starttls: { enable: true } }),
+    } as nodemailer.TransportOptions);
+    await transporter.sendMail({ from: buildFrom(account), to, subject, html });
+    return null; // success
+  } catch (err: any) {
+    return err?.message ?? String(err);
+  }
+}
+
+/** Send via primary SMTP, falling back to backup accounts in priority order if primary fails */
+export async function sendEmailWithFallback(to: string, subject: string, html: string): Promise<void> {
+  const primary = await getSmtp();
+  if (primary?.isActive && primary.host) {
+    const err = await trySend(primary, to, subject, html);
+    if (!err) return; // sent OK
+    console.warn("[SMTP] Primary failed, trying backups. Error:", err);
+  }
+  // Try backup accounts ordered by priority ascending (1 = highest priority)
+  const backups = await db.select().from(smtpAccountsTable)
+    .where(and(eq(smtpAccountsTable.isActive, true)))
+    .orderBy(asc(smtpAccountsTable.priority));
+  for (const backup of backups) {
+    if (!backup.host) continue;
+    const err = await trySend(backup, to, subject, html);
+    if (!err) {
+      await db.update(smtpAccountsTable).set({ lastError: null }).where(eq(smtpAccountsTable.id, backup.id)).catch(() => {});
+      return; // sent OK via backup
+    }
+    console.warn(`[SMTP] Backup "${backup.name}" failed:`, err);
+    await db.update(smtpAccountsTable).set({ lastError: err }).where(eq(smtpAccountsTable.id, backup.id)).catch(() => {});
+  }
+  throw new Error("All SMTP accounts failed");
 }
 
 /** Send a single transactional email directly via SMTP (bypasses CRM automations) */
 export async function sendTransactionalEmail(to: string, subject: string, html: string): Promise<void> {
   const smtp = await getSmtp();
   if (!smtp || !smtp.isActive) return;
-  const transporter = await createTransporter(smtp);
-  await transporter.sendMail({ from: buildFrom(smtp), to, subject, html });
+  await sendEmailWithFallback(to, subject, html);
 }
 
 /** Public function called from other routes to fire automation emails */
@@ -73,10 +114,9 @@ export async function triggerAutomation(
       subject = subject.replaceAll(`{{${key}}}`, val);
     }
 
-    const transporter = await createTransporter(smtp);
     const send = async () => {
       try {
-        await transporter.sendMail({ from: buildFrom(smtp), to: email, subject, html });
+        await sendEmailWithFallback(email, subject, html);
         await db.insert(emailSendsTable).values({ type: "automation", automationEvent: event, userId, email, subject, status: "sent" });
       } catch (err: any) {
         await db.insert(emailSendsTable).values({ type: "automation", automationEvent: event, userId, email, subject, status: "failed", failReason: String(err?.message ?? err) });
@@ -191,6 +231,73 @@ router.post("/smtp/test-live", requireAdmin, async (req, res): Promise<void> => 
   }
 });
 
+/* ── SMTP Backup Accounts ── */
+router.get("/smtp/accounts", requireAdmin, async (_req, res): Promise<void> => {
+  const accounts = await db.select().from(smtpAccountsTable).orderBy(asc(smtpAccountsTable.priority));
+  res.json(accounts.map(({ password: _pw, ...safe }) => ({ ...safe, passwordSet: !!_pw })));
+});
+
+router.post("/smtp/accounts", requireAdmin, async (req, res): Promise<void> => {
+  const { name, host, port, secure, username, password, fromName, fromEmail, priority, isActive } = req.body;
+  if (!host || !username || !password) { res.status(400).json({ error: "Host, username and password are required" }); return; }
+  const [created] = await db.insert(smtpAccountsTable).values({
+    name: name || "Backup SMTP",
+    host, port: parseInt(String(port)) || 587,
+    secure: !!secure, username, password,
+    fromName: fromName || "VK Academy",
+    fromEmail: fromEmail || username,
+    priority: parseInt(String(priority)) || 1,
+    isActive: isActive !== false,
+  }).returning();
+  const { password: _pw, ...safe } = created;
+  res.json({ ...safe, passwordSet: true });
+});
+
+router.put("/smtp/accounts/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  const { name, host, port, secure, username, password, fromName, fromEmail, priority, isActive } = req.body;
+  const values: Record<string, unknown> = {
+    name, host, port: parseInt(String(port)) || 587,
+    secure: !!secure, username,
+    fromName, fromEmail,
+    priority: parseInt(String(priority)) || 1,
+    isActive: !!isActive,
+  };
+  if (password) values.password = password;
+  const [updated] = await db.update(smtpAccountsTable).set(values).where(eq(smtpAccountsTable.id, id)).returning();
+  if (!updated) { res.status(404).json({ error: "Account not found" }); return; }
+  const { password: _pw, ...safe } = updated;
+  res.json({ ...safe, passwordSet: !!_pw });
+});
+
+router.delete("/smtp/accounts/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  await db.delete(smtpAccountsTable).where(eq(smtpAccountsTable.id, id));
+  res.json({ success: true });
+});
+
+router.post("/smtp/accounts/:id/test", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  const { to } = req.body;
+  if (!to) { res.status(400).json({ error: "Recipient email required" }); return; }
+  const [account] = await db.select().from(smtpAccountsTable).where(eq(smtpAccountsTable.id, id)).limit(1);
+  if (!account) { res.status(404).json({ error: "Account not found" }); return; }
+  if (!account.password) { res.status(400).json({ error: "No password saved for this account" }); return; }
+  const err = await trySend(account, to, `SMTP Test — ${account.name}`,
+    `<div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px;background:#0a0f1e;color:#e2e8f0;border-radius:12px;">
+      <h2 style="color:#2563eb;">✅ Backup SMTP Test Successful</h2>
+      <p>Your backup SMTP account <strong>${account.name}</strong> is working correctly.</p>
+      <p style="color:#64748b;font-size:12px;">Host: ${account.host}:${account.port} · Priority: ${account.priority}</p>
+    </div>`);
+  if (err) {
+    await db.update(smtpAccountsTable).set({ lastError: err }).where(eq(smtpAccountsTable.id, id));
+    res.status(500).json({ error: err }); return;
+  }
+  await db.update(smtpAccountsTable).set({ lastError: null, lastTestedAt: new Date() }).where(eq(smtpAccountsTable.id, id));
+  await db.insert(emailSendsTable).values({ type: "test", email: to, subject: `SMTP Test — ${account.name}`, status: "sent" });
+  res.json({ success: true });
+});
+
 /* ── Template test-send ── */
 const SAMPLE_VARIABLES: Record<string, string> = {
   name: "Rahul Sharma",
@@ -219,13 +326,7 @@ router.post("/templates/test-send", requireAdmin, async (req, res): Promise<void
       processedHtml = processedHtml.replaceAll(`{{${key}}}`, val);
       processedSubject = processedSubject.replaceAll(`{{${key}}}`, val);
     }
-    const transporter = await createTransporter(smtp);
-    await transporter.sendMail({
-      from: buildFrom(smtp),
-      to,
-      subject: `[TEST] ${processedSubject}`,
-      html: processedHtml,
-    });
+    await sendEmailWithFallback(to, `[TEST] ${processedSubject}`, processedHtml);
     await db.insert(emailSendsTable).values({ type: "test", email: to, subject: `[TEST] ${processedSubject}`, status: "sent" });
     res.json({ success: true });
   } catch (err: any) {
@@ -681,14 +782,13 @@ router.post("/campaigns/:id/send", requireAdmin, async (req, res): Promise<void>
           .from(usersTable).where(eq(usersTable.isBanned, false));
       }
 
-      const transporter = await createTransporter(smtp);
       let sentCount = 0;
       let failedCount = 0;
 
       for (const user of users) {
         let html = campaign.htmlBody.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
         try {
-          await transporter.sendMail({ from: buildFrom(smtp), to: user.email, subject: campaign.subject, html });
+          await sendEmailWithFallback(user.email, campaign.subject, html);
           await db.insert(emailSendsTable).values({ type: "campaign", campaignId: id, userId: user.id, email: user.email, subject: campaign.subject, status: "sent" });
           sentCount++;
         } catch (err: any) {
@@ -1115,8 +1215,6 @@ export async function processSequences(): Promise<void> {
 
     if (dueEnrollments.length === 0) return;
 
-    const transporter = await createTransporter(smtp);
-
     for (const enrollment of dueEnrollments) {
       const steps = await db.select().from(emailSequenceStepsTable)
         .where(eq(emailSequenceStepsTable.sequenceId, enrollment.sequenceId))
@@ -1135,7 +1233,7 @@ export async function processSequences(): Promise<void> {
       let subject = currentStepData.subject.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
 
       try {
-        await transporter.sendMail({ from: buildFrom(smtp), to: user.email, subject, html });
+        await sendEmailWithFallback(user.email, subject, html);
         await db.insert(emailSendsTable).values({ type: "sequence", userId: user.id, email: user.email, subject, status: "sent" });
       } catch (err: any) {
         await db.insert(emailSendsTable).values({ type: "sequence", userId: user.id, email: user.email, subject, status: "failed", failReason: String(err?.message ?? err) });
@@ -1174,12 +1272,11 @@ export async function processScheduledCampaigns(): Promise<void> {
           } else {
             users = await db.select({ id: usersTable.id, email: usersTable.email, name: usersTable.name }).from(usersTable).where(eq(usersTable.isBanned, false));
           }
-          const transporter = await createTransporter(smtp);
           let sentCount = 0; let failedCount = 0;
           for (const user of users) {
             const html = campaign.htmlBody.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
             try {
-              await transporter.sendMail({ from: buildFrom(smtp), to: user.email, subject: campaign.subject, html });
+              await sendEmailWithFallback(user.email, campaign.subject, html);
               await db.insert(emailSendsTable).values({ type: "campaign", campaignId: campaign.id, userId: user.id, email: user.email, subject: campaign.subject, status: "sent" });
               sentCount++;
             } catch (err: any) {

@@ -1,4 +1,4 @@
-import { pgTable, serial, timestamp, integer, text, boolean, unique } from "drizzle-orm/pg-core";
+import { pgTable, serial, timestamp, integer, text, boolean, unique, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -13,6 +13,24 @@ export const smtpSettingsTable = pgTable("smtp_settings", {
   fromName: text("from_name").notNull().default("VK Academy"),
   fromEmail: text("from_email").notNull().default(""),
   isActive: boolean("is_active").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export const smtpAccountsTable = pgTable("smtp_accounts", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().default("Backup SMTP"),
+  host: text("host").notNull().default(""),
+  port: integer("port").notNull().default(587),
+  secure: boolean("secure").notNull().default(false),
+  username: text("username").notNull().default(""),
+  password: text("password").notNull().default(""),
+  fromName: text("from_name").notNull().default(""),
+  fromEmail: text("from_email").notNull().default(""),
+  priority: integer("priority").notNull().default(1),
+  isActive: boolean("is_active").notNull().default(true),
+  lastError: text("last_error"),
+  lastTestedAt: timestamp("last_tested_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
@@ -145,6 +163,10 @@ export type EmailList = typeof emailListsTable.$inferSelect;
 export const insertSmtpSettingsSchema = createInsertSchema(smtpSettingsTable).omit({ id: true, updatedAt: true });
 export type InsertSmtpSettings = z.infer<typeof insertSmtpSettingsSchema>;
 export type SmtpSettings = typeof smtpSettingsTable.$inferSelect;
+
+export const insertSmtpAccountSchema = createInsertSchema(smtpAccountsTable).omit({ id: true, createdAt: true, updatedAt: true, lastError: true, lastTestedAt: true });
+export type InsertSmtpAccount = z.infer<typeof insertSmtpAccountSchema>;
+export type SmtpAccount = typeof smtpAccountsTable.$inferSelect;
 
 export const insertEmailTemplateSchema = createInsertSchema(emailTemplatesTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertEmailTemplate = z.infer<typeof insertEmailTemplateSchema>;
