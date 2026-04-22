@@ -170,7 +170,7 @@ export default function AdminFilesPage() {
         <div className="flex items-center gap-2 text-red-400 text-sm mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           {uploadError}
-          <button onClick={() => setUploadError(null)} className="ml-auto"><X className="w-4 h-4" /></button>
+          <button onClick={() => setUploadError(null)} className="ml-auto cursor-pointer"><X className="w-4 h-4" /></button>
         </div>
       )}
 
@@ -197,7 +197,7 @@ export default function AdminFilesPage() {
                 <button
                   key={tab.key}
                   onClick={() => setTypeFilter(tab.key as typeof typeFilter)}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${typeFilter === tab.key ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 cursor-pointer ${typeFilter === tab.key ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   {tab.label}
                   <span className={`text-xs ${typeFilter === tab.key ? "text-white/70" : "text-muted-foreground"}`}>
@@ -319,7 +319,7 @@ export default function AdminFilesPage() {
           >
             {/* Close */}
             <button
-              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
               onClick={() => setPreviewFile(null)}
             >
               <X className="w-5 h-5" />
@@ -328,7 +328,7 @@ export default function AdminFilesPage() {
             {/* Prev */}
             {prev && (
               <button
-                className="absolute left-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                className="absolute left-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
                 onClick={e => { e.stopPropagation(); setPreviewFile(prev); }}
               >
                 <ChevronLeft className="w-6 h-6" />
@@ -338,7 +338,7 @@ export default function AdminFilesPage() {
             {/* Next */}
             {next && (
               <button
-                className="absolute right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                className="absolute right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
                 onClick={e => { e.stopPropagation(); setPreviewFile(next); }}
               >
                 <ChevronRight className="w-6 h-6" />
@@ -381,7 +381,7 @@ export default function AdminFilesPage() {
                   <Download className="w-3.5 h-3.5" />Download
                 </a>
                 <button
-                  className="flex-shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+                  className="flex-shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
                   onClick={e => { e.stopPropagation(); copyUrl(previewFile); }}
                 >
                   {copiedFile === previewFile.filename
