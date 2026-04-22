@@ -402,6 +402,11 @@ function emailWrap(body: string): string {
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:40px 16px;">
 <tr><td align="center">
 <table cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
+  <tr><td align="center" style="padding-bottom:22px;">
+    <a href="{{site_url}}" style="text-decoration:none;display:inline-block;background:#2563eb;border-radius:9px;padding:10px 24px;">
+      <span style="color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;letter-spacing:1.5px;">VIPUL KUMAR ACADEMY</span>
+    </a>
+  </td></tr>
   <tr><td style="background:#ffffff;border-radius:16px;padding:36px 40px;font-family:Arial,Helvetica,sans-serif;box-sizing:border-box;">
     ${body}
   </td></tr>
