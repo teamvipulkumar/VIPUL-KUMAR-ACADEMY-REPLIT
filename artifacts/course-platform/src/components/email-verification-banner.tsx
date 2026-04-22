@@ -5,12 +5,12 @@ import { useAuth } from "@/lib/auth-context";
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
 export function EmailVerificationBanner() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, isFetching } = useAuth();
   const [dismissed, setDismissed] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
-  if (isLoading || !isAuthenticated || !user) return null;
+  if (isLoading || isFetching || !isAuthenticated || !user) return null;
   if (user.emailVerified) return null;
   if (dismissed) return null;
 

@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  isFetching: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
   isStaff: boolean;
@@ -16,6 +17,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
+  isFetching: true,
   isAuthenticated: false,
   isAdmin: false,
   isStaff: false,
@@ -25,7 +27,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { data: user, isLoading, refetch } = useGetMe({ query: { retry: false } });
+  const { data: user, isLoading, isFetching, refetch } = useGetMe({ query: { retry: false } });
 
   const isStaff = !!(user as any)?.isStaff;
   const staffPermissions: Record<string, boolean> | null = (user as any)?.staffPermissions ?? null;
@@ -40,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextType = {
     user: user || null,
     isLoading,
+    isFetching,
     isAuthenticated: !!user,
     isAdmin,
     isStaff,
