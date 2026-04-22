@@ -33,7 +33,7 @@ export default function CoursesPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 md:py-12">
+      <div className="container mx-auto px-6 sm:px-10 md:px-16 lg:px-24 py-8 md:py-12">
         <div className="mb-6 md:mb-10">
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">Course Catalog</h1>
           <p className="text-muted-foreground text-sm md:text-base">Proven systems to build and scale your online income.</p>
