@@ -129,7 +129,7 @@ function EnrollDialog({
                   key={u.id}
                   type="button"
                   onClick={() => { setUserId(String(u.id)); setUserSearch(`${u.name} (${u.email})`); }}
-                  className={`w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-white/5 transition-colors ${userId === String(u.id) ? "bg-primary/10" : ""}`}
+                  className={`w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-white/5 transition-colors cursor-pointer ${userId === String(u.id) ? "bg-primary/10" : ""}`}
                 >
                   <AvatarInitial name={u.name} size="sm" />
                   <div className="min-w-0">
@@ -159,7 +159,7 @@ function EnrollDialog({
                   key={c.id}
                   type="button"
                   onClick={() => { setCourseId(String(c.id)); setCourseSearch(c.title); }}
-                  className={`w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-white/5 transition-colors ${courseId === String(c.id) ? "bg-primary/10" : ""}`}
+                  className={`w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-white/5 transition-colors cursor-pointer ${courseId === String(c.id) ? "bg-primary/10" : ""}`}
                 >
                   <BookOpen className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                   <p className="text-sm text-foreground truncate flex-1">{c.title}</p>
