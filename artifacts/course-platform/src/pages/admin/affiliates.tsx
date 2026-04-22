@@ -252,15 +252,15 @@ function OverviewTab() {
                           onChange={e => setCommissionVal(e.target.value)}
                           placeholder="%" className="w-14 h-6 text-xs bg-background border-border px-1"
                         />
-                        <button onClick={() => doCommission(a.applicationId)} disabled={!!actionLoading} className="text-green-400 hover:text-green-300">
+                        <button onClick={() => doCommission(a.applicationId)} disabled={!!actionLoading} className="text-green-400 hover:text-green-300 cursor-pointer">
                           {actionLoading === `comm-${a.applicationId}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                         </button>
-                        <button onClick={() => setEditingCommission(null)} className="text-muted-foreground hover:text-foreground"><X className="w-3 h-3" /></button>
+                        <button onClick={() => setEditingCommission(null)} className="text-muted-foreground hover:text-foreground cursor-pointer"><X className="w-3 h-3" /></button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-1">
                         <span className="text-xs">{a.commissionOverride != null ? `${a.commissionOverride}% (custom)` : "Default"}</span>
-                        <button onClick={() => { setEditingCommission(a.applicationId); setCommissionVal(String(a.commissionOverride ?? "")); }} className="text-muted-foreground hover:text-primary">
+                        <button onClick={() => { setEditingCommission(a.applicationId); setCommissionVal(String(a.commissionOverride ?? "")); }} className="text-muted-foreground hover:text-primary cursor-pointer">
                           <Edit2 className="w-3 h-3" />
                         </button>
                       </div>
@@ -345,7 +345,7 @@ function AppCard({ app, onAction }: { app: Application; onAction: () => void }) 
           </div>
           <p className="text-xs text-muted-foreground">{app.email} · Applied {fmtDate(app.createdAt)}</p>
         </div>
-        <button onClick={() => setExpanded(e => !e)} className="text-muted-foreground hover:text-foreground flex-shrink-0">
+        <button onClick={() => setExpanded(e => !e)} className="text-muted-foreground hover:text-foreground flex-shrink-0 cursor-pointer">
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
       </div>
@@ -438,7 +438,7 @@ function ApplicationsTab() {
         <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5">
           {(["all", "pending", "approved", "rejected"] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
-              className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors ${filter === f ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
+              className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors cursor-pointer ${filter === f ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
               {f}
             </button>
           ))}
@@ -488,7 +488,7 @@ function AffiliateProfileModal({
             <p className="font-semibold text-sm">{payout.name}</p>
             <p className="text-[11px] text-muted-foreground mt-0.5">{payout.email}</p>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -587,7 +587,7 @@ function AffiliateProfileModal({
                     {actionLoading === `reject-${payout.affiliateId}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
                     Confirm
                   </Button>
-                  <button onClick={() => onRejectStateChange({ open: false, note: "" })} className="text-muted-foreground hover:text-foreground flex-shrink-0">
+                  <button onClick={() => onRejectStateChange({ open: false, note: "" })} className="text-muted-foreground hover:text-foreground flex-shrink-0 cursor-pointer">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -697,7 +697,7 @@ function ScheduledPayoutCard({
                 {actionLoading === `reject-${payout.affiliateId}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
                 Confirm
               </Button>
-              <button onClick={() => onRejectStateChange({ open: false, note: "" })} className="text-muted-foreground hover:text-foreground flex-shrink-0">
+              <button onClick={() => onRejectStateChange({ open: false, note: "" })} className="text-muted-foreground hover:text-foreground flex-shrink-0 cursor-pointer">
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -856,7 +856,7 @@ function PayoutsTab() {
           { id: "paid",      label: "Paid"             },
         ].map(v => (
           <button key={v.id} onClick={() => { setView(v.id as any); setLoading(true); }}
-            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${view === v.id ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${view === v.id ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
             {v.label}
           </button>
         ))}
@@ -890,7 +890,7 @@ function PayoutsTab() {
               { id: "hold", label: `On Hold${onHold.length  > 0 ? ` (${onHold.length})`  : ""}` },
             ] as const).map(f => (
               <button key={f.id} onClick={() => setSchedFilter(f.id)}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${schedFilter === f.id ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${schedFilter === f.id ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
                 {f.label}
               </button>
             ))}
@@ -942,7 +942,7 @@ function PayoutsTab() {
           <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5 w-fit">
             {(["all", "pending", "approved", "hold", "rejected"] as const).map(f => (
               <button key={f} onClick={() => setReqFilter(f)}
-                className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors ${reqFilter === f ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
+                className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors cursor-pointer ${reqFilter === f ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
                 {f}
               </button>
             ))}
@@ -1156,7 +1156,7 @@ function KycTab() {
           className="bg-card border-border h-9 text-sm pl-9 pr-8"
         />
         {search && (
-          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer">
             <X className="w-3.5 h-3.5" />
           </button>
         )}
@@ -1166,7 +1166,7 @@ function KycTab() {
         <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5">
           {(["all", "pending", "approved", "rejected"] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
-              className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors ${filter === f ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
+              className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors cursor-pointer ${filter === f ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
               {f} {f !== "all" && `(${records.filter(r => r.status === f).length})`}
             </button>
           ))}
@@ -1261,7 +1261,7 @@ function KycTab() {
                           </Button>
                           <button
                             onClick={() => setRejectNote(n => { const c = { ...n }; delete c[r.userId]; return c; })}
-                            className="text-muted-foreground hover:text-foreground flex-shrink-0"
+                            className="text-muted-foreground hover:text-foreground flex-shrink-0 cursor-pointer"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -1428,10 +1428,10 @@ function CreativesTab() {
                   <td className="px-3 py-3 text-xs text-muted-foreground">{fmtDate(c.createdAt)}</td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => startEdit(c)} className="text-muted-foreground hover:text-primary transition-colors">
+                      <button onClick={() => startEdit(c)} className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => del(c.id)} className="text-muted-foreground hover:text-red-400 transition-colors">
+                      <button onClick={() => del(c.id)} className="text-muted-foreground hover:text-red-400 transition-colors cursor-pointer">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
