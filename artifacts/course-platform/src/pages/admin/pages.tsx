@@ -313,7 +313,7 @@ export default function AdminPagesPage() {
                     <td className="px-4 py-3.5">
                       <button
                         onClick={() => toggleStatus(page.id)}
-                        className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${
+                        className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-colors cursor-pointer ${
                           page.status === "published"
                             ? "bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20"
                             : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20 hover:bg-yellow-500/20"
