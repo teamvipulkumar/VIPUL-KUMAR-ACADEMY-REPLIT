@@ -1366,13 +1366,27 @@ router.get("/funnels/:id", requireAdmin, async (req, res): Promise<void> => {
 router.put("/funnels/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   const { name, triggerType, triggerConfig, status, isActive } = req.body;
-  const updates: Record<string, unknown> = {};
-  if (name !== undefined) updates.name = name;
-  if (triggerType !== undefined) updates.triggerType = triggerType;
-  if (triggerConfig !== undefined) updates.triggerConfig = triggerConfig;
-  if (status !== undefined) updates.status = status;
-  if (isActive !== undefined) updates.isActive = isActive;
-  const [updated] = await db.update(automationFunnelsTable).set(updates).where(eq(automationFunnelsTable.id, id)).returning();
+
+  // Handle isActive separately via raw SQL to avoid Drizzle camelCase→snake_case mapping issues
+  if (isActive !== undefined) {
+    await db.execute(sql`UPDATE automation_funnels SET is_active = ${Boolean(isActive)}, updated_at = now() WHERE id = ${id}`);
+  }
+
+  const metaUpdates: Record<string, unknown> = {};
+  if (name !== undefined) metaUpdates.name = name;
+  if (triggerType !== undefined) metaUpdates.triggerType = triggerType;
+  if (triggerConfig !== undefined) metaUpdates.triggerConfig = triggerConfig;
+  if (status !== undefined) metaUpdates.status = status;
+
+  let updated: typeof automationFunnelsTable.$inferSelect | undefined;
+  if (Object.keys(metaUpdates).length > 0) {
+    const rows = await db.update(automationFunnelsTable).set(metaUpdates).where(eq(automationFunnelsTable.id, id)).returning();
+    updated = rows[0];
+  } else {
+    const rows = await db.select().from(automationFunnelsTable).where(eq(automationFunnelsTable.id, id)).limit(1);
+    updated = rows[0];
+  }
+
   if (!updated) { res.status(404).json({ error: "Funnel not found" }); return; }
   const steps = await db.select().from(automationFunnelStepsTable).where(eq(automationFunnelStepsTable.funnelId, id)).orderBy(asc(automationFunnelStepsTable.stepOrder));
   res.json({ ...updated, steps });
