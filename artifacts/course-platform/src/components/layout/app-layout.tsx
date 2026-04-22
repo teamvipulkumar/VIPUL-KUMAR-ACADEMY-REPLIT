@@ -79,7 +79,7 @@ function NotificationPopup({ iconSize = "w-4 h-4" }: { iconSize?: string }) {
             )}
           </div>
           {unreadCount > 0 && (
-            <button onClick={handleMarkAll} className="text-[11px] text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+            <button onClick={handleMarkAll} className="text-[11px] text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 cursor-pointer">
               <CheckCheck className="w-3 h-3" />Mark all read
             </button>
           )}
@@ -100,7 +100,7 @@ function NotificationPopup({ iconSize = "w-4 h-4" }: { iconSize?: string }) {
                   key={n.id}
                   onClick={() => { if (!n.isRead) handleMarkRead(n.id); }}
                   className={`flex gap-3 px-4 py-3 border-l-2 ${ts.border} transition-colors ${
-                    n.isRead ? "opacity-55 cursor-default" : "bg-white/[0.025] cursor-pointer hover:bg-white/[0.05]"
+                    n.isRead ? "opacity-55 cursor-default hover:opacity-75 hover:bg-white/[0.03]" : "bg-white/[0.025] cursor-pointer hover:bg-white/[0.05]"
                   }`}
                 >
                   <span className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${ts.dot} ${n.isRead ? "opacity-40" : ""}`} />
