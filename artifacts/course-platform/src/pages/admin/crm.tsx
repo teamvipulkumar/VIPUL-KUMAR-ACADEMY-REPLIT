@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft } from "lucide-react";
+import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,15 +14,17 @@ async function apiFetch(path: string, opts?: RequestInit) {
   return fetch(`${API_BASE}${path}`, { credentials: "include", ...opts });
 }
 
-type Tab = "dashboard" | "campaigns" | "automation" | "templates" | "subscribers" | "smtp" | "lists";
+type Tab = "dashboard" | "campaigns" | "sequences" | "automation" | "templates" | "tags" | "subscribers" | "smtp" | "lists";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "dashboard", label: "Dashboard", icon: <BarChart2 className="w-4 h-4" /> },
   { id: "campaigns", label: "Campaigns", icon: <Send className="w-4 h-4" /> },
+  { id: "sequences", label: "Sequences", icon: <GitBranch className="w-4 h-4" /> },
   { id: "automation", label: "Automation", icon: <Zap className="w-4 h-4" /> },
   { id: "templates", label: "Templates", icon: <FileText className="w-4 h-4" /> },
+  { id: "tags", label: "Tags", icon: <Tag className="w-4 h-4" /> },
   { id: "lists", label: "Lists", icon: <List className="w-4 h-4" /> },
-  { id: "subscribers", label: "Subscribers", icon: <Users className="w-4 h-4" /> },
+  { id: "subscribers", label: "Contacts", icon: <Users className="w-4 h-4" /> },
   { id: "smtp", label: "SMTP", icon: <Server className="w-4 h-4" /> },
 ];
 
@@ -155,8 +157,10 @@ export default function AdminCrmPage() {
         <div className="p-5 sm:p-6">
           {tab === "dashboard" && <DashboardTab />}
           {tab === "campaigns" && <CampaignsTab />}
+          {tab === "sequences" && <SequencesTab />}
           {tab === "automation" && <AutomationTab />}
           {tab === "templates" && <TemplatesTab />}
+          {tab === "tags" && <TagsTab />}
           {tab === "lists" && <ListsTab />}
           {tab === "subscribers" && <SubscribersTab />}
           {tab === "smtp" && <SmtpTab />}
@@ -799,21 +803,26 @@ function CampaignsTab() {
   const { toast } = useToast();
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
+  const [lists, setLists] = useState<any[]>([]);
+  const [tags, setTags] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [sending, setSending] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [previewing, setPreviewing] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", subject: "", templateId: "", htmlBody: "", recipientFilter: "all" });
+  const [form, setForm] = useState({ name: "", subject: "", templateId: "", htmlBody: "", recipientFilter: "all", listId: "", tagId: "", scheduledAt: "" });
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [c, t] = await Promise.all([
+    const [c, t, l, tg] = await Promise.all([
       apiFetch("/api/admin/crm/campaigns").then(r => r.json()),
       apiFetch("/api/admin/crm/templates").then(r => r.json()),
+      apiFetch("/api/admin/crm/lists").then(r => r.json()).catch(() => []),
+      apiFetch("/api/admin/crm/tags").then(r => r.json()).catch(() => []),
     ]);
     setCampaigns(c); setTemplates(t.filter((t: any) => t.isActive));
+    setLists(Array.isArray(l) ? l : []); setTags(Array.isArray(tg) ? tg : []);
     setLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -826,14 +835,19 @@ function CampaignsTab() {
 
   const create = async () => {
     if (!form.name || !form.subject || !form.htmlBody) { toast({ title: "Fill all required fields", variant: "destructive" }); return; }
+    if (form.recipientFilter === "list" && !form.listId) { toast({ title: "Select a list", variant: "destructive" }); return; }
+    if (form.recipientFilter === "tag" && !form.tagId) { toast({ title: "Select a tag", variant: "destructive" }); return; }
     setSaving(true);
+    const payload: Record<string, any> = { ...form, templateId: form.templateId ? parseInt(form.templateId) : null };
+    if (form.listId) payload.listId = parseInt(form.listId);
+    if (form.tagId) payload.tagId = parseInt(form.tagId);
+    if (!form.scheduledAt) delete payload.scheduledAt;
     const res = await apiFetch("/api/admin/crm/campaigns", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, templateId: form.templateId ? parseInt(form.templateId) : null }),
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
     });
     if (res.ok) {
-      toast({ title: "Campaign created!" });
-      setCreating(false); setForm({ name: "", subject: "", templateId: "", htmlBody: "", recipientFilter: "all" }); load();
+      toast({ title: form.scheduledAt ? "Campaign scheduled!" : "Campaign created!" });
+      setCreating(false); setForm({ name: "", subject: "", templateId: "", htmlBody: "", recipientFilter: "all", listId: "", tagId: "", scheduledAt: "" }); load();
     } else {
       const e = await res.json().catch(() => ({}));
       toast({ title: e.error ?? "Failed", variant: "destructive" });
@@ -860,9 +874,15 @@ function CampaignsTab() {
 
   const statusColor: Record<string, string> = {
     draft: "text-muted-foreground border-border",
+    scheduled: "text-blue-400 border-blue-400/30 bg-blue-400/10",
     sending: "text-amber-400 border-amber-400/30 bg-amber-400/10",
     sent: "text-green-400 border-green-400/30 bg-green-400/10",
     failed: "text-red-400 border-red-400/30 bg-red-400/10",
+  };
+
+  const recipientLabel: Record<string, string> = {
+    all: "All Users", enrolled: "Enrolled Students", not_enrolled: "Not Enrolled",
+    list: "Email List", tag: "Contact Tag",
   };
 
   if (creating) {
@@ -874,7 +894,7 @@ function CampaignsTab() {
         </div>
         <div className="bg-card border border-border rounded-xl p-5 space-y-4">
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Campaign Name</Label>
+            <Label className="text-xs text-muted-foreground">Campaign Name *</Label>
             <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Monthly Newsletter — April" className="bg-background border-border" />
           </div>
           <div className="space-y-1.5">
@@ -886,31 +906,59 @@ function CampaignsTab() {
             </select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Subject Line</Label>
+            <Label className="text-xs text-muted-foreground">Subject Line *</Label>
             <Input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="e.g. Big news from VK Academy 🚀" className="bg-background border-border" />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Recipients</Label>
-            <select value={form.recipientFilter} onChange={e => setForm(f => ({ ...f, recipientFilter: e.target.value }))}
+            <select value={form.recipientFilter} onChange={e => setForm(f => ({ ...f, recipientFilter: e.target.value, listId: "", tagId: "" }))}
               className="w-full h-10 px-3 rounded-md border border-border bg-background text-sm text-foreground">
               <option value="all">All users</option>
               <option value="enrolled">Enrolled students only</option>
-              <option value="not_enrolled">Users who haven't purchased any course</option>
+              <option value="not_enrolled">Users who haven't purchased</option>
+              <option value="list">Specific Email List</option>
+              <option value="tag">Specific Contact Tag</option>
             </select>
           </div>
+          {form.recipientFilter === "list" && (
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Choose List *</Label>
+              <select value={form.listId} onChange={e => setForm(f => ({ ...f, listId: e.target.value }))}
+                className="w-full h-10 px-3 rounded-md border border-border bg-background text-sm text-foreground">
+                <option value="">— Select a list —</option>
+                {lists.map((l: any) => <option key={l.id} value={l.id}>{l.name} ({l.memberCount ?? 0} members)</option>)}
+              </select>
+            </div>
+          )}
+          {form.recipientFilter === "tag" && (
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Choose Tag *</Label>
+              <select value={form.tagId} onChange={e => setForm(f => ({ ...f, tagId: e.target.value }))}
+                className="w-full h-10 px-3 rounded-md border border-border bg-background text-sm text-foreground">
+                <option value="">— Select a tag —</option>
+                {tags.map((t: any) => <option key={t.id} value={t.id}>{t.name} ({t.subscriberCount} contacts)</option>)}
+              </select>
+            </div>
+          )}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between mb-1">
-              <Label className="text-xs text-muted-foreground">HTML Body</Label>
+              <Label className="text-xs text-muted-foreground">HTML Body *</Label>
               {form.htmlBody && <button onClick={() => setPreviewing(form.htmlBody)} className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"><Eye className="w-3 h-3" />Preview</button>}
             </div>
             <Textarea value={form.htmlBody} onChange={e => setForm(f => ({ ...f, htmlBody: e.target.value }))}
               className="bg-background border-border font-mono text-xs min-h-[240px] resize-y" placeholder="<div>Your email HTML here…</div>" />
           </div>
           <TemplateVariablesPanel type="campaign" />
+          <div className="border-t border-border pt-4 space-y-1.5">
+            <Label className="text-xs text-muted-foreground flex items-center gap-1.5"><Calendar className="w-3 h-3" />Schedule Send (optional — leave blank to send manually)</Label>
+            <Input type="datetime-local" value={form.scheduledAt} onChange={e => setForm(f => ({ ...f, scheduledAt: e.target.value }))}
+              className="bg-background border-border text-sm" />
+            {form.scheduledAt && <p className="text-[11px] text-blue-400 flex items-center gap-1"><Clock className="w-3 h-3" />Will auto-send at the scheduled time</p>}
+          </div>
           <div className="flex gap-2 pt-1">
             <Button onClick={create} disabled={saving} className="flex-1 bg-primary gap-2">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              {saving ? "Creating…" : "Create Campaign"}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : (form.scheduledAt ? <Calendar className="w-4 h-4" /> : <Plus className="w-4 h-4" />)}
+              {saving ? "Saving…" : form.scheduledAt ? "Schedule Campaign" : "Create Campaign"}
             </Button>
             <Button variant="outline" onClick={() => setCreating(false)}>Cancel</Button>
           </div>
@@ -935,7 +983,7 @@ function CampaignsTab() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <div><h2 className="text-xl font-bold text-foreground">Campaigns</h2><p className="text-sm text-muted-foreground mt-0.5">Send email blasts to your entire user base or targeted segments.</p></div>
+        <div><h2 className="text-xl font-bold text-foreground">Campaigns</h2><p className="text-sm text-muted-foreground mt-0.5">Send email blasts to your contacts. Schedule or send immediately.</p></div>
         <Button onClick={() => setCreating(true)} size="sm" className="bg-primary gap-1.5"><Plus className="w-4 h-4" />New Campaign</Button>
       </div>
 
@@ -958,22 +1006,24 @@ function CampaignsTab() {
                       <Badge variant="outline" className={`text-[10px] capitalize flex-shrink-0 ${statusColor[c.status]}`}>{c.status}</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground truncate">{c.subject}</p>
-                    <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground">
+                    <div className="flex items-center flex-wrap gap-3 mt-2 text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-1"><Filter className="w-2.5 h-2.5" />{recipientLabel[c.recipientFilter] ?? c.recipientFilter}</span>
                       <span>Recipients: <span className="text-foreground font-medium">{c.recipientCount}</span></span>
                       {c.sentCount > 0 && <span>Sent: <span className="text-green-400 font-medium">{c.sentCount}</span></span>}
                       {c.failedCount > 0 && <span>Failed: <span className="text-red-400 font-medium">{c.failedCount}</span></span>}
-                      {c.sentAt && <span>Sent on {new Date(c.sentAt).toLocaleDateString("en-IN")}</span>}
+                      {c.scheduledAt && c.status === "scheduled" && <span className="flex items-center gap-1 text-blue-400"><Clock className="w-2.5 h-2.5" />Scheduled: {new Date(c.scheduledAt).toLocaleString("en-IN")}</span>}
+                      {c.sentAt && <span>Sent: {new Date(c.sentAt).toLocaleDateString("en-IN")}</span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {c.htmlBody && <button onClick={() => setPreviewing(c.htmlBody)} className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"><Eye className="w-4 h-4" /></button>}
-                    {c.status === "draft" && (
+                    {(c.status === "draft" || c.status === "scheduled") && (
                       <Button size="sm" className="bg-primary gap-1 text-xs" disabled={sending === c.id} onClick={() => sendCampaign(c.id)}>
                         {sending === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                        Send
+                        Send Now
                       </Button>
                     )}
-                    {c.status === "draft" && (
+                    {(c.status === "draft" || c.status === "scheduled") && (
                       <button onClick={() => del(c.id)} disabled={deleting === c.id} className="text-muted-foreground hover:text-red-400 transition-colors cursor-pointer">
                         {deleting === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                       </button>
@@ -1003,38 +1053,202 @@ function CampaignsTab() {
 }
 
 /* ══════════════════════════════════════════════ SUBSCRIBERS ══════════════════════════════════════════════ */
+function ContactProfilePanel({ userId, onClose }: { userId: number; onClose: () => void }) {
+  const { toast } = useToast();
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [allTags, setAllTags] = useState<any[]>([]);
+  const [addingTag, setAddingTag] = useState(false);
+  const [selectedTagId, setSelectedTagId] = useState("");
+  const [panelTab, setPanelTab] = useState<"tags" | "emails" | "lists">("tags");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const [p, t] = await Promise.all([
+      apiFetch(`/api/admin/crm/contacts/${userId}`).then(r => r.json()),
+      apiFetch("/api/admin/crm/tags").then(r => r.json()).catch(() => []),
+    ]);
+    setProfile(p); setAllTags(Array.isArray(t) ? t : []);
+    setLoading(false);
+  }, [userId]);
+  useEffect(() => { load(); }, [load]);
+
+  const addTag = async () => {
+    if (!selectedTagId) return;
+    setAddingTag(true);
+    await apiFetch(`/api/admin/crm/contacts/${userId}/tags`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tagId: parseInt(selectedTagId) }) });
+    setSelectedTagId(""); load();
+    setAddingTag(false);
+  };
+
+  const removeTag = async (tagId: number) => {
+    await apiFetch(`/api/admin/crm/contacts/${userId}/tags/${tagId}`, { method: "DELETE" });
+    load();
+    toast({ title: "Tag removed" });
+  };
+
+  const assignedTagIds = new Set(profile?.tags?.map((t: any) => t.id) ?? []);
+  const availableTags = allTags.filter((t: any) => !assignedTagIds.has(t.id));
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="flex-1 bg-black/50" onClick={onClose} />
+      <div className="w-full max-w-md bg-card border-l border-border flex flex-col overflow-hidden shadow-2xl">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
+          <h3 className="text-sm font-semibold">Contact Profile</h3>
+          <button onClick={onClose} className="cursor-pointer text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+        </div>
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
+        ) : profile ? (
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-5 border-b border-border">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-primary/15 flex items-center justify-center text-xl font-bold text-primary flex-shrink-0">
+                  {profile.user?.name?.charAt(0)?.toUpperCase() ?? "?"}
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">{profile.user?.name}</p>
+                  <p className="text-sm text-muted-foreground">{profile.user?.email}</p>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <Badge variant="outline" className={`text-[10px] capitalize ${profile.user?.role === "admin" ? "text-red-400 border-red-400/30" : profile.user?.role === "affiliate" ? "text-purple-400 border-purple-400/30" : "text-muted-foreground border-border"}`}>{profile.user?.role}</Badge>
+                    <span className="text-[11px] text-muted-foreground">Joined {new Date(profile.user?.createdAt).toLocaleDateString("en-IN")}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex border-b border-border">
+              {(["tags", "emails", "lists"] as const).map(t => (
+                <button key={t} onClick={() => setPanelTab(t)} className={`flex-1 py-2.5 text-xs font-medium capitalize transition-colors cursor-pointer ${panelTab === t ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}>{t}</button>
+              ))}
+            </div>
+            {panelTab === "tags" && (
+              <div className="p-4 space-y-4">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Current Tags</p>
+                  {profile.tags?.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No tags assigned.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {profile.tags?.map((tag: any) => (
+                        <span key={tag.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-white" style={{ backgroundColor: tag.color }}>
+                          {tag.name}
+                          <button onClick={() => removeTag(tag.id)} className="cursor-pointer opacity-70 hover:opacity-100 ml-0.5"><X className="w-3 h-3" /></button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {availableTags.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Add Tag</p>
+                    <div className="flex gap-2">
+                      <select value={selectedTagId} onChange={e => setSelectedTagId(e.target.value)}
+                        className="flex-1 h-8 px-2 rounded-md border border-border bg-background text-xs text-foreground">
+                        <option value="">Select tag…</option>
+                        {availableTags.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      </select>
+                      <Button size="sm" className="h-8 px-3 text-xs" onClick={addTag} disabled={!selectedTagId || addingTag}>
+                        {addingTag ? <Loader2 className="w-3 h-3 animate-spin" /> : "Add"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {panelTab === "emails" && (
+              <div className="p-4">
+                <p className="text-xs font-medium text-muted-foreground mb-3">Recent Email Activity ({profile.emailHistory?.length ?? 0})</p>
+                {profile.emailHistory?.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No emails sent yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {profile.emailHistory?.map((send: any) => (
+                      <div key={send.id} className="bg-background border border-border rounded-lg p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-xs font-medium text-foreground line-clamp-1">{send.subject}</p>
+                          <Badge variant="outline" className={`text-[10px] flex-shrink-0 ${send.status === "sent" ? "text-green-400 border-green-400/30" : "text-red-400 border-red-400/30"}`}>{send.status}</Badge>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+                          <span className="capitalize">{send.type}</span> · {new Date(send.sentAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {panelTab === "lists" && (
+              <div className="p-4">
+                <p className="text-xs font-medium text-muted-foreground mb-3">List Memberships</p>
+                {profile.listMemberships?.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Not in any lists.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {profile.listMemberships?.map((l: any) => (
+                      <div key={l.id} className="flex items-center gap-2 bg-background border border-border rounded-lg px-3 py-2">
+                        <List className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                        <p className="text-xs font-medium text-foreground">{l.name}</p>
+                        <Badge variant="outline" className="ml-auto text-[10px] capitalize">{l.type}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ) : <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">Contact not found</div>}
+      </div>
+    </div>
+  );
+}
+
 function SubscribersTab() {
   const [subs, setSubs] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
+  const [tagFilter, setTagFilter] = useState("");
+  const [tags, setTags] = useState<any[]>([]);
+  const [profileUserId, setProfileUserId] = useState<number | null>(null);
   const limit = 30;
 
-  const load = useCallback(async (q = "", p = 0) => {
+  const load = useCallback(async (q = "", p = 0, tf = "") => {
     setLoading(true);
     const params = new URLSearchParams({ limit: String(limit), offset: String(p * limit) });
     if (q) params.set("search", q);
-    const res = await apiFetch(`/api/admin/crm/subscribers?${params}`);
-    if (res.ok) {
-      const data = await res.json();
-      setSubs(data.users); setTotal(data.total);
-    }
+    if (tf) params.set("tagId", tf);
+    const [res, tagRes] = await Promise.all([
+      apiFetch(`/api/admin/crm/subscribers?${params}`),
+      apiFetch("/api/admin/crm/tags"),
+    ]);
+    if (res.ok) { const data = await res.json(); setSubs(data.users); setTotal(data.total); }
+    if (tagRes.ok) { const td = await tagRes.json(); setTags(Array.isArray(td) ? td : []); }
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(search, page); }, [load, search, page]);
+  useEffect(() => { load(search, page, tagFilter); }, [load, search, page, tagFilter]);
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-4">
-        <div><h2 className="text-xl font-bold text-foreground">Subscribers</h2><p className="text-sm text-muted-foreground mt-0.5">All registered users — <span className="text-foreground font-medium">{total}</span> total</p></div>
-        <Input value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} placeholder="Search by name or email…" className="bg-card border-border max-w-xs" />
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div><h2 className="text-xl font-bold text-foreground">Contacts</h2><p className="text-sm text-muted-foreground mt-0.5">All registered users — <span className="text-foreground font-medium">{total}</span> total</p></div>
+        <div className="flex items-center gap-2">
+          {tags.length > 0 && (
+            <select value={tagFilter} onChange={e => { setTagFilter(e.target.value); setPage(0); }}
+              className="h-9 px-2 rounded-md border border-border bg-card text-xs text-foreground">
+              <option value="">All Tags</option>
+              {tags.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          )}
+          <Input value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} placeholder="Search by name or email…" className="bg-card border-border w-56" />
+        </div>
       </div>
 
       <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-x-4 px-4 py-2.5 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-          <span>Name</span><span>Email</span><span>Role</span><span>Joined</span>
+        <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-x-4 px-4 py-2.5 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+          <span>Name</span><span>Email</span><span>Role</span><span>Joined</span><span></span>
         </div>
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
@@ -1043,11 +1257,12 @@ function SubscribersTab() {
         ) : (
           <div className="divide-y divide-border">
             {subs.map(s => (
-              <div key={s.id} className="grid grid-cols-[1fr_1fr_auto_auto] gap-x-4 items-center px-4 py-3">
+              <div key={s.id} className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-x-4 items-center px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setProfileUserId(s.id)}>
                 <p className="text-sm font-medium text-foreground truncate">{s.name}</p>
                 <p className="text-xs text-muted-foreground truncate">{s.email}</p>
                 <Badge variant="outline" className={`text-[10px] capitalize ${s.role === "admin" ? "text-red-400 border-red-400/30" : s.role === "affiliate" ? "text-purple-400 border-purple-400/30" : "text-muted-foreground border-border"}`}>{s.role}</Badge>
                 <span className="text-[11px] text-muted-foreground">{new Date(s.createdAt).toLocaleDateString("en-IN")}</span>
+                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
               </div>
             ))}
           </div>
@@ -1063,6 +1278,8 @@ function SubscribersTab() {
           </div>
         </div>
       )}
+
+      {profileUserId !== null && <ContactProfilePanel userId={profileUserId} onClose={() => setProfileUserId(null)} />}
     </div>
   );
 }
@@ -1339,6 +1556,582 @@ function ListsTab() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════ TAGS ══════════════════════════════════════════════ */
+const TAG_COLOR_PRESETS = ["#6366f1","#8b5cf6","#ec4899","#ef4444","#f97316","#eab308","#22c55e","#14b8a6","#0ea5e9","#6b7280"];
+
+function TagsTab() {
+  const { toast } = useToast();
+  const [tags, setTags] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const [viewTag, setViewTag] = useState<any | null>(null);
+  const [tagContacts, setTagContacts] = useState<any[]>([]);
+  const [contactsLoading, setContactsLoading] = useState(false);
+  const [removingContact, setRemovingContact] = useState<number | null>(null);
+  const [form, setForm] = useState({ name: "", color: "#6366f1", description: "" });
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const r = await apiFetch("/api/admin/crm/tags");
+    if (r.ok) setTags(await r.json());
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const openViewTag = async (tag: any) => {
+    setViewTag(tag);
+    setContactsLoading(true);
+    const r = await apiFetch(`/api/admin/crm/tags/${tag.id}/contacts`);
+    if (r.ok) setTagContacts(await r.json());
+    setContactsLoading(false);
+  };
+
+  const save = async () => {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    if (editing) {
+      const r = await apiFetch(`/api/admin/crm/tags/${editing.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (r.ok) { toast({ title: "Tag updated" }); setEditing(null); load(); }
+    } else {
+      const r = await apiFetch("/api/admin/crm/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (r.ok) { toast({ title: "Tag created" }); setCreating(false); setForm({ name: "", color: "#6366f1", description: "" }); load(); }
+    }
+    setSaving(false);
+  };
+
+  const del = async (id: number) => {
+    if (!confirm("Delete this tag? It will be removed from all contacts.")) return;
+    setDeleting(id);
+    await apiFetch(`/api/admin/crm/tags/${id}`, { method: "DELETE" });
+    toast({ title: "Tag deleted" }); load(); if (viewTag?.id === id) setViewTag(null);
+    setDeleting(null);
+  };
+
+  const removeContact = async (userId: number) => {
+    if (!viewTag) return;
+    setRemovingContact(userId);
+    await apiFetch(`/api/admin/crm/tags/${viewTag.id}/contacts/${userId}`, { method: "DELETE" });
+    setTagContacts(c => c.filter(u => u.id !== userId));
+    setRemovingContact(null);
+    load();
+  };
+
+  const TagForm = () => (
+    <div className="bg-card border border-primary/30 rounded-xl p-5 space-y-4">
+      <p className="text-sm font-semibold">{editing ? "Edit Tag" : "Create New Tag"}</p>
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Tag Name *</Label>
+        <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. VIP Customer" className="h-9" autoFocus />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Color</Label>
+        <div className="flex items-center gap-2 flex-wrap">
+          {TAG_COLOR_PRESETS.map(c => (
+            <button key={c} onClick={() => setForm(f => ({ ...f, color: c }))} className={`w-7 h-7 rounded-full border-2 transition-transform cursor-pointer ${form.color === c ? "border-foreground scale-110" : "border-transparent"}`} style={{ backgroundColor: c }} />
+          ))}
+          <input type="color" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))} className="w-7 h-7 rounded-full border-0 cursor-pointer p-0" title="Custom color" />
+          <span className="text-xs text-muted-foreground">{form.color}</span>
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Description (optional)</Label>
+        <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="What is this tag for?" className="h-9" />
+      </div>
+      <div className="flex gap-2">
+        <Button size="sm" onClick={save} disabled={saving || !form.name.trim()} className="cursor-pointer">{saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : editing ? "Update Tag" : "Create Tag"}</Button>
+        <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => { setCreating(false); setEditing(null); setForm({ name: "", color: "#6366f1", description: "" }); }}>Cancel</Button>
+      </div>
+    </div>
+  );
+
+  if (viewTag) return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="sm" className="gap-1.5 cursor-pointer" onClick={() => setViewTag(null)}><ChevronLeft className="w-4 h-4" />Back</Button>
+        <div className="flex items-center gap-2 flex-1">
+          <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: viewTag.color }} />
+          <h2 className="text-lg font-bold">{viewTag.name}</h2>
+          <Badge variant="outline" className="text-xs ml-1">{tagContacts.length} contacts</Badge>
+        </div>
+      </div>
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        {contactsLoading ? (
+          <div className="py-12 flex justify-center"><Loader2 className="w-5 h-5 animate-spin" /></div>
+        ) : tagContacts.length === 0 ? (
+          <div className="py-12 text-center text-sm text-muted-foreground">No contacts with this tag.</div>
+        ) : (
+          <div className="divide-y divide-border">
+            {tagContacts.map(u => (
+              <div key={u.id} className="flex items-center gap-3 px-4 py-3">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">{u.name?.charAt(0)?.toUpperCase()}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">{u.name}</p>
+                  <p className="text-xs text-muted-foreground">{u.email}</p>
+                </div>
+                <Badge variant="outline" className="text-[10px] capitalize hidden sm:flex">{u.role}</Badge>
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer" disabled={removingContact === u.id} onClick={() => removeContact(u.id)}>
+                  {removingContact === u.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div><h2 className="text-xl font-bold">Contact Tags</h2><p className="text-sm text-muted-foreground mt-0.5">Segment your contacts with custom tags for targeted campaigns.</p></div>
+        {!creating && !editing && <Button size="sm" className="gap-1.5 cursor-pointer" onClick={() => setCreating(true)}><Plus className="w-4 h-4" />New Tag</Button>}
+      </div>
+      {(creating || editing) && <TagForm />}
+      {loading ? (
+        <div className="py-12 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+      ) : tags.length === 0 ? (
+        <div className="bg-card border border-border rounded-2xl py-20 text-center">
+          <Tag className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+          <p className="font-semibold mb-1">No tags yet</p>
+          <p className="text-sm text-muted-foreground mb-4">Create tags to segment contacts for targeted email campaigns.</p>
+          <Button size="sm" onClick={() => setCreating(true)} className="gap-1.5 cursor-pointer"><Plus className="w-4 h-4" />Create Tag</Button>
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {tags.map(tag => (
+            <div key={tag.id} className="bg-card border border-border rounded-xl p-4 flex flex-col gap-3 hover:border-primary/30 transition-colors">
+              <div className="flex items-start gap-3">
+                <span className="w-5 h-5 rounded-full flex-shrink-0 mt-0.5" style={{ backgroundColor: tag.color }} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm">{tag.name}</p>
+                  {tag.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{tag.description}</p>}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Users className="w-3 h-3" /><span className="font-semibold text-foreground">{tag.subscriberCount}</span> contacts
+              </div>
+              <div className="flex items-center gap-2 pt-1 border-t border-border">
+                <Button size="sm" variant="outline" className="flex-1 h-7 text-xs gap-1 cursor-pointer" onClick={() => openViewTag(tag)}><Eye className="w-3 h-3" />View</Button>
+                <Button size="sm" variant="outline" className="h-7 w-7 p-0 cursor-pointer" onClick={() => { setEditing(tag); setForm({ name: tag.name, color: tag.color, description: tag.description }); setCreating(false); }}><Edit2 className="w-3 h-3" /></Button>
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer" disabled={deleting === tag.id} onClick={() => del(tag.id)}>
+                  {deleting === tag.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════ SEQUENCES ══════════════════════════════════════════════ */
+const SEQ_TRIGGER_META: Record<string, { label: string; color: string; description: string }> = {
+  manual:       { label: "Manual",     color: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",   description: "Enroll contacts manually" },
+  welcome:      { label: "On Signup",  color: "bg-blue-500/10 text-blue-400 border-blue-500/20",   description: "Fires when new user registers" },
+  purchase:     { label: "On Purchase",color: "bg-green-500/10 text-green-400 border-green-500/20",description: "Fires after successful payment" },
+  completion:   { label: "On Complete",color: "bg-purple-500/10 text-purple-400 border-purple-500/20",description: "Fires when course is completed" },
+  tag_assigned: { label: "Tag Assigned",color: "bg-amber-500/10 text-amber-400 border-amber-500/20",description: "Fires when a tag is assigned" },
+};
+
+function SequencesTab() {
+  const { toast } = useToast();
+  const [sequences, setSequences] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [viewSeq, setViewSeq] = useState<any | null>(null);
+  const [form, setForm] = useState({ name: "", description: "", trigger: "manual" });
+  const [processing, setProcessing] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const r = await apiFetch("/api/admin/crm/sequences");
+    if (r.ok) setSequences(await r.json());
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const create = async () => {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    const r = await apiFetch("/api/admin/crm/sequences", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (r.ok) {
+      const seq = await r.json();
+      toast({ title: "Sequence created" });
+      setCreating(false); setForm({ name: "", description: "", trigger: "manual" }); load();
+      setViewSeq(seq);
+    }
+    setSaving(false);
+  };
+
+  const toggleActive = async (seq: any) => {
+    await apiFetch(`/api/admin/crm/sequences/${seq.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isActive: !seq.isActive }) });
+    load();
+  };
+
+  const del = async (id: number) => {
+    if (!confirm("Delete this sequence?")) return;
+    await apiFetch(`/api/admin/crm/sequences/${id}`, { method: "DELETE" });
+    toast({ title: "Sequence deleted" }); load(); if (viewSeq?.id === id) setViewSeq(null);
+  };
+
+  const processNow = async () => {
+    setProcessing(true);
+    await apiFetch("/api/admin/crm/sequences/process", { method: "POST" });
+    toast({ title: "Processed!", description: "Due sequence emails and scheduled campaigns have been processed." });
+    setProcessing(false); load();
+  };
+
+  if (viewSeq) return <SequenceDetail seq={viewSeq} onBack={() => { setViewSeq(null); load(); }} />;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div><h2 className="text-xl font-bold">Email Sequences</h2><p className="text-sm text-muted-foreground mt-0.5">Automated drip campaigns — send a series of emails on a schedule.</p></div>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="gap-1.5 cursor-pointer" onClick={processNow} disabled={processing}>
+            {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}Process Due
+          </Button>
+          {!creating && <Button size="sm" className="gap-1.5 cursor-pointer" onClick={() => setCreating(true)}><Plus className="w-4 h-4" />New Sequence</Button>}
+        </div>
+      </div>
+
+      <div className="p-3 bg-blue-500/5 border border-blue-500/15 rounded-xl text-xs text-blue-400 flex items-center gap-2">
+        <Info className="w-3.5 h-3.5 flex-shrink-0" />Sequences auto-process every 10 minutes. Click "Process Due" to run immediately.
+      </div>
+
+      {creating && (
+        <div className="bg-card border border-primary/30 rounded-xl p-5 space-y-4">
+          <p className="text-sm font-semibold">New Sequence</p>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Sequence Name *</Label>
+              <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. 7-Day Onboarding" className="h-9" autoFocus />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Trigger</Label>
+              <select value={form.trigger} onChange={e => setForm(f => ({ ...f, trigger: e.target.value }))}
+                className="w-full h-9 px-2 rounded-md border border-border bg-background text-sm text-foreground">
+                {Object.entries(SEQ_TRIGGER_META).map(([k, v]) => <option key={k} value={k}>{v.label} — {v.description}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Description (optional)</Label>
+            <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="What does this sequence do?" className="h-9" />
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={create} disabled={saving || !form.name.trim()} className="cursor-pointer">{saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Create & Add Steps"}</Button>
+            <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => setCreating(false)}>Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="py-12 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+      ) : sequences.length === 0 ? (
+        <div className="bg-card border border-border rounded-2xl py-20 text-center">
+          <GitBranch className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+          <p className="font-semibold mb-1">No sequences yet</p>
+          <p className="text-sm text-muted-foreground mb-4">Create a drip sequence to automatically send a series of emails to contacts.</p>
+          <Button size="sm" onClick={() => setCreating(true)} className="gap-1.5 cursor-pointer"><Plus className="w-4 h-4" />Create Sequence</Button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {sequences.map(seq => {
+            const meta = SEQ_TRIGGER_META[seq.trigger] ?? SEQ_TRIGGER_META.manual;
+            return (
+              <div key={seq.id} className="bg-card border border-border rounded-xl p-4">
+                <div className="flex items-start gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-semibold text-sm truncate">{seq.name}</p>
+                      <Badge variant="outline" className={`text-[10px] flex-shrink-0 border ${meta.color}`}>{meta.label}</Badge>
+                      {seq.isActive ? (
+                        <Badge variant="outline" className="text-[10px] text-green-400 border-green-400/30 bg-green-400/10">Active</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] text-muted-foreground">Paused</Badge>
+                      )}
+                    </div>
+                    {seq.description && <p className="text-xs text-muted-foreground mb-2">{seq.description}</p>}
+                    <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
+                      <span><span className="font-semibold text-foreground">{seq.stepCount}</span> steps</span>
+                      <span><span className="font-semibold text-foreground">{seq.enrolledCount}</span> enrolled</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Button size="sm" variant="outline" className="h-8 px-3 text-xs gap-1.5 cursor-pointer" onClick={() => setViewSeq(seq)}><Edit2 className="w-3 h-3" />Edit</Button>
+                    <button onClick={() => toggleActive(seq)} className={`p-1.5 rounded-lg border cursor-pointer transition-colors ${seq.isActive ? "border-green-400/30 text-green-400 hover:bg-green-400/10" : "border-border text-muted-foreground hover:text-foreground"}`} title={seq.isActive ? "Pause" : "Activate"}>
+                      {seq.isActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                    </button>
+                    <button onClick={() => del(seq.id)} className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-red-400 hover:border-red-400/30 cursor-pointer transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SequenceDetail({ seq, onBack }: { seq: any; onBack: () => void }) {
+  const { toast } = useToast();
+  const [steps, setSteps] = useState<any[]>([]);
+  const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [addingStep, setAddingStep] = useState(false);
+  const [editingStep, setEditingStep] = useState<any | null>(null);
+  const [savingStep, setSavingStep] = useState(false);
+  const [deletingStep, setDeletingStep] = useState<number | null>(null);
+  const [previewing, setPreviewing] = useState<string | null>(null);
+  const [detailTab, setDetailTab] = useState<"steps" | "enrollments">("steps");
+  const [stepForm, setStepForm] = useState({ subject: "", htmlBody: "", delayDays: 0 });
+  const [enrollSearch, setEnrollSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [enrolling, setEnrolling] = useState<number[]>([]);
+  const [unenrolling, setUnenrolling] = useState<number[]>([]);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const [s, e] = await Promise.all([
+      apiFetch(`/api/admin/crm/sequences/${seq.id}/steps`).then(r => r.json()),
+      apiFetch(`/api/admin/crm/sequences/${seq.id}/enrollments`).then(r => r.json()),
+    ]);
+    setSteps(Array.isArray(s) ? s : []); setEnrollments(Array.isArray(e) ? e : []);
+    setLoading(false);
+  }, [seq.id]);
+  useEffect(() => { load(); }, [load]);
+
+  const saveStep = async () => {
+    if (!stepForm.subject.trim()) return;
+    setSavingStep(true);
+    if (editingStep) {
+      await apiFetch(`/api/admin/crm/sequences/${seq.id}/steps/${editingStep.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(stepForm) });
+      toast({ title: "Step updated" });
+    } else {
+      await apiFetch(`/api/admin/crm/sequences/${seq.id}/steps`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...stepForm, stepOrder: steps.length + 1 }) });
+      toast({ title: "Step added" });
+    }
+    setAddingStep(false); setEditingStep(null); setStepForm({ subject: "", htmlBody: "", delayDays: 0 }); load();
+    setSavingStep(false);
+  };
+
+  const delStep = async (id: number) => {
+    setDeletingStep(id);
+    await apiFetch(`/api/admin/crm/sequences/${seq.id}/steps/${id}`, { method: "DELETE" });
+    toast({ title: "Step removed" }); load();
+    setDeletingStep(null);
+  };
+
+  const searchUsers = async (q: string) => {
+    setEnrollSearch(q);
+    if (!q.trim()) { setSearchResults([]); return; }
+    setSearching(true);
+    const params = new URLSearchParams({ search: q, limit: "10", offset: "0" });
+    const r = await apiFetch(`/api/admin/crm/subscribers?${params}`);
+    if (r.ok) { const d = await r.json(); setSearchResults(d.users ?? []); }
+    setSearching(false);
+  };
+
+  const enrollUser = async (userId: number) => {
+    setEnrolling(e => [...e, userId]);
+    await apiFetch(`/api/admin/crm/sequences/${seq.id}/enrollments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userIds: [userId] }) });
+    toast({ title: "Enrolled" }); setSearchResults(r => r.filter(u => u.id !== userId)); load();
+    setEnrolling(e => e.filter(i => i !== userId));
+  };
+
+  const unenroll = async (userId: number) => {
+    setUnenrolling(e => [...e, userId]);
+    await apiFetch(`/api/admin/crm/sequences/${seq.id}/enrollments/${userId}`, { method: "DELETE" });
+    toast({ title: "Unenrolled" }); load();
+    setUnenrolling(e => e.filter(i => i !== userId));
+  };
+
+  return (
+    <div className="space-y-5 max-w-3xl">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="sm" className="gap-1.5 cursor-pointer" onClick={onBack}><ChevronLeft className="w-4 h-4" />Sequences</Button>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-lg font-bold">{seq.name}</h2>
+          {seq.description && <p className="text-xs text-muted-foreground">{seq.description}</p>}
+        </div>
+        <Badge variant="outline" className={`text-[10px] border ${(SEQ_TRIGGER_META[seq.trigger] ?? SEQ_TRIGGER_META.manual).color}`}>{(SEQ_TRIGGER_META[seq.trigger] ?? SEQ_TRIGGER_META.manual).label}</Badge>
+      </div>
+
+      <div className="flex border-b border-border">
+        {(["steps", "enrollments"] as const).map(t => (
+          <button key={t} onClick={() => setDetailTab(t)} className={`px-5 py-2.5 text-sm font-medium capitalize transition-colors cursor-pointer ${detailTab === t ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}>{t} {t === "steps" ? `(${steps.length})` : `(${enrollments.length})`}</button>
+        ))}
+      </div>
+
+      {loading ? <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div> : (
+        <>
+          {detailTab === "steps" && (
+            <div className="space-y-4">
+              {steps.length === 0 && !addingStep && (
+                <div className="bg-card border border-border rounded-xl py-12 text-center">
+                  <Mail className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground mb-3">No steps yet. Add the first email in this sequence.</p>
+                </div>
+              )}
+              {steps.map((step, idx) => (
+                <div key={step.id} className="bg-card border border-border rounded-xl p-4">
+                  {editingStep?.id === step.id ? (
+                    <StepForm form={stepForm} setForm={setStepForm} onSave={saveStep} onCancel={() => { setEditingStep(null); setStepForm({ subject: "", htmlBody: "", delayDays: 0 }); }} saving={savingStep} />
+                  ) : (
+                    <div className="flex items-start gap-4">
+                      <div className="flex-shrink-0 flex flex-col items-center gap-1">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">{idx + 1}</div>
+                        {idx < steps.length - 1 && <div className="w-0.5 h-8 bg-border" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-semibold text-sm truncate">{step.subject}</p>
+                          {step.delayDays > 0 && <Badge variant="outline" className="text-[10px] text-muted-foreground flex-shrink-0"><Clock className="w-2.5 h-2.5 mr-1" />Day {step.delayDays}</Badge>}
+                          {step.delayDays === 0 && idx === 0 && <Badge variant="outline" className="text-[10px] text-blue-400 border-blue-400/30 flex-shrink-0">Immediately</Badge>}
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2 font-mono">{step.htmlBody.replace(/<[^>]+>/g, " ").slice(0, 100)}…</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {step.htmlBody && <button onClick={() => setPreviewing(step.htmlBody)} className="p-1.5 text-muted-foreground hover:text-foreground cursor-pointer" title="Preview"><Eye className="w-3.5 h-3.5" /></button>}
+                        <button onClick={() => { setEditingStep(step); setStepForm({ subject: step.subject, htmlBody: step.htmlBody, delayDays: step.delayDays }); setAddingStep(false); }} className="p-1.5 text-muted-foreground hover:text-foreground cursor-pointer" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => delStep(step.id)} className="p-1.5 text-muted-foreground hover:text-red-400 cursor-pointer" disabled={deletingStep === step.id} title="Delete">
+                          {deletingStep === step.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {addingStep && !editingStep && (
+                <div className="bg-card border border-primary/30 rounded-xl p-4">
+                  <p className="text-sm font-semibold mb-3">Step {steps.length + 1}</p>
+                  <StepForm form={stepForm} setForm={setStepForm} onSave={saveStep} onCancel={() => { setAddingStep(false); setStepForm({ subject: "", htmlBody: "", delayDays: 0 }); }} saving={savingStep} />
+                </div>
+              )}
+
+              {!addingStep && !editingStep && (
+                <Button size="sm" variant="outline" className="gap-1.5 cursor-pointer w-full" onClick={() => { setAddingStep(true); setStepForm({ subject: "", htmlBody: "", delayDays: steps.length > 0 ? 1 : 0 }); }}>
+                  <Plus className="w-4 h-4" />Add Step {steps.length + 1}
+                </Button>
+              )}
+            </div>
+          )}
+
+          {detailTab === "enrollments" && (
+            <div className="space-y-5">
+              <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+                <p className="text-sm font-semibold">Enroll Contact</p>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <Input placeholder="Search by name or email…" value={enrollSearch} onChange={e => searchUsers(e.target.value)} className="pl-8 h-9 text-sm" />
+                </div>
+                {searching && <p className="text-xs text-muted-foreground">Searching…</p>}
+                {searchResults.length > 0 && (
+                  <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+                    {searchResults.map(u => (
+                      <div key={u.id} className="flex items-center gap-3 px-3 py-2.5">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{u.name}</p>
+                          <p className="text-xs text-muted-foreground">{u.email}</p>
+                        </div>
+                        <Button size="sm" variant="outline" className="gap-1 cursor-pointer h-7 px-2 text-xs" onClick={() => enrollUser(u.id)} disabled={enrolling.includes(u.id)}>
+                          {enrolling.includes(u.id) ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserPlus className="w-3 h-3" />}Enroll
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                  <p className="text-sm font-semibold">{enrollments.length} Enrolled</p>
+                </div>
+                {enrollments.length === 0 ? (
+                  <div className="py-12 text-center text-sm text-muted-foreground">No contacts enrolled yet.</div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {enrollments.map(e => (
+                      <div key={e.id} className="flex items-center gap-3 px-4 py-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">{e.userName?.charAt(0)?.toUpperCase()}</div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{e.userName}</p>
+                          <p className="text-xs text-muted-foreground">{e.userEmail}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0 space-y-0.5">
+                          <Badge variant="outline" className={`text-[10px] capitalize ${e.status === "completed" ? "text-green-400 border-green-400/30" : e.status === "cancelled" ? "text-red-400 border-red-400/30" : "text-blue-400 border-blue-400/30"}`}>{e.status}</Badge>
+                          {e.status === "active" && <p className="text-[11px] text-muted-foreground">Step {e.currentStep + 1}</p>}
+                        </div>
+                        {e.status === "active" && (
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer" disabled={unenrolling.includes(e.userId)} onClick={() => unenroll(e.userId)} title="Unenroll">
+                            {unenrolling.includes(e.userId) ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {previewing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <h3 className="text-sm font-semibold">Email Preview</h3>
+              <button onClick={() => setPreviewing(null)} className="cursor-pointer"><X className="w-4 h-4 text-muted-foreground" /></button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-4">
+              <iframe srcDoc={previewing} className="w-full min-h-[480px] rounded-lg border border-border bg-white" title="preview" />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StepForm({ form, setForm, onSave, onCancel, saving }: { form: any; setForm: any; onSave: () => void; onCancel: () => void; saving: boolean }) {
+  return (
+    <div className="space-y-3">
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Subject *</Label>
+          <Input value={form.subject} onChange={e => setForm((f: any) => ({ ...f, subject: e.target.value }))} placeholder="e.g. Day 1: Welcome!" className="h-9 text-sm" autoFocus />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Delay from previous step (days)</Label>
+          <Input type="number" min={0} value={form.delayDays} onChange={e => setForm((f: any) => ({ ...f, delayDays: parseInt(e.target.value) || 0 }))} className="h-9 text-sm" />
+        </div>
+      </div>
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs text-muted-foreground">HTML Body</Label>
+        </div>
+        <Textarea value={form.htmlBody} onChange={e => setForm((f: any) => ({ ...f, htmlBody: e.target.value }))} className="font-mono text-xs min-h-[200px] resize-y" placeholder="<div>Your email HTML…</div>" />
+      </div>
+      <TemplateVariablesPanel type="campaign" />
+      <div className="flex gap-2">
+        <Button size="sm" onClick={onSave} disabled={saving || !form.subject.trim()} className="cursor-pointer">
+          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save Step"}
+        </Button>
+        <Button size="sm" variant="outline" onClick={onCancel} className="cursor-pointer">Cancel</Button>
+      </div>
     </div>
   );
 }

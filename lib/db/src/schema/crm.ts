@@ -1,4 +1,4 @@
-import { pgTable, serial, timestamp, integer, text, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, timestamp, integer, text, boolean, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -35,11 +35,14 @@ export const emailCampaignsTable = pgTable("email_campaigns", {
   subject: text("subject").notNull(),
   templateId: integer("template_id").references(() => emailTemplatesTable.id, { onDelete: "set null" }),
   htmlBody: text("html_body").notNull(),
-  status: text("status", { enum: ["draft", "sending", "sent", "failed"] }).notNull().default("draft"),
-  recipientFilter: text("recipient_filter", { enum: ["all", "enrolled", "not_enrolled"] }).notNull().default("all"),
+  status: text("status", { enum: ["draft", "scheduled", "sending", "sent", "failed"] }).notNull().default("draft"),
+  recipientFilter: text("recipient_filter", { enum: ["all", "enrolled", "not_enrolled", "list", "tag"] }).notNull().default("all"),
   recipientCount: integer("recipient_count").notNull().default(0),
   sentCount: integer("sent_count").notNull().default(0),
   failedCount: integer("failed_count").notNull().default(0),
+  listId: integer("list_id"),
+  tagId: integer("tag_id"),
+  scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
   sentAt: timestamp("sent_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -57,7 +60,7 @@ export const emailAutomationRulesTable = pgTable("email_automation_rules", {
 
 export const emailSendsTable = pgTable("email_sends", {
   id: serial("id").primaryKey(),
-  type: text("type", { enum: ["campaign", "automation", "test"] }).notNull(),
+  type: text("type", { enum: ["campaign", "automation", "test", "sequence"] }).notNull(),
   campaignId: integer("campaign_id").references(() => emailCampaignsTable.id, { onDelete: "set null" }),
   automationEvent: text("automation_event"),
   userId: integer("user_id").references(() => usersTable.id, { onDelete: "set null" }),
@@ -84,6 +87,57 @@ export const emailListMembersTable = pgTable("email_list_members", {
   subscribedAt: timestamp("subscribed_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/* ─── Contact Tags ─── */
+export const contactTagsTable = pgTable("contact_tags", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  color: text("color").notNull().default("#6366f1"),
+  description: text("description").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const contactTagAssignmentsTable = pgTable("contact_tag_assignments", {
+  id: serial("id").primaryKey(),
+  tagId: integer("tag_id").notNull().references(() => contactTagsTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  assignedAt: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [unique("cta_uniq").on(t.tagId, t.userId)]);
+
+/* ─── Email Sequences (Drip) ─── */
+export const emailSequencesTable = pgTable("email_sequences", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  trigger: text("trigger", { enum: ["manual", "welcome", "purchase", "completion", "tag_assigned"] }).notNull().default("manual"),
+  triggerFilter: text("trigger_filter"),
+  isActive: boolean("is_active").notNull().default(false),
+  enrolledCount: integer("enrolled_count").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export const emailSequenceStepsTable = pgTable("email_sequence_steps", {
+  id: serial("id").primaryKey(),
+  sequenceId: integer("sequence_id").notNull().references(() => emailSequencesTable.id, { onDelete: "cascade" }),
+  stepOrder: integer("step_order").notNull().default(1),
+  delayDays: integer("delay_days").notNull().default(0),
+  subject: text("subject").notNull(),
+  htmlBody: text("html_body").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const emailSequenceEnrollmentsTable = pgTable("email_sequence_enrollments", {
+  id: serial("id").primaryKey(),
+  sequenceId: integer("sequence_id").notNull().references(() => emailSequencesTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  currentStep: integer("current_step").notNull().default(0),
+  status: text("status", { enum: ["active", "completed", "cancelled"] }).notNull().default("active"),
+  enrolledAt: timestamp("enrolled_at", { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  nextSendAt: timestamp("next_send_at", { withTimezone: true }),
+}, (t) => [unique("ese_uniq").on(t.sequenceId, t.userId)]);
+
+/* ─── Zod schemas & types ─── */
 export const insertEmailListSchema = createInsertSchema(emailListsTable).omit({ id: true, createdAt: true });
 export type InsertEmailList = z.infer<typeof insertEmailListSchema>;
 export type EmailList = typeof emailListsTable.$inferSelect;
@@ -107,3 +161,15 @@ export type EmailAutomationRule = typeof emailAutomationRulesTable.$inferSelect;
 export const insertEmailSendSchema = createInsertSchema(emailSendsTable).omit({ id: true, sentAt: true });
 export type InsertEmailSend = z.infer<typeof insertEmailSendSchema>;
 export type EmailSend = typeof emailSendsTable.$inferSelect;
+
+export const insertContactTagSchema = createInsertSchema(contactTagsTable).omit({ id: true, createdAt: true });
+export type InsertContactTag = z.infer<typeof insertContactTagSchema>;
+export type ContactTag = typeof contactTagsTable.$inferSelect;
+
+export const insertEmailSequenceSchema = createInsertSchema(emailSequencesTable).omit({ id: true, createdAt: true, updatedAt: true, enrolledCount: true });
+export type InsertEmailSequence = z.infer<typeof insertEmailSequenceSchema>;
+export type EmailSequence = typeof emailSequencesTable.$inferSelect;
+
+export const insertEmailSequenceStepSchema = createInsertSchema(emailSequenceStepsTable).omit({ id: true, createdAt: true });
+export type InsertEmailSequenceStep = z.infer<typeof insertEmailSequenceStepSchema>;
+export type EmailSequenceStep = typeof emailSequenceStepsTable.$inferSelect;

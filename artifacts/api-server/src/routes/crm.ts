@@ -5,8 +5,10 @@ import {
   smtpSettingsTable, emailTemplatesTable, emailCampaignsTable,
   emailAutomationRulesTable, emailSendsTable, usersTable, enrollmentsTable,
   emailListsTable, emailListMembersTable,
+  contactTagsTable, contactTagAssignmentsTable,
+  emailSequencesTable, emailSequenceStepsTable, emailSequenceEnrollmentsTable,
 } from "@workspace/db";
-import { eq, count, sql, and, notInArray, inArray } from "drizzle-orm";
+import { eq, count, sql, and, notInArray, inArray, asc } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth";
 
 const router = Router();
@@ -573,7 +575,7 @@ router.get("/campaigns", requireAdmin, async (_req, res): Promise<void> => {
 });
 
 router.post("/campaigns", requireAdmin, async (req, res): Promise<void> => {
-  const { name, subject, templateId, htmlBody, recipientFilter } = req.body;
+  const { name, subject, templateId, htmlBody, recipientFilter, listId, tagId, scheduledAt } = req.body;
   if (!name || !subject || !htmlBody) { res.status(400).json({ error: "name, subject, htmlBody required" }); return; }
 
   let recipientCount = 0;
@@ -586,17 +588,27 @@ router.post("/campaigns", requireAdmin, async (req, res): Promise<void> => {
     const enrolled = await db.select({ userId: enrollmentsTable.userId }).from(enrollmentsTable);
     const enrolledIds = new Set(enrolled.map(e => e.userId));
     recipientCount = allUsers.filter(u => !enrolledIds.has(u.id)).length;
+  } else if (recipientFilter === "list" && listId) {
+    const members = await db.select({ userId: emailListMembersTable.userId }).from(emailListMembersTable).where(eq(emailListMembersTable.listId, parseInt(String(listId))));
+    recipientCount = members.length;
+  } else if (recipientFilter === "tag" && tagId) {
+    const tagged = await db.select({ userId: contactTagAssignmentsTable.userId }).from(contactTagAssignmentsTable).where(eq(contactTagAssignmentsTable.tagId, parseInt(String(tagId))));
+    recipientCount = tagged.length;
   } else {
     recipientCount = allUsers.length;
   }
 
+  const status = scheduledAt ? "scheduled" : "draft";
   const [campaign] = await db.insert(emailCampaignsTable).values({
     name, subject,
     templateId: templateId ? parseInt(String(templateId)) : null,
     htmlBody,
     recipientFilter: recipientFilter ?? "all",
     recipientCount,
-    status: "draft",
+    listId: listId ? parseInt(String(listId)) : null,
+    tagId: tagId ? parseInt(String(tagId)) : null,
+    scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+    status,
   }).returning();
   res.status(201).json(campaign);
 });
@@ -650,6 +662,20 @@ router.post("/campaigns/:id/send", requireAdmin, async (req, res): Promise<void>
           .where(enrolledIds.length > 0
             ? and(eq(usersTable.isBanned, false), notInArray(usersTable.id, enrolledIds))
             : eq(usersTable.isBanned, false));
+      } else if (campaign.recipientFilter === "list" && campaign.listId) {
+        const members = await db.select({ userId: emailListMembersTable.userId }).from(emailListMembersTable).where(eq(emailListMembersTable.listId, campaign.listId));
+        const memberIds = members.map(m => m.userId);
+        if (memberIds.length > 0) {
+          users = await db.select({ id: usersTable.id, email: usersTable.email, name: usersTable.name })
+            .from(usersTable).where(and(eq(usersTable.isBanned, false), inArray(usersTable.id, memberIds)));
+        }
+      } else if (campaign.recipientFilter === "tag" && campaign.tagId) {
+        const tagged = await db.select({ userId: contactTagAssignmentsTable.userId }).from(contactTagAssignmentsTable).where(eq(contactTagAssignmentsTable.tagId, campaign.tagId));
+        const taggedIds = tagged.map(t => t.userId);
+        if (taggedIds.length > 0) {
+          users = await db.select({ id: usersTable.id, email: usersTable.email, name: usersTable.name })
+            .from(usersTable).where(and(eq(usersTable.isBanned, false), inArray(usersTable.id, taggedIds)));
+        }
       } else {
         users = await db.select({ id: usersTable.id, email: usersTable.email, name: usersTable.name })
           .from(usersTable).where(eq(usersTable.isBanned, false));
@@ -681,7 +707,20 @@ router.post("/campaigns/:id/send", requireAdmin, async (req, res): Promise<void>
 
 /* ── Subscribers ── */
 router.get("/subscribers", requireAdmin, async (req, res): Promise<void> => {
-  const { search, limit = "50", offset = "0" } = req.query as Record<string, string>;
+  const { search, limit = "50", offset = "0", tagId } = req.query as Record<string, string>;
+
+  if (tagId) {
+    const assignments = await db.select({ userId: contactTagAssignmentsTable.userId })
+      .from(contactTagAssignmentsTable).where(eq(contactTagAssignmentsTable.tagId, parseInt(tagId)));
+    const userIds = assignments.map(a => a.userId);
+    if (userIds.length === 0) { res.json({ users: [], total: 0 }); return; }
+    let users = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, role: usersTable.role, isBanned: usersTable.isBanned, createdAt: usersTable.createdAt })
+      .from(usersTable).where(inArray(usersTable.id, userIds));
+    if (search) users = users.filter(u => u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()));
+    const paginated = users.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
+    res.json({ users: paginated, total: users.length }); return;
+  }
+
   let query = db.select({
     id: usersTable.id, name: usersTable.name, email: usersTable.email,
     role: usersTable.role, isBanned: usersTable.isBanned, createdAt: usersTable.createdAt,
@@ -837,6 +876,332 @@ router.get("/lists/:id/search-users", requireAdmin, async (req, res): Promise<vo
     )
     .limit(20);
   res.json(users);
+});
+
+/* ──────────────── CONTACT TAGS ──────────────── */
+router.get("/tags", requireAdmin, async (_req, res): Promise<void> => {
+  const tags = await db.select().from(contactTagsTable).orderBy(asc(contactTagsTable.name));
+  const counts = await db.select({ tagId: contactTagAssignmentsTable.tagId, cnt: count() })
+    .from(contactTagAssignmentsTable).groupBy(contactTagAssignmentsTable.tagId);
+  const countMap: Record<number, number> = {};
+  for (const c of counts) countMap[c.tagId] = Number(c.cnt);
+  res.json(tags.map(t => ({ ...t, subscriberCount: countMap[t.id] ?? 0 })));
+});
+
+router.post("/tags", requireAdmin, async (req, res): Promise<void> => {
+  const { name, color, description } = req.body;
+  if (!name) { res.status(400).json({ error: "name required" }); return; }
+  const [tag] = await db.insert(contactTagsTable).values({ name, color: color ?? "#6366f1", description: description ?? "" }).returning();
+  res.status(201).json(tag);
+});
+
+router.put("/tags/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  const { name, color, description } = req.body;
+  const updates: Record<string, unknown> = {};
+  if (name !== undefined) updates.name = name;
+  if (color !== undefined) updates.color = color;
+  if (description !== undefined) updates.description = description;
+  const [tag] = await db.update(contactTagsTable).set(updates).where(eq(contactTagsTable.id, id)).returning();
+  if (!tag) { res.status(404).json({ error: "Not found" }); return; }
+  res.json(tag);
+});
+
+router.delete("/tags/:id", requireAdmin, async (req, res): Promise<void> => {
+  await db.delete(contactTagsTable).where(eq(contactTagsTable.id, parseInt(req.params.id)));
+  res.json({ success: true });
+});
+
+router.get("/tags/:id/contacts", requireAdmin, async (req, res): Promise<void> => {
+  const tagId = parseInt(req.params.id);
+  const assignments = await db.select({ userId: contactTagAssignmentsTable.userId })
+    .from(contactTagAssignmentsTable).where(eq(contactTagAssignmentsTable.tagId, tagId));
+  const userIds = assignments.map(a => a.userId);
+  if (userIds.length === 0) { res.json([]); return; }
+  const users = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, role: usersTable.role, createdAt: usersTable.createdAt })
+    .from(usersTable).where(inArray(usersTable.id, userIds));
+  res.json(users);
+});
+
+router.post("/tags/:id/contacts", requireAdmin, async (req, res): Promise<void> => {
+  const tagId = parseInt(req.params.id);
+  const { userIds } = req.body;
+  if (!Array.isArray(userIds) || userIds.length === 0) { res.status(400).json({ error: "userIds array required" }); return; }
+  await db.insert(contactTagAssignmentsTable).values(userIds.map((uid: number) => ({ tagId, userId: uid }))).onConflictDoNothing();
+  res.json({ success: true });
+});
+
+router.delete("/tags/:tagId/contacts/:userId", requireAdmin, async (req, res): Promise<void> => {
+  await db.delete(contactTagAssignmentsTable)
+    .where(and(eq(contactTagAssignmentsTable.tagId, parseInt(req.params.tagId)), eq(contactTagAssignmentsTable.userId, parseInt(req.params.userId))));
+  res.json({ success: true });
+});
+
+/* ──────────────── CONTACT PROFILE ──────────────── */
+router.get("/contacts/:userId", requireAdmin, async (req, res): Promise<void> => {
+  const userId = parseInt(req.params.userId);
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!user) { res.status(404).json({ error: "Not found" }); return; }
+
+  const [tags, emailHistory, listMemberships, enrollments] = await Promise.all([
+    db.select({ id: contactTagsTable.id, name: contactTagsTable.name, color: contactTagsTable.color })
+      .from(contactTagAssignmentsTable)
+      .innerJoin(contactTagsTable, eq(contactTagAssignmentsTable.tagId, contactTagsTable.id))
+      .where(eq(contactTagAssignmentsTable.userId, userId)),
+    db.select().from(emailSendsTable).where(eq(emailSendsTable.userId, userId)).orderBy(sql`${emailSendsTable.sentAt} desc`).limit(20),
+    db.select({ id: emailListsTable.id, name: emailListsTable.name, type: emailListsTable.type })
+      .from(emailListMembersTable)
+      .innerJoin(emailListsTable, eq(emailListMembersTable.listId, emailListsTable.id))
+      .where(eq(emailListMembersTable.userId, userId)),
+    db.select({ sequenceId: emailSequenceEnrollmentsTable.sequenceId, currentStep: emailSequenceEnrollmentsTable.currentStep, status: emailSequenceEnrollmentsTable.status, enrolledAt: emailSequenceEnrollmentsTable.enrolledAt })
+      .from(emailSequenceEnrollmentsTable).where(eq(emailSequenceEnrollmentsTable.userId, userId)),
+  ]);
+
+  const { password: _pw, emailVerifyToken: _evt, passwordResetToken: _prt, ...safeUser } = user as any;
+  res.json({ user: safeUser, tags, emailHistory, listMemberships, enrollments });
+});
+
+router.post("/contacts/:userId/tags", requireAdmin, async (req, res): Promise<void> => {
+  const userId = parseInt(req.params.userId);
+  const { tagId } = req.body;
+  if (!tagId) { res.status(400).json({ error: "tagId required" }); return; }
+  await db.insert(contactTagAssignmentsTable).values({ tagId: parseInt(String(tagId)), userId }).onConflictDoNothing();
+  res.json({ success: true });
+});
+
+router.delete("/contacts/:userId/tags/:tagId", requireAdmin, async (req, res): Promise<void> => {
+  await db.delete(contactTagAssignmentsTable)
+    .where(and(eq(contactTagAssignmentsTable.userId, parseInt(req.params.userId)), eq(contactTagAssignmentsTable.tagId, parseInt(req.params.tagId))));
+  res.json({ success: true });
+});
+
+/* ──────────────── EMAIL SEQUENCES ──────────────── */
+router.get("/sequences", requireAdmin, async (_req, res): Promise<void> => {
+  const sequences = await db.select().from(emailSequencesTable).orderBy(sql`${emailSequencesTable.createdAt} desc`);
+  const stepCounts = await db.select({ sequenceId: emailSequenceStepsTable.sequenceId, cnt: count() })
+    .from(emailSequenceStepsTable).groupBy(emailSequenceStepsTable.sequenceId);
+  const enrollCounts = await db.select({ sequenceId: emailSequenceEnrollmentsTable.sequenceId, cnt: count() })
+    .from(emailSequenceEnrollmentsTable).groupBy(emailSequenceEnrollmentsTable.sequenceId);
+  const stepMap: Record<number, number> = {};
+  const enrollMap: Record<number, number> = {};
+  for (const s of stepCounts) stepMap[s.sequenceId] = Number(s.cnt);
+  for (const e of enrollCounts) enrollMap[e.sequenceId] = Number(e.cnt);
+  res.json(sequences.map(s => ({ ...s, stepCount: stepMap[s.id] ?? 0, enrolledCount: enrollMap[s.id] ?? 0 })));
+});
+
+router.post("/sequences", requireAdmin, async (req, res): Promise<void> => {
+  const { name, description, trigger, triggerFilter } = req.body;
+  if (!name) { res.status(400).json({ error: "name required" }); return; }
+  const [seq] = await db.insert(emailSequencesTable).values({ name, description: description ?? "", trigger: trigger ?? "manual", triggerFilter: triggerFilter ?? null }).returning();
+  res.status(201).json(seq);
+});
+
+router.put("/sequences/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  const { name, description, trigger, triggerFilter, isActive } = req.body;
+  const updates: Record<string, unknown> = {};
+  if (name !== undefined) updates.name = name;
+  if (description !== undefined) updates.description = description;
+  if (trigger !== undefined) updates.trigger = trigger;
+  if (triggerFilter !== undefined) updates.triggerFilter = triggerFilter;
+  if (isActive !== undefined) updates.isActive = isActive;
+  const [seq] = await db.update(emailSequencesTable).set(updates).where(eq(emailSequencesTable.id, id)).returning();
+  if (!seq) { res.status(404).json({ error: "Not found" }); return; }
+  res.json(seq);
+});
+
+router.delete("/sequences/:id", requireAdmin, async (req, res): Promise<void> => {
+  await db.delete(emailSequencesTable).where(eq(emailSequencesTable.id, parseInt(req.params.id)));
+  res.json({ success: true });
+});
+
+/* Sequence Steps */
+router.get("/sequences/:id/steps", requireAdmin, async (req, res): Promise<void> => {
+  const steps = await db.select().from(emailSequenceStepsTable)
+    .where(eq(emailSequenceStepsTable.sequenceId, parseInt(req.params.id)))
+    .orderBy(asc(emailSequenceStepsTable.stepOrder));
+  res.json(steps);
+});
+
+router.post("/sequences/:id/steps", requireAdmin, async (req, res): Promise<void> => {
+  const sequenceId = parseInt(req.params.id);
+  const { subject, htmlBody, delayDays, stepOrder } = req.body;
+  if (!subject) { res.status(400).json({ error: "subject required" }); return; }
+  const existing = await db.select({ cnt: count() }).from(emailSequenceStepsTable).where(eq(emailSequenceStepsTable.sequenceId, sequenceId));
+  const order = stepOrder ?? (Number(existing[0]?.cnt ?? 0) + 1);
+  const [step] = await db.insert(emailSequenceStepsTable).values({ sequenceId, subject, htmlBody: htmlBody ?? "", delayDays: delayDays ?? 0, stepOrder: order }).returning();
+  res.status(201).json(step);
+});
+
+router.put("/sequences/:id/steps/:stepId", requireAdmin, async (req, res): Promise<void> => {
+  const stepId = parseInt(req.params.stepId);
+  const { subject, htmlBody, delayDays, stepOrder } = req.body;
+  const updates: Record<string, unknown> = {};
+  if (subject !== undefined) updates.subject = subject;
+  if (htmlBody !== undefined) updates.htmlBody = htmlBody;
+  if (delayDays !== undefined) updates.delayDays = delayDays;
+  if (stepOrder !== undefined) updates.stepOrder = stepOrder;
+  const [step] = await db.update(emailSequenceStepsTable).set(updates).where(eq(emailSequenceStepsTable.id, stepId)).returning();
+  if (!step) { res.status(404).json({ error: "Not found" }); return; }
+  res.json(step);
+});
+
+router.delete("/sequences/:id/steps/:stepId", requireAdmin, async (req, res): Promise<void> => {
+  await db.delete(emailSequenceStepsTable).where(eq(emailSequenceStepsTable.id, parseInt(req.params.stepId)));
+  res.json({ success: true });
+});
+
+/* Sequence Enrollments */
+router.get("/sequences/:id/enrollments", requireAdmin, async (req, res): Promise<void> => {
+  const seqId = parseInt(req.params.id);
+  const enrollments = await db.select({
+    id: emailSequenceEnrollmentsTable.id,
+    userId: emailSequenceEnrollmentsTable.userId,
+    currentStep: emailSequenceEnrollmentsTable.currentStep,
+    status: emailSequenceEnrollmentsTable.status,
+    enrolledAt: emailSequenceEnrollmentsTable.enrolledAt,
+    completedAt: emailSequenceEnrollmentsTable.completedAt,
+    nextSendAt: emailSequenceEnrollmentsTable.nextSendAt,
+    userName: usersTable.name,
+    userEmail: usersTable.email,
+  }).from(emailSequenceEnrollmentsTable)
+    .innerJoin(usersTable, eq(emailSequenceEnrollmentsTable.userId, usersTable.id))
+    .where(eq(emailSequenceEnrollmentsTable.sequenceId, seqId))
+    .orderBy(sql`${emailSequenceEnrollmentsTable.enrolledAt} desc`);
+  res.json(enrollments);
+});
+
+router.post("/sequences/:id/enrollments", requireAdmin, async (req, res): Promise<void> => {
+  const sequenceId = parseInt(req.params.id);
+  const { userIds } = req.body;
+  if (!Array.isArray(userIds) || userIds.length === 0) { res.status(400).json({ error: "userIds required" }); return; }
+
+  const steps = await db.select().from(emailSequenceStepsTable)
+    .where(eq(emailSequenceStepsTable.sequenceId, sequenceId))
+    .orderBy(asc(emailSequenceStepsTable.stepOrder));
+
+  const firstNextSend = steps.length > 0 ? new Date() : null;
+
+  const rows = userIds.map((uid: number) => ({
+    sequenceId, userId: uid, currentStep: 0, status: "active" as const,
+    nextSendAt: firstNextSend,
+  }));
+  await db.insert(emailSequenceEnrollmentsTable).values(rows).onConflictDoNothing();
+  res.json({ success: true, enrolled: userIds.length });
+});
+
+router.delete("/sequences/:id/enrollments/:userId", requireAdmin, async (req, res): Promise<void> => {
+  await db.update(emailSequenceEnrollmentsTable)
+    .set({ status: "cancelled" })
+    .where(and(
+      eq(emailSequenceEnrollmentsTable.sequenceId, parseInt(req.params.id)),
+      eq(emailSequenceEnrollmentsTable.userId, parseInt(req.params.userId)),
+    ));
+  res.json({ success: true });
+});
+
+/* ──────────────── SEQUENCE PROCESSOR ──────────────── */
+export async function processSequences(): Promise<void> {
+  try {
+    const smtp = await getSmtp();
+    if (!smtp || !smtp.isActive) return;
+
+    const now = new Date();
+    const dueEnrollments = await db.select().from(emailSequenceEnrollmentsTable)
+      .where(and(
+        eq(emailSequenceEnrollmentsTable.status, "active"),
+        sql`${emailSequenceEnrollmentsTable.nextSendAt} <= ${now}`,
+      ));
+
+    if (dueEnrollments.length === 0) return;
+
+    const transporter = await createTransporter(smtp);
+
+    for (const enrollment of dueEnrollments) {
+      const steps = await db.select().from(emailSequenceStepsTable)
+        .where(eq(emailSequenceStepsTable.sequenceId, enrollment.sequenceId))
+        .orderBy(asc(emailSequenceStepsTable.stepOrder));
+
+      const currentStepData = steps[enrollment.currentStep];
+      if (!currentStepData) {
+        await db.update(emailSequenceEnrollmentsTable).set({ status: "completed", completedAt: now }).where(eq(emailSequenceEnrollmentsTable.id, enrollment.id));
+        continue;
+      }
+
+      const [user] = await db.select().from(usersTable).where(eq(usersTable.id, enrollment.userId)).limit(1);
+      if (!user) continue;
+
+      let html = currentStepData.htmlBody.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
+      let subject = currentStepData.subject.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
+
+      try {
+        await transporter.sendMail({ from: buildFrom(smtp), to: user.email, subject, html });
+        await db.insert(emailSendsTable).values({ type: "sequence", userId: user.id, email: user.email, subject, status: "sent" });
+      } catch (err: any) {
+        await db.insert(emailSendsTable).values({ type: "sequence", userId: user.id, email: user.email, subject, status: "failed", failReason: String(err?.message ?? err) });
+      }
+
+      const nextStepIndex = enrollment.currentStep + 1;
+      if (nextStepIndex >= steps.length) {
+        await db.update(emailSequenceEnrollmentsTable).set({ status: "completed", completedAt: now, currentStep: nextStepIndex, nextSendAt: null }).where(eq(emailSequenceEnrollmentsTable.id, enrollment.id));
+      } else {
+        const nextStep = steps[nextStepIndex];
+        const nextSendAt = new Date(now.getTime() + (nextStep.delayDays * 24 * 60 * 60 * 1000));
+        await db.update(emailSequenceEnrollmentsTable).set({ currentStep: nextStepIndex, nextSendAt }).where(eq(emailSequenceEnrollmentsTable.id, enrollment.id));
+      }
+    }
+  } catch {
+  }
+}
+
+/* Process scheduled campaigns */
+export async function processScheduledCampaigns(): Promise<void> {
+  try {
+    const now = new Date();
+    const scheduled = await db.select().from(emailCampaignsTable)
+      .where(and(eq(emailCampaignsTable.status, "scheduled"), sql`${emailCampaignsTable.scheduledAt} <= ${now}`));
+    for (const campaign of scheduled) {
+      const smtp = await getSmtp();
+      if (!smtp || !smtp.isActive) continue;
+      await db.update(emailCampaignsTable).set({ status: "sending" }).where(eq(emailCampaignsTable.id, campaign.id));
+      (async () => {
+        try {
+          let users: { id: number; email: string; name: string }[] = [];
+          if (campaign.recipientFilter === "list" && campaign.listId) {
+            const members = await db.select({ userId: emailListMembersTable.userId }).from(emailListMembersTable).where(eq(emailListMembersTable.listId, campaign.listId));
+            const ids = members.map(m => m.userId);
+            if (ids.length > 0) users = await db.select({ id: usersTable.id, email: usersTable.email, name: usersTable.name }).from(usersTable).where(and(eq(usersTable.isBanned, false), inArray(usersTable.id, ids)));
+          } else {
+            users = await db.select({ id: usersTable.id, email: usersTable.email, name: usersTable.name }).from(usersTable).where(eq(usersTable.isBanned, false));
+          }
+          const transporter = await createTransporter(smtp);
+          let sentCount = 0; let failedCount = 0;
+          for (const user of users) {
+            const html = campaign.htmlBody.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
+            try {
+              await transporter.sendMail({ from: buildFrom(smtp), to: user.email, subject: campaign.subject, html });
+              await db.insert(emailSendsTable).values({ type: "campaign", campaignId: campaign.id, userId: user.id, email: user.email, subject: campaign.subject, status: "sent" });
+              sentCount++;
+            } catch (err: any) {
+              await db.insert(emailSendsTable).values({ type: "campaign", campaignId: campaign.id, userId: user.id, email: user.email, subject: campaign.subject, status: "failed", failReason: String(err?.message ?? err) });
+              failedCount++;
+            }
+            await new Promise(r => setTimeout(r, 100));
+          }
+          await db.update(emailCampaignsTable).set({ status: "sent", sentCount, failedCount, sentAt: new Date() }).where(eq(emailCampaignsTable.id, campaign.id));
+        } catch {
+          await db.update(emailCampaignsTable).set({ status: "failed" }).where(eq(emailCampaignsTable.id, campaign.id));
+        }
+      })();
+    }
+  } catch {
+  }
+}
+
+router.post("/sequences/process", requireAdmin, async (_req, res): Promise<void> => {
+  await processSequences();
+  await processScheduledCampaigns();
+  res.json({ success: true, message: "Processed sequences and scheduled campaigns" });
 });
 
 export default router;
