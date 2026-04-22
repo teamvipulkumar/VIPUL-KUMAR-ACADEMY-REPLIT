@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter, ShieldCheck, ShoppingCart, Flag, Minus } from "lucide-react";
+import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter, ShieldCheck, ShoppingCart, Flag, Minus, BookOpen, GraduationCap, UserCheck, Gift, XCircle, BookMarked, MousePointerClick, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -983,10 +983,24 @@ function TemplatesTab() {
 /* ══════════════════════════════════════════════ AUTOMATION ══════════════════════════════════════════════ */
 
 const FUNNEL_TRIGGERS = [
-  { type: "user_signup",   label: "User Signs Up",        icon: UserPlus,      color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/20",   desc: "Fires when a new user registers" },
-  { type: "new_purchase",  label: "Purchase Completed",   icon: ShoppingCart,  color: "text-green-400",  bg: "bg-green-500/10",  border: "border-green-500/20",  desc: "Fires when any purchase is completed" },
-  { type: "tag_applied",   label: "Tag Applied",          icon: Tag,           color: "text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/20", desc: "Fires when a tag is applied to a contact" },
-  { type: "list_added",    label: "Added to List",        icon: List,          color: "text-amber-400",  bg: "bg-amber-500/10",  border: "border-amber-500/20",  desc: "Fires when a contact is added to a list" },
+  /* ── User lifecycle ── */
+  { type: "user_signup",        label: "User Signs Up",          icon: UserPlus,           color: "text-blue-400",    bg: "bg-blue-500/10",    border: "border-blue-500/20",    desc: "Fires when a new user registers an account" },
+  { type: "user_login",         label: "User Logs In",           icon: LogIn,              color: "text-sky-400",     bg: "bg-sky-500/10",     border: "border-sky-500/20",     desc: "Fires each time a user signs in" },
+  /* ── Purchases & payments ── */
+  { type: "new_purchase",       label: "Purchase Completed",     icon: ShoppingCart,       color: "text-green-400",   bg: "bg-green-500/10",   border: "border-green-500/20",   desc: "Fires when any course purchase succeeds" },
+  { type: "payment_failed",     label: "Payment Failed",         icon: XCircle,            color: "text-red-400",     bg: "bg-red-500/10",     border: "border-red-500/20",     desc: "Fires when a payment attempt fails" },
+  { type: "coupon_used",        label: "Coupon Redeemed",        icon: Gift,               color: "text-pink-400",    bg: "bg-pink-500/10",    border: "border-pink-500/20",    desc: "Fires when a coupon code is applied at checkout" },
+  /* ── Course & lesson events ── */
+  { type: "course_enrolled",    label: "Course Enrolled",        icon: BookOpen,           color: "text-teal-400",    bg: "bg-teal-500/10",    border: "border-teal-500/20",    desc: "Fires when a user gains access to a course" },
+  { type: "course_completed",   label: "Course Completed",       icon: GraduationCap,      color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", desc: "Fires when a user finishes all lessons in a course" },
+  { type: "lesson_completed",   label: "Lesson Completed",       icon: BookMarked,         color: "text-cyan-400",    bg: "bg-cyan-500/10",    border: "border-cyan-500/20",    desc: "Fires when a user marks a lesson as complete" },
+  /* ── CRM events ── */
+  { type: "tag_applied",        label: "Tag Applied",            icon: Tag,                color: "text-violet-400",  bg: "bg-violet-500/10",  border: "border-violet-500/20",  desc: "Fires when a specific tag is applied to a contact" },
+  { type: "list_added",         label: "Added to List",          icon: List,               color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20",   desc: "Fires when a contact is added to a list" },
+  /* ── Affiliate ── */
+  { type: "affiliate_joined",   label: "Affiliate Joined",       icon: UserCheck,          color: "text-purple-400",  bg: "bg-purple-500/10",  border: "border-purple-500/20",  desc: "Fires when a user is approved as an affiliate" },
+  /* ── Engagement ── */
+  { type: "link_clicked",       label: "Email Link Clicked",     icon: MousePointerClick,  color: "text-orange-400",  bg: "bg-orange-500/10",  border: "border-orange-500/20",  desc: "Fires when a contact clicks a tracked link in an email" },
 ];
 
 const FUNNEL_ACTIONS = [
@@ -1248,7 +1262,28 @@ function AutomationTab() {
                   <Label className="text-xs text-muted-foreground">Trigger Type</Label>
                   <select value={triggerType} onChange={e => { setTriggerType(e.target.value); setTriggerConfig({}); }}
                     className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground">
-                    {FUNNEL_TRIGGERS.map(t => <option key={t.type} value={t.type}>{t.label}</option>)}
+                    <optgroup label="User Lifecycle">
+                      <option value="user_signup">User Signs Up</option>
+                      <option value="user_login">User Logs In</option>
+                    </optgroup>
+                    <optgroup label="Purchases &amp; Payments">
+                      <option value="new_purchase">Purchase Completed</option>
+                      <option value="payment_failed">Payment Failed</option>
+                      <option value="coupon_used">Coupon Redeemed</option>
+                    </optgroup>
+                    <optgroup label="Course &amp; Lessons">
+                      <option value="course_enrolled">Course Enrolled</option>
+                      <option value="course_completed">Course Completed</option>
+                      <option value="lesson_completed">Lesson Completed</option>
+                    </optgroup>
+                    <optgroup label="CRM Events">
+                      <option value="tag_applied">Tag Applied</option>
+                      <option value="list_added">Added to List</option>
+                    </optgroup>
+                    <optgroup label="Other">
+                      <option value="affiliate_joined">Affiliate Joined</option>
+                      <option value="link_clicked">Email Link Clicked</option>
+                    </optgroup>
                   </select>
                 </div>
                 {triggerType === "tag_applied" && (
@@ -1452,7 +1487,28 @@ function AutomationTab() {
               <Label className="text-xs text-muted-foreground">Trigger</Label>
               <select value={newTrigger} onChange={e => setNewTrigger(e.target.value)}
                 className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground">
-                {FUNNEL_TRIGGERS.map(t => <option key={t.type} value={t.type}>{t.label}</option>)}
+                <optgroup label="User Lifecycle">
+                  <option value="user_signup">User Signs Up</option>
+                  <option value="user_login">User Logs In</option>
+                </optgroup>
+                <optgroup label="Purchases &amp; Payments">
+                  <option value="new_purchase">Purchase Completed</option>
+                  <option value="payment_failed">Payment Failed</option>
+                  <option value="coupon_used">Coupon Redeemed</option>
+                </optgroup>
+                <optgroup label="Course &amp; Lessons">
+                  <option value="course_enrolled">Course Enrolled</option>
+                  <option value="course_completed">Course Completed</option>
+                  <option value="lesson_completed">Lesson Completed</option>
+                </optgroup>
+                <optgroup label="CRM Events">
+                  <option value="tag_applied">Tag Applied</option>
+                  <option value="list_added">Added to List</option>
+                </optgroup>
+                <optgroup label="Other">
+                  <option value="affiliate_joined">Affiliate Joined</option>
+                  <option value="link_clicked">Email Link Clicked</option>
+                </optgroup>
               </select>
             </div>
           </div>
