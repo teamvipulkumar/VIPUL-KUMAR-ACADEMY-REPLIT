@@ -334,7 +334,10 @@ function SmtpTab() {
           {smtp && !showForm && (
             <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between gap-4">
               <div className="space-y-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground">{smtp.name || "Primary SMTP"}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-foreground">{smtp.name || "Primary SMTP"}</p>
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary/15 text-primary border border-primary/30">PRIMARY</span>
+                </div>
                 <p className="text-xs text-muted-foreground truncate">
                   {smtp.host}:{smtp.port} · {smtp.username} · From: {smtp.fromName} &lt;{smtp.fromEmail}&gt;
                 </p>
