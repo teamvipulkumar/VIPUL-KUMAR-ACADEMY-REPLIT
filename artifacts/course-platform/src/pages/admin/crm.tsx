@@ -901,7 +901,7 @@ function CampaignsTab() {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between mb-1">
               <Label className="text-xs text-muted-foreground">HTML Body</Label>
-              {form.htmlBody && <button onClick={() => setPreviewing(form.htmlBody)} className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1"><Eye className="w-3 h-3" />Preview</button>}
+              {form.htmlBody && <button onClick={() => setPreviewing(form.htmlBody)} className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"><Eye className="w-3 h-3" />Preview</button>}
             </div>
             <Textarea value={form.htmlBody} onChange={e => setForm(f => ({ ...f, htmlBody: e.target.value }))}
               className="bg-background border-border font-mono text-xs min-h-[240px] resize-y" placeholder="<div>Your email HTML here…</div>" />
