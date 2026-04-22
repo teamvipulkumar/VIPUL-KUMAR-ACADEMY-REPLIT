@@ -39,6 +39,11 @@ export const platformSettingsTable = pgTable("platform_settings", {
   facebookPixelId: text("facebook_pixel_id"),
   facebookAccessToken: text("facebook_access_token"),
   facebookPixelBaseCode: text("facebook_pixel_base_code"),
+  siteLogo: text("site_logo"),
+  logoSize: integer("logo_size").notNull().default(34),
+  favicon: text("favicon"),
+  metaTitle: text("meta_title"),
+  metaDescription: text("meta_description"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

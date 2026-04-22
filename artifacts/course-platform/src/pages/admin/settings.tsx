@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useGetAdminSettings, getGetAdminSettingsQueryKey, useUpdateAdminSettings } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Chrome, Info, Construction, Check } from "lucide-react";
+import { Eye, EyeOff, Chrome, Info, Construction, Check, Upload, Globe, ImageIcon, Loader2 } from "lucide-react";
 import { useTheme, type Theme } from "@/lib/theme-context";
 
 const THEMES: { id: Theme; label: string; description: string; swatches: string[] }[] = [
@@ -52,6 +52,16 @@ export default function AdminSettingsPage() {
   const [showSecret, setShowSecret] = useState(false);
   const [googleSaving, setGoogleSaving] = useState(false);
 
+  const [brandingForm, setBrandingForm] = useState({
+    siteLogo: "", logoSize: 34, favicon: "", metaTitle: "", metaDescription: "",
+  });
+  const [brandingSaving, setBrandingSaving] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [faviconUploading, setFaviconUploading] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
+  const API_BASE = import.meta.env.VITE_API_URL ?? "";
+
   useEffect(() => {
     if (settings) {
       setForm({
@@ -70,6 +80,13 @@ export default function AdminSettingsPage() {
         enabled: (settings as Record<string, unknown>).googleSignInEnabled as boolean ?? false,
         clientId: (settings as Record<string, unknown>).googleClientId as string ?? "",
         clientSecret: (settings as Record<string, unknown>).googleClientSecret as string ?? "",
+      });
+      setBrandingForm({
+        siteLogo: (settings as Record<string, unknown>).siteLogo as string ?? "",
+        logoSize: (settings as Record<string, unknown>).logoSize as number ?? 34,
+        favicon: (settings as Record<string, unknown>).favicon as string ?? "",
+        metaTitle: (settings as Record<string, unknown>).metaTitle as string ?? "",
+        metaDescription: (settings as Record<string, unknown>).metaDescription as string ?? "",
       });
     }
   }, [settings]);
@@ -95,6 +112,57 @@ export default function AdminSettingsPage() {
         setMaintenanceSaving(false);
       },
       onError: () => { toast({ title: "Error saving maintenance settings", variant: "destructive" }); setMaintenanceSaving(false); },
+    });
+  };
+
+  const uploadImage = useCallback(async (file: File): Promise<string | null> => {
+    const fd = new FormData();
+    fd.append("image", file);
+    const res = await fetch(`${API_BASE}/api/upload/image`, { method: "POST", credentials: "include", body: fd });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.url as string;
+  }, [API_BASE]);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoUploading(true);
+    const url = await uploadImage(file);
+    if (url) setBrandingForm(f => ({ ...f, siteLogo: url }));
+    else toast({ title: "Logo upload failed", variant: "destructive" });
+    setLogoUploading(false);
+    e.target.value = "";
+  };
+
+  const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFaviconUploading(true);
+    const url = await uploadImage(file);
+    if (url) setBrandingForm(f => ({ ...f, favicon: url }));
+    else toast({ title: "Favicon upload failed", variant: "destructive" });
+    setFaviconUploading(false);
+    e.target.value = "";
+  };
+
+  const handleSaveBranding = () => {
+    setBrandingSaving(true);
+    updateSettings.mutate({
+      data: {
+        siteLogo: brandingForm.siteLogo,
+        logoSize: brandingForm.logoSize,
+        favicon: brandingForm.favicon,
+        metaTitle: brandingForm.metaTitle,
+        metaDescription: brandingForm.metaDescription,
+      } as Parameters<typeof updateSettings.mutate>[0]["data"],
+    }, {
+      onSuccess: () => {
+        toast({ title: "Site identity saved!" });
+        queryClient.invalidateQueries({ queryKey: getGetAdminSettingsQueryKey() });
+        setBrandingSaving(false);
+      },
+      onError: () => { toast({ title: "Error saving branding", variant: "destructive" }); setBrandingSaving(false); },
     });
   };
 
@@ -162,6 +230,172 @@ export default function AdminSettingsPage() {
                 );
               })}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Hidden file inputs */}
+        <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+        <input ref={faviconInputRef} type="file" accept="image/*,.ico" className="hidden" onChange={handleFaviconUpload} />
+
+        {/* Site Identity */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Globe className="w-4 h-4 text-primary" />Site Identity & SEO
+            </CardTitle>
+            <CardDescription>Configure your site logo, favicon and SEO metadata shown in search engines.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+
+            {/* Site Logo */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Site Logo</Label>
+              <div className="flex items-start gap-4">
+                {/* Preview */}
+                <div className="w-20 h-20 rounded-xl border-2 border-dashed border-border flex items-center justify-center bg-background flex-shrink-0 overflow-hidden">
+                  {brandingForm.siteLogo ? (
+                    <img
+                      src={brandingForm.siteLogo}
+                      alt="Logo preview"
+                      style={{ width: brandingForm.logoSize * 1.5, height: brandingForm.logoSize * 1.5, objectFit: "contain" }}
+                    />
+                  ) : (
+                    <ImageIcon className="w-7 h-7 text-muted-foreground/30" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 cursor-pointer"
+                      onClick={() => logoInputRef.current?.click()}
+                      disabled={logoUploading}
+                    >
+                      {logoUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                      {logoUploading ? "Uploading…" : "Upload Logo"}
+                    </Button>
+                    {brandingForm.siteLogo && (
+                      <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive cursor-pointer"
+                        onClick={() => setBrandingForm(f => ({ ...f, siteLogo: "" }))}>
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                  <Input
+                    placeholder="https://example.com/logo.png"
+                    value={brandingForm.siteLogo}
+                    onChange={e => setBrandingForm(f => ({ ...f, siteLogo: e.target.value }))}
+                    className="bg-background border-border text-xs"
+                  />
+                  <p className="text-[11px] text-muted-foreground">Recommended: PNG or SVG with transparent background</p>
+                </div>
+              </div>
+
+              {/* Logo size slider */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-muted-foreground">Logo Size</Label>
+                  <span className="text-xs font-mono text-foreground">{brandingForm.logoSize}px</span>
+                </div>
+                <input
+                  type="range"
+                  min={16}
+                  max={80}
+                  step={2}
+                  value={brandingForm.logoSize}
+                  onChange={e => setBrandingForm(f => ({ ...f, logoSize: parseInt(e.target.value) }))}
+                  className="w-full accent-primary cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>16px</span><span>80px</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Favicon */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Site Favicon</Label>
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-background flex-shrink-0 overflow-hidden">
+                  {brandingForm.favicon ? (
+                    <img src={brandingForm.favicon} alt="Favicon" className="w-7 h-7 object-contain" />
+                  ) : (
+                    <ImageIcon className="w-4 h-4 text-muted-foreground/30" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 cursor-pointer"
+                      onClick={() => faviconInputRef.current?.click()}
+                      disabled={faviconUploading}
+                    >
+                      {faviconUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                      {faviconUploading ? "Uploading…" : "Upload Favicon"}
+                    </Button>
+                    {brandingForm.favicon && (
+                      <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive cursor-pointer"
+                        onClick={() => setBrandingForm(f => ({ ...f, favicon: "" }))}>
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                  <Input
+                    placeholder="https://example.com/favicon.ico"
+                    value={brandingForm.favicon}
+                    onChange={e => setBrandingForm(f => ({ ...f, favicon: e.target.value }))}
+                    className="bg-background border-border text-xs"
+                  />
+                  <p className="text-[11px] text-muted-foreground">Recommended: 32×32px .ico, .png or .svg</p>
+                </div>
+              </div>
+            </div>
+
+            {/* SEO Meta */}
+            <div className="space-y-4 pt-2 border-t border-border">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">SEO Metadata</p>
+              <div className="space-y-1.5">
+                <Label className="text-sm">Meta Title</Label>
+                <Input
+                  value={brandingForm.metaTitle}
+                  onChange={e => setBrandingForm(f => ({ ...f, metaTitle: e.target.value }))}
+                  placeholder="e.g. Vipul Kumar Academy — Learn Affiliate Marketing"
+                  className="bg-background border-border"
+                  maxLength={70}
+                />
+                <div className="flex justify-between">
+                  <p className="text-[11px] text-muted-foreground">Shown as the browser tab title and in Google search results</p>
+                  <span className={`text-[11px] font-mono ${brandingForm.metaTitle.length > 60 ? "text-amber-400" : "text-muted-foreground"}`}>
+                    {brandingForm.metaTitle.length}/70
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">Meta Description</Label>
+                <Textarea
+                  value={brandingForm.metaDescription}
+                  onChange={e => setBrandingForm(f => ({ ...f, metaDescription: e.target.value }))}
+                  placeholder="e.g. Premium online courses on affiliate marketing, e-commerce and dropshipping by Vipul Kumar."
+                  className="bg-background border-border resize-none h-20 text-sm"
+                  maxLength={160}
+                />
+                <div className="flex justify-between">
+                  <p className="text-[11px] text-muted-foreground">Shown in Google search results below the title (ideal: 120–160 chars)</p>
+                  <span className={`text-[11px] font-mono ${brandingForm.metaDescription.length > 155 ? "text-amber-400" : "text-muted-foreground"}`}>
+                    {brandingForm.metaDescription.length}/160
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <Button type="button" onClick={handleSaveBranding} disabled={brandingSaving} className="w-full gap-2 cursor-pointer">
+              {brandingSaving ? <><Loader2 className="w-4 h-4 animate-spin" />Saving…</> : "Save Site Identity"}
+            </Button>
           </CardContent>
         </Card>
 
