@@ -10,6 +10,7 @@ interface AuthContextType {
   isStaff: boolean;
   staffPermissions: Record<string, boolean> | null;
   canAccess: (permission: string) => boolean;
+  refetchUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -20,10 +21,11 @@ const AuthContext = createContext<AuthContextType>({
   isStaff: false,
   staffPermissions: null,
   canAccess: () => false,
+  refetchUser: () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { data: user, isLoading } = useGetMe({ query: { retry: false } });
+  const { data: user, isLoading, refetch } = useGetMe({ query: { retry: false } });
 
   const isStaff = !!(user as any)?.isStaff;
   const staffPermissions: Record<string, boolean> | null = (user as any)?.staffPermissions ?? null;
@@ -43,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isStaff,
     staffPermissions,
     canAccess,
+    refetchUser: () => { refetch(); },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { CheckCircle2, XCircle, Loader2, Mail, RefreshCw } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
@@ -8,6 +9,7 @@ type State = "loading" | "success" | "already" | "expired" | "invalid" | "error"
 
 export default function VerifyEmailPage() {
   const [location] = useLocation();
+  const { refetchUser } = useAuth();
   const token = new URLSearchParams(window.location.search).get("token");
 
   const [state, setState] = useState<State>(token ? "loading" : "invalid");
@@ -25,6 +27,7 @@ export default function VerifyEmailPage() {
         if (r.ok) {
           setState(data.message?.includes("already") ? "already" : "success");
           setMessage(data.message);
+          refetchUser();
         } else {
           const msg: string = data.error ?? "";
           if (msg.includes("expired")) setState("expired");
