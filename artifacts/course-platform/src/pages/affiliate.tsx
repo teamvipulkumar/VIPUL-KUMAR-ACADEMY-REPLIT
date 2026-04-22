@@ -291,15 +291,6 @@ function AffiliateDashboard({ user }: { user: any }) {
 
   const SidebarContent = () => (
     <>
-      <div className="px-5 py-5 border-b border-border flex items-center justify-between">
-        <div>
-          <p className="text-xs font-extrabold text-primary uppercase tracking-widest">VK ACADEMY</p>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">Affiliate Panel</p>
-        </div>
-        <button className="lg:hidden text-muted-foreground hover:text-foreground" onClick={() => setSidebarOpen(false)}>
-          <X className="w-4 h-4" />
-        </button>
-      </div>
       <nav className="flex-1 py-3 overflow-y-auto">
         {TABS.map(t => (
           <button
