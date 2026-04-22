@@ -58,7 +58,15 @@ export default function NotificationsPage() {
         ) : (
           <div className="space-y-2">
             {notifications.map(n => (
-              <div key={n.id} className={`p-4 rounded-xl bg-card border border-border border-l-4 ${typeColors[n.type] ?? "border-l-border"} ${!n.isRead ? "opacity-100" : "opacity-60"} transition-opacity`}>
+              <div
+                key={n.id}
+                onClick={() => { if (!n.isRead) handleMarkRead(n.id); }}
+                className={`p-4 rounded-xl bg-card border border-border border-l-4 ${typeColors[n.type] ?? "border-l-border"} transition-all duration-150 ${
+                  !n.isRead
+                    ? "opacity-100 cursor-pointer hover:bg-accent/60 hover:border-border/80 hover:shadow-sm"
+                    : "opacity-60 cursor-default hover:opacity-75 hover:bg-accent/30"
+                }`}
+              >
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="font-medium text-sm">{n.title}</p>
