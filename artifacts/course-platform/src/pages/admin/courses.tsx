@@ -158,13 +158,13 @@ export default function AdminCoursesPage() {
           <div className="flex gap-1 mt-3">
             <button
               onClick={() => setActiveTab("courses")}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === "courses" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground hover:bg-card"}`}
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${activeTab === "courses" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground hover:bg-card"}`}
             >
               <BookOpen className="w-3.5 h-3.5" />Courses ({courses?.length ?? 0})
             </button>
             <button
               onClick={() => setActiveTab("bundles")}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === "bundles" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground hover:bg-card"}`}
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${activeTab === "bundles" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground hover:bg-card"}`}
             >
               <Package className="w-3.5 h-3.5" />Packages ({bundles?.length ?? 0})
             </button>
@@ -219,7 +219,7 @@ export default function AdminCoursesPage() {
                       <button
                         onClick={() => handleToggleWebsite(c.id, showOnWebsite)}
                         title={showOnWebsite ? "Visible on website – click to hide" : "Hidden from website – click to show"}
-                        className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${showOnWebsite ? "bg-blue-400/10 border-blue-400/30 text-blue-400 hover:bg-blue-400/20" : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/50"}`}
+                        className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-colors cursor-pointer ${showOnWebsite ? "bg-blue-400/10 border-blue-400/30 text-blue-400 hover:bg-blue-400/20" : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/50"}`}
                       >
                         {showOnWebsite ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
                         {showOnWebsite ? "Visible" : "Hidden"}
@@ -335,7 +335,7 @@ export default function AdminCoursesPage() {
               <button
                 type="button"
                 onClick={() => setBundleForm(f => ({ ...f, isActive: !f.isActive }))}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${bundleForm.isActive ? "bg-primary" : "bg-muted"}`}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${bundleForm.isActive ? "bg-primary" : "bg-muted"}`}
               >
                 <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${bundleForm.isActive ? "translate-x-4" : "translate-x-1"}`} />
               </button>
@@ -358,7 +358,7 @@ export default function AdminCoursesPage() {
                         key={c.id}
                         type="button"
                         onClick={() => toggleCourseInBundle(c.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${selected ? "bg-primary/10" : "hover:bg-card/50"}`}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors cursor-pointer ${selected ? "bg-primary/10" : "hover:bg-card/50"}`}
                       >
                         <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${selected ? "bg-primary border-primary" : "border-border"}`}>
                           {selected && <Check className="w-3 h-3 text-white" />}
