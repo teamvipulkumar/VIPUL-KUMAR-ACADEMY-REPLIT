@@ -461,7 +461,7 @@ function SmtpTab() {
           </div>
 
           {/* Backup SMTP Accounts */}
-          <BackupSmtpAccounts />
+          <BackupSmtpAccounts onPrimaryChanged={load} />
         </>
       )}
     </div>
@@ -480,7 +480,7 @@ const SMTP_PRESETS = [
 
 const emptyBackupForm = () => ({ name: "", host: "", port: "587", secure: false, username: "", password: "", fromName: "", fromEmail: "", priority: "2", isActive: true });
 
-function BackupSmtpAccounts() {
+function BackupSmtpAccounts({ onPrimaryChanged }: { onPrimaryChanged?: () => void }) {
   const { toast } = useToast();
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -540,6 +540,7 @@ function BackupSmtpAccounts() {
     if (r.ok) {
       toast({ title: `"${acc.name}" is now the Primary SMTP`, description: "The previous primary has been moved to backups." });
       load();
+      onPrimaryChanged?.();
     } else {
       const e = await r.json().catch(() => ({}));
       toast({ title: e.error ?? "Failed to promote", variant: "destructive" });
