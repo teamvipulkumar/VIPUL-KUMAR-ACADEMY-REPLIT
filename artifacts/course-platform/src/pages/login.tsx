@@ -127,7 +127,7 @@ export default function Login() {
               />
               <Button
                 type="submit"
-                className="w-full mt-4 bg-primary gap-2"
+                className="w-full mt-4 bg-primary gap-2 cursor-pointer"
                 disabled={loginMutation.isPending || isRedirecting}
               >
                 {(loginMutation.isPending || isRedirecting) && <Loader2 className="w-4 h-4 animate-spin" />}

@@ -100,7 +100,7 @@ export function GoogleSignInButton({ mode = "signin" }: GoogleSignInButtonProps)
         type="button"
         onClick={() => login()}
         disabled={loading}
-        className="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-md border border-border bg-background hover:bg-muted transition-colors text-sm font-medium text-foreground disabled:opacity-60 disabled:cursor-not-allowed"
+        className="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-md border border-border bg-background hover:bg-muted transition-colors text-sm font-medium text-foreground disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
       >
         {loading ? (
           <Loader2 className="w-4 h-4 animate-spin" />
