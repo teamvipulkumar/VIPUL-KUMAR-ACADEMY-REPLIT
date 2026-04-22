@@ -148,7 +148,7 @@ export default function Register() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full mt-6" disabled={registerMutation.isPending}>
+              <Button type="submit" className="w-full mt-6 cursor-pointer" disabled={registerMutation.isPending}>
                 {registerMutation.isPending ? "Creating account..." : "Create account"}
               </Button>
             </form>
