@@ -38,8 +38,13 @@ export default function NotificationsPage() {
             <p className="text-muted-foreground mt-1">{notifications?.filter(n => !n.isRead).length ?? 0} unread</p>
           </div>
           {notifications && notifications.some(n => !n.isRead) && (
-            <Button variant="outline" size="sm" onClick={handleMarkAll}>
-              <CheckCheck className="w-4 h-4 mr-2" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleMarkAll}
+              className="gap-2 border-primary/30 text-primary hover:bg-primary hover:text-white hover:border-primary transition-all duration-150 cursor-pointer"
+            >
+              <CheckCheck className="w-4 h-4" />
               Mark all read
             </Button>
           )}
@@ -74,7 +79,13 @@ export default function NotificationsPage() {
                     <p className="text-xs text-muted-foreground mt-1">{new Date(n.createdAt).toLocaleString()}</p>
                   </div>
                   {!n.isRead && (
-                    <Button variant="ghost" size="sm" className="flex-shrink-0 text-xs" onClick={() => handleMarkRead(n.id)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={e => { e.stopPropagation(); handleMarkRead(n.id); }}
+                      className="flex-shrink-0 text-xs gap-1.5 text-muted-foreground hover:text-green-400 hover:bg-green-500/10 border border-transparent hover:border-green-500/20 transition-all duration-150 cursor-pointer"
+                    >
+                      <CheckCheck className="w-3.5 h-3.5" />
                       Mark read
                     </Button>
                   )}
