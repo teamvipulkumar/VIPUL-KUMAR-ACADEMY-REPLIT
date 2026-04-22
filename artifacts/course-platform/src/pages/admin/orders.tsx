@@ -599,7 +599,7 @@ export default function AdminOrdersPage() {
             <thead className="bg-card border-b border-border">
               <tr>
                 <th className="px-4 py-3 w-10">
-                  <button onClick={toggleAll} className="text-muted-foreground hover:text-foreground transition-colors">
+                  <button onClick={toggleAll} className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                     {orders.length > 0 && orders.every(o => selectedIds.has(o.id))
                       ? <CheckSquare className="w-4 h-4 text-primary" />
                       : orders.some(o => selectedIds.has(o.id))
@@ -621,7 +621,7 @@ export default function AdminOrdersPage() {
                   <tr key={order.id} className={`hover:bg-card/40 transition-colors cursor-pointer ${isSelected ? "bg-primary/5" : ""}`} onClick={() => setSelectedOrder(order)}>
                     {/* Checkbox */}
                     <td className="px-4 py-3 w-10" onClick={e => { e.stopPropagation(); toggleSelect(order.id); }}>
-                      <button className="text-muted-foreground hover:text-foreground transition-colors">
+                      <button className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                         {isSelected ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
                       </button>
                     </td>
