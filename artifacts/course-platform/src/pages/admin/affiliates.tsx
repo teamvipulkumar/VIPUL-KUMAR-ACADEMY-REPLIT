@@ -770,7 +770,6 @@ function ScheduledPayoutCard({
             </div>
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-            <span>Every {payout.payoutPeriodDays} day{payout.payoutPeriodDays !== 1 ? "s" : ""}</span>
             {payout.lastPayoutDate && <span>Last paid: {fmtDate(payout.lastPayoutDate)}</span>}
             {payout.nextDueDate    && <span>Next due: {fmtDate(payout.nextDueDate)}</span>}
           </div>
