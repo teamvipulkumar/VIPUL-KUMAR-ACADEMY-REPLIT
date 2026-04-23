@@ -397,11 +397,6 @@ function AppCard({ app, commissionGroups, onAction }: { app: Application; commis
                 <CreditCard className="w-2.5 h-2.5" />{purchases.length} purchase{purchases.length !== 1 ? "s" : ""}
               </Badge>
             )}
-            {enrollments.length > 0 && (
-              <Badge className="text-[10px] text-purple-400 border-purple-400/30 bg-purple-400/10 gap-1">
-                <FileText className="w-2.5 h-2.5" />{enrollments.length} course{enrollments.length !== 1 ? "s" : ""}
-              </Badge>
-            )}
           </div>
           <p className="text-xs text-muted-foreground">{app.email} · Applied {fmtDate(app.createdAt)}</p>
         </div>
