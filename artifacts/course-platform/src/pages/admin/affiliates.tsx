@@ -157,8 +157,6 @@ function OverviewTab() {
   const [groups, setGroups] = useState<CommissionGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [editingCommission, setEditingCommission] = useState<number | null>(null);
-  const [commissionVal, setCommissionVal] = useState("");
   const [assigningGroup, setAssigningGroup] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const { toast } = useToast();
@@ -191,19 +189,6 @@ function OverviewTab() {
       const res = await apiFetch(`/api/affiliate/admin/affiliates/${appId}/${block ? "block" : "unblock"}`, { method: "POST" });
       if (res.ok) { toast({ title: block ? "Affiliate blocked" : "Affiliate unblocked" }); load(); }
       else toast({ title: "Action failed", variant: "destructive" });
-    } finally { setActionLoading(null); }
-  };
-
-  const doCommission = async (appId: number) => {
-    setActionLoading(`comm-${appId}`);
-    try {
-      const res = await apiFetch(`/api/affiliate/admin/affiliates/${appId}/commission`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ commissionRate: commissionVal === "" ? null : commissionVal }),
-      });
-      if (res.ok) { toast({ title: "Commission updated" }); setEditingCommission(null); load(); }
-      else toast({ title: "Failed to update commission", variant: "destructive" });
     } finally { setActionLoading(null); }
   };
 
@@ -253,9 +238,9 @@ function OverviewTab() {
         </div>
       ) : (
         <div className="border border-border rounded-xl overflow-x-auto">
-          <table className="w-full min-w-[1050px]">
+          <table className="w-full min-w-[950px]">
             <thead className="bg-card border-b border-border">
-              <tr>{["Affiliate", "Code", "Clicks", "Conv.", "Earned", "Pending", "KYC", "Commission", "Group", "Status", "Actions"].map(h =>
+              <tr>{["Affiliate", "Code", "Clicks", "Conv.", "Earned", "Pending", "KYC", "Group", "Status", "Actions"].map(h =>
                 <th key={h} className="text-left text-xs font-medium text-muted-foreground px-3 py-3">{h}</th>
               )}</tr>
             </thead>
@@ -272,32 +257,6 @@ function OverviewTab() {
                   <td className="px-3 py-3 text-sm font-semibold text-green-400">{fmt(a.totalEarnings)}</td>
                   <td className="px-3 py-3 text-sm text-amber-400">{fmt(a.pendingPayout)}</td>
                   <td className="px-3 py-3"><StatusBadge status={a.kycStatus} /></td>
-                  {/* Commission */}
-                  <td className="px-3 py-3">
-                    {editingCommission === a.applicationId ? (
-                      <div className="flex items-center gap-1">
-                        <Input
-                          type="number" min={0} max={100}
-                          value={commissionVal}
-                          onChange={e => setCommissionVal(e.target.value)}
-                          placeholder="%" className="w-14 h-6 text-xs bg-background border-border px-1"
-                        />
-                        <button onClick={() => doCommission(a.applicationId)} disabled={!!actionLoading} className="text-green-400 hover:text-green-300 cursor-pointer">
-                          {actionLoading === `comm-${a.applicationId}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                        </button>
-                        <button onClick={() => setEditingCommission(null)} className="text-muted-foreground hover:text-foreground cursor-pointer"><X className="w-3 h-3" /></button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs">
-                          {a.commissionOverride != null ? `${a.commissionOverride}% (custom)` : "Default"}
-                        </span>
-                        <button onClick={() => { setEditingCommission(a.applicationId); setCommissionVal(String(a.commissionOverride ?? "")); }} className="text-muted-foreground hover:text-primary cursor-pointer">
-                          <Edit2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
-                  </td>
                   {/* Group */}
                   <td className="px-3 py-3">
                     {assigningGroup === a.applicationId ? (
