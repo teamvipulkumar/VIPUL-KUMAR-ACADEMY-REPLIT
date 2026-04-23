@@ -4,7 +4,7 @@ import {
   referralsTable, payoutRequestsTable, usersTable, platformSettingsTable,
   affiliateApplicationsTable, affiliateClicksTable, affiliateKycTable,
   affiliateBankDetailsTable, affiliateCreativesTable, affiliatePixelTable,
-  coursesTable, paymentsTable,
+  coursesTable, paymentsTable, bundlesTable,
 } from "@workspace/db";
 import { eq, and, sum, count, sql, desc, gte, lt, lte, ne, isNotNull } from "drizzle-orm";
 import { requireAuth, requireAdmin, type JwtPayload } from "../middlewares/auth";
@@ -264,19 +264,20 @@ router.get("/payouts/:id/commissions", requireAuth, async (req, res): Promise<vo
       id: referralsTable.id,
       commission: referralsTable.commission,
       createdAt: referralsTable.createdAt,
-      paymentId: paymentsTable.id,
       courseTitle: coursesTable.title,
+      bundleName: bundlesTable.name,
     })
     .from(referralsTable)
     .leftJoin(
       paymentsTable,
       and(
         eq(paymentsTable.userId, referralsTable.referredUserId),
-        eq(paymentsTable.courseId, referralsTable.courseId),
         eq(paymentsTable.status, "completed"),
+        eq(paymentsTable.courseId, referralsTable.courseId),
       ),
     )
     .leftJoin(coursesTable, eq(coursesTable.id, referralsTable.courseId))
+    .leftJoin(bundlesTable, eq(bundlesTable.id, paymentsTable.bundleId))
     .where(and(
       eq(referralsTable.referrerId, userId),
       eq(referralsTable.status, "purchase"),
@@ -288,8 +289,7 @@ router.get("/payouts/:id/commissions", requireAuth, async (req, res): Promise<vo
   res.json(rows.map(r => ({
     id: r.id,
     commission: parseFloat(String(r.commission ?? 0)),
-    paymentId: r.paymentId,
-    courseTitle: r.courseTitle ?? null,
+    productName: r.courseTitle ?? r.bundleName ?? null,
     createdAt: r.createdAt,
   })));
 });
