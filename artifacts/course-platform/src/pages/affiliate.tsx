@@ -1171,7 +1171,7 @@ function PayoutsTab({ dashboard, payouts }: { dashboard: any; payouts: any[] }) 
   const fmtDate = (d: string) =>
     new Date(d).toLocaleString("en-IN", {
       day: "2-digit", month: "2-digit", year: "numeric",
-      hour: "2-digit", minute: "2-digit", hour12: false,
+      hour: "2-digit", minute: "2-digit", hour12: true,
     }).replace(",", "");
 
   const toggleDetails = async (id: number) => {
