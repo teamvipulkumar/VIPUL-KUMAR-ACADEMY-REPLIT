@@ -30,12 +30,13 @@ app.use(
 app.use(cors({ origin: true, credentials: true }));
 app.use(cookieParser());
 app.use(express.json({
+  limit: "20mb",
   verify: (req, _res, buf) => {
     // Capture raw body for webhook signature verification (Cashfree, Stripe, etc.)
     (req as { rawBody?: string }).rawBody = buf.toString("utf8");
   },
 }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
 // Serve uploaded files via /api/files/* so they work through the Replit proxy
 const uploadsDir = path.join(process.cwd(), "uploads");
