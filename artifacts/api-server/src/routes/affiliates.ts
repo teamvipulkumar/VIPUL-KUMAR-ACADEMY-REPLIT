@@ -678,8 +678,9 @@ router.post("/admin/affiliates/:appId/commission-group", requireAdmin, async (re
   const appId = parseInt(req.params.appId);
   const { groupId } = req.body;
   const gid = groupId === null || groupId === "" ? null : parseInt(String(groupId));
+  // Clear individual override when assigning to a group so the group rate takes effect
   await db.update(affiliateApplicationsTable)
-    .set({ commissionGroupId: gid })
+    .set({ commissionGroupId: gid, commissionOverride: gid !== null ? null : undefined })
     .where(eq(affiliateApplicationsTable.id, appId));
   res.json({ message: "Group assigned" });
 });
