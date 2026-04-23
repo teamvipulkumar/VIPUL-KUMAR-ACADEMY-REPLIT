@@ -19,11 +19,23 @@ function hashIp(ip: string): string {
   return crypto.createHash("sha256").update(ip).digest("hex").substring(0, 16);
 }
 
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000; // UTC+5:30
+
+/** Returns a Date representing midnight IST, N days ago, expressed as UTC */
 function dayStart(daysAgo: number): Date {
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
-  d.setHours(0, 0, 0, 0);
-  return d;
+  const nowIST = new Date(Date.now() + IST_OFFSET_MS);
+  const midnightIST = new Date(Date.UTC(
+    nowIST.getUTCFullYear(),
+    nowIST.getUTCMonth(),
+    nowIST.getUTCDate() - daysAgo,
+    0, 0, 0, 0
+  ));
+  return new Date(midnightIST.getTime() - IST_OFFSET_MS);
+}
+
+/** Returns YYYY-MM-DD in IST for grouping/display */
+function istDateKey(d: Date): string {
+  return new Date(d.getTime() + IST_OFFSET_MS).toISOString().substring(0, 10);
 }
 
 /* ── Application ── */
@@ -119,12 +131,10 @@ router.get("/dashboard", requireAuth, async (req, res): Promise<void> => {
   /* Daily chart — last 30 days */
   const daily: Record<string, number> = {};
   for (let i = 29; i >= 0; i--) {
-    const d = dayStart(i);
-    const key = d.toISOString().substring(0, 10);
-    daily[key] = 0;
+    daily[istDateKey(dayStart(i))] = 0;
   }
   referrals.filter(r => r.commission && new Date(r.createdAt) >= day30Start).forEach(r => {
-    const key = new Date(r.createdAt).toISOString().substring(0, 10);
+    const key = istDateKey(new Date(r.createdAt));
     if (key in daily) daily[key] += parseFloat(String(r.commission ?? 0));
   });
   const dailyChart = Object.entries(daily).map(([date, amount]) => ({ date, amount }));
@@ -184,11 +194,10 @@ router.get("/clicks", requireAuth, async (req, res): Promise<void> => {
   const day30Start = dayStart(30);
   const daily: Record<string, { clicks: number; unique: number; conversions: number }> = {};
   for (let i = 29; i >= 0; i--) {
-    const d = dayStart(i);
-    daily[d.toISOString().substring(0, 10)] = { clicks: 0, unique: 0, conversions: 0 };
+    daily[istDateKey(dayStart(i))] = { clicks: 0, unique: 0, conversions: 0 };
   }
   clicks.filter(c => new Date(c.createdAt) >= day30Start).forEach(c => {
-    const key = new Date(c.createdAt).toISOString().substring(0, 10);
+    const key = istDateKey(new Date(c.createdAt));
     if (key in daily) {
       daily[key].clicks++;
       if (c.isUnique) daily[key].unique++;
@@ -196,7 +205,7 @@ router.get("/clicks", requireAuth, async (req, res): Promise<void> => {
   });
   // Map purchases to the chart by their creation date
   purchases.filter(p => new Date(p.createdAt) >= day30Start).forEach(p => {
-    const key = new Date(p.createdAt).toISOString().substring(0, 10);
+    const key = istDateKey(new Date(p.createdAt));
     if (key in daily) daily[key].conversions++;
   });
 
