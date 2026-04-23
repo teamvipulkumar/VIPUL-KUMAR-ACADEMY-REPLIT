@@ -51,7 +51,7 @@ function Avatar({ name, size = "md" }: { name: string; size?: "sm" | "md" | "lg"
 }
 
 // ── CSV helpers ───────────────────────────────────────────────────────────────
-type CsvRow = { name: string; email: string; password: string; role: string };
+type CsvRow = { name: string; email: string; password: string; role: string; phone: string };
 
 function parseCsv(text: string): CsvRow[] {
   const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim().split("\n");
@@ -61,6 +61,7 @@ function parseCsv(text: string): CsvRow[] {
   const emailIdx   = headerRaw.findIndex(h => h === "email");
   const passIdx    = headerRaw.findIndex(h => ["password", "pass"].includes(h));
   const roleIdx    = headerRaw.findIndex(h => h === "role");
+  const phoneIdx   = headerRaw.findIndex(h => ["phone", "mobile", "mobile_number", "phone_number"].includes(h));
 
   return lines.slice(1).filter(l => l.trim()).map(line => {
     const cols = line.split(",").map(c => c.replace(/^"|"$/g, "").trim());
@@ -69,13 +70,14 @@ function parseCsv(text: string): CsvRow[] {
       email:    emailIdx >= 0 ? cols[emailIdx] ?? "" : "",
       password: passIdx  >= 0 ? cols[passIdx]  ?? "" : "",
       role:     roleIdx  >= 0 ? cols[roleIdx]  ?? "student" : "student",
+      phone:    phoneIdx >= 0 ? cols[phoneIdx] ?? "" : "",
     };
   });
 }
 
-const TEMPLATE_CSV = `name,email,password,role
-Jane Doe,jane@example.com,Password@123,student
-John Smith,john@example.com,Password@123,affiliate`;
+const TEMPLATE_CSV = `name,email,password,role,phone
+Jane Doe,jane@example.com,Password@123,student,9876543210
+John Smith,john@example.com,Password@123,affiliate,`;
 
 // ── Import Users Dialog ───────────────────────────────────────────────────────
 type Course = { id: number; title: string };
@@ -163,7 +165,7 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
                   <FileSpreadsheet className="w-4 h-4 text-primary flex-shrink-0" />
                   <div>
                     <p className="text-xs font-medium text-foreground">Required columns: <code className="text-primary font-mono">name, email, password</code></p>
-                    <p className="text-[11px] text-muted-foreground">Optional: <code className="font-mono">role</code> (student / affiliate / admin) — defaults to student</p>
+                    <p className="text-[11px] text-muted-foreground">Optional: <code className="font-mono">role</code> (student / affiliate / admin), <code className="font-mono">phone</code> (mobile number)</p>
                   </div>
                 </div>
                 <Button variant="outline" size="sm" className="border-primary/30 text-primary hover:bg-primary/10 flex-shrink-0 gap-1.5 cursor-pointer" onClick={handleDownloadTemplate}>
@@ -229,7 +231,7 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
                     <table className="w-full text-xs min-w-[480px]">
                       <thead className="bg-card border-b border-border">
                         <tr>
-                          {["#", "Name", "Email", "Password", "Role", "Valid"].map(h => (
+                          {["#", "Name", "Email", "Password", "Phone", "Role", "Valid"].map(h => (
                             <th key={h} className="text-left px-3 py-2 text-muted-foreground font-semibold uppercase tracking-wide">{h}</th>
                           ))}
                         </tr>
@@ -243,6 +245,7 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
                               <td className="px-3 py-2 text-foreground truncate max-w-[100px]">{r.name || <span className="text-red-400">missing</span>}</td>
                               <td className="px-3 py-2 text-foreground truncate max-w-[120px]">{r.email || <span className="text-red-400">missing</span>}</td>
                               <td className="px-3 py-2 text-muted-foreground">{r.password ? "••••••••" : <span className="text-red-400">missing</span>}</td>
+                              <td className="px-3 py-2 text-muted-foreground font-mono">{r.phone || <span className="text-muted-foreground/50">—</span>}</td>
                               <td className="px-3 py-2">
                                 <Badge className={`text-[10px] ${r.role === "admin" ? "text-red-400 border-red-400/30 bg-red-400/10" : r.role === "affiliate" ? "text-purple-400 border-purple-400/30 bg-purple-400/10" : "text-blue-400 border-blue-400/30 bg-blue-400/10"}`}>
                                   {r.role || "student"}
@@ -255,7 +258,7 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
                           );
                         })}
                         {rows.length > 20 && (
-                          <tr><td colSpan={6} className="px-3 py-2 text-center text-muted-foreground">...and {rows.length - 20} more rows</td></tr>
+                          <tr><td colSpan={7} className="px-3 py-2 text-center text-muted-foreground">...and {rows.length - 20} more rows</td></tr>
                         )}
                       </tbody>
                     </table>

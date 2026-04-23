@@ -205,7 +205,7 @@ router.post("/users/:userId/ban", requireAdmin, async (req, res): Promise<void> 
 
 // ── Import users from CSV/JSON ────────────────────────────────────────────────
 router.post("/users/import", requireAdmin, async (req, res): Promise<void> => {
-  const rows: Array<{ name: string; email: string; password: string; role?: string }> = req.body?.users;
+  const rows: Array<{ name: string; email: string; password: string; role?: string; phone?: string }> = req.body?.users;
   const enrollCourseId: number | null = req.body?.enrollCourseId ? parseInt(req.body.enrollCourseId) : null;
 
   if (!Array.isArray(rows) || rows.length === 0) {
@@ -220,7 +220,7 @@ router.post("/users/import", requireAdmin, async (req, res): Promise<void> => {
   const errors: Array<{ row: number; email: string; error: string }> = [];
 
   // 1. Validate all rows upfront
-  type ValidRow = { idx: number; name: string; email: string; password: string; role: "admin" | "student" | "affiliate" };
+  type ValidRow = { idx: number; name: string; email: string; password: string; role: "admin" | "student" | "affiliate"; phone: string | null };
   const valid: ValidRow[] = [];
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
@@ -228,7 +228,8 @@ router.post("/users/import", requireAdmin, async (req, res): Promise<void> => {
       errors.push({ row: i + 1, email: r.email ?? "", error: "name, email, and password are required" }); continue;
     }
     const role = (["admin", "student", "affiliate"].includes(r.role ?? "")) ? r.role as "admin" | "student" | "affiliate" : "student";
-    valid.push({ idx: i + 1, name: r.name.trim(), email: r.email.trim().toLowerCase(), password: r.password.trim(), role });
+    const phone = r.phone?.trim() || null;
+    valid.push({ idx: i + 1, name: r.name.trim(), email: r.email.trim().toLowerCase(), password: r.password.trim(), role, phone });
   }
 
   // 2. Bulk check existing emails in one query
@@ -258,7 +259,7 @@ router.post("/users/import", requireAdmin, async (req, res): Promise<void> => {
     for (let i = 0; i < hashed.length; i += CHUNK) {
       const chunk = hashed.slice(i, i + CHUNK);
       const inserted = await db.insert(usersTable).values(
-        chunk.map(r => ({ name: r.name, email: r.email, password: r.hashed, role: r.role, referralCode: Math.random().toString(36).substring(2, 10).toUpperCase() }))
+        chunk.map(r => ({ name: r.name, email: r.email, password: r.hashed, role: r.role, phone: r.phone, referralCode: Math.random().toString(36).substring(2, 10).toUpperCase() }))
       ).returning({ id: usersTable.id });
       inserted.forEach(u => created.push(u.id));
     }
