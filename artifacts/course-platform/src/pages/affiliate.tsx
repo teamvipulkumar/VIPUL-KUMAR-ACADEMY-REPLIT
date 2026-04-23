@@ -681,8 +681,8 @@ function AffiliateDashboard({ user }: { user: any }) {
           {/* ── Payouts Tab ── */}
           {tab === "payouts" && (
             <div>
-              <TabHeader title="Payouts" subtitle="Request withdrawals and view your payout history." />
-              <PayoutsTab dashboard={dashboard} payouts={payouts} onRequested={loadDashboard} />
+              <TabHeader title="Payouts" subtitle="View your earnings and payout history." />
+              <PayoutsTab dashboard={dashboard} payouts={payouts} />
             </div>
           )}
 
@@ -1161,32 +1161,7 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
 }
 
 /* ─── Payouts Tab ─── */
-function PayoutsTab({ dashboard, payouts, onRequested }: { dashboard: any; payouts: any[]; onRequested: () => void }) {
-  const { toast } = useToast();
-  const [amount, setAmount] = useState("");
-  const [method, setMethod] = useState("Bank Transfer");
-  const [details, setDetails] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const request = async () => {
-    if (!amount || !details) { toast({ title: "Fill all fields", variant: "destructive" }); return; }
-    if (parseFloat(amount) > (dashboard?.pendingEarnings ?? 0)) {
-      toast({ title: "Amount exceeds withdrawable balance", variant: "destructive" }); return;
-    }
-    setSaving(true);
-    try {
-      const res = await apiFetch("/api/affiliate/payout-request", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: parseFloat(amount), paymentMethod: method, paymentDetails: details }),
-      });
-      if (!res.ok) throw new Error("Failed");
-      toast({ title: "Payout requested!", description: "Admin will process it soon." });
-      setAmount(""); setDetails("");
-      onRequested();
-    } catch { toast({ title: "Failed to request payout", variant: "destructive" }); }
-    finally { setSaving(false); }
-  };
-
+function PayoutsTab({ dashboard, payouts }: { dashboard: any; payouts: any[] }) {
   const statusMap: Record<string, string> = {
     pending: "text-amber-400 border-amber-400/30 bg-amber-400/10",
     approved: "text-green-400 border-green-400/30 bg-green-400/10",
@@ -1199,7 +1174,7 @@ function PayoutsTab({ dashboard, payouts, onRequested }: { dashboard: any; payou
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: "Total Earned", value: dashboard?.totalEarnings ?? 0, color: "text-foreground" },
-          { label: "Withdrawable", value: dashboard?.pendingEarnings ?? 0, color: "text-amber-400" },
+          { label: "Pending", value: dashboard?.pendingEarnings ?? 0, color: "text-amber-400" },
           { label: "Paid Out", value: dashboard?.paidEarnings ?? 0, color: "text-green-400" },
         ].map(s => (
           <div key={s.label} className="bg-card border border-border rounded-xl p-4 text-center">
@@ -1209,43 +1184,26 @@ function PayoutsTab({ dashboard, payouts, onRequested }: { dashboard: any; payou
         ))}
       </div>
 
-      <div className="grid md:grid-cols-2 gap-5">
-        {/* Request form */}
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">Request Withdrawal</h3>
-          <Input type="number" placeholder={`Amount (max ₹${(dashboard?.pendingEarnings ?? 0).toLocaleString("en-IN")})`}
-            value={amount} onChange={e => setAmount(e.target.value)} className="bg-background border-border" />
-          <Input placeholder="Payment method (Bank, UPI, etc.)" value={method}
-            onChange={e => setMethod(e.target.value)} className="bg-background border-border" />
-          <Input placeholder="Account / UPI details" value={details}
-            onChange={e => setDetails(e.target.value)} className="bg-background border-border" />
-          <Button onClick={request} disabled={saving} className="w-full bg-primary gap-2">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
-            {saving ? "Processing…" : "Request Payout"}
-          </Button>
+      {/* Payout history */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground">Payout History</h3>
         </div>
-
-        {/* Payout history */}
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
-          <div className="px-5 py-3 border-b border-border">
-            <h3 className="text-sm font-semibold text-foreground">Payout History</h3>
-          </div>
-          {payouts.length === 0 ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">No payouts yet.</div>
-          ) : (
-            <div className="divide-y divide-border max-h-72 overflow-y-auto">
-              {payouts.map(p => (
-                <div key={p.id} className="flex items-center gap-3 px-5 py-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">₹{Number(p.amount).toLocaleString("en-IN")}</p>
-                    <p className="text-[11px] text-muted-foreground">{p.paymentMethod} · {new Date(p.requestedAt).toLocaleDateString("en-IN")}</p>
-                  </div>
-                  <Badge className={`text-[10px] capitalize ${statusMap[p.status] ?? ""}`}>{p.status}</Badge>
+        {payouts.length === 0 ? (
+          <div className="py-12 text-center text-sm text-muted-foreground">No payouts yet. Payouts are processed by the admin.</div>
+        ) : (
+          <div className="divide-y divide-border">
+            {payouts.map(p => (
+              <div key={p.id} className="flex items-center gap-3 px-5 py-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">₹{Number(p.amount).toLocaleString("en-IN")}</p>
+                  <p className="text-[11px] text-muted-foreground">{p.paymentMethod} · {new Date(p.requestedAt).toLocaleDateString("en-IN")}</p>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                <Badge className={`text-[10px] capitalize ${statusMap[p.status] ?? ""}`}>{p.status}</Badge>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
