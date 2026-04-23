@@ -1225,7 +1225,8 @@ function PayoutsTab({ dashboard, payouts }: { dashboard: any; payouts: any[] }) 
                   <th className="px-5 py-2.5 text-left font-medium">ID</th>
                   <th className="px-5 py-2.5 text-left font-medium">Amount</th>
                   <th className="px-5 py-2.5 text-left font-medium">Date</th>
-                  <th className="px-5 py-2.5 font-medium text-left">Status</th>
+                  <th className="px-5 py-2.5 text-left font-medium">Status</th>
+                  <th className="px-5 py-2.5 text-right font-medium"></th>
                 </tr>
               </thead>
               <tbody>
@@ -1238,23 +1239,23 @@ function PayoutsTab({ dashboard, payouts }: { dashboard: any; payouts: any[] }) 
                         {fmtDate(p.processedAt ?? p.requestedAt)}
                       </td>
                       <td className="px-5 py-3">
-                        <div className="flex flex-col items-end gap-1.5">
-                          <button
-                            onClick={() => toggleDetails(p.id)}
-                            className="flex items-center gap-0.5 text-xs text-primary hover:underline cursor-pointer whitespace-nowrap"
-                          >
-                            Details
-                            <ChevronDown className={`w-3 h-3 transition-transform ${expanded === p.id ? "rotate-180" : ""}`} />
-                          </button>
-                          <Badge className={`text-[10px] capitalize ${statusMap[p.status] ?? ""}`}>
-                            {p.status === "approved" ? "Paid" : p.status}
-                          </Badge>
-                        </div>
+                        <Badge className={`text-[10px] capitalize ${statusMap[p.status] ?? ""}`}>
+                          {p.status === "approved" ? "Paid" : p.status}
+                        </Badge>
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <button
+                          onClick={() => toggleDetails(p.id)}
+                          className="flex items-center gap-0.5 text-xs text-primary hover:underline cursor-pointer whitespace-nowrap ml-auto"
+                        >
+                          Details
+                          <ChevronDown className={`w-3 h-3 transition-transform ${expanded === p.id ? "rotate-180" : ""}`} />
+                        </button>
                       </td>
                     </tr>
                     {expanded === p.id && (
                       <tr key={`${p.id}-detail`}>
-                        <td colSpan={4} className="px-5 py-4 bg-muted/5 border-b border-border">
+                        <td colSpan={5} className="px-5 py-4 bg-muted/5 border-b border-border">
                           {loadingComm === p.id ? (
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <Loader2 className="w-3 h-3 animate-spin" /> Loading commissions…
