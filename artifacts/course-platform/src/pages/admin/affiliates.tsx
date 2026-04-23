@@ -562,8 +562,8 @@ function AffiliateProfileModal({
   payout: ScheduledPayout;
   onClose: () => void;
   actionLoading: string | null;
-  rejectState: { open: boolean; note: string };
-  onRejectStateChange: (s: { open: boolean; note: string }) => void;
+  rejectState: { open: boolean; note: string; holdOpen: boolean; holdNote: string };
+  onRejectStateChange: (s: { open: boolean; note: string; holdOpen: boolean; holdNote: string }) => void;
   onAction: (affiliateId: number, action: "paid" | "hold" | "reject", note?: string) => void;
 }) {
   const isHold     = payout.latestAction?.status === "hold";
@@ -658,18 +658,35 @@ function AffiliateProfileModal({
                   Mark as Paid
                 </Button>
                 {!isHold && (
-                  <Button onClick={() => { onAction(payout.affiliateId, "hold"); onClose(); }} disabled={!!actionLoading} size="sm" variant="outline"
+                  <Button onClick={() => onRejectStateChange({ ...rejectState, holdOpen: !rejectState.holdOpen, open: false })} disabled={!!actionLoading} size="sm" variant="outline"
                     className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 gap-1.5 h-8 text-xs">
                     {actionLoading === `hold-${payout.affiliateId}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
                     Hold
                   </Button>
                 )}
-                <Button onClick={() => onRejectStateChange({ open: !rejectState.open, note: rejectState.note })}
+                <Button onClick={() => onRejectStateChange({ ...rejectState, open: !rejectState.open, holdOpen: false })}
                   disabled={!!actionLoading} size="sm" variant="outline"
                   className="border-red-500/30 text-red-400 hover:bg-red-500/10 gap-1.5 h-8 text-xs">
                   <XCircle className="w-3 h-3" />Reject
                 </Button>
               </div>
+              {/* Hold note input */}
+              {rejectState.holdOpen && (
+                <div className="flex items-center gap-2">
+                  <Input value={rejectState.holdNote} onChange={e => onRejectStateChange({ ...rejectState, holdNote: e.target.value })}
+                    placeholder="Hold reason (optional)..." className="bg-background border-blue-500/30 h-8 text-xs flex-1" autoFocus />
+                  <Button onClick={() => { onAction(payout.affiliateId, "hold", rejectState.holdNote || undefined); onClose(); }}
+                    disabled={!!actionLoading} size="sm"
+                    className="bg-blue-500 hover:bg-blue-600 text-white h-8 text-xs gap-1 flex-shrink-0">
+                    {actionLoading === `hold-${payout.affiliateId}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
+                    Confirm
+                  </Button>
+                  <button onClick={() => onRejectStateChange({ ...rejectState, holdOpen: false, holdNote: "" })} className="text-muted-foreground hover:text-foreground flex-shrink-0 cursor-pointer">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+              {/* Reject note input */}
               {rejectState.open && (
                 <div className="flex items-center gap-2">
                   <Input value={rejectState.note} onChange={e => onRejectStateChange({ ...rejectState, note: e.target.value })}
@@ -680,7 +697,7 @@ function AffiliateProfileModal({
                     {actionLoading === `reject-${payout.affiliateId}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
                     Confirm
                   </Button>
-                  <button onClick={() => onRejectStateChange({ open: false, note: "" })} className="text-muted-foreground hover:text-foreground flex-shrink-0 cursor-pointer">
+                  <button onClick={() => onRejectStateChange({ ...rejectState, open: false, note: "" })} className="text-muted-foreground hover:text-foreground flex-shrink-0 cursor-pointer">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -714,8 +731,8 @@ function ScheduledPayoutCard({
 }: {
   payout: ScheduledPayout;
   actionLoading: string | null;
-  rejectState: { open: boolean; note: string };
-  onRejectStateChange: (s: { open: boolean; note: string }) => void;
+  rejectState: { open: boolean; note: string; holdOpen: boolean; holdNote: string };
+  onRejectStateChange: (s: { open: boolean; note: string; holdOpen: boolean; holdNote: string }) => void;
   onView: () => void;
   onAction: (affiliateId: number, action: "paid" | "hold" | "reject", note?: string) => void;
 }) {
@@ -769,17 +786,36 @@ function ScheduledPayoutCard({
             Mark as Paid
           </Button>
           {!isHold && (
-            <Button onClick={() => onAction(payout.affiliateId, "hold")} disabled={!!actionLoading} size="sm" variant="outline"
+            <Button
+              onClick={() => onRejectStateChange({ ...rejectState, holdOpen: !rejectState.holdOpen, open: false })}
+              disabled={!!actionLoading} size="sm" variant="outline"
               className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 gap-1.5 h-7 text-xs">
               {actionLoading === `hold-${payout.affiliateId}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
               Hold
             </Button>
           )}
-          <Button onClick={() => onRejectStateChange({ open: !rejectState.open, note: rejectState.note })}
+          <Button onClick={() => onRejectStateChange({ ...rejectState, open: !rejectState.open, holdOpen: false })}
             disabled={!!actionLoading} size="sm" variant="outline"
             className="border-red-500/30 text-red-400 hover:bg-red-500/10 gap-1.5 h-7 text-xs">
             <XCircle className="w-3 h-3" />Reject
           </Button>
+          {/* Hold note input */}
+          {rejectState.holdOpen && (
+            <div className="w-full flex items-center gap-2 mt-1">
+              <Input value={rejectState.holdNote} onChange={e => onRejectStateChange({ ...rejectState, holdNote: e.target.value })}
+                placeholder="Hold reason (optional)..." className="bg-background border-blue-500/30 h-7 text-xs flex-1" autoFocus />
+              <Button onClick={() => onAction(payout.affiliateId, "hold", rejectState.holdNote || undefined)}
+                disabled={!!actionLoading} size="sm"
+                className="bg-blue-500 hover:bg-blue-600 text-white h-7 text-xs gap-1 flex-shrink-0">
+                {actionLoading === `hold-${payout.affiliateId}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
+                Confirm
+              </Button>
+              <button onClick={() => onRejectStateChange({ ...rejectState, holdOpen: false, holdNote: "" })} className="text-muted-foreground hover:text-foreground flex-shrink-0 cursor-pointer">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+          {/* Reject note input */}
           {rejectState.open && (
             <div className="w-full flex items-center gap-2 mt-1">
               <Input value={rejectState.note} onChange={e => onRejectStateChange({ ...rejectState, note: e.target.value })}
@@ -790,7 +826,7 @@ function ScheduledPayoutCard({
                 {actionLoading === `reject-${payout.affiliateId}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
                 Confirm
               </Button>
-              <button onClick={() => onRejectStateChange({ open: false, note: "" })} className="text-muted-foreground hover:text-foreground flex-shrink-0 cursor-pointer">
+              <button onClick={() => onRejectStateChange({ ...rejectState, open: false, note: "" })} className="text-muted-foreground hover:text-foreground flex-shrink-0 cursor-pointer">
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -831,7 +867,7 @@ function PayoutsTab() {
   const [schedFilter, setSchedFilter] = useState<"all" | "due" | "hold">("all");
   const [paidSearch, setPaidSearch]   = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [rejectState, setRejectState]     = useState<Record<number, { open: boolean; note: string }>>({});
+  const [rejectState, setRejectState]     = useState<Record<number, { open: boolean; note: string; holdOpen: boolean; holdNote: string }>>({});
   const [viewPayout, setViewPayout]       = useState<ScheduledPayout | null>(null);
   const { toast } = useToast();
 
@@ -862,7 +898,7 @@ function PayoutsTab() {
       if (r.ok) {
         toast({ title: action === "paid" ? "Marked as Paid!" : action === "hold" ? "Put on Hold" : "Payout Rejected" });
         loadScheduled();
-        setRejectState(s => ({ ...s, [affiliateId]: { open: false, note: "" } }));
+        setRejectState(s => ({ ...s, [affiliateId]: { open: false, note: "", holdOpen: false, holdNote: "" } }));
       } else {
         const err = await r.json().catch(() => ({}));
         toast({ title: (err as any).error ?? "Action failed", variant: "destructive" });
@@ -889,7 +925,7 @@ function PayoutsTab() {
           payout={viewPayout}
           onClose={() => setViewPayout(null)}
           actionLoading={actionLoading}
-          rejectState={rejectState[viewPayout.affiliateId] ?? { open: false, note: "" }}
+          rejectState={rejectState[viewPayout.affiliateId] ?? { open: false, note: "", holdOpen: false, holdNote: "" }}
           onRejectStateChange={s => setRejectState(r => ({ ...r, [viewPayout.affiliateId]: s }))}
           onAction={doScheduledAction}
         />
@@ -957,7 +993,7 @@ function PayoutsTab() {
                   key={p.affiliateId}
                   payout={p}
                   actionLoading={actionLoading}
-                  rejectState={rejectState[p.affiliateId] ?? { open: false, note: "" }}
+                  rejectState={rejectState[p.affiliateId] ?? { open: false, note: "", holdOpen: false, holdNote: "" }}
                   onRejectStateChange={s => setRejectState(r => ({ ...r, [p.affiliateId]: s }))}
                   onView={() => setViewPayout(p)}
                   onAction={doScheduledAction}

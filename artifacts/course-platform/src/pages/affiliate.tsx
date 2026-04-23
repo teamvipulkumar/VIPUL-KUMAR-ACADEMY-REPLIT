@@ -1298,9 +1298,16 @@ function PayoutsTab({ dashboard, payouts, upcomingPayout }: { dashboard: any; pa
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">Upcoming Payout</p>
               {upcomingPayout.latestAction && upcomingPayout.latestAction.status !== "approved" && (
-                <p className={`text-[10px] mt-1 font-medium ${upcomingStatusColor[upcomingPayout.latestAction.status] ?? "text-muted-foreground"}`}>
-                  {upcomingStatusLabel[upcomingPayout.latestAction.status] ?? upcomingPayout.latestAction.status}
-                </p>
+                <>
+                  <p className={`text-[10px] mt-1 font-medium ${upcomingStatusColor[upcomingPayout.latestAction.status] ?? "text-muted-foreground"}`}>
+                    {upcomingStatusLabel[upcomingPayout.latestAction.status] ?? upcomingPayout.latestAction.status}
+                  </p>
+                  {upcomingPayout.latestAction.note && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">
+                      {upcomingPayout.latestAction.note}
+                    </p>
+                  )}
+                </>
               )}
               {upcomingPayout.nextDueDate && !upcomingPayout.isDue && (
                 <p className="text-[10px] text-muted-foreground mt-0.5">
