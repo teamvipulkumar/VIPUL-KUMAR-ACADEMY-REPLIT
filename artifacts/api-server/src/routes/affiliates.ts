@@ -6,7 +6,7 @@ import {
   affiliateBankDetailsTable, affiliateCreativesTable, affiliatePixelTable,
   coursesTable, paymentsTable,
 } from "@workspace/db";
-import { eq, and, sum, count, sql, desc, gte, lt, ne, isNotNull } from "drizzle-orm";
+import { eq, and, sum, count, sql, desc, gte, lt, lte, ne, isNotNull } from "drizzle-orm";
 import { requireAuth, requireAdmin, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import crypto from "crypto";
@@ -237,6 +237,58 @@ router.get("/payouts", requireAuth, async (req, res): Promise<void> => {
     .where(eq(payoutRequestsTable.userId, authedReq.user.userId))
     .orderBy(desc(payoutRequestsTable.requestedAt));
   res.json(payouts.map(p => ({ ...p, amount: parseFloat(String(p.amount)) })));
+});
+
+router.get("/payouts/:id/commissions", requireAuth, async (req, res): Promise<void> => {
+  const authedReq = req as AuthedRequest;
+  const userId = authedReq.user.userId;
+  const payoutId = parseInt(req.params.id);
+  if (isNaN(payoutId)) { res.status(400).json({ error: "Invalid payout ID" }); return; }
+
+  const [payout] = await db.select().from(payoutRequestsTable)
+    .where(and(eq(payoutRequestsTable.id, payoutId), eq(payoutRequestsTable.userId, userId)))
+    .limit(1);
+  if (!payout) { res.status(404).json({ error: "Payout not found" }); return; }
+
+  const [prevPayout] = await db.select({ requestedAt: payoutRequestsTable.requestedAt })
+    .from(payoutRequestsTable)
+    .where(and(eq(payoutRequestsTable.userId, userId), lt(payoutRequestsTable.requestedAt, payout.requestedAt)))
+    .orderBy(desc(payoutRequestsTable.requestedAt))
+    .limit(1);
+
+  const fromDate = prevPayout?.requestedAt ?? new Date(0);
+  const toDate = payout.requestedAt;
+
+  const rows = await db
+    .select({
+      id: referralsTable.id,
+      commission: referralsTable.commission,
+      createdAt: referralsTable.createdAt,
+      paymentId: paymentsTable.id,
+    })
+    .from(referralsTable)
+    .leftJoin(
+      paymentsTable,
+      and(
+        eq(paymentsTable.userId, referralsTable.referredUserId),
+        eq(paymentsTable.courseId, referralsTable.courseId),
+        eq(paymentsTable.status, "completed"),
+      ),
+    )
+    .where(and(
+      eq(referralsTable.referrerId, userId),
+      eq(referralsTable.status, "purchase"),
+      gte(referralsTable.createdAt, fromDate),
+      lte(referralsTable.createdAt, toDate),
+    ))
+    .orderBy(desc(referralsTable.createdAt));
+
+  res.json(rows.map(r => ({
+    id: r.id,
+    commission: parseFloat(String(r.commission ?? 0)),
+    paymentId: r.paymentId,
+    createdAt: r.createdAt,
+  })));
 });
 
 /* ── KYC ── */

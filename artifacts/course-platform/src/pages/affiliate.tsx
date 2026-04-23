@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Fragment } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -15,7 +15,7 @@ import {
   BadgeIndianRupee, Users, MousePointerClick, Copy, Check, TrendingUp,
   Clock, CheckCircle2, XCircle, AlertCircle, Link2, Image, FileText,
   ShieldCheck, Wallet, Zap, Building2, RefreshCw, Download, Plus,
-  Trash2, Eye, EyeOff, Send, ChevronRight, Activity, Target,
+  Trash2, Eye, EyeOff, Send, ChevronRight, ChevronDown, Activity, Target,
   Calendar, Star, Lock, Loader2, Menu, X, ExternalLink, Share2,
   ArrowUpRight, TrendingDown, Banknote, Info, Percent, Cookie,
   Upload, FileImage
@@ -1162,10 +1162,35 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
 
 /* ─── Payouts Tab ─── */
 function PayoutsTab({ dashboard, payouts }: { dashboard: any; payouts: any[] }) {
+  const [expanded, setExpanded] = useState<number | null>(null);
+  const [commissions, setCommissions] = useState<Record<number, any[] | null>>({});
+  const [loadingComm, setLoadingComm] = useState<number | null>(null);
+
+  const fmt = (n: number) =>
+    `₹${Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleString("en-IN", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit", hour12: false,
+    }).replace(",", "");
+
+  const toggleDetails = async (id: number) => {
+    if (expanded === id) { setExpanded(null); return; }
+    setExpanded(id);
+    if (commissions[id] !== undefined) return;
+    setLoadingComm(id);
+    try {
+      const r = await apiFetch(`/api/affiliate/payouts/${id}/commissions`);
+      setCommissions(c => ({ ...c, [id]: r.ok ? [] : [] }));
+      if (r.ok) { const data = await r.json(); setCommissions(c => ({ ...c, [id]: data })); }
+    } finally { setLoadingComm(null); }
+  };
+
   const statusMap: Record<string, string> = {
-    pending: "text-amber-400 border-amber-400/30 bg-amber-400/10",
+    pending:  "text-amber-400 border-amber-400/30 bg-amber-400/10",
     approved: "text-green-400 border-green-400/30 bg-green-400/10",
     rejected: "text-red-400 border-red-400/30 bg-red-400/10",
+    hold:     "text-blue-400 border-blue-400/30 bg-blue-400/10",
   };
 
   return (
@@ -1174,8 +1199,8 @@ function PayoutsTab({ dashboard, payouts }: { dashboard: any; payouts: any[] }) 
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: "Total Earned", value: dashboard?.totalEarnings ?? 0, color: "text-foreground" },
-          { label: "Pending", value: dashboard?.pendingEarnings ?? 0, color: "text-amber-400" },
-          { label: "Paid Out", value: dashboard?.paidEarnings ?? 0, color: "text-green-400" },
+          { label: "Pending",      value: dashboard?.pendingEarnings ?? 0, color: "text-amber-400" },
+          { label: "Paid Out",     value: dashboard?.paidEarnings ?? 0,   color: "text-green-400" },
         ].map(s => (
           <div key={s.label} className="bg-card border border-border rounded-xl p-4 text-center">
             <p className={`text-xl font-bold ${s.color}`}>₹{Number(s.value).toLocaleString("en-IN")}</p>
@@ -1184,24 +1209,100 @@ function PayoutsTab({ dashboard, payouts }: { dashboard: any; payouts: any[] }) 
         ))}
       </div>
 
-      {/* Payout history */}
+      {/* Payout history table */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         <div className="px-5 py-3 border-b border-border">
           <h3 className="text-sm font-semibold text-foreground">Payout History</h3>
         </div>
         {payouts.length === 0 ? (
-          <div className="py-12 text-center text-sm text-muted-foreground">No payouts yet. Payouts are processed by the admin.</div>
+          <div className="py-12 text-center text-sm text-muted-foreground">
+            No payouts yet. Payouts are processed by the admin.
+          </div>
         ) : (
-          <div className="divide-y divide-border">
-            {payouts.map(p => (
-              <div key={p.id} className="flex items-center gap-3 px-5 py-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground">₹{Number(p.amount).toLocaleString("en-IN")}</p>
-                  <p className="text-[11px] text-muted-foreground">{p.paymentMethod} · {new Date(p.requestedAt).toLocaleDateString("en-IN")}</p>
-                </div>
-                <Badge className={`text-[10px] capitalize ${statusMap[p.status] ?? ""}`}>{p.status}</Badge>
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30 text-muted-foreground text-xs">
+                  <th className="px-5 py-2.5 text-left font-medium">ID</th>
+                  <th className="px-5 py-2.5 text-left font-medium">Amount</th>
+                  <th className="px-5 py-2.5 text-left font-medium">Date</th>
+                  <th className="px-5 py-2.5 text-right font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payouts.map(p => (
+                  <Fragment key={p.id}>
+                    <tr className="border-b border-border last:border-0 hover:bg-muted/10 transition-colors">
+                      <td className="px-5 py-3 text-muted-foreground text-xs">{p.id}</td>
+                      <td className="px-5 py-3 font-semibold">{fmt(p.amount)}</td>
+                      <td className="px-5 py-3 text-muted-foreground text-xs">
+                        {fmtDate(p.processedAt ?? p.requestedAt)}
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center justify-end gap-2.5">
+                          <Badge className={`text-[10px] capitalize ${statusMap[p.status] ?? ""}`}>
+                            {p.status === "approved" ? "Paid" : p.status}
+                          </Badge>
+                          <button
+                            onClick={() => toggleDetails(p.id)}
+                            className="flex items-center gap-0.5 text-xs text-primary hover:underline cursor-pointer whitespace-nowrap"
+                          >
+                            Details
+                            <ChevronDown className={`w-3 h-3 transition-transform ${expanded === p.id ? "rotate-180" : ""}`} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {expanded === p.id && (
+                      <tr key={`${p.id}-detail`}>
+                        <td colSpan={4} className="px-5 py-4 bg-muted/5 border-b border-border">
+                          {loadingComm === p.id ? (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Loader2 className="w-3 h-3 animate-spin" /> Loading commissions…
+                            </div>
+                          ) : (
+                            <>
+                              <p className="font-semibold text-sm mb-0.5">Commissions</p>
+                              <p className="text-xs text-muted-foreground mb-3">
+                                The following commissions have been included in this payout.
+                              </p>
+                              {!commissions[p.id] || commissions[p.id]!.length === 0 ? (
+                                <p className="text-xs text-muted-foreground italic">No commission records found for this payout.</p>
+                              ) : (
+                                <div className="border border-border rounded-lg overflow-hidden">
+                                  <table className="w-full text-xs">
+                                    <thead className="bg-muted/40 text-muted-foreground">
+                                      <tr>
+                                        <th className="px-4 py-2 text-left font-medium">ID</th>
+                                        <th className="px-4 py-2 text-left font-medium">Amount</th>
+                                        <th className="px-4 py-2 text-left font-medium">Reference</th>
+                                        <th className="px-4 py-2 text-left font-medium">Type</th>
+                                        <th className="px-4 py-2 text-left font-medium">Date</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                      {commissions[p.id]!.map((c: any) => (
+                                        <tr key={c.id} className="hover:bg-muted/10">
+                                          <td className="px-4 py-2 text-muted-foreground">{c.id}</td>
+                                          <td className="px-4 py-2 font-medium">{fmt(c.commission)}</td>
+                                          <td className="px-4 py-2 text-muted-foreground">{c.paymentId ?? "—"}</td>
+                                          <td className="px-4 py-2">Sale</td>
+                                          <td className="px-4 py-2 text-muted-foreground">{fmtDate(c.createdAt)}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
