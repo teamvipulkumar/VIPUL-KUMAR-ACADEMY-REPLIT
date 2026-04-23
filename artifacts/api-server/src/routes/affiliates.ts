@@ -252,6 +252,7 @@ router.get("/upcoming-payout", requireAuth, async (req, res): Promise<void> => {
 
   const [settings] = await db.select().from(platformSettingsTable).limit(1);
   const payoutPeriodDays = settings?.payoutPeriodDays ?? 7;
+  const payoutWeekDay = settings?.payoutWeekDay ?? null;
 
   const commissions = await db.select({ amount: referralsTable.commission })
     .from(referralsTable)
@@ -272,11 +273,13 @@ router.get("/upcoming-payout", requireAuth, async (req, res): Promise<void> => {
   const lastPayoutDate = lastApproved?.processedAt ?? null;
 
   let nextDueDate: Date | null = null;
-  if (lastPayoutDate) {
+  if (payoutWeekDay === null && lastPayoutDate) {
     nextDueDate = new Date(lastPayoutDate);
     nextDueDate.setDate(nextDueDate.getDate() + payoutPeriodDays);
   }
-  const isDue = !nextDueDate || new Date() >= nextDueDate;
+  const isDue = payoutWeekDay !== null
+    ? new Date().getDay() === payoutWeekDay
+    : (!nextDueDate || new Date() >= nextDueDate);
 
   const [latestAction] = await db.select()
     .from(payoutRequestsTable)
@@ -874,6 +877,7 @@ router.get("/admin/all-payouts", requireAdmin, async (req, res): Promise<void> =
 router.get("/admin/scheduled-payouts", requireAdmin, async (req, res): Promise<void> => {
   const [settings] = await db.select().from(platformSettingsTable).limit(1);
   const payoutPeriodDays = settings?.payoutPeriodDays ?? 7;
+  const payoutWeekDay = settings?.payoutWeekDay ?? null;
 
   // Union: approved applications + any user with role='affiliate' (some affiliates may have been created directly)
   const approvedApps = await db.select({ userId: affiliateApplicationsTable.userId })
@@ -914,11 +918,13 @@ router.get("/admin/scheduled-payouts", requireAdmin, async (req, res): Promise<v
     const lastPayoutDate = lastApproved?.processedAt ?? null;
 
     let nextDueDate: Date | null = null;
-    if (lastPayoutDate) {
+    if (payoutWeekDay === null && lastPayoutDate) {
       nextDueDate = new Date(lastPayoutDate);
       nextDueDate.setDate(nextDueDate.getDate() + payoutPeriodDays);
     }
-    const isDue = !nextDueDate || new Date() >= nextDueDate;
+    const isDue = payoutWeekDay !== null
+      ? new Date().getDay() === payoutWeekDay
+      : (!nextDueDate || new Date() >= nextDueDate);
 
     const [latestAction] = await db.select()
       .from(payoutRequestsTable)
@@ -1022,18 +1028,19 @@ router.get("/admin/all-kyc", requireAdmin, async (req, res): Promise<void> => {
 /* ── Admin: affiliate program settings ── */
 router.get("/admin/settings", requireAdmin, async (req, res): Promise<void> => {
   const [settings] = await db.select().from(platformSettingsTable).limit(1);
-  if (!settings) { res.json({ commissionRate: 20, affiliateEnabled: true, affiliateCookieDays: 30, affiliateMinPayout: 500, payoutPeriodDays: 7 }); return; }
+  if (!settings) { res.json({ commissionRate: 20, affiliateEnabled: true, affiliateCookieDays: 30, affiliateMinPayout: 500, payoutPeriodDays: 7, payoutWeekDay: null }); return; }
   res.json({
     commissionRate: settings.commissionRate,
     affiliateEnabled: settings.affiliateEnabled,
     affiliateCookieDays: settings.affiliateCookieDays,
     affiliateMinPayout: settings.affiliateMinPayout,
     payoutPeriodDays: settings.payoutPeriodDays,
+    payoutWeekDay: settings.payoutWeekDay ?? null,
   });
 });
 
 router.post("/admin/settings", requireAdmin, async (req, res): Promise<void> => {
-  const { commissionRate, affiliateEnabled, affiliateCookieDays, affiliateMinPayout, payoutPeriodDays } = req.body;
+  const { commissionRate, affiliateEnabled, affiliateCookieDays, affiliateMinPayout, payoutPeriodDays, payoutWeekDay } = req.body;
   const [existing] = await db.select().from(platformSettingsTable).limit(1);
   const updates = {
     ...(commissionRate !== undefined && { commissionRate: parseInt(String(commissionRate)) }),
@@ -1041,6 +1048,7 @@ router.post("/admin/settings", requireAdmin, async (req, res): Promise<void> => 
     ...(affiliateCookieDays !== undefined && { affiliateCookieDays: parseInt(String(affiliateCookieDays)) }),
     ...(affiliateMinPayout !== undefined && { affiliateMinPayout: parseInt(String(affiliateMinPayout)) }),
     ...(payoutPeriodDays !== undefined && { payoutPeriodDays: parseInt(String(payoutPeriodDays)) }),
+    ...(payoutWeekDay !== undefined && { payoutWeekDay: payoutWeekDay === null ? null : parseInt(String(payoutWeekDay)) }),
   };
   if (existing) {
     await db.update(platformSettingsTable).set(updates).where(eq(platformSettingsTable.id, existing.id));

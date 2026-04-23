@@ -124,6 +124,7 @@ type AffSettings = {
   affiliateCookieDays: number;
   affiliateMinPayout: number;
   payoutPeriodDays: number;
+  payoutWeekDay: number | null;
 };
 
 type ScheduledPayout = {
@@ -870,12 +871,12 @@ function PayoutsTab() {
   };
 
   /* Scheduled computed stats */
-  const dueNow  = scheduled.filter(p => p.isDue && p.latestAction?.status !== "hold" && p.latestAction?.status !== "approved");
+  const dueNow  = scheduled.filter(p => p.isDue && p.latestAction?.status !== "hold");
   const onHold  = scheduled.filter(p => p.latestAction?.status === "hold");
   const totalDueAmt = dueNow.reduce((s, p) => s + p.unpaidAmount, 0);
 
   const filteredScheduled = scheduled.filter(p => {
-    if (schedFilter === "due")  return p.isDue && p.latestAction?.status !== "hold" && p.latestAction?.status !== "approved";
+    if (schedFilter === "due")  return p.isDue && p.latestAction?.status !== "hold";
     if (schedFilter === "hold") return p.latestAction?.status === "hold";
     return true;
   });
@@ -1689,7 +1690,7 @@ function SalesTab() {
 }
 
 function SettingsTab() {
-  const [settings, setSettings] = useState<AffSettings>({ commissionRate: 20, affiliateEnabled: true, affiliateCookieDays: 30, affiliateMinPayout: 500, payoutPeriodDays: 7 });
+  const [settings, setSettings] = useState<AffSettings>({ commissionRate: 20, affiliateEnabled: true, affiliateCookieDays: 30, affiliateMinPayout: 500, payoutPeriodDays: 7, payoutWeekDay: null });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -1758,44 +1759,111 @@ function SettingsTab() {
         </div>
       </div>
 
-      {/* Payout Period */}
-      <div className="bg-card border border-border rounded-xl p-5">
-        <h3 className="font-semibold text-sm mb-1 flex items-center gap-2"><Calendar className="w-4 h-4 text-primary" />Payout Schedule</h3>
-        <p className="text-[11px] text-muted-foreground mb-4">How often affiliates can request or receive automatic payouts.</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-          {[
-            { label: "Every 3 Days", days: 3 },
-            { label: "Every Week",   days: 7 },
-            { label: "Every 2 Weeks", days: 14 },
-            { label: "Every Month",  days: 30 },
-          ].map(opt => (
-            <button
-              key={opt.days}
-              onClick={() => setSettings(s => ({ ...s, payoutPeriodDays: opt.days }))}
-              className={`px-3 py-2.5 rounded-lg border text-xs font-medium transition-all text-center cursor-pointer ${
-                settings.payoutPeriodDays === opt.days
-                  ? "bg-primary/15 border-primary/40 text-primary"
-                  : "bg-background border-border text-muted-foreground hover:text-foreground hover:border-border/80"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
+      {/* Payout Schedule */}
+      <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        <div>
+          <h3 className="font-semibold text-sm mb-1 flex items-center gap-2"><Calendar className="w-4 h-4 text-primary" />Payout Schedule</h3>
+          <p className="text-[11px] text-muted-foreground">Choose a fixed weekly payout day, or use a rolling period.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="space-y-1.5 flex-1">
-            <Label className="text-xs text-muted-foreground">Custom period (days)</Label>
-            <Input
-              type="number" min={1} max={365}
-              value={settings.payoutPeriodDays}
-              onChange={e => setSettings(s => ({ ...s, payoutPeriodDays: parseInt(e.target.value) || 7 }))}
-              className="bg-background border-border h-9 text-sm"
-            />
-          </div>
-          <div className="pt-5 text-xs text-muted-foreground flex-shrink-0">
-            = every <span className="text-foreground font-semibold">{settings.payoutPeriodDays}</span> day{settings.payoutPeriodDays !== 1 ? "s" : ""}
-          </div>
+
+        {/* Mode toggle */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setSettings(s => ({ ...s, payoutWeekDay: null }))}
+            className={`flex-1 px-3 py-2.5 rounded-lg border text-xs font-medium transition-all text-center cursor-pointer ${
+              settings.payoutWeekDay === null
+                ? "bg-primary/15 border-primary/40 text-primary"
+                : "bg-background border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Rolling Period (every N days)
+          </button>
+          <button
+            onClick={() => setSettings(s => ({ ...s, payoutWeekDay: s.payoutWeekDay ?? 1 }))}
+            className={`flex-1 px-3 py-2.5 rounded-lg border text-xs font-medium transition-all text-center cursor-pointer ${
+              settings.payoutWeekDay !== null
+                ? "bg-primary/15 border-primary/40 text-primary"
+                : "bg-background border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Fixed Weekly Day
+          </button>
         </div>
+
+        {/* Rolling period mode */}
+        {settings.payoutWeekDay === null && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { label: "Every 3 Days", days: 3 },
+                { label: "Every Week",   days: 7 },
+                { label: "Every 2 Weeks", days: 14 },
+                { label: "Every Month",  days: 30 },
+              ].map(opt => (
+                <button
+                  key={opt.days}
+                  onClick={() => setSettings(s => ({ ...s, payoutPeriodDays: opt.days }))}
+                  className={`px-3 py-2.5 rounded-lg border text-xs font-medium transition-all text-center cursor-pointer ${
+                    settings.payoutPeriodDays === opt.days
+                      ? "bg-primary/15 border-primary/40 text-primary"
+                      : "bg-background border-border text-muted-foreground hover:text-foreground hover:border-border/80"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="space-y-1.5 flex-1">
+                <Label className="text-xs text-muted-foreground">Custom period (days)</Label>
+                <Input
+                  type="number" min={1} max={365}
+                  value={settings.payoutPeriodDays}
+                  onChange={e => setSettings(s => ({ ...s, payoutPeriodDays: parseInt(e.target.value) || 7 }))}
+                  className="bg-background border-border h-9 text-sm"
+                />
+              </div>
+              <div className="pt-5 text-xs text-muted-foreground flex-shrink-0">
+                = every <span className="text-foreground font-semibold">{settings.payoutPeriodDays}</span> day{settings.payoutPeriodDays !== 1 ? "s" : ""}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Fixed weekly day mode */}
+        {settings.payoutWeekDay !== null && (
+          <div className="space-y-2">
+            <p className="text-[11px] text-muted-foreground">Every week on this day, all affiliates with pending earnings will show as Due Now.</p>
+            <div className="grid grid-cols-7 gap-1.5">
+              {[
+                { label: "Sun", day: 0 },
+                { label: "Mon", day: 1 },
+                { label: "Tue", day: 2 },
+                { label: "Wed", day: 3 },
+                { label: "Thu", day: 4 },
+                { label: "Fri", day: 5 },
+                { label: "Sat", day: 6 },
+              ].map(opt => (
+                <button
+                  key={opt.day}
+                  onClick={() => setSettings(s => ({ ...s, payoutWeekDay: opt.day }))}
+                  className={`py-2.5 rounded-lg border text-xs font-semibold transition-all text-center cursor-pointer ${
+                    settings.payoutWeekDay === opt.day
+                      ? "bg-primary border-primary text-white"
+                      : "bg-background border-border text-muted-foreground hover:text-foreground hover:border-border/80"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {settings.payoutWeekDay !== null && (
+              <p className="text-[11px] text-primary">
+                Payouts due every {["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][settings.payoutWeekDay]}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <Button onClick={save} disabled={saving} className="gap-1.5">
