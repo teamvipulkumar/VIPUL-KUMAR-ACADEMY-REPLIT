@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Users, BookOpen, Share2, CreditCard, Tag, Settings, ArrowLeft, Menu, X, ShoppingCart, GraduationCap, Landmark, Mail, Layers, FileText, HardDrive, ShieldCheck, Megaphone } from "lucide-react";
+import { LayoutDashboard, Users, BookOpen, Share2, Tag, Settings, ArrowLeft, Menu, X, ShoppingCart, GraduationCap, Landmark, Mail, Layers, FileText, HardDrive, ShieldCheck, Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 
@@ -22,7 +22,6 @@ const PERMISSION_MAP: Record<string, string> = {
   "/admin/enrollments": "enrollments",
   "/admin/coupons": "coupons",
   "/admin/affiliates": "affiliates",
-  "/admin/payouts": "payouts",
   "/admin/courses": "courses",
   "/admin/pages": "pages",
   "/admin/files": "files",
@@ -48,7 +47,6 @@ const navGroups = [
       { href: "/admin/enrollments", icon: GraduationCap, label: "Enrollments" },
       { href: "/admin/coupons", icon: Tag, label: "Coupons" },
       { href: "/admin/affiliates", icon: Share2, label: "Affiliates" },
-      { href: "/admin/payouts", icon: CreditCard, label: "Payouts" },
     ],
   },
   {

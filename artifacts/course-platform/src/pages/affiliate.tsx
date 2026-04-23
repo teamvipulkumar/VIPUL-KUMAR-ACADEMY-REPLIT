@@ -14,7 +14,7 @@ import {
 import {
   BadgeIndianRupee, Users, MousePointerClick, Copy, Check, TrendingUp,
   Clock, CheckCircle2, XCircle, AlertCircle, Link2, Image, FileText,
-  ShieldCheck, Wallet, Zap, Building2, RefreshCw, Download, Plus,
+  ShieldCheck, Zap, Building2, RefreshCw, Download, Plus,
   Trash2, Eye, EyeOff, Send, ChevronRight, Activity, Target,
   Calendar, Star, Lock, Loader2, Menu, X, ExternalLink, Share2,
   ArrowUpRight, TrendingDown, Banknote, Info, Percent, Cookie,
@@ -28,7 +28,7 @@ async function apiFetch(path: string, opts?: RequestInit) {
   return res;
 }
 
-type Tab = "earnings" | "sales" | "links" | "clicks" | "creatives" | "kyc" | "payouts" | "pixel" | "bank";
+type Tab = "earnings" | "sales" | "links" | "clicks" | "creatives" | "kyc" | "pixel" | "bank";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "earnings",   label: "Dashboard",      icon: <BadgeIndianRupee className="w-4 h-4" /> },
@@ -37,7 +37,6 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "clicks",     label: "Clicks",         icon: <MousePointerClick className="w-4 h-4" /> },
   { id: "creatives",  label: "Creatives",      icon: <Image className="w-4 h-4" /> },
   { id: "kyc",        label: "KYC",            icon: <ShieldCheck className="w-4 h-4" /> },
-  { id: "payouts",    label: "Payouts",        icon: <Wallet className="w-4 h-4" /> },
   { id: "pixel",      label: "Pixel",          icon: <Zap className="w-4 h-4" /> },
   { id: "bank",       label: "Bank",           icon: <Building2 className="w-4 h-4" /> },
 ];
@@ -99,11 +98,10 @@ function ApplyForm({ user, onSubmitted }: { user: any; onSubmitted: () => void }
         </div>
 
         {/* Perks */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-2 gap-3 mb-6">
           {[
             { icon: <BadgeIndianRupee className="w-4 h-4 text-green-400" />, label: "Up to 30%", sub: "Commission" },
             { icon: <Activity className="w-4 h-4 text-blue-400" />, label: "Real-time", sub: "Analytics" },
-            { icon: <Wallet className="w-4 h-4 text-amber-400" />, label: "Fast", sub: "Payouts" },
           ].map(p => (
             <div key={p.label} className="bg-card border border-border rounded-xl p-3 text-center">
               <div className="flex justify-center mb-1">{p.icon}</div>
@@ -241,7 +239,6 @@ function AffiliateDashboard({ user }: { user: any }) {
   const [dashboard, setDashboard] = useState<any>(null);
   const [clicks, setClicks] = useState<any>(null);
   const [sales, setSales] = useState<any[]>([]);
-  const [payouts, setPayouts] = useState<any[]>([]);
   const [creatives, setCreatives] = useState<any[]>([]);
   const [kyc, setKyc] = useState<any>(null);
   const [bank, setBank] = useState<any>(null);
@@ -263,18 +260,16 @@ function AffiliateDashboard({ user }: { user: any }) {
 
   const loadDashboard = async () => {
     setRefreshing(true);
-    const [d, c, s, p, cr, k, b, px] = await Promise.all([
+    const [d, c, s, cr, k, b, px] = await Promise.all([
       apiFetch("/api/affiliate/dashboard").then(r => r.json()),
       apiFetch("/api/affiliate/clicks").then(r => r.json()),
       apiFetch("/api/affiliate/sales").then(r => r.json()),
-      apiFetch("/api/affiliate/payouts").then(r => r.json()),
       apiFetch("/api/affiliate/creatives").then(r => r.json()),
       apiFetch("/api/affiliate/kyc").then(r => r.ok ? r.json() : null),
       apiFetch("/api/affiliate/bank").then(r => r.ok ? r.json() : null),
       apiFetch("/api/affiliate/pixel").then(r => r.ok ? r.json() : null),
     ]);
     setDashboard(d); setClicks(c); setSales(Array.isArray(s) ? s : []);
-    setPayouts(Array.isArray(p) ? p : []);
     setCreatives(Array.isArray(cr) ? cr : []); setKyc(k); setBank(b); setPixel(px);
     setLoading(false);
     setRefreshing(false);
@@ -483,10 +478,9 @@ function AffiliateDashboard({ user }: { user: any }) {
 
               {/* Summary strip */}
               <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="grid grid-cols-3 divide-x divide-border">
+                <div className="grid grid-cols-2 divide-x divide-border">
                   {[
                     { label: "Total Earned", value: `₹${(dashboard?.totalEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-foreground" },
-                    { label: "Pending Payout", value: `₹${(dashboard?.pendingEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-amber-400" },
                     { label: "Total Paid", value: `₹${(dashboard?.paidEarnings ?? 0).toLocaleString("en-IN")}`, color: "text-green-400" },
                   ].map(s => (
                     <div key={s.label} className="text-center px-3 py-4">
@@ -675,14 +669,6 @@ function AffiliateDashboard({ user }: { user: any }) {
             <div>
               <TabHeader title="KYC Verification" subtitle="Submit identity documents to enable payouts." />
               <KycTab kyc={kyc} onSaved={k => setKyc(k)} />
-            </div>
-          )}
-
-          {/* ── Payouts Tab ── */}
-          {tab === "payouts" && (
-            <div>
-              <TabHeader title="Payouts" subtitle="Request withdrawals and view your payout history." />
-              <PayoutsTab dashboard={dashboard} payouts={payouts} onRequested={loadDashboard} />
             </div>
           )}
 
@@ -1154,97 +1140,6 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
             {saving ? "Submitting…" : kyc ? "Resubmit KYC" : "Submit KYC"}
           </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Payouts Tab ─── */
-function PayoutsTab({ dashboard, payouts, onRequested }: { dashboard: any; payouts: any[]; onRequested: () => void }) {
-  const { toast } = useToast();
-  const [amount, setAmount] = useState("");
-  const [method, setMethod] = useState("Bank Transfer");
-  const [details, setDetails] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const request = async () => {
-    if (!amount || !details) { toast({ title: "Fill all fields", variant: "destructive" }); return; }
-    if (parseFloat(amount) > (dashboard?.pendingEarnings ?? 0)) {
-      toast({ title: "Amount exceeds withdrawable balance", variant: "destructive" }); return;
-    }
-    setSaving(true);
-    try {
-      const res = await apiFetch("/api/affiliate/payout-request", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: parseFloat(amount), paymentMethod: method, paymentDetails: details }),
-      });
-      if (!res.ok) throw new Error("Failed");
-      toast({ title: "Payout requested!", description: "Admin will process it soon." });
-      setAmount(""); setDetails("");
-      onRequested();
-    } catch { toast({ title: "Failed to request payout", variant: "destructive" }); }
-    finally { setSaving(false); }
-  };
-
-  const statusMap: Record<string, string> = {
-    pending: "text-amber-400 border-amber-400/30 bg-amber-400/10",
-    approved: "text-green-400 border-green-400/30 bg-green-400/10",
-    rejected: "text-red-400 border-red-400/30 bg-red-400/10",
-  };
-
-  return (
-    <div className="space-y-5">
-      {/* Balance cards */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: "Total Earned", value: dashboard?.totalEarnings ?? 0, color: "text-foreground" },
-          { label: "Withdrawable", value: dashboard?.pendingEarnings ?? 0, color: "text-amber-400" },
-          { label: "Paid Out", value: dashboard?.paidEarnings ?? 0, color: "text-green-400" },
-        ].map(s => (
-          <div key={s.label} className="bg-card border border-border rounded-xl p-4 text-center">
-            <p className={`text-xl font-bold ${s.color}`}>₹{Number(s.value).toLocaleString("en-IN")}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-5">
-        {/* Request form */}
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">Request Withdrawal</h3>
-          <Input type="number" placeholder={`Amount (max ₹${(dashboard?.pendingEarnings ?? 0).toLocaleString("en-IN")})`}
-            value={amount} onChange={e => setAmount(e.target.value)} className="bg-background border-border" />
-          <Input placeholder="Payment method (Bank, UPI, etc.)" value={method}
-            onChange={e => setMethod(e.target.value)} className="bg-background border-border" />
-          <Input placeholder="Account / UPI details" value={details}
-            onChange={e => setDetails(e.target.value)} className="bg-background border-border" />
-          <Button onClick={request} disabled={saving} className="w-full bg-primary gap-2">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
-            {saving ? "Processing…" : "Request Payout"}
-          </Button>
-        </div>
-
-        {/* Payout history */}
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
-          <div className="px-5 py-3 border-b border-border">
-            <h3 className="text-sm font-semibold text-foreground">Payout History</h3>
-          </div>
-          {payouts.length === 0 ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">No payouts yet.</div>
-          ) : (
-            <div className="divide-y divide-border max-h-72 overflow-y-auto">
-              {payouts.map(p => (
-                <div key={p.id} className="flex items-center gap-3 px-5 py-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">₹{Number(p.amount).toLocaleString("en-IN")}</p>
-                    <p className="text-[11px] text-muted-foreground">{p.paymentMethod} · {new Date(p.requestedAt).toLocaleDateString("en-IN")}</p>
-                  </div>
-                  <Badge className={`text-[10px] capitalize ${statusMap[p.status] ?? ""}`}>{p.status}</Badge>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>
