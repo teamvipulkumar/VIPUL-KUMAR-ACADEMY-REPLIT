@@ -1651,28 +1651,6 @@ function SettingsTab() {
         </div>
       </div>
 
-      {/* Commission */}
-      <div className="bg-card border border-border rounded-xl p-5">
-        <h3 className="font-semibold text-sm mb-4 flex items-center gap-2"><Percent className="w-4 h-4 text-primary" />Commission</h3>
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Default Commission Rate (%)</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number" min={0} max={100}
-                value={settings.commissionRate}
-                onChange={e => setSettings(s => ({ ...s, commissionRate: parseInt(e.target.value) || 0 }))}
-                className="bg-background border-border h-9 w-24 text-sm"
-              />
-              <span className="text-sm text-muted-foreground">% of sale amount</span>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground bg-background border border-border rounded-lg p-3">
-            Individual affiliates can have a custom commission rate set in the <strong>Overview</strong> tab. This is the default for all others.
-          </p>
-        </div>
-      </div>
-
       {/* Cookie & Payout */}
       <div className="bg-card border border-border rounded-xl p-5">
         <h3 className="font-semibold text-sm mb-4 flex items-center gap-2"><BadgeIndianRupee className="w-4 h-4 text-primary" />Tracking & Payouts</h3>
