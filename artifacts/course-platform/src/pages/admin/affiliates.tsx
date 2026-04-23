@@ -731,29 +731,20 @@ function ScheduledPayoutCard({
 }
 
 function PayoutsTab() {
-  const [view, setView] = useState<"scheduled" | "requests" | "paid">("scheduled");
+  const [view, setView] = useState<"scheduled" | "paid">("scheduled");
   const [scheduled, setScheduled] = useState<ScheduledPayout[]>([]);
-  const [requests, setRequests]   = useState<Payout[]>([]);
   const [paid, setPaid]           = useState<Payout[]>([]);
   const [loading, setLoading]     = useState(true);
   const [schedFilter, setSchedFilter] = useState<"all" | "due" | "hold">("all");
-  const [reqFilter, setReqFilter]     = useState<"all" | "pending" | "approved" | "hold" | "rejected">("all");
   const [paidSearch, setPaidSearch]   = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [rejectState, setRejectState]     = useState<Record<number, { open: boolean; note: string }>>({});
-  const [rejectNote, setRejectNote]       = useState<Record<number, string>>({});
   const [viewPayout, setViewPayout]       = useState<ScheduledPayout | null>(null);
   const { toast } = useToast();
 
   const loadScheduled = useCallback(async () => {
     setLoading(true);
     try { const r = await apiFetch("/api/affiliate/admin/scheduled-payouts"); if (r.ok) setScheduled(await r.json()); }
-    finally { setLoading(false); }
-  }, []);
-
-  const loadRequests = useCallback(async () => {
-    setLoading(true);
-    try { const r = await apiFetch("/api/affiliate/admin/all-payouts"); if (r.ok) setRequests(await r.json()); }
     finally { setLoading(false); }
   }, []);
 
@@ -765,9 +756,8 @@ function PayoutsTab() {
 
   useEffect(() => {
     if (view === "scheduled") loadScheduled();
-    else if (view === "requests") loadRequests();
     else loadPaid();
-  }, [view, loadScheduled, loadRequests, loadPaid]);
+  }, [view, loadScheduled, loadPaid]);
 
   const doScheduledAction = async (affiliateId: number, action: "paid" | "hold" | "reject", note?: string) => {
     setActionLoading(`${action}-${affiliateId}`);
@@ -787,39 +777,6 @@ function PayoutsTab() {
     } finally { setActionLoading(null); }
   };
 
-  const doApproveReq = async (id: number) => {
-    setActionLoading(`approve-${id}`);
-    try {
-      const r = await apiFetch(`/api/affiliate/admin/payouts/${id}/approve`, { method: "POST" });
-      if (r.ok) { toast({ title: "Payout approved" }); loadRequests(); }
-      else toast({ title: "Failed", variant: "destructive" });
-    } finally { setActionLoading(null); }
-  };
-
-  const doHoldReq = async (id: number) => {
-    setActionLoading(`hold-${id}`);
-    try {
-      const r = await apiFetch(`/api/affiliate/admin/payouts/${id}/hold`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ note: rejectNote[id] || "" }),
-      });
-      if (r.ok) { toast({ title: "Put on hold" }); loadRequests(); }
-      else toast({ title: "Failed", variant: "destructive" });
-    } finally { setActionLoading(null); }
-  };
-
-  const doRejectReq = async (id: number) => {
-    setActionLoading(`reject-${id}`);
-    try {
-      const r = await apiFetch(`/api/affiliate/admin/payouts/${id}/reject`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rejectionReason: rejectNote[id] || "Rejected by admin" }),
-      });
-      if (r.ok) { toast({ title: "Payout rejected" }); loadRequests(); }
-      else toast({ title: "Failed", variant: "destructive" });
-    } finally { setActionLoading(null); }
-  };
-
   /* Scheduled computed stats */
   const dueNow  = scheduled.filter(p => p.isDue && p.latestAction?.status !== "hold" && p.latestAction?.status !== "approved");
   const onHold  = scheduled.filter(p => p.latestAction?.status === "hold");
@@ -830,10 +787,6 @@ function PayoutsTab() {
     if (schedFilter === "hold") return p.latestAction?.status === "hold";
     return true;
   });
-
-  /* Request stats */
-  const pendingReqs  = requests.filter(p => p.status === "pending");
-  const filteredReqs = requests.filter(p => reqFilter === "all" || p.status === reqFilter);
 
   return (
     <div className="space-y-4">
@@ -852,7 +805,6 @@ function PayoutsTab() {
       <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5 w-fit">
         {[
           { id: "scheduled", label: "Scheduled Payouts" },
-          { id: "requests",  label: "Payout Requests"  },
           { id: "paid",      label: "Paid"             },
         ].map(v => (
           <button key={v.id} onClick={() => { setView(v.id as any); setLoading(true); }}
@@ -916,90 +868,6 @@ function PayoutsTab() {
                   onView={() => setViewPayout(p)}
                   onAction={doScheduledAction}
                 />
-              ))}
-            </div>
-          )}
-        </>
-      )}
-      {/* ── REQUESTS VIEW ── */}
-      {view === "requests" && (
-        <>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-card border border-border rounded-xl p-4">
-              <p className="text-xs text-muted-foreground mb-1">Pending Requests</p>
-              <p className="text-xl font-bold text-amber-400">{pendingReqs.length}</p>
-            </div>
-            <div className="bg-card border border-border rounded-xl p-4">
-              <p className="text-xs text-muted-foreground mb-1">Pending Amount</p>
-              <p className="text-xl font-bold text-amber-400">{fmt(pendingReqs.reduce((s, p) => s + p.amount, 0))}</p>
-            </div>
-            <div className="bg-card border border-border rounded-xl p-4">
-              <p className="text-xs text-muted-foreground mb-1">Total Requests</p>
-              <p className="text-xl font-bold text-foreground">{requests.length}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5 w-fit">
-            {(["all", "pending", "approved", "hold", "rejected"] as const).map(f => (
-              <button key={f} onClick={() => setReqFilter(f)}
-                className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors cursor-pointer ${reqFilter === f ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
-                {f}
-              </button>
-            ))}
-          </div>
-
-          {loading ? (
-            <div className="space-y-2">{[1, 2, 3].map(i => <div key={i} className="h-24 bg-card rounded animate-pulse" />)}</div>
-          ) : filteredReqs.length === 0 ? (
-            <div className="bg-card border border-border rounded-xl py-12 text-center">
-              <CreditCard className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-              <p className="font-semibold">No payout requests</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredReqs.map(p => (
-                <div key={p.id} className="bg-card border border-border rounded-xl overflow-hidden">
-                  <div className="p-4 flex flex-wrap items-start gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                        <p className="font-semibold text-sm">{p.userName}</p>
-                        <StatusBadge status={p.status} />
-                      </div>
-                      <p className="text-xs text-muted-foreground">{p.userEmail} · Requested {fmtDate(p.requestedAt)}</p>
-                      <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
-                        <div><span className="text-muted-foreground">Amount: </span><span className="font-bold text-green-400">{fmt(p.amount)}</span></div>
-                        <div><span className="text-muted-foreground">Method: </span><span>{p.paymentMethod}</span></div>
-                        {(p as any).userPhone && <div><span className="text-muted-foreground">Phone: </span><span>{(p as any).userPhone}</span></div>}
-                        {(p as any).panNumber  && <div><span className="text-muted-foreground">PAN: </span><span className="font-mono tracking-widest">{(p as any).panNumber}</span></div>}
-                        {p.bankName && <div><span className="text-muted-foreground">Bank: </span><span>{p.bankName}</span></div>}
-                        {(p as any).accountHolderName && <div><span className="text-muted-foreground">A/C Holder: </span><span>{(p as any).accountHolderName}</span></div>}
-                        {p.accountNumber && <div><span className="text-muted-foreground">A/C No: </span><span className="font-mono">{p.accountNumber}</span></div>}
-                        {(p as any).ifscCode && <div><span className="text-muted-foreground">IFSC: </span><span className="font-mono">{(p as any).ifscCode}</span></div>}
-                        {p.rejectionReason && <div className="col-span-2 text-red-400"><span className="font-medium">Note: </span>{p.rejectionReason}</div>}
-                      </div>
-                    </div>
-                    {p.status === "pending" && (
-                      <div className="space-y-2 min-w-[190px]">
-                        <Input value={rejectNote[p.id] ?? ""} onChange={e => setRejectNote(r => ({ ...r, [p.id]: e.target.value }))}
-                          placeholder="Note (for hold/reject)" className="bg-background border-border h-7 text-xs" />
-                        <div className="flex gap-1.5 flex-wrap">
-                          <Button onClick={() => doApproveReq(p.id)} disabled={!!actionLoading} size="sm"
-                            className="bg-green-500 hover:bg-green-600 text-white gap-1 h-7 text-xs">
-                            {actionLoading === `approve-${p.id}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}Approve
-                          </Button>
-                          <Button onClick={() => doHoldReq(p.id)} disabled={!!actionLoading} size="sm" variant="outline"
-                            className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 gap-1 h-7 text-xs">
-                            {actionLoading === `hold-${p.id}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}Hold
-                          </Button>
-                          <Button onClick={() => doRejectReq(p.id)} disabled={!!actionLoading} size="sm" variant="outline"
-                            className="border-red-500/30 text-red-400 hover:bg-red-500/10 gap-1 h-7 text-xs">
-                            {actionLoading === `reject-${p.id}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}Reject
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
               ))}
             </div>
           )}
