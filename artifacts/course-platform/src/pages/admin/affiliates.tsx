@@ -400,6 +400,14 @@ function AppCard({ app, commissionGroups, onAction }: { app: Application; commis
           </div>
           <p className="text-xs text-muted-foreground">{app.email} · Applied {fmtDate(app.createdAt)}</p>
         </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer flex-shrink-0 h-7 px-2.5 text-xs"
+          onClick={() => setShowProfile(true)}
+        >
+          <Eye className="w-3 h-3" />View Profile
+        </Button>
         <button onClick={() => setExpanded(e => !e)} className="text-muted-foreground hover:text-foreground flex-shrink-0 cursor-pointer">
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
@@ -411,18 +419,6 @@ function AppCard({ app, commissionGroups, onAction }: { app: Application; commis
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1"><MessageSquare className="w-3 h-3" />Promotion Plan</p>
             <p className="text-sm text-foreground leading-relaxed bg-background border border-border rounded-lg p-3">{app.promoteDescription}</p>
-          </div>
-
-          {/* View Profile */}
-          <div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer"
-              onClick={() => setShowProfile(true)}
-            >
-              <Eye className="w-3.5 h-3.5" />View Profile
-            </Button>
           </div>
 
           {/* Admin note from rejection */}
