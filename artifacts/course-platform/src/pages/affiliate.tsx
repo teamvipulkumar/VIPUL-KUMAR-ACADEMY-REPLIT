@@ -1238,10 +1238,7 @@ function PayoutsTab({ dashboard, payouts }: { dashboard: any; payouts: any[] }) 
                         {fmtDate(p.processedAt ?? p.requestedAt)}
                       </td>
                       <td className="px-5 py-3">
-                        <div className="flex items-center justify-end gap-2.5">
-                          <Badge className={`text-[10px] capitalize ${statusMap[p.status] ?? ""}`}>
-                            {p.status === "approved" ? "Paid" : p.status}
-                          </Badge>
+                        <div className="flex flex-col items-end gap-1.5">
                           <button
                             onClick={() => toggleDetails(p.id)}
                             className="flex items-center gap-0.5 text-xs text-primary hover:underline cursor-pointer whitespace-nowrap"
@@ -1249,6 +1246,9 @@ function PayoutsTab({ dashboard, payouts }: { dashboard: any; payouts: any[] }) 
                             Details
                             <ChevronDown className={`w-3 h-3 transition-transform ${expanded === p.id ? "rotate-180" : ""}`} />
                           </button>
+                          <Badge className={`text-[10px] capitalize ${statusMap[p.status] ?? ""}`}>
+                            {p.status === "approved" ? "Paid" : p.status}
+                          </Badge>
                         </div>
                       </td>
                     </tr>
