@@ -585,16 +585,6 @@ function ViewProfileDialog({ userId, onClose }: { userId: number; onClose: () =>
                             {new Date(b.purchasedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                           </span>
                         </div>
-                        {b.courses.length > 0 && (
-                          <div className="border-t border-amber-500/10 divide-y divide-border/50">
-                            {b.courses.map(c => (
-                              <div key={c.id} className="flex items-center gap-2 px-4 py-2 bg-card/20">
-                                <GraduationCap className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                                <span className="text-[11px] text-muted-foreground truncate">{c.title}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>
