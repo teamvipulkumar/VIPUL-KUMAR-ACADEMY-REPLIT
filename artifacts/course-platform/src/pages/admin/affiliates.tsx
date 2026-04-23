@@ -29,6 +29,9 @@ type Affiliate = {
   role: string;
   isBlocked: boolean;
   commissionOverride: number | null;
+  commissionGroupId: number | null;
+  commissionGroupName: string | null;
+  commissionGroupRate: number | null;
   approvedAt: string | null;
   totalClicks: number;
   totalConversions: number;
@@ -36,6 +39,14 @@ type Affiliate = {
   pendingPayout: number;
   paidOut: number;
   kycStatus: string;
+};
+
+type CommissionGroup = {
+  id: number;
+  name: string;
+  description: string | null;
+  commissionRate: number;
+  affiliateCount: number;
 };
 
 type Application = {
@@ -143,18 +154,24 @@ function fmtDate(d: string) { return new Date(d).toLocaleDateString("en-IN", { d
 ══════════════════════════════════════════ */
 function OverviewTab() {
   const [affiliates, setAffiliates] = useState<Affiliate[]>([]);
+  const [groups, setGroups] = useState<CommissionGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [editingCommission, setEditingCommission] = useState<number | null>(null);
   const [commissionVal, setCommissionVal] = useState("");
+  const [assigningGroup, setAssigningGroup] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const { toast } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiFetch("/api/affiliate/admin/all-affiliates");
-      if (res.ok) setAffiliates(await res.json());
+      const [affRes, grpRes] = await Promise.all([
+        apiFetch("/api/affiliate/admin/all-affiliates"),
+        apiFetch("/api/affiliate/admin/commission-groups"),
+      ]);
+      if (affRes.ok) setAffiliates(await affRes.json());
+      if (grpRes.ok) setGroups(await grpRes.json());
     } finally { setLoading(false); }
   }, []);
 
@@ -187,6 +204,19 @@ function OverviewTab() {
       });
       if (res.ok) { toast({ title: "Commission updated" }); setEditingCommission(null); load(); }
       else toast({ title: "Failed to update commission", variant: "destructive" });
+    } finally { setActionLoading(null); }
+  };
+
+  const doAssignGroup = async (appId: number, groupId: number | null) => {
+    setActionLoading(`grp-${appId}`);
+    try {
+      const res = await apiFetch(`/api/affiliate/admin/affiliates/${appId}/commission-group`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groupId }),
+      });
+      if (res.ok) { toast({ title: groupId ? "Group assigned" : "Group removed" }); setAssigningGroup(null); load(); }
+      else toast({ title: "Failed to assign group", variant: "destructive" });
     } finally { setActionLoading(null); }
   };
 
@@ -223,9 +253,9 @@ function OverviewTab() {
         </div>
       ) : (
         <div className="border border-border rounded-xl overflow-x-auto">
-          <table className="w-full min-w-[900px]">
+          <table className="w-full min-w-[1050px]">
             <thead className="bg-card border-b border-border">
-              <tr>{["Affiliate", "Code", "Clicks", "Conv.", "Earned", "Pending", "KYC", "Commission", "Status", "Actions"].map(h =>
+              <tr>{["Affiliate", "Code", "Clicks", "Conv.", "Earned", "Pending", "KYC", "Commission", "Group", "Status", "Actions"].map(h =>
                 <th key={h} className="text-left text-xs font-medium text-muted-foreground px-3 py-3">{h}</th>
               )}</tr>
             </thead>
@@ -259,8 +289,44 @@ function OverviewTab() {
                       </div>
                     ) : (
                       <div className="flex items-center gap-1">
-                        <span className="text-xs">{a.commissionOverride != null ? `${a.commissionOverride}% (custom)` : "Default"}</span>
+                        <span className="text-xs">
+                          {a.commissionOverride != null ? `${a.commissionOverride}% (custom)` : "Default"}
+                        </span>
                         <button onClick={() => { setEditingCommission(a.applicationId); setCommissionVal(String(a.commissionOverride ?? "")); }} className="text-muted-foreground hover:text-primary cursor-pointer">
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                  {/* Group */}
+                  <td className="px-3 py-3">
+                    {assigningGroup === a.applicationId ? (
+                      <div className="flex items-center gap-1">
+                        <select
+                          defaultValue={String(a.commissionGroupId ?? "")}
+                          onChange={e => {
+                            const val = e.target.value === "" ? null : parseInt(e.target.value);
+                            doAssignGroup(a.applicationId, val);
+                          }}
+                          className="h-6 text-xs bg-background border border-border rounded px-1 text-foreground"
+                        >
+                          <option value="">No group</option>
+                          {groups.map(g => (
+                            <option key={g.id} value={String(g.id)}>{g.name} ({g.commissionRate}%)</option>
+                          ))}
+                        </select>
+                        <button onClick={() => setAssigningGroup(null)} className="text-muted-foreground hover:text-foreground cursor-pointer"><X className="w-3 h-3" /></button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        {a.commissionGroupId ? (
+                          <Badge className="text-[10px] bg-purple-500/10 text-purple-400 border-purple-500/20 gap-0.5">
+                            <Percent className="w-2.5 h-2.5" />{a.commissionGroupName} · {a.commissionGroupRate}%
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">None</span>
+                        )}
+                        <button onClick={() => setAssigningGroup(a.applicationId)} className="text-muted-foreground hover:text-primary cursor-pointer">
                           <Edit2 className="w-3 h-3" />
                         </button>
                       </div>
@@ -1723,6 +1789,193 @@ function SettingsTab() {
 }
 
 /* ══════════════════════════════════════════
+   TAB — Commission Groups
+══════════════════════════════════════════ */
+function CommissionGroupsTab() {
+  const [groups, setGroups] = useState<CommissionGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState({ name: "", description: "", commissionRate: "" });
+  const [editForm, setEditForm] = useState({ name: "", description: "", commissionRate: "" });
+  const { toast } = useToast();
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await apiFetch("/api/affiliate/admin/commission-groups");
+      if (res.ok) setGroups(await res.json());
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const create = async () => {
+    if (!form.name.trim() || !form.commissionRate) {
+      toast({ title: "Name and commission rate are required", variant: "destructive" }); return;
+    }
+    setSaving(true);
+    try {
+      const res = await apiFetch("/api/affiliate/admin/commission-groups", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: form.name.trim(), description: form.description.trim() || null, commissionRate: parseInt(form.commissionRate) }),
+      });
+      if (!res.ok) throw new Error();
+      toast({ title: "Group created" });
+      setForm({ name: "", description: "", commissionRate: "" });
+      load();
+    } catch { toast({ title: "Failed to create group", variant: "destructive" }); }
+    finally { setSaving(false); }
+  };
+
+  const saveEdit = async (id: number) => {
+    setSaving(true);
+    try {
+      const res = await apiFetch(`/api/affiliate/admin/commission-groups/${id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editForm.name.trim(), description: editForm.description.trim() || null, commissionRate: parseInt(editForm.commissionRate) }),
+      });
+      if (!res.ok) throw new Error();
+      toast({ title: "Group updated" });
+      setEditingId(null);
+      load();
+    } catch { toast({ title: "Failed to update group", variant: "destructive" }); }
+    finally { setSaving(false); }
+  };
+
+  const deleteGroup = async (id: number) => {
+    setDeleting(id);
+    try {
+      const res = await apiFetch(`/api/affiliate/admin/commission-groups/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      toast({ title: "Group deleted" });
+      load();
+    } catch { toast({ title: "Failed to delete group", variant: "destructive" }); }
+    finally { setDeleting(null); }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Create group */}
+      <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <Plus className="w-4 h-4 text-primary" />Create Commission Group
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Group Name <span className="text-red-400">*</span></Label>
+            <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="e.g. Silver, Gold, VIP" className="bg-background border-border h-8 text-sm" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Commission Rate (%) <span className="text-red-400">*</span></Label>
+            <Input type="number" min={0} max={100} value={form.commissionRate}
+              onChange={e => setForm(f => ({ ...f, commissionRate: e.target.value }))}
+              placeholder="e.g. 25" className="bg-background border-border h-8 text-sm" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Description</Label>
+            <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              placeholder="Optional description" className="bg-background border-border h-8 text-sm" />
+          </div>
+        </div>
+        <Button onClick={create} disabled={saving} size="sm" className="gap-1.5">
+          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+          Create Group
+        </Button>
+      </div>
+
+      {/* Groups list */}
+      {loading ? (
+        <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-14 bg-card rounded animate-pulse" />)}</div>
+      ) : groups.length === 0 ? (
+        <div className="bg-card border border-border rounded-xl py-16 text-center">
+          <Percent className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+          <p className="font-semibold text-sm">No commission groups yet</p>
+          <p className="text-xs text-muted-foreground mt-1">Create your first group above to start organising affiliates by commission tier.</p>
+        </div>
+      ) : (
+        <div className="border border-border rounded-xl overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-card border-b border-border">
+              <tr>
+                {["Group Name", "Rate", "Description", "Affiliates", "Actions"].map(h => (
+                  <th key={h} className="text-left text-xs font-medium text-muted-foreground px-4 py-3">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {groups.map(g => (
+                <tr key={g.id} className="hover:bg-card/50 transition-colors">
+                  {editingId === g.id ? (
+                    <>
+                      <td className="px-4 py-2">
+                        <Input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                          className="h-7 text-xs bg-background border-border w-36" />
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-1">
+                          <Input type="number" min={0} max={100} value={editForm.commissionRate}
+                            onChange={e => setEditForm(f => ({ ...f, commissionRate: e.target.value }))}
+                            className="h-7 text-xs bg-background border-border w-16" />
+                          <span className="text-xs text-muted-foreground">%</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2">
+                        <Input value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+                          placeholder="Description" className="h-7 text-xs bg-background border-border w-48" />
+                      </td>
+                      <td className="px-4 py-2 text-xs text-muted-foreground">{g.affiliateCount}</td>
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => saveEdit(g.id)} disabled={saving} className="text-green-400 hover:text-green-300 cursor-pointer">
+                            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                          </button>
+                          <button onClick={() => setEditingId(null)} className="text-muted-foreground hover:text-foreground cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-purple-500/15 flex items-center justify-center flex-shrink-0">
+                            <Percent className="w-3.5 h-3.5 text-purple-400" />
+                          </div>
+                          <span className="font-medium text-sm">{g.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge className="text-[11px] bg-purple-500/10 text-purple-400 border-purple-500/20">{g.commissionRate}%</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{g.description ?? <span className="italic">—</span>}</td>
+                      <td className="px-4 py-3 text-sm">{g.affiliateCount} affiliate{g.affiliateCount !== 1 ? "s" : ""}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => { setEditingId(g.id); setEditForm({ name: g.name, description: g.description ?? "", commissionRate: String(g.commissionRate) }); }}
+                            className="text-muted-foreground hover:text-primary cursor-pointer">
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => deleteGroup(g.id)} disabled={deleting === g.id}
+                            className="text-muted-foreground hover:text-red-400 cursor-pointer">
+                            {deleting === g.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
    MAIN PAGE
 ══════════════════════════════════════════ */
 const TABS = [
@@ -1732,6 +1985,7 @@ const TABS = [
   { id: "payouts",       label: "Payouts",        icon: <CreditCard className="w-3.5 h-3.5" /> },
   { id: "kyc",          label: "KYC",            icon: <Shield className="w-3.5 h-3.5" /> },
   { id: "creatives",     label: "Creatives",      icon: <Image className="w-3.5 h-3.5" /> },
+  { id: "groups",        label: "Groups",         icon: <Percent className="w-3.5 h-3.5" /> },
   { id: "settings",      label: "Settings",       icon: <Settings className="w-3.5 h-3.5" /> },
 ];
 
@@ -1772,6 +2026,7 @@ export default function AdminAffiliatesPage() {
       {tab === "payouts"      && <PayoutsTab />}
       {tab === "kyc"          && <KycTab />}
       {tab === "creatives"    && <CreativesTab />}
+      {tab === "groups"       && <CommissionGroupsTab />}
       {tab === "settings"     && <SettingsTab />}
     </div>
   );

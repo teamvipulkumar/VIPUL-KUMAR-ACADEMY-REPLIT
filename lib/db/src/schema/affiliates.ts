@@ -4,6 +4,15 @@ import { z } from "zod/v4";
 import { usersTable } from "./users";
 import { coursesTable } from "./courses";
 
+export const commissionGroupsTable = pgTable("commission_groups", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  commissionRate: integer("commission_rate").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
 export const referralsTable = pgTable("referrals", {
   id: serial("id").primaryKey(),
   referrerId: integer("referrer_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
@@ -37,6 +46,7 @@ export const affiliateApplicationsTable = pgTable("affiliate_applications", {
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   isBlocked: boolean("is_blocked").notNull().default(false),
   commissionOverride: integer("commission_override"),
+  commissionGroupId: integer("commission_group_id").references(() => commissionGroupsTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
@@ -126,3 +136,7 @@ export type InsertAffiliateCreative = z.infer<typeof insertAffiliateCreativeSche
 
 export const insertAffiliatePixelSchema = createInsertSchema(affiliatePixelTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertAffiliatePixel = z.infer<typeof insertAffiliatePixelSchema>;
+
+export const insertCommissionGroupSchema = createInsertSchema(commissionGroupsTable).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCommissionGroup = z.infer<typeof insertCommissionGroupSchema>;
+export type CommissionGroup = typeof commissionGroupsTable.$inferSelect;

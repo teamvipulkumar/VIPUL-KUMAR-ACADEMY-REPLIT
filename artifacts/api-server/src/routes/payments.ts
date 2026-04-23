@@ -7,6 +7,7 @@ import {
   paymentsTable, coursesTable, enrollmentsTable, couponsTable, notificationsTable,
   usersTable, paymentGatewaysTable, referralsTable, affiliateClicksTable,
   affiliateApplicationsTable, platformSettingsTable, affiliatePixelTable,
+  commissionGroupsTable,
 } from "@workspace/db";
 import { eq, and, desc, isNull, or } from "drizzle-orm";
 import { bundlesTable, bundleCoursesTable } from "@workspace/db";
@@ -44,20 +45,39 @@ async function recordAffiliateCommission(
 
     if (referrer.role === "affiliate") {
       // Affiliates must have an approved, non-blocked application
-      const [app] = await db.select({ commissionOverride: affiliateApplicationsTable.commissionOverride, isBlocked: affiliateApplicationsTable.isBlocked })
+      const [app] = await db.select({
+        commissionOverride: affiliateApplicationsTable.commissionOverride,
+        commissionGroupId: affiliateApplicationsTable.commissionGroupId,
+        isBlocked: affiliateApplicationsTable.isBlocked,
+      })
         .from(affiliateApplicationsTable)
         .where(and(eq(affiliateApplicationsTable.userId, referrer.id), eq(affiliateApplicationsTable.status, "approved")))
         .limit(1);
       if (!app) return; // No approved application
       if (app.isBlocked) return; // Blocked
-      if (app.commissionOverride != null) rate = app.commissionOverride;
+      if (app.commissionOverride != null) {
+        rate = app.commissionOverride; // Individual override takes highest priority
+      } else if (app.commissionGroupId != null) {
+        const [grp] = await db.select({ commissionRate: commissionGroupsTable.commissionRate })
+          .from(commissionGroupsTable).where(eq(commissionGroupsTable.id, app.commissionGroupId)).limit(1);
+        if (grp) rate = grp.commissionRate; // Group rate second priority
+      }
     } else if (referrer.role === "admin") {
       // Admins can always earn commission — use platform default (no block check)
-      const [app] = await db.select({ commissionOverride: affiliateApplicationsTable.commissionOverride })
+      const [app] = await db.select({
+        commissionOverride: affiliateApplicationsTable.commissionOverride,
+        commissionGroupId: affiliateApplicationsTable.commissionGroupId,
+      })
         .from(affiliateApplicationsTable)
         .where(eq(affiliateApplicationsTable.userId, referrer.id))
         .limit(1);
-      if (app?.commissionOverride != null) rate = app.commissionOverride;
+      if (app?.commissionOverride != null) {
+        rate = app.commissionOverride;
+      } else if (app?.commissionGroupId != null) {
+        const [grp] = await db.select({ commissionRate: commissionGroupsTable.commissionRate })
+          .from(commissionGroupsTable).where(eq(commissionGroupsTable.id, app.commissionGroupId)).limit(1);
+        if (grp) rate = grp.commissionRate;
+      }
     } else {
       // Students and other roles cannot earn commission without an application
       return;

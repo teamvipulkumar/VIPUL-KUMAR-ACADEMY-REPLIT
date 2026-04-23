@@ -4,7 +4,7 @@ import {
   referralsTable, payoutRequestsTable, usersTable, platformSettingsTable,
   affiliateApplicationsTable, affiliateClicksTable, affiliateKycTable,
   affiliateBankDetailsTable, affiliateCreativesTable, affiliatePixelTable,
-  coursesTable, paymentsTable, bundlesTable,
+  coursesTable, paymentsTable, bundlesTable, commissionGroupsTable,
 } from "@workspace/db";
 import { eq, and, sum, count, sql, desc, gte, lt, lte, ne, isNotNull } from "drizzle-orm";
 import { requireAuth, requireAdmin, type JwtPayload } from "../middlewares/auth";
@@ -605,6 +605,11 @@ router.get("/admin/all-affiliates", requireAdmin, async (req, res): Promise<void
     const [kyc] = await db.select({ status: affiliateKycTable.status }).from(affiliateKycTable)
       .where(eq(affiliateKycTable.userId, a.userId)).limit(1);
 
+    const group = a.commissionGroupId
+      ? (await db.select({ id: commissionGroupsTable.id, name: commissionGroupsTable.name, commissionRate: commissionGroupsTable.commissionRate })
+          .from(commissionGroupsTable).where(eq(commissionGroupsTable.id, a.commissionGroupId)).limit(1))[0] ?? null
+      : null;
+
     return {
       applicationId: a.id,
       userId: a.userId,
@@ -614,6 +619,9 @@ router.get("/admin/all-affiliates", requireAdmin, async (req, res): Promise<void
       role: user?.role ?? "affiliate",
       isBlocked: a.isBlocked,
       commissionOverride: a.commissionOverride,
+      commissionGroupId: a.commissionGroupId ?? null,
+      commissionGroupName: group?.name ?? null,
+      commissionGroupRate: group?.commissionRate ?? null,
       approvedAt: a.reviewedAt,
       totalClicks,
       totalConversions,
@@ -648,6 +656,57 @@ router.post("/admin/affiliates/:appId/commission", requireAdmin, async (req, res
     .set({ commissionOverride: rate })
     .where(eq(affiliateApplicationsTable.id, appId));
   res.json({ message: "Commission updated" });
+});
+
+/* ── Admin: assign affiliate to commission group ── */
+router.post("/admin/affiliates/:appId/commission-group", requireAdmin, async (req, res): Promise<void> => {
+  const appId = parseInt(req.params.appId);
+  const { groupId } = req.body;
+  const gid = groupId === null || groupId === "" ? null : parseInt(String(groupId));
+  await db.update(affiliateApplicationsTable)
+    .set({ commissionGroupId: gid })
+    .where(eq(affiliateApplicationsTable.id, appId));
+  res.json({ message: "Group assigned" });
+});
+
+/* ── Admin: commission groups CRUD ── */
+router.get("/admin/commission-groups", requireAdmin, async (req, res): Promise<void> => {
+  const groups = await db.select().from(commissionGroupsTable).orderBy(commissionGroupsTable.name);
+  const counts = await db.select({ groupId: affiliateApplicationsTable.commissionGroupId, cnt: count() })
+    .from(affiliateApplicationsTable)
+    .where(and(eq(affiliateApplicationsTable.status, "approved")))
+    .groupBy(affiliateApplicationsTable.commissionGroupId);
+  const countMap = new Map(counts.map(c => [c.groupId, Number(c.cnt)]));
+  res.json(groups.map(g => ({ ...g, affiliateCount: countMap.get(g.id) ?? 0 })));
+});
+
+router.post("/admin/commission-groups", requireAdmin, async (req, res): Promise<void> => {
+  const { name, description, commissionRate } = req.body;
+  if (!name || commissionRate === undefined) { res.status(400).json({ error: "Name and commissionRate are required" }); return; }
+  const [group] = await db.insert(commissionGroupsTable)
+    .values({ name: String(name).trim(), description: description ? String(description).trim() : null, commissionRate: parseInt(String(commissionRate)) })
+    .returning();
+  res.json(group);
+});
+
+router.put("/admin/commission-groups/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  const { name, description, commissionRate } = req.body;
+  const updates: Record<string, unknown> = {};
+  if (name !== undefined) updates.name = String(name).trim();
+  if (description !== undefined) updates.description = description ? String(description).trim() : null;
+  if (commissionRate !== undefined) updates.commissionRate = parseInt(String(commissionRate));
+  const [group] = await db.update(commissionGroupsTable).set(updates).where(eq(commissionGroupsTable.id, id)).returning();
+  res.json(group);
+});
+
+router.delete("/admin/commission-groups/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  await db.update(affiliateApplicationsTable)
+    .set({ commissionGroupId: null })
+    .where(eq(affiliateApplicationsTable.commissionGroupId, id));
+  await db.delete(commissionGroupsTable).where(eq(commissionGroupsTable.id, id));
+  res.json({ message: "Group deleted" });
 });
 
 type PayoutStatus = "pending" | "approved" | "rejected" | "hold";
