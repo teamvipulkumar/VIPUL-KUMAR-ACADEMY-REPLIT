@@ -497,7 +497,7 @@ function EditUserDialog({ user, onClose, onSuccess }: { user: User; onClose: () 
 }
 
 // ── View Profile Dialog ───────────────────────────────────────────────────────
-function ViewProfileDialog({ userId, onClose }: { userId: number; onClose: () => void }) {
+export function ViewProfileDialog({ userId, onClose }: { userId: number; onClose: () => void }) {
   const { data: user, isLoading } = useAdminGetUser(userId, {
     query: { queryKey: getAdminGetUserQueryKey(userId) }
   });

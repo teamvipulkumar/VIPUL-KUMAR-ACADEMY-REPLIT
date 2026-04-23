@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, Fragment } from "react";
+import { ViewProfileDialog } from "./users";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -340,6 +341,7 @@ function AppCard({ app, commissionGroups, onAction }: { app: Application; commis
   const [note, setNote] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
   const [loading, setLoading] = useState<"approve" | "reject" | null>(null);
+  const [showProfile, setShowProfile] = useState(false);
   const { toast } = useToast();
   const meta = STATUS[app.status];
 
@@ -380,6 +382,7 @@ function AppCard({ app, commissionGroups, onAction }: { app: Application; commis
   const purchases = app.purchases ?? [];
 
   return (
+    <>
     <div className="bg-card border border-border rounded-xl overflow-hidden">
       <div className="p-4 flex items-center gap-3">
         <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
@@ -415,58 +418,16 @@ function AppCard({ app, commissionGroups, onAction }: { app: Application; commis
             <p className="text-sm text-foreground leading-relaxed bg-background border border-border rounded-lg p-3">{app.promoteDescription}</p>
           </div>
 
-          {/* Enrolled Courses */}
+          {/* View Profile */}
           <div>
-            <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1"><FileText className="w-3 h-3" />Enrolled Courses ({enrollments.length})</p>
-            {enrollments.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic bg-background border border-border rounded-lg p-3">No course enrollments found.</p>
-            ) : (
-              <div className="bg-background border border-border rounded-lg divide-y divide-border">
-                {enrollments.map((e, i) => (
-                  <div key={e.courseId} className="flex items-center gap-2 px-3 py-2">
-                    <span className="text-[10px] text-muted-foreground w-5 flex-shrink-0">{i + 1}.</span>
-                    <span className="text-xs text-foreground font-medium flex-1 truncate">{e.courseTitle}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Purchase History */}
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1"><CreditCard className="w-3 h-3" />Purchase History ({purchases.length})</p>
-            {purchases.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic bg-background border border-border rounded-lg p-3">No completed purchases found.</p>
-            ) : (
-              <div className="bg-background border border-border rounded-lg overflow-hidden">
-                <table className="w-full text-xs">
-                  <thead className="bg-muted/40 text-muted-foreground">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-medium">Item</th>
-                      <th className="px-3 py-2 text-left font-medium">Type</th>
-                      <th className="px-3 py-2 text-left font-medium">Amount</th>
-                      <th className="px-3 py-2 text-left font-medium">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {purchases.map(p => (
-                      <tr key={p.id}>
-                        <td className="px-3 py-2 font-medium text-foreground max-w-[180px] truncate">
-                          {p.bundleName ?? p.courseTitle ?? "—"}
-                        </td>
-                        <td className="px-3 py-2">
-                          <Badge className={`text-[9px] ${p.bundleId ? "text-amber-400 border-amber-400/30 bg-amber-400/10" : "text-blue-400 border-blue-400/30 bg-blue-400/10"}`}>
-                            {p.bundleId ? "Bundle" : "Course"}
-                          </Badge>
-                        </td>
-                        <td className="px-3 py-2 font-semibold text-green-400">₹{Number(p.amount).toLocaleString("en-IN")}</td>
-                        <td className="px-3 py-2 text-muted-foreground">{new Date(p.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer"
+              onClick={() => setShowProfile(true)}
+            >
+              <Eye className="w-3.5 h-3.5" />View Profile
+            </Button>
           </div>
 
           {/* Admin note from rejection */}
@@ -517,6 +478,8 @@ function AppCard({ app, commissionGroups, onAction }: { app: Application; commis
         </div>
       )}
     </div>
+    {showProfile && <ViewProfileDialog userId={app.userId} onClose={() => setShowProfile(false)} />}
+    </>
   );
 }
 
