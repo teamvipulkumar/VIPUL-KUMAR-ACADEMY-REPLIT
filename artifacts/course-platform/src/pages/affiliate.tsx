@@ -1208,7 +1208,6 @@ function PayoutsTab({ dashboard, payouts }: { dashboard: any; payouts: any[] }) 
           </div>
         ))}
       </div>
-
       {/* Payout history table */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         <div className="px-5 py-3 border-b border-border">
@@ -1226,7 +1225,7 @@ function PayoutsTab({ dashboard, payouts }: { dashboard: any; payouts: any[] }) 
                   <th className="px-5 py-2.5 text-left font-medium">ID</th>
                   <th className="px-5 py-2.5 text-left font-medium">Amount</th>
                   <th className="px-5 py-2.5 text-left font-medium">Date</th>
-                  <th className="px-5 py-2.5 text-right font-medium">Status</th>
+                  <th className="px-5 py-2.5 font-medium text-left">Status</th>
                 </tr>
               </thead>
               <tbody>
