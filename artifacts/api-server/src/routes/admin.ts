@@ -7,7 +7,7 @@ import {
   payoutRequestsTable, platformSettingsTable, lessonCompletionsTable, lessonsTable,
   paymentGatewaysTable, bundlesTable, bundleCoursesTable
 } from "@workspace/db";
-import { eq, count, sum, gte, and, ilike, or, sql, desc, ne, inArray } from "drizzle-orm";
+import { eq, count, sum, gte, and, ilike, or, sql, desc, ne, inArray, isNotNull } from "drizzle-orm";
 import { requireAdmin, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import { triggerAutomation } from "./crm";
@@ -106,7 +106,29 @@ router.get("/users/:userId", requireAdmin, async (req, res): Promise<void> => {
     .where(eq(enrollmentsTable.userId, userId))
     .orderBy(desc(enrollmentsTable.enrolledAt));
 
-  res.json({ ...user, enrollmentCount: enrolledCourses.length, totalSpent: parseFloat(String(spentResult?.total ?? 0)), affiliateEarnings, enrolledCourses });
+  // Purchased bundles/packages
+  const bundlePayments = await db
+    .select({
+      bundleId: bundlesTable.id,
+      bundleName: bundlesTable.name,
+      amount: paymentsTable.amount,
+      purchasedAt: paymentsTable.createdAt,
+    })
+    .from(paymentsTable)
+    .innerJoin(bundlesTable, eq(paymentsTable.bundleId, bundlesTable.id))
+    .where(and(eq(paymentsTable.userId, userId), eq(paymentsTable.status, "completed"), isNotNull(paymentsTable.bundleId)))
+    .orderBy(desc(paymentsTable.createdAt));
+
+  const purchasedBundles = await Promise.all(bundlePayments.map(async (bp) => {
+    const courses = await db
+      .select({ id: coursesTable.id, title: coursesTable.title })
+      .from(bundleCoursesTable)
+      .innerJoin(coursesTable, eq(bundleCoursesTable.courseId, coursesTable.id))
+      .where(eq(bundleCoursesTable.bundleId, bp.bundleId));
+    return { ...bp, courses };
+  }));
+
+  res.json({ ...user, enrollmentCount: enrolledCourses.length, totalSpent: parseFloat(String(spentResult?.total ?? 0)), affiliateEarnings, enrolledCourses, purchasedBundles });
 });
 
 router.post("/users", requireAdmin, async (req, res): Promise<void> => {
