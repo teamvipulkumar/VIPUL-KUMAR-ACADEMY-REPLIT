@@ -826,18 +826,6 @@ function PayoutsTab() {
           onAction={doScheduledAction}
         />
       )}
-      {/* View toggle */}
-      <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5 w-fit">
-        {[
-          { id: "scheduled", label: "Scheduled Payouts" },
-          { id: "paid",      label: "Paid"             },
-        ].map(v => (
-          <button key={v.id} onClick={() => { setView(v.id as any); setLoading(true); }}
-            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${view === v.id ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
-            {v.label}
-          </button>
-        ))}
-      </div>
       {/* ── SCHEDULED VIEW ── */}
       {view === "scheduled" && (
         <>
@@ -858,6 +846,19 @@ function PayoutsTab() {
               <p className="text-xs text-muted-foreground mb-1">Total Affiliates</p>
               <p className="text-xl font-bold text-foreground">{scheduled.length}</p>
             </div>
+          </div>
+
+          {/* View toggle */}
+          <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5 w-fit">
+            {[
+              { id: "scheduled", label: "Scheduled Payouts" },
+              { id: "paid",      label: "Paid"             },
+            ].map(v => (
+              <button key={v.id} onClick={() => { setView(v.id as any); setLoading(true); }}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${view === v.id ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
+                {v.label}
+              </button>
+            ))}
           </div>
 
           <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5 w-fit">
@@ -907,6 +908,18 @@ function PayoutsTab() {
         const totalAmt = paid.reduce((s, p) => s + p.amount, 0);
         return (
           <>
+            {/* View toggle */}
+            <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-0.5 w-fit">
+              {[
+                { id: "scheduled", label: "Scheduled Payouts" },
+                { id: "paid",      label: "Paid"             },
+              ].map(v => (
+                <button key={v.id} onClick={() => { setView(v.id as any); setLoading(true); }}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${view === v.id ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}>
+                  {v.label}
+                </button>
+              ))}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-card border border-border rounded-xl p-4">
                 <p className="text-xs text-muted-foreground mb-1">Total Paid Payouts</p>
