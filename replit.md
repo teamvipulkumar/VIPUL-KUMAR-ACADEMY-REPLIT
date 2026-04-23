@@ -41,14 +41,15 @@ A full-stack SaaS course-selling platform with dark/blue premium theme. Built on
 | `/dashboard` | Student overview — stats, enrolled courses, referral code | Auth |
 | `/my-courses` | All enrolled courses with progress | Auth |
 | `/learn/:courseId` | Lesson player — sidebar navigation, mark complete, prev/next | Auth |
-| `/affiliate` | Affiliate dashboard — referral link, earnings, KYC, bank, pixel | Auth |
+| `/affiliate` | Affiliate dashboard — referral link, earnings, payout request | Auth |
 | `/payments` | Payment history | Auth |
 | `/notifications` | Notification center | Auth |
 | `/admin` | Admin analytics dashboard with revenue chart | Admin |
 | `/admin/courses` | Course CRUD | Admin |
 | `/admin/courses/:id/edit` | Module & lesson editor | Admin |
 | `/admin/users` | User management with ban/unban | Admin |
-| `/admin/affiliates` | Affiliate overview — approvals, commissions, KYC, creatives, settings | Admin |
+| `/admin/affiliates` | Affiliate overview | Admin |
+| `/admin/payouts` | Payout request approval | Admin |
 | `/admin/coupons` | Coupon code management | Admin |
 | `/admin/settings` | Platform settings (commission rate, gateways, notifications) | Admin |
 
@@ -74,6 +75,7 @@ Tables: users, courses, modules, lessons, enrollments, payments, affiliates (ref
 - Simulated checkout (Stripe + Razorpay gateways — no real keys needed)
 - Coupon codes with percentage/fixed discount support
 - Affiliate program with referral tracking, click counting, commission calculation
+- Payout request → admin approval workflow
 - Progress tracking per lesson
 - Admin analytics with revenue chart (recharts)
 - Notification system
