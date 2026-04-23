@@ -36,6 +36,13 @@ router.post("/apply", requireAuth, async (req, res): Promise<void> => {
   const existing = await db.select().from(affiliateApplicationsTable)
     .where(eq(affiliateApplicationsTable.userId, authedReq.user.userId)).limit(1);
   if (existing.length > 0) {
+    if (existing[0].status === "rejected") {
+      const [updated] = await db.update(affiliateApplicationsTable)
+        .set({ fullName, email, promoteDescription, status: "pending", adminNote: null, updatedAt: new Date() })
+        .where(eq(affiliateApplicationsTable.userId, authedReq.user.userId))
+        .returning();
+      res.json(updated); return;
+    }
     res.status(409).json({ error: "You have already applied", status: existing[0].status }); return;
   }
   const [app] = await db.insert(affiliateApplicationsTable).values({

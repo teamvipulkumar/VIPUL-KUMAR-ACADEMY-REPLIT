@@ -176,7 +176,7 @@ function PendingView() {
   );
 }
 
-function RejectedView({ note }: { note?: string | null }) {
+function RejectedView({ note, onReapply }: { note?: string | null; onReapply: () => void }) {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="text-center max-w-sm">
@@ -193,6 +193,10 @@ function RejectedView({ note }: { note?: string | null }) {
             <p className="text-sm text-muted-foreground">{note}</p>
           </div>
         )}
+        <Button onClick={onReapply} className="w-full gap-2 mb-3">
+          <Send className="w-4 h-4" />
+          Resubmit Application
+        </Button>
         <p className="text-xs text-muted-foreground">Contact support if you believe this is a mistake.</p>
       </div>
     </div>
@@ -1683,6 +1687,6 @@ export default function AffiliatePage() {
 
   if (status === "no-app") return <ApplyForm user={user} onSubmitted={() => setStatus("pending")} />;
   if (status === "pending") return <PendingView />;
-  if (status === "rejected") return <RejectedView note={appNote} />;
+  if (status === "rejected") return <RejectedView note={appNote} onReapply={() => setStatus("no-app")} />;
   return <AffiliateDashboard user={user} />;
 }
