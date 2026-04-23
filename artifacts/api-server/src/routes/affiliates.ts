@@ -356,7 +356,10 @@ router.get("/payouts/:id/commissions", requireAuth, async (req, res): Promise<vo
       and(
         eq(paymentsTable.userId, referralsTable.referredUserId),
         eq(paymentsTable.status, "completed"),
-        eq(paymentsTable.courseId, referralsTable.courseId),
+        or(
+          eq(paymentsTable.courseId, referralsTable.courseId),
+          and(isNull(paymentsTable.courseId), isNull(referralsTable.courseId)),
+        ),
       ),
     )
     .leftJoin(coursesTable, eq(coursesTable.id, referralsTable.courseId))
