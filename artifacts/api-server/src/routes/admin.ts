@@ -207,6 +207,7 @@ router.post("/users/:userId/ban", requireAdmin, async (req, res): Promise<void> 
 router.post("/users/import", requireAdmin, async (req, res): Promise<void> => {
   const rows: Array<{ name: string; email: string; password: string; role?: string; phone?: string }> = req.body?.users;
   const enrollCourseId: number | null = req.body?.enrollCourseId ? parseInt(req.body.enrollCourseId) : null;
+  const updateExisting: boolean = !!req.body?.updateExisting;
 
   if (!Array.isArray(rows) || rows.length === 0) {
     res.status(400).json({ error: "Provide a non-empty users array" }); return;
@@ -224,35 +225,58 @@ router.post("/users/import", requireAdmin, async (req, res): Promise<void> => {
   const valid: ValidRow[] = [];
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
-    if (!r.name?.trim() || !r.email?.trim() || !r.password?.trim()) {
-      errors.push({ row: i + 1, email: r.email ?? "", error: "name, email, and password are required" }); continue;
+    if (!r.name?.trim() || !r.email?.trim()) {
+      errors.push({ row: i + 1, email: r.email ?? "", error: "name and email are required" }); continue;
+    }
+    // password required only for new users — when updateExisting is true, we allow missing password (update will skip it)
+    if (!updateExisting && !r.password?.trim()) {
+      errors.push({ row: i + 1, email: r.email ?? "", error: "password is required" }); continue;
     }
     const role = (["admin", "student", "affiliate"].includes(r.role ?? "")) ? r.role as "admin" | "student" | "affiliate" : "student";
     const phone = r.phone?.trim() || null;
-    valid.push({ idx: i + 1, name: r.name.trim(), email: r.email.trim().toLowerCase(), password: r.password.trim(), role, phone });
+    valid.push({ idx: i + 1, name: r.name.trim(), email: r.email.trim().toLowerCase(), password: r.password?.trim() ?? "", role, phone });
   }
 
   // 2. Bulk check existing emails in one query
+  type ToUpdate = ValidRow & { userId: number };
+  const toCreate: ValidRow[] = [];
+  const toUpdate: ToUpdate[] = [];
+
   if (valid.length > 0) {
     const emailList = valid.map(r => r.email);
-    const existing = await db.select({ email: usersTable.email }).from(usersTable).where(inArray(usersTable.email, emailList));
-    const existingSet = new Set(existing.map(e => e.email));
-    const dupes = valid.filter(r => existingSet.has(r.email));
-    dupes.forEach(r => errors.push({ row: r.idx, email: r.email, error: "Email already exists" }));
-    valid.splice(0, valid.length, ...valid.filter(r => !existingSet.has(r.email)));
+    const existing = await db.select({ id: usersTable.id, email: usersTable.email }).from(usersTable).where(inArray(usersTable.email, emailList));
+    const existingMap = new Map(existing.map(e => [e.email, e.id]));
+
+    for (const r of valid) {
+      const existingId = existingMap.get(r.email);
+      if (existingId) {
+        if (updateExisting) {
+          toUpdate.push({ ...r, userId: existingId });
+        } else {
+          errors.push({ row: r.idx, email: r.email, error: "Email already exists" });
+        }
+      } else {
+        // New users always need a password
+        if (!r.password) {
+          errors.push({ row: r.idx, email: r.email, error: "password is required" });
+        } else {
+          toCreate.push(r);
+        }
+      }
+    }
   }
 
-  // 3. Hash passwords in parallel (concurrency = 20, cost = 8 for speed)
   const CONCURRENCY = 20;
+
+  // 3. Hash passwords for new users & bulk insert
   type HashedRow = ValidRow & { hashed: string };
   const hashed: HashedRow[] = [];
-  for (let i = 0; i < valid.length; i += CONCURRENCY) {
-    const chunk = valid.slice(i, i + CONCURRENCY);
+  for (let i = 0; i < toCreate.length; i += CONCURRENCY) {
+    const chunk = toCreate.slice(i, i + CONCURRENCY);
     const results = await Promise.all(chunk.map(async r => ({ ...r, hashed: await bcrypt.hash(r.password, 8) })));
     hashed.push(...results);
   }
 
-  // 4. Bulk insert all users in one query
   const created: number[] = [];
   if (hashed.length > 0) {
     const CHUNK = 500;
@@ -265,7 +289,21 @@ router.post("/users/import", requireAdmin, async (req, res): Promise<void> => {
     }
   }
 
-  // 5. Bulk enroll
+  // 4. Update existing users (one-at-a-time for safety, batched concurrently)
+  let updated = 0;
+  if (toUpdate.length > 0) {
+    for (let i = 0; i < toUpdate.length; i += CONCURRENCY) {
+      const chunk = toUpdate.slice(i, i + CONCURRENCY);
+      await Promise.all(chunk.map(async r => {
+        const updateSet: Partial<typeof usersTable.$inferInsert> = { name: r.name, role: r.role, phone: r.phone };
+        if (r.password) updateSet.password = await bcrypt.hash(r.password, 8);
+        await db.update(usersTable).set(updateSet).where(eq(usersTable.id, r.userId));
+      }));
+      updated += chunk.length;
+    }
+  }
+
+  // 5. Bulk enroll newly created users
   let enrolled = 0;
   if (enrollCourseId && created.length > 0) {
     try {
@@ -274,7 +312,7 @@ router.post("/users/import", requireAdmin, async (req, res): Promise<void> => {
     } catch { /* enrollment failed silently — users still created */ }
   }
 
-  res.json({ created: created.length, enrolled, errors, total: rows.length });
+  res.json({ created: created.length, updated, enrolled, errors, total: rows.length });
 });
 
 router.get("/analytics", requireAdmin, async (req, res): Promise<void> => {

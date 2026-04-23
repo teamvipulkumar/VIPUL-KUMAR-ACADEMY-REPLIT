@@ -87,8 +87,9 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
   const [rows, setRows] = useState<CsvRow[]>([]);
   const [fileName, setFileName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ created: number; enrolled: number; errors: Array<{ row: number; email: string; error: string }>; total: number } | null>(null);
+  const [result, setResult] = useState<{ created: number; updated: number; enrolled: number; errors: Array<{ row: number; email: string; error: string }>; total: number } | null>(null);
   const [enrollCourseId, setEnrollCourseId] = useState<string>("none");
+  const [updateExisting, setUpdateExisting] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
   const { toast } = useToast();
 
@@ -118,7 +119,7 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
     if (!rows.length) return;
     setLoading(true);
     try {
-      const body: Record<string, unknown> = { users: rows };
+      const body: Record<string, unknown> = { users: rows, updateExisting };
       if (enrollCourseId !== "none") body.enrollCourseId = parseInt(enrollCourseId);
       const res = await fetch(`${API_BASE}/api/admin/users/import`, {
         method: "POST",
@@ -129,9 +130,12 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Import failed");
       setResult(data);
-      if (data.created > 0) onSuccess();
-      const enrollMsg = data.enrolled > 0 ? `, ${data.enrolled} enrolled` : "";
-      toast({ title: `Imported ${data.created} of ${data.total} users${enrollMsg}` });
+      if (data.created > 0 || data.updated > 0) onSuccess();
+      const parts = [];
+      if (data.created > 0) parts.push(`${data.created} created`);
+      if (data.updated > 0) parts.push(`${data.updated} updated`);
+      if (data.enrolled > 0) parts.push(`${data.enrolled} enrolled`);
+      toast({ title: `${parts.join(", ")} of ${data.total} users` });
     } catch (err: unknown) {
       toast({ title: "Import failed", description: (err as Error).message, variant: "destructive" });
     } finally {
@@ -146,7 +150,7 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
     URL.revokeObjectURL(url);
   };
 
-  const resetDialog = () => { setRows([]); setFileName(""); setResult(null); setEnrollCourseId("none"); };
+  const resetDialog = () => { setRows([]); setFileName(""); setResult(null); setEnrollCourseId("none"); setUpdateExisting(false); };
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) { onClose(); resetDialog(); } }}>
@@ -191,6 +195,29 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Update existing toggle */}
+              <div
+                className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-colors ${updateExisting ? "bg-amber-500/10 border-amber-500/30" : "bg-card/50 border-border"}`}
+                onClick={() => setUpdateExisting(v => !v)}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${updateExisting ? "bg-amber-500/20" : "bg-muted/30"}`}>
+                  {updateExisting
+                    ? <CheckSquare className={`w-4 h-4 text-amber-400`} />
+                    : <Square className="w-4 h-4 text-muted-foreground" />
+                  }
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-xs font-medium ${updateExisting ? "text-amber-300" : "text-foreground"}`}>
+                    Update existing users
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {updateExisting
+                      ? "Existing emails will be updated (name, phone, role, password if provided)"
+                      : "By default, rows with existing emails are skipped with an error"}
+                  </p>
+                </div>
               </div>
 
               {/* Drop zone */}
@@ -269,11 +296,19 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
           ) : (
             /* Results */
             <div className="space-y-4">
-              <div className={`grid gap-3 ${result.enrolled > 0 ? "grid-cols-4" : "grid-cols-3"}`}>
-                <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-center">
-                  <p className="text-2xl font-bold text-green-400">{result.created}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Created</p>
-                </div>
+              <div className={`grid gap-3 grid-cols-2 sm:grid-cols-${[result.created > 0, result.updated > 0, result.enrolled > 0, result.errors.length > 0, true].filter(Boolean).length}`}>
+                {result.created > 0 && (
+                  <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-center">
+                    <p className="text-2xl font-bold text-green-400">{result.created}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Created</p>
+                  </div>
+                )}
+                {result.updated > 0 && (
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-center">
+                    <p className="text-2xl font-bold text-amber-400">{result.updated}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Updated</p>
+                  </div>
+                )}
                 {result.enrolled > 0 && (
                   <div className="p-3 bg-primary/10 border border-primary/20 rounded-xl text-center">
                     <p className="text-2xl font-bold text-primary">{result.enrolled}</p>
@@ -304,10 +339,15 @@ function ImportUsersDialog({ open, onClose, onSuccess }: { open: boolean; onClos
                   </div>
                 </div>
               )}
-              {result.created > 0 && (
+              {(result.created > 0 || result.updated > 0) && (
                 <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-xl">
                   <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
-                  <p className="text-sm text-green-400">{result.created} user{result.created !== 1 ? "s" : ""} successfully created.</p>
+                  <p className="text-sm text-green-400">
+                    {[
+                      result.created > 0 && `${result.created} user${result.created !== 1 ? "s" : ""} created`,
+                      result.updated > 0 && `${result.updated} user${result.updated !== 1 ? "s" : ""} updated`,
+                    ].filter(Boolean).join(", ")} successfully.
+                  </p>
                 </div>
               )}
             </div>
