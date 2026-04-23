@@ -1297,7 +1297,7 @@ function PayoutsTab({ dashboard, payouts, upcomingPayout }: { dashboard: any; pa
                 ₹{Number(upcomingPayout.unpaidAmount).toLocaleString("en-IN")}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">Upcoming Payout</p>
-              {upcomingPayout.latestAction && (
+              {upcomingPayout.latestAction && upcomingPayout.latestAction.status !== "approved" && (
                 <p className={`text-[10px] mt-1 font-medium ${upcomingStatusColor[upcomingPayout.latestAction.status] ?? "text-muted-foreground"}`}>
                   {upcomingStatusLabel[upcomingPayout.latestAction.status] ?? upcomingPayout.latestAction.status}
                 </p>

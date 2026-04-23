@@ -567,7 +567,7 @@ function AffiliateProfileModal({
   onAction: (affiliateId: number, action: "paid" | "hold" | "reject", note?: string) => void;
 }) {
   const isHold     = payout.latestAction?.status === "hold";
-  const isPaid     = payout.latestAction?.status === "approved";
+  const isPaid     = payout.latestAction?.status === "approved" && payout.unpaidAmount <= 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
@@ -720,7 +720,7 @@ function ScheduledPayoutCard({
   onAction: (affiliateId: number, action: "paid" | "hold" | "reject", note?: string) => void;
 }) {
   const isHold = payout.latestAction?.status === "hold";
-  const isPaid = payout.latestAction?.status === "approved";
+  const isPaid = payout.latestAction?.status === "approved" && payout.unpaidAmount <= 0;
   const isRejected = payout.latestAction?.status === "rejected";
 
   return (
