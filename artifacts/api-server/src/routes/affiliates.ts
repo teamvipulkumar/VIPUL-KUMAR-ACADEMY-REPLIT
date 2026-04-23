@@ -265,6 +265,7 @@ router.get("/payouts/:id/commissions", requireAuth, async (req, res): Promise<vo
       commission: referralsTable.commission,
       createdAt: referralsTable.createdAt,
       paymentId: paymentsTable.id,
+      courseTitle: coursesTable.title,
     })
     .from(referralsTable)
     .leftJoin(
@@ -275,6 +276,7 @@ router.get("/payouts/:id/commissions", requireAuth, async (req, res): Promise<vo
         eq(paymentsTable.status, "completed"),
       ),
     )
+    .leftJoin(coursesTable, eq(coursesTable.id, referralsTable.courseId))
     .where(and(
       eq(referralsTable.referrerId, userId),
       eq(referralsTable.status, "purchase"),
@@ -287,6 +289,7 @@ router.get("/payouts/:id/commissions", requireAuth, async (req, res): Promise<vo
     id: r.id,
     commission: parseFloat(String(r.commission ?? 0)),
     paymentId: r.paymentId,
+    courseTitle: r.courseTitle ?? null,
     createdAt: r.createdAt,
   })));
 });

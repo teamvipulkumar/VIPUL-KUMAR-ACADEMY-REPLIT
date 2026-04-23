@@ -1285,7 +1285,10 @@ function PayoutsTab({ dashboard, payouts }: { dashboard: any; payouts: any[] }) 
                                         <tr key={c.id} className="hover:bg-muted/10">
                                           <td className="px-4 py-2 text-muted-foreground">{c.id}</td>
                                           <td className="px-4 py-2 font-medium">{fmt(c.commission)}</td>
-                                          <td className="px-4 py-2 text-muted-foreground">{c.paymentId ?? "—"}</td>
+                                          <td className="px-4 py-2 text-muted-foreground">
+                                            <span>{c.paymentId ?? "—"}</span>
+                                            {c.courseTitle && <p className="text-[10px] text-muted-foreground/70 mt-0.5 truncate max-w-[140px]">{c.courseTitle}</p>}
+                                          </td>
                                           <td className="px-4 py-2">Sale</td>
                                           <td className="px-4 py-2 text-muted-foreground">{fmtDate(c.createdAt)}</td>
                                         </tr>
