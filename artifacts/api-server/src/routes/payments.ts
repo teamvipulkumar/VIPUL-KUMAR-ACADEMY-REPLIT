@@ -24,7 +24,7 @@ type AuthedRequest = Request & { user: JwtPayload };
 async function recordAffiliateCommission(
   affiliateRef: string | null | undefined,
   buyerId: number,
-  courseId: number,
+  courseId: number | null,
   saleAmount: number,
 ): Promise<void> {
   if (!affiliateRef) return;
@@ -86,11 +86,14 @@ async function recordAffiliateCommission(
     const commission = parseFloat(((saleAmount * rate) / 100).toFixed(2));
 
     // Find the most recent click referral for this referrer+course that isn't yet a purchase
+    const courseCondition = courseId != null
+      ? eq(referralsTable.courseId, courseId)
+      : isNull(referralsTable.courseId);
     const [clickRef] = await db.select()
       .from(referralsTable)
       .where(and(
         eq(referralsTable.referrerId, referrer.id),
-        eq(referralsTable.courseId, courseId),
+        courseCondition,
         eq(referralsTable.status, "click"),
       ))
       .orderBy(desc(referralsTable.createdAt))
@@ -559,6 +562,7 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
           const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
           if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
         }
+        await recordAffiliateCommission(payment.affiliateRef, payment.userId, null, parseFloat(String(payment.amount)));
         res.json({ success: true, enrolled: true, bundleId: payment.bundleId, bundleName: bundle?.name, courseCount: bundleCourses.length, amount: parseFloat(String(payment.amount)), currency: "INR" });
         return;
       }
@@ -638,16 +642,32 @@ router.post("/cashfree/webhook", async (req, res): Promise<void> => {
   await db.update(paymentsTable).set({ status: "completed", paymentId: cfPaymentId }).where(eq(paymentsTable.id, payment.id));
   generateGstInvoice(payment.id).catch(() => {});
 
-  const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
-  if (!existing) {
-    await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId: payment.courseId });
-    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
-    await db.insert(notificationsTable).values({ userId: payment.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success" });
+  if (payment.bundleId && !payment.courseId) {
+    const [bundle] = await db.select().from(bundlesTable).where(eq(bundlesTable.id, payment.bundleId)).limit(1);
+    const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
+    for (const { courseId } of bundleCourses) {
+      if (!courseId) continue;
+      const [ex] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, courseId))).limit(1);
+      if (!ex) await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId });
+    }
+    await db.insert(notificationsTable).values({ userId: payment.userId, title: "Package Enrolled! 🎉", message: `You now have access to all courses in "${bundle?.name ?? "the package"}".`, type: "success" });
     if (payment.couponCode) {
       const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
       if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
     }
-    await recordAffiliateCommission(payment.affiliateRef, payment.userId, payment.courseId, parseFloat(String(payment.amount)));
+    await recordAffiliateCommission(payment.affiliateRef, payment.userId, null, parseFloat(String(payment.amount)));
+  } else {
+    const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
+    if (!existing) {
+      await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId: payment.courseId });
+      const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+      await db.insert(notificationsTable).values({ userId: payment.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success" });
+      if (payment.couponCode) {
+        const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
+        if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
+      }
+      await recordAffiliateCommission(payment.affiliateRef, payment.userId, payment.courseId, parseFloat(String(payment.amount)));
+    }
   }
   res.json({ received: true });
 });
@@ -845,6 +865,7 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
           const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
           if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
         }
+        await recordAffiliateCommission(payment.affiliateRef, payment.userId, null, parseFloat(String(payment.amount)));
         res.json({ success: true, enrolled: true, bundleId: payment.bundleId, bundleName: bundle?.name, courseCount: bundleCourses.length, amount: parseFloat(String(payment.amount)), currency: "INR" });
         return;
       }
@@ -899,12 +920,24 @@ router.post("/paytm/webhook", async (req, res): Promise<void> => {
   await db.update(paymentsTable).set({ status: "completed", paymentId: txnId }).where(eq(paymentsTable.id, payment.id));
   generateGstInvoice(payment.id).catch(() => {});
 
-  const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
-  if (!existing) {
-    await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId: payment.courseId });
-    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
-    await db.insert(notificationsTable).values({ userId: payment.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success" });
-    await recordAffiliateCommission(payment.affiliateRef, payment.userId, payment.courseId, parseFloat(String(payment.amount)));
+  if (payment.bundleId && !payment.courseId) {
+    const [bundle] = await db.select().from(bundlesTable).where(eq(bundlesTable.id, payment.bundleId)).limit(1);
+    const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
+    for (const { courseId } of bundleCourses) {
+      if (!courseId) continue;
+      const [ex] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, courseId))).limit(1);
+      if (!ex) await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId });
+    }
+    await db.insert(notificationsTable).values({ userId: payment.userId, title: "Package Enrolled! 🎉", message: `You now have access to all courses in "${bundle?.name ?? "the package"}".`, type: "success" });
+    await recordAffiliateCommission(payment.affiliateRef, payment.userId, null, parseFloat(String(payment.amount)));
+  } else {
+    const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
+    if (!existing) {
+      await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId: payment.courseId });
+      const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+      await db.insert(notificationsTable).values({ userId: payment.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success" });
+      await recordAffiliateCommission(payment.affiliateRef, payment.userId, payment.courseId, parseFloat(String(payment.amount)));
+    }
   }
   res.json({ received: true });
 });
