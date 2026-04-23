@@ -66,8 +66,23 @@ router.get("/dashboard", requireAuth, async (req, res): Promise<void> => {
   if (!user) { res.status(404).json({ error: "User not found" }); return; }
 
   const settings = await db.select().from(platformSettingsTable).limit(1);
-  const commissionRate = settings[0]?.commissionRate ?? 20;
+  const platformDefault = settings[0]?.commissionRate ?? 20;
   const cookieDays = settings[0]?.affiliateCookieDays ?? 30;
+
+  // Resolve commission rate: individual override → group rate → platform default
+  const [application] = await db.select({
+    commissionOverride: affiliateApplicationsTable.commissionOverride,
+    commissionGroupId: affiliateApplicationsTable.commissionGroupId,
+  }).from(affiliateApplicationsTable).where(eq(affiliateApplicationsTable.userId, authedReq.user.userId)).limit(1);
+
+  let commissionRate = platformDefault;
+  if (application?.commissionOverride != null) {
+    commissionRate = application.commissionOverride;
+  } else if (application?.commissionGroupId != null) {
+    const [group] = await db.select({ commissionRate: commissionGroupsTable.commissionRate })
+      .from(commissionGroupsTable).where(eq(commissionGroupsTable.id, application.commissionGroupId)).limit(1);
+    if (group) commissionRate = group.commissionRate;
+  }
 
   const referrals = await db.select().from(referralsTable).where(eq(referralsTable.referrerId, authedReq.user.userId));
   const allClicks = await db.select().from(affiliateClicksTable).where(eq(affiliateClicksTable.affiliateId, authedReq.user.userId));
