@@ -246,6 +246,61 @@ router.get("/sales", requireAuth, async (req, res): Promise<void> => {
   })));
 });
 
+/* ── Upcoming payout (affiliate's own scheduled info) ── */
+router.get("/upcoming-payout", requireAuth, async (req, res): Promise<void> => {
+  const { userId } = (req as AuthedRequest).user;
+
+  const [settings] = await db.select().from(platformSettingsTable).limit(1);
+  const payoutPeriodDays = settings?.payoutPeriodDays ?? 7;
+
+  const commissions = await db.select({ amount: referralsTable.commission })
+    .from(referralsTable)
+    .where(and(eq(referralsTable.referrerId, userId), eq(referralsTable.status, "purchase")));
+  const totalEarned = commissions.reduce((s, c) => s + parseFloat(String(c.amount ?? 0)), 0);
+
+  const approved = await db.select({ amount: payoutRequestsTable.amount })
+    .from(payoutRequestsTable)
+    .where(and(eq(payoutRequestsTable.userId, userId), eq(payoutRequestsTable.status, "approved")));
+  const totalPaidOut = approved.reduce((s, p) => s + parseFloat(String(p.amount)), 0);
+
+  const unpaidAmount = Math.max(0, totalEarned - totalPaidOut);
+
+  const [lastApproved] = await db.select({ processedAt: payoutRequestsTable.processedAt })
+    .from(payoutRequestsTable)
+    .where(and(eq(payoutRequestsTable.userId, userId), eq(payoutRequestsTable.status, "approved")))
+    .orderBy(desc(payoutRequestsTable.processedAt)).limit(1);
+  const lastPayoutDate = lastApproved?.processedAt ?? null;
+
+  let nextDueDate: Date | null = null;
+  if (lastPayoutDate) {
+    nextDueDate = new Date(lastPayoutDate);
+    nextDueDate.setDate(nextDueDate.getDate() + payoutPeriodDays);
+  }
+  const isDue = !nextDueDate || new Date() >= nextDueDate;
+
+  const [latestAction] = await db.select()
+    .from(payoutRequestsTable)
+    .where(eq(payoutRequestsTable.userId, userId))
+    .orderBy(desc(payoutRequestsTable.requestedAt)).limit(1);
+
+  res.json({
+    unpaidAmount,
+    totalEarned,
+    totalPaidOut,
+    nextDueDate: nextDueDate?.toISOString() ?? null,
+    lastPayoutDate: lastPayoutDate?.toISOString() ?? null,
+    isDue,
+    payoutPeriodDays,
+    latestAction: latestAction ? {
+      id: latestAction.id,
+      status: latestAction.status,
+      amount: parseFloat(String(latestAction.amount)),
+      note: latestAction.rejectionReason,
+      date: latestAction.processedAt?.toISOString() ?? latestAction.requestedAt?.toISOString() ?? null,
+    } : null,
+  });
+});
+
 /* ── Payout ── */
 router.post("/payout-request", requireAuth, async (req, res): Promise<void> => {
   const authedReq = req as AuthedRequest;

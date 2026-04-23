@@ -246,6 +246,7 @@ function AffiliateDashboard({ user }: { user: any }) {
   const [clicks, setClicks] = useState<any>(null);
   const [sales, setSales] = useState<any[]>([]);
   const [payouts, setPayouts] = useState<any[]>([]);
+  const [upcomingPayout, setUpcomingPayout] = useState<any>(null);
   const [creatives, setCreatives] = useState<any[]>([]);
   const [kyc, setKyc] = useState<any>(null);
   const [bank, setBank] = useState<any>(null);
@@ -267,11 +268,12 @@ function AffiliateDashboard({ user }: { user: any }) {
 
   const loadDashboard = async () => {
     setRefreshing(true);
-    const [d, c, s, p, cr, k, b, px] = await Promise.all([
+    const [d, c, s, p, up, cr, k, b, px] = await Promise.all([
       apiFetch("/api/affiliate/dashboard").then(r => r.json()),
       apiFetch("/api/affiliate/clicks").then(r => r.json()),
       apiFetch("/api/affiliate/sales").then(r => r.json()),
       apiFetch("/api/affiliate/payouts").then(r => r.json()),
+      apiFetch("/api/affiliate/upcoming-payout").then(r => r.ok ? r.json() : null),
       apiFetch("/api/affiliate/creatives").then(r => r.json()),
       apiFetch("/api/affiliate/kyc").then(r => r.ok ? r.json() : null),
       apiFetch("/api/affiliate/bank").then(r => r.ok ? r.json() : null),
@@ -279,6 +281,7 @@ function AffiliateDashboard({ user }: { user: any }) {
     ]);
     setDashboard(d); setClicks(c); setSales(Array.isArray(s) ? s : []);
     setPayouts(Array.isArray(p) ? p : []);
+    setUpcomingPayout(up);
     setCreatives(Array.isArray(cr) ? cr : []); setKyc(k); setBank(b); setPixel(px);
     setLoading(false);
     setRefreshing(false);
@@ -686,7 +689,7 @@ function AffiliateDashboard({ user }: { user: any }) {
           {tab === "payouts" && (
             <div>
               <TabHeader title="Payouts" subtitle="View your earnings and payout history." />
-              <PayoutsTab dashboard={dashboard} payouts={payouts} />
+              <PayoutsTab dashboard={dashboard} payouts={payouts} upcomingPayout={upcomingPayout} />
             </div>
           )}
 
@@ -1165,7 +1168,7 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
 }
 
 /* ─── Payouts Tab ─── */
-function PayoutsTab({ dashboard, payouts }: { dashboard: any; payouts: any[] }) {
+function PayoutsTab({ dashboard, payouts, upcomingPayout }: { dashboard: any; payouts: any[]; upcomingPayout: any }) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [commissions, setCommissions] = useState<Record<number, any[] | null>>({});
   const [loadingComm, setLoadingComm] = useState<number | null>(null);
@@ -1197,10 +1200,23 @@ function PayoutsTab({ dashboard, payouts }: { dashboard: any; payouts: any[] }) 
     hold:     "text-blue-400 border-blue-400/30 bg-blue-400/10",
   };
 
+  const upcomingStatusColor: Record<string, string> = {
+    pending:  "text-amber-400",
+    hold:     "text-blue-400",
+    approved: "text-green-400",
+    rejected: "text-red-400",
+  };
+  const upcomingStatusLabel: Record<string, string> = {
+    pending:  "Processing",
+    hold:     "On Hold",
+    approved: "Approved",
+    rejected: "Rejected",
+  };
+
   return (
     <div className="space-y-5">
       {/* Balance cards */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Total Earned", value: dashboard?.totalEarnings ?? 0, color: "text-foreground" },
           { label: "Pending",      value: dashboard?.pendingEarnings ?? 0, color: "text-amber-400" },
@@ -1211,6 +1227,35 @@ function PayoutsTab({ dashboard, payouts }: { dashboard: any; payouts: any[] }) 
             <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
           </div>
         ))}
+        {/* Upcoming Payout card */}
+        <div className="bg-card border border-border rounded-xl p-4 text-center">
+          {upcomingPayout && upcomingPayout.unpaidAmount > 0 ? (
+            <>
+              <p className="text-xl font-bold text-violet-400">
+                ₹{Number(upcomingPayout.unpaidAmount).toLocaleString("en-IN")}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Upcoming Payout</p>
+              {upcomingPayout.latestAction && (
+                <p className={`text-[10px] mt-1 font-medium ${upcomingStatusColor[upcomingPayout.latestAction.status] ?? "text-muted-foreground"}`}>
+                  {upcomingStatusLabel[upcomingPayout.latestAction.status] ?? upcomingPayout.latestAction.status}
+                </p>
+              )}
+              {upcomingPayout.nextDueDate && !upcomingPayout.isDue && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Due {new Date(upcomingPayout.nextDueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                </p>
+              )}
+              {upcomingPayout.isDue && !upcomingPayout.latestAction && (
+                <p className="text-[10px] text-violet-400 mt-0.5">Ready for payout</p>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="text-xl font-bold text-muted-foreground">₹0</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Upcoming Payout</p>
+            </>
+          )}
+        </div>
       </div>
       {/* Payout history table */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
