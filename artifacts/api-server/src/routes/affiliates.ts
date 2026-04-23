@@ -6,7 +6,7 @@ import {
   affiliateBankDetailsTable, affiliateCreativesTable, affiliatePixelTable,
   coursesTable, paymentsTable, bundlesTable, commissionGroupsTable,
 } from "@workspace/db";
-import { eq, and, sum, count, sql, desc, gte, lt, lte, ne, isNotNull } from "drizzle-orm";
+import { eq, and, sum, count, sql, desc, gte, lt, lte, ne, isNotNull, isNull, or } from "drizzle-orm";
 import { requireAuth, requireAdmin, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import crypto from "crypto";
@@ -216,6 +216,7 @@ router.get("/sales", requireAuth, async (req, res): Promise<void> => {
       createdAt: referralsTable.createdAt,
       courseId: referralsTable.courseId,
       courseTitle: coursesTable.title,
+      bundleTitle: bundlesTable.name,
       saleAmount: paymentsTable.amount,
     })
     .from(referralsTable)
@@ -224,16 +225,21 @@ router.get("/sales", requireAuth, async (req, res): Promise<void> => {
       paymentsTable,
       and(
         eq(paymentsTable.userId, referralsTable.referredUserId),
-        eq(paymentsTable.courseId, referralsTable.courseId),
+        or(
+          eq(paymentsTable.courseId, referralsTable.courseId),
+          and(isNull(paymentsTable.courseId), isNull(referralsTable.courseId)),
+        ),
         eq(paymentsTable.status, "completed"),
       ),
     )
+    .leftJoin(bundlesTable, eq(bundlesTable.id, paymentsTable.bundleId))
     .where(and(eq(referralsTable.referrerId, userId), eq(referralsTable.status, "purchase")))
     .orderBy(desc(referralsTable.createdAt));
 
   res.json(rows.map(r => ({
     id: r.id,
-    courseTitle: r.courseTitle ?? "Unknown Course",
+    courseTitle: r.courseTitle ?? r.bundleTitle ?? "Unknown",
+    isBundle: r.courseId == null && r.bundleTitle != null,
     saleAmount: r.saleAmount != null ? parseFloat(String(r.saleAmount)) : null,
     commission: parseFloat(String(r.commission ?? 0)),
     createdAt: r.createdAt,
@@ -977,12 +983,14 @@ router.get("/admin/sales", requireAdmin, async (req, res): Promise<void> => {
       orderId:               paymentsTable.id,
       buyerUserId:           paymentsTable.userId,
       courseId:              paymentsTable.courseId,
+      bundleId:              paymentsTable.bundleId,
       amount:                paymentsTable.amount,
       gateway:               paymentsTable.gateway,
       affiliateRef:          paymentsTable.affiliateRef,
       buyerName:             paymentsTable.billingName,
       buyerEmail:            paymentsTable.billingEmail,
       courseTitle:           coursesTable.title,
+      bundleTitle:           bundlesTable.name,
       affiliateUserId:       usersTable.id,
       affiliateName:         usersTable.name,
       affiliateEmail:        usersTable.email,
@@ -991,11 +999,12 @@ router.get("/admin/sales", requireAdmin, async (req, res): Promise<void> => {
     })
     .from(paymentsTable)
     .leftJoin(coursesTable, eq(paymentsTable.courseId, coursesTable.id))
+    .leftJoin(bundlesTable, eq(paymentsTable.bundleId, bundlesTable.id))
     .leftJoin(usersTable, eq(usersTable.referralCode, paymentsTable.affiliateRef))
     .where(and(eq(paymentsTable.status, "completed"), isNotNull(paymentsTable.affiliateRef)))
     .orderBy(desc(paymentsTable.createdAt));
 
-  // Fetch commissions in one query and map by (referredUserId, courseId)
+  // Fetch commissions in one query and map by (referredUserId, courseId/null)
   const commissions = await db
     .select({ referredUserId: referralsTable.referredUserId, courseId: referralsTable.courseId, commission: referralsTable.commission })
     .from(referralsTable)
@@ -1005,6 +1014,7 @@ router.get("/admin/sales", requireAdmin, async (req, res): Promise<void> => {
 
   res.json(rows.map(r => ({
     ...r,
+    courseTitle: r.courseTitle ?? r.bundleTitle ?? null,
     amount: parseFloat(String(r.amount)),
     commission: commMap.get(`${r.buyerUserId}-${r.courseId}`) ?? null,
     isSelfReferral: r.buyerUserId != null && r.affiliateUserId != null && r.buyerUserId === r.affiliateUserId,
