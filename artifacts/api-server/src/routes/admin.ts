@@ -368,39 +368,6 @@ router.get("/affiliates", requireAdmin, async (req, res): Promise<void> => {
   res.json(affiliateData.filter(a => a.totalClicks > 0 || a.totalEarnings > 0));
 });
 
-router.get("/payouts", requireAdmin, async (req, res): Promise<void> => {
-  const payouts = await db.select().from(payoutRequestsTable).orderBy(payoutRequestsTable.requestedAt);
-  const enriched = await Promise.all(payouts.map(async (p) => {
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, p.userId)).limit(1);
-    return { ...p, amount: parseFloat(String(p.amount)), userName: user?.name ?? "Unknown" };
-  }));
-  res.json(enriched);
-});
-
-router.post("/payouts/:payoutId/approve", requireAdmin, async (req, res): Promise<void> => {
-  const payoutId = parseInt(req.params.payoutId);
-  const [payout] = await db.select().from(payoutRequestsTable).where(eq(payoutRequestsTable.id, payoutId)).limit(1);
-  await db.update(payoutRequestsTable).set({ status: "approved", processedAt: new Date() }).where(eq(payoutRequestsTable.id, payoutId));
-  if (payout) {
-    const [affiliateUser] = await db.select().from(usersTable).where(eq(usersTable.id, payout.userId)).limit(1);
-    if (affiliateUser) {
-      triggerAutomation("affiliate_commission", affiliateUser.id, affiliateUser.email, {
-        name: affiliateUser.name,
-        email: affiliateUser.email,
-        payout_amount: String(parseFloat(String(payout.amount)).toFixed(2)),
-        commission_amount: String(parseFloat(String(payout.amount)).toFixed(2)),
-      }).catch(() => {});
-    }
-  }
-  res.json({ message: "Payout approved" });
-});
-
-router.post("/payouts/:payoutId/reject", requireAdmin, async (req, res): Promise<void> => {
-  const payoutId = parseInt(req.params.payoutId);
-  const { reason } = req.body;
-  await db.update(payoutRequestsTable).set({ status: "rejected", rejectionReason: reason, processedAt: new Date() }).where(eq(payoutRequestsTable.id, payoutId));
-  res.json({ message: "Payout rejected" });
-});
 
 router.get("/enrollments", requireAdmin, async (req, res): Promise<void> => {
   const { search, courseId, limit = "100", offset = "0" } = req.query as Record<string, string>;

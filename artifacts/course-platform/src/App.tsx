@@ -101,7 +101,6 @@ import AdminCourseEditPage from "@/pages/admin/course-edit";
 import AdminCourseNewPage from "@/pages/admin/course-new";
 import AdminUsersPage from "@/pages/admin/users";
 import AdminAffiliatesPage from "@/pages/admin/affiliates";
-import AdminPayoutsPage from "@/pages/admin/payouts";
 import AdminCouponsPage from "@/pages/admin/coupons";
 import AdminOrdersPage from "@/pages/admin/orders";
 import AdminEnrollmentsPage from "@/pages/admin/enrollments";
@@ -171,7 +170,6 @@ function Router() {
       <Route path="/admin/courses/:id/edit" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminCourseEditPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/users" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminUsersPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/affiliates" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminAffiliatesPage /></AdminLayout></ProtectedRoute>} />
-      <Route path="/admin/payouts" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminPayoutsPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/coupons" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminCouponsPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/orders" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminOrdersPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/enrollments" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminEnrollmentsPage /></AdminLayout></ProtectedRoute>} />

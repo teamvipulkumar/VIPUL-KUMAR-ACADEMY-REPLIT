@@ -827,32 +827,6 @@ router.get("/admin/all-payouts", requireAdmin, async (req, res): Promise<void> =
   res.json(enriched);
 });
 
-router.post("/admin/payouts/:id/approve", requireAdmin, async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id);
-  await db.update(payoutRequestsTable)
-    .set({ status: "approved", processedAt: new Date() })
-    .where(eq(payoutRequestsTable.id, id));
-  res.json({ message: "Payout approved" });
-});
-
-router.post("/admin/payouts/:id/reject", requireAdmin, async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id);
-  const { rejectionReason } = req.body;
-  await db.update(payoutRequestsTable)
-    .set({ status: "rejected", rejectionReason: rejectionReason || "Rejected by admin", processedAt: new Date() })
-    .where(eq(payoutRequestsTable.id, id));
-  res.json({ message: "Payout rejected" });
-});
-
-router.post("/admin/payouts/:id/hold", requireAdmin, async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id);
-  const { note } = req.body;
-  await db.update(payoutRequestsTable)
-    .set({ status: "hold" as any, rejectionReason: note || null, processedAt: new Date() })
-    .where(eq(payoutRequestsTable.id, id));
-  res.json({ message: "Payout put on hold" });
-});
-
 /* ── Admin: scheduled payouts (auto-calculated per period) ── */
 router.get("/admin/scheduled-payouts", requireAdmin, async (req, res): Promise<void> => {
   const [settings] = await db.select().from(platformSettingsTable).limit(1);
