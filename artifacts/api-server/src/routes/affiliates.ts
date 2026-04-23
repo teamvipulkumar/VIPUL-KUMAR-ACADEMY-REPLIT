@@ -4,7 +4,7 @@ import {
   referralsTable, payoutRequestsTable, usersTable, platformSettingsTable,
   affiliateApplicationsTable, affiliateClicksTable, affiliateKycTable,
   affiliateBankDetailsTable, affiliateCreativesTable, affiliatePixelTable,
-  coursesTable, paymentsTable, bundlesTable, commissionGroupsTable,
+  coursesTable, paymentsTable, bundlesTable, commissionGroupsTable, enrollmentsTable,
 } from "@workspace/db";
 import { eq, and, sum, count, sql, desc, gte, lt, lte, ne, isNotNull, isNull, or } from "drizzle-orm";
 import { requireAuth, requireAdmin, type JwtPayload } from "../middlewares/auth";
@@ -589,18 +589,61 @@ router.get("/admin/applications", requireAdmin, async (req, res): Promise<void> 
   const enriched = await Promise.all(apps.map(async (a) => {
     const [user] = await db.select({ name: usersTable.name, email: usersTable.email, role: usersTable.role })
       .from(usersTable).where(eq(usersTable.id, a.userId)).limit(1);
-    return { ...a, userName: user?.name ?? "Unknown", userEmail: user?.email ?? "", userRole: user?.role ?? "student" };
+
+    // Enrolled courses
+    const enrollments = await db
+      .select({ courseId: coursesTable.id, courseTitle: coursesTable.title })
+      .from(enrollmentsTable)
+      .innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id))
+      .where(eq(enrollmentsTable.userId, a.userId));
+
+    // Completed payments (courses + bundles)
+    const payments = await db
+      .select({
+        id: paymentsTable.id,
+        amount: paymentsTable.amount,
+        courseId: paymentsTable.courseId,
+        courseTitle: coursesTable.title,
+        bundleId: paymentsTable.bundleId,
+        bundleName: bundlesTable.name,
+        createdAt: paymentsTable.createdAt,
+        gateway: paymentsTable.gateway,
+      })
+      .from(paymentsTable)
+      .leftJoin(coursesTable, eq(paymentsTable.courseId, coursesTable.id))
+      .leftJoin(bundlesTable, eq(paymentsTable.bundleId, bundlesTable.id))
+      .where(and(eq(paymentsTable.userId, a.userId), eq(paymentsTable.status, "completed")))
+      .orderBy(desc(paymentsTable.createdAt));
+
+    return {
+      ...a,
+      userName: user?.name ?? "Unknown",
+      userEmail: user?.email ?? "",
+      userRole: user?.role ?? "student",
+      enrollments,
+      purchases: payments,
+    };
   }));
   res.json(enriched);
 });
 
 router.post("/admin/applications/:id/approve", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
+  const { commissionGroupId } = req.body;
   const [app] = await db.select().from(affiliateApplicationsTable).where(eq(affiliateApplicationsTable.id, id)).limit(1);
   if (!app) { res.status(404).json({ error: "Application not found" }); return; }
-  await db.update(affiliateApplicationsTable)
-    .set({ status: "approved", reviewedAt: new Date() })
-    .where(eq(affiliateApplicationsTable.id, id));
+
+  const updatePayload: Record<string, any> = { status: "approved", reviewedAt: new Date() };
+  if (commissionGroupId) {
+    const groupId = parseInt(commissionGroupId);
+    const [grp] = await db.select().from(commissionGroupsTable).where(eq(commissionGroupsTable.id, groupId)).limit(1);
+    if (grp) {
+      updatePayload.commissionGroupId = groupId;
+      updatePayload.commissionOverride = null;
+    }
+  }
+
+  await db.update(affiliateApplicationsTable).set(updatePayload).where(eq(affiliateApplicationsTable.id, id));
   await db.update(usersTable).set({ role: "affiliate" }).where(eq(usersTable.id, app.userId));
   res.json({ message: "Application approved, user promoted to affiliate" });
 });

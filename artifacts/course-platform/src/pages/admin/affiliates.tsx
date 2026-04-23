@@ -62,6 +62,17 @@ type Application = {
   userName: string;
   userEmail: string;
   userRole: string;
+  enrollments: { courseId: number; courseTitle: string }[];
+  purchases: {
+    id: number;
+    amount: string | number;
+    courseId: number | null;
+    courseTitle: string | null;
+    bundleId: number | null;
+    bundleName: string | null;
+    createdAt: string;
+    gateway: string | null;
+  }[];
 };
 
 type Payout = {
@@ -324,9 +335,10 @@ function OverviewTab() {
 /* ══════════════════════════════════════════
    TAB 2 — Applications
 ══════════════════════════════════════════ */
-function AppCard({ app, onAction }: { app: Application; onAction: () => void }) {
+function AppCard({ app, commissionGroups, onAction }: { app: Application; commissionGroups: CommissionGroup[]; onAction: () => void }) {
   const [expanded, setExpanded] = useState(app.status === "pending");
   const [note, setNote] = useState("");
+  const [selectedGroupId, setSelectedGroupId] = useState<string>("");
   const [loading, setLoading] = useState<"approve" | "reject" | null>(null);
   const { toast } = useToast();
   const meta = STATUS[app.status];
@@ -334,9 +346,16 @@ function AppCard({ app, onAction }: { app: Application; onAction: () => void }) 
   const approve = async () => {
     setLoading("approve");
     try {
-      const res = await apiFetch(`/api/affiliate/admin/applications/${app.id}/approve`, { method: "POST" });
+      const body: Record<string, any> = {};
+      if (selectedGroupId) body.commissionGroupId = parseInt(selectedGroupId);
+      const res = await apiFetch(`/api/affiliate/admin/applications/${app.id}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
       if (!res.ok) throw new Error();
-      toast({ title: "Application approved" });
+      const groupName = commissionGroups.find(g => String(g.id) === selectedGroupId)?.name;
+      toast({ title: "Application approved", description: groupName ? `Assigned to "${groupName}" group` : undefined });
       onAction();
     } catch { toast({ title: "Failed to approve", variant: "destructive" }); }
     finally { setLoading(null); }
@@ -357,6 +376,9 @@ function AppCard({ app, onAction }: { app: Application; onAction: () => void }) 
     finally { setLoading(null); }
   };
 
+  const enrollments = app.enrollments ?? [];
+  const purchases = app.purchases ?? [];
+
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
       <div className="p-4 flex items-center gap-3">
@@ -367,6 +389,16 @@ function AppCard({ app, onAction }: { app: Application; onAction: () => void }) 
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-semibold text-sm">{app.fullName}</p>
             <Badge className={`text-[10px] ${meta.cls}`}>{meta.label}</Badge>
+            {purchases.length > 0 && (
+              <Badge className="text-[10px] text-blue-400 border-blue-400/30 bg-blue-400/10 gap-1">
+                <CreditCard className="w-2.5 h-2.5" />{purchases.length} purchase{purchases.length !== 1 ? "s" : ""}
+              </Badge>
+            )}
+            {enrollments.length > 0 && (
+              <Badge className="text-[10px] text-purple-400 border-purple-400/30 bg-purple-400/10 gap-1">
+                <FileText className="w-2.5 h-2.5" />{enrollments.length} course{enrollments.length !== 1 ? "s" : ""}
+              </Badge>
+            )}
           </div>
           <p className="text-xs text-muted-foreground">{app.email} · Applied {fmtDate(app.createdAt)}</p>
         </div>
@@ -375,19 +407,95 @@ function AppCard({ app, onAction }: { app: Application; onAction: () => void }) 
         </button>
       </div>
       {expanded && (
-        <div className="border-t border-border p-4 bg-background/30 space-y-3">
+        <div className="border-t border-border p-4 bg-background/30 space-y-4">
+
+          {/* Promotion Plan */}
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1"><MessageSquare className="w-3 h-3" />Promotion Plan</p>
             <p className="text-sm text-foreground leading-relaxed bg-background border border-border rounded-lg p-3">{app.promoteDescription}</p>
           </div>
+
+          {/* Enrolled Courses */}
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1"><FileText className="w-3 h-3" />Enrolled Courses ({enrollments.length})</p>
+            {enrollments.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic bg-background border border-border rounded-lg p-3">No course enrollments found.</p>
+            ) : (
+              <div className="bg-background border border-border rounded-lg divide-y divide-border">
+                {enrollments.map((e, i) => (
+                  <div key={e.courseId} className="flex items-center gap-2 px-3 py-2">
+                    <span className="text-[10px] text-muted-foreground w-5 flex-shrink-0">{i + 1}.</span>
+                    <span className="text-xs text-foreground font-medium flex-1 truncate">{e.courseTitle}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Purchase History */}
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1"><CreditCard className="w-3 h-3" />Purchase History ({purchases.length})</p>
+            {purchases.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic bg-background border border-border rounded-lg p-3">No completed purchases found.</p>
+            ) : (
+              <div className="bg-background border border-border rounded-lg overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/40 text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium">Item</th>
+                      <th className="px-3 py-2 text-left font-medium">Type</th>
+                      <th className="px-3 py-2 text-left font-medium">Amount</th>
+                      <th className="px-3 py-2 text-left font-medium">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {purchases.map(p => (
+                      <tr key={p.id}>
+                        <td className="px-3 py-2 font-medium text-foreground max-w-[180px] truncate">
+                          {p.bundleName ?? p.courseTitle ?? "—"}
+                        </td>
+                        <td className="px-3 py-2">
+                          <Badge className={`text-[9px] ${p.bundleId ? "text-amber-400 border-amber-400/30 bg-amber-400/10" : "text-blue-400 border-blue-400/30 bg-blue-400/10"}`}>
+                            {p.bundleId ? "Bundle" : "Course"}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2 font-semibold text-green-400">₹{Number(p.amount).toLocaleString("en-IN")}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{new Date(p.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Admin note from rejection */}
           {app.adminNote && (
             <div className="p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
               <p className="text-xs font-medium text-red-400 mb-1">Admin Note:</p>
               <p className="text-sm text-muted-foreground">{app.adminNote}</p>
             </div>
           )}
+
+          {/* Action section for pending */}
           {app.status === "pending" && (
-            <div className="space-y-2 pt-1">
+            <div className="space-y-3 pt-1 border-t border-border">
+              {/* Commission group assignment */}
+              {commissionGroups.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1"><Percent className="w-3 h-3" />Assign to Commission Group (optional)</p>
+                  <select
+                    value={selectedGroupId}
+                    onChange={e => setSelectedGroupId(e.target.value)}
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
+                  >
+                    <option value="">— Use platform default rate —</option>
+                    {commissionGroups.map(g => (
+                      <option key={g.id} value={String(g.id)}>{g.name} ({g.commissionRate}%)</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <Textarea
                 placeholder="Admin note (required for rejection)…"
                 value={note} onChange={e => setNote(e.target.value)}
@@ -414,6 +522,7 @@ function AppCard({ app, onAction }: { app: Application; onAction: () => void }) 
 
 function ApplicationsTab() {
   const [apps, setApps] = useState<Application[]>([]);
+  const [commissionGroups, setCommissionGroups] = useState<CommissionGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
   const [search, setSearch] = useState("");
@@ -422,8 +531,12 @@ function ApplicationsTab() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiFetch("/api/affiliate/admin/applications");
-      if (res.ok) setApps(await res.json());
+      const [appsRes, groupsRes] = await Promise.all([
+        apiFetch("/api/affiliate/admin/applications"),
+        apiFetch("/api/affiliate/admin/commission-groups"),
+      ]);
+      if (appsRes.ok) setApps(await appsRes.json());
+      if (groupsRes.ok) setCommissionGroups(await groupsRes.json());
     } catch { toast({ title: "Failed to load", variant: "destructive" }); }
     finally { setLoading(false); }
   }, [toast]);
@@ -479,7 +592,7 @@ function ApplicationsTab() {
           <p className="text-sm text-muted-foreground mt-1">{search || filter !== "all" ? "Try changing the filters." : "No one has applied yet."}</p>
         </div>
       ) : (
-        <div className="space-y-3">{filtered.map(app => <AppCard key={app.id} app={app} onAction={load} />)}</div>
+        <div className="space-y-3">{filtered.map(app => <AppCard key={app.id} app={app} commissionGroups={commissionGroups} onAction={load} />)}</div>
       )}
     </div>
   );
