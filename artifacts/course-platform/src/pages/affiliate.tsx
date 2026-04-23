@@ -15,7 +15,7 @@ import {
   BadgeIndianRupee, Users, MousePointerClick, Copy, Check, TrendingUp,
   Clock, CheckCircle2, XCircle, AlertCircle, Link2, Image, FileText,
   ShieldCheck, Wallet, Zap, Building2, RefreshCw, Download, Plus,
-  Trash2, Eye, EyeOff, Send, ChevronRight, ChevronDown, Activity, Target,
+  Trash2, Eye, EyeOff, Send, ChevronRight, ChevronLeft, ChevronDown, Activity, Target,
   Calendar, Star, Lock, Loader2, Menu, X, ExternalLink, Share2,
   ArrowUpRight, TrendingDown, Banknote, Info, Percent, Cookie,
   Upload, FileImage
@@ -227,6 +227,59 @@ function StatCard2({ label, value, color, sub }: { icon?: React.ReactNode; label
   );
 }
 
+/* ─── Paginator ─── */
+const PAGE_SIZE = 10;
+function Paginator({ page, total, onPage }: { page: number; total: number; onPage: (p: number) => void }) {
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (totalPages <= 1) return null;
+  const from = (page - 1) * PAGE_SIZE + 1;
+  const to = Math.min(page * PAGE_SIZE, total);
+  return (
+    <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-background/30">
+      <p className="text-xs text-muted-foreground">
+        Showing <span className="font-medium text-foreground">{from}–{to}</span> of <span className="font-medium text-foreground">{total}</span>
+      </p>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onPage(page - 1)}
+          disabled={page === 1}
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-muted-foreground hover:text-foreground hover:bg-white/5 cursor-pointer"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />Prev
+        </button>
+        <div className="flex items-center gap-1">
+          {Array.from({ length: totalPages }, (_, i) => i + 1).filter(p =>
+            p === 1 || p === totalPages || Math.abs(p - page) <= 1
+          ).reduce<(number | "…")[]>((acc, p, idx, arr) => {
+            if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push("…");
+            acc.push(p);
+            return acc;
+          }, []).map((p, i) =>
+            p === "…"
+              ? <span key={`ellipsis-${i}`} className="px-1 text-xs text-muted-foreground">…</span>
+              : <button
+                  key={p}
+                  onClick={() => onPage(p as number)}
+                  className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                    page === p
+                      ? "bg-primary text-white"
+                      : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                  }`}
+                >{p}</button>
+          )}
+        </div>
+        <button
+          onClick={() => onPage(page + 1)}
+          disabled={page === totalPages}
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-muted-foreground hover:text-foreground hover:bg-white/5 cursor-pointer"
+        >
+          Next<ChevronRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Custom earnings bar shape: real bar for non-zero, ghost stub for zero ─── */
 const EarningsBarShape = (props: any) => {
   const { x, y, width, height, value, fill, style } = props;
@@ -253,6 +306,7 @@ function AffiliateDashboard({ user }: { user: any }) {
   const [pixel, setPixel] = useState<any>(null);
   const [copied, setCopied] = useState(false);
   const [chartDays, setChartDays] = useState<7 | 30>(7);
+  const [salesPage, setSalesPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 1024);
@@ -294,7 +348,7 @@ function AffiliateDashboard({ user }: { user: any }) {
     }
   };
 
-  const navClick = (id: Tab) => { setTab(id); setSidebarOpen(false); };
+  const navClick = (id: Tab) => { setTab(id); setSidebarOpen(false); if (id === "sales") setSalesPage(1); };
 
   const SidebarContent = () => (
     <>
@@ -525,80 +579,87 @@ function AffiliateDashboard({ user }: { user: any }) {
           )}
 
           {/* ── Sales Tab ── */}
-          {tab === "sales" && (
-            <div className="space-y-5">
-              <TabHeader title="My Sales" subtitle="All successful purchases made through your referral link." />
+          {tab === "sales" && (() => {
+            const pagedSales = sales.slice((salesPage - 1) * PAGE_SIZE, salesPage * PAGE_SIZE);
+            return (
+              <div className="space-y-5">
+                <TabHeader title="My Sales" subtitle="All successful purchases made through your referral link." />
 
-              {/* Summary row */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-card border border-border rounded-xl p-4 text-center">
-                  <p className="text-xl font-bold text-foreground">{sales.length}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Total Sales</p>
-                </div>
-                <div className="bg-card border border-border rounded-xl p-4 text-center transition-colors hover:border-blue-500/40 hover:bg-blue-500/5 cursor-default">
-                  <p className="text-xl font-bold text-blue-400">₹{sales.reduce((s, r) => s + (r.saleAmount ?? 0), 0).toLocaleString("en-IN")}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Total Revenue</p>
-                </div>
-                <div className="bg-card border border-border rounded-xl p-4 text-center">
-                  <p className="text-xl font-bold text-green-400">₹{sales.reduce((s, r) => s + r.commission, 0).toLocaleString("en-IN")}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Total Commission</p>
-                </div>
-              </div>
-
-              {/* Sales table */}
-              <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                {sales.length === 0 ? (
-                  <div className="py-20 text-center">
-                    <FileText className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                    <p className="font-semibold text-foreground mb-1">No sales yet</p>
-                    <p className="text-sm text-muted-foreground">Share your affiliate link to start earning commissions.</p>
+                {/* Summary row */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-card border border-border rounded-xl p-4 text-center">
+                    <p className="text-xl font-bold text-foreground">{sales.length}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Total Sales</p>
                   </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border bg-background/50">
-                          <th className="text-left text-xs font-semibold text-muted-foreground px-5 py-3">#</th>
-                          <th className="text-xs font-semibold text-muted-foreground px-5 py-3 text-left">Commission</th>
-                          <th className="text-xs font-semibold text-muted-foreground px-5 py-3 text-left">Sale Amount</th>
-                          <th className="text-left text-xs font-semibold text-muted-foreground px-5 py-3">Date & Time</th>
-                          <th className="text-left text-xs font-semibold text-muted-foreground px-5 py-3">Course</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {sales.map((sale, i) => {
-                          const dt = new Date(sale.createdAt);
-                          return (
-                            <tr key={sale.id}>
-                              <td className="px-5 py-3.5 text-xs text-muted-foreground">{i + 1}</td>
-                              <td className="px-5 py-3.5 text-left">
-                                <span className="font-bold text-green-400">₹{sale.commission.toLocaleString("en-IN")}</span>
-                              </td>
-                              <td className="px-5 py-3.5 text-left">
-                                {sale.saleAmount != null
-                                  ? <span className="font-semibold text-foreground">₹{Number(sale.saleAmount).toLocaleString("en-IN")}</span>
-                                  : <span className="text-muted-foreground text-xs">—</span>
-                                }
-                              </td>
-                              <td className="px-5 py-3.5">
-                                <div>
-                                  <p className="text-sm text-foreground">{dt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p>
-                                  <p className="text-[11px] text-muted-foreground">{dt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}</p>
-                                </div>
-                              </td>
-                              <td className="px-5 py-3.5">
-                                <span className="font-medium text-foreground text-sm">{sale.courseTitle}</span>
-                              </td>
+                  <div className="bg-card border border-border rounded-xl p-4 text-center transition-colors hover:border-blue-500/40 hover:bg-blue-500/5 cursor-default">
+                    <p className="text-xl font-bold text-blue-400">₹{sales.reduce((s, r) => s + (r.saleAmount ?? 0), 0).toLocaleString("en-IN")}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Total Revenue</p>
+                  </div>
+                  <div className="bg-card border border-border rounded-xl p-4 text-center">
+                    <p className="text-xl font-bold text-green-400">₹{sales.reduce((s, r) => s + r.commission, 0).toLocaleString("en-IN")}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Total Commission</p>
+                  </div>
+                </div>
+
+                {/* Sales table */}
+                <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                  {sales.length === 0 ? (
+                    <div className="py-20 text-center">
+                      <FileText className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                      <p className="font-semibold text-foreground mb-1">No sales yet</p>
+                      <p className="text-sm text-muted-foreground">Share your affiliate link to start earning commissions.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-border bg-background/50">
+                              <th className="text-left text-xs font-semibold text-muted-foreground px-5 py-3">#</th>
+                              <th className="text-xs font-semibold text-muted-foreground px-5 py-3 text-left">Commission</th>
+                              <th className="text-xs font-semibold text-muted-foreground px-5 py-3 text-left">Sale Amount</th>
+                              <th className="text-left text-xs font-semibold text-muted-foreground px-5 py-3">Date & Time</th>
+                              <th className="text-left text-xs font-semibold text-muted-foreground px-5 py-3">Course</th>
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                          </thead>
+                          <tbody className="divide-y divide-border">
+                            {pagedSales.map((sale, i) => {
+                              const dt = new Date(sale.createdAt);
+                              const globalIdx = (salesPage - 1) * PAGE_SIZE + i + 1;
+                              return (
+                                <tr key={sale.id}>
+                                  <td className="px-5 py-3.5 text-xs text-muted-foreground">{globalIdx}</td>
+                                  <td className="px-5 py-3.5 text-left">
+                                    <span className="font-bold text-green-400">₹{sale.commission.toLocaleString("en-IN")}</span>
+                                  </td>
+                                  <td className="px-5 py-3.5 text-left">
+                                    {sale.saleAmount != null
+                                      ? <span className="font-semibold text-foreground">₹{Number(sale.saleAmount).toLocaleString("en-IN")}</span>
+                                      : <span className="text-muted-foreground text-xs">—</span>
+                                    }
+                                  </td>
+                                  <td className="px-5 py-3.5">
+                                    <div>
+                                      <p className="text-sm text-foreground">{dt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p>
+                                      <p className="text-[11px] text-muted-foreground">{dt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}</p>
+                                    </div>
+                                  </td>
+                                  <td className="px-5 py-3.5">
+                                    <span className="font-medium text-foreground text-sm">{sale.courseTitle}</span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      <Paginator page={salesPage} total={sales.length} onPage={setSalesPage} />
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ── Links Tab ── */}
           {tab === "links" && (
@@ -1172,6 +1233,7 @@ function PayoutsTab({ dashboard, payouts, upcomingPayout }: { dashboard: any; pa
   const [expanded, setExpanded] = useState<number | null>(null);
   const [commissions, setCommissions] = useState<Record<number, any[] | null>>({});
   const [loadingComm, setLoadingComm] = useState<number | null>(null);
+  const [payoutsPage, setPayoutsPage] = useState(1);
 
   const fmt = (n: number) =>
     `₹${Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -1266,96 +1328,102 @@ function PayoutsTab({ dashboard, payouts, upcomingPayout }: { dashboard: any; pa
           <div className="py-12 text-center text-sm text-muted-foreground">
             No payouts yet. Payouts are processed by the admin.
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/30 text-muted-foreground text-xs">
-                  <th className="px-5 py-2.5 text-left font-medium">ID</th>
-                  <th className="px-5 py-2.5 text-left font-medium">Amount</th>
-                  <th className="px-5 py-2.5 text-left font-medium">Date</th>
-                  <th className="px-5 py-2.5 text-left font-medium">Status</th>
-                  <th className="px-5 py-2.5 text-right font-medium"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {payouts.map(p => (
-                  <Fragment key={p.id}>
-                    <tr className="border-b border-border last:border-0 hover:bg-muted/10 transition-colors">
-                      <td className="px-5 py-3 text-muted-foreground text-xs">{p.id}</td>
-                      <td className="px-5 py-3 font-semibold">{fmt(p.amount)}</td>
-                      <td className="px-5 py-3 text-muted-foreground text-xs">
-                        {fmtDate(p.processedAt ?? p.requestedAt)}
-                      </td>
-                      <td className="px-5 py-3">
-                        <Badge className={`text-[10px] capitalize ${statusMap[p.status] ?? ""}`}>
-                          {p.status === "approved" ? "Paid" : p.status}
-                        </Badge>
-                      </td>
-                      <td className="px-5 py-3 text-right">
-                        <button
-                          onClick={() => toggleDetails(p.id)}
-                          className="flex items-center gap-0.5 text-xs text-primary hover:underline cursor-pointer whitespace-nowrap ml-auto"
-                        >
-                          Details
-                          <ChevronDown className={`w-3 h-3 transition-transform ${expanded === p.id ? "rotate-180" : ""}`} />
-                        </button>
-                      </td>
+        ) : (() => {
+          const pagedPayouts = payouts.slice((payoutsPage - 1) * PAGE_SIZE, payoutsPage * PAGE_SIZE);
+          return (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30 text-muted-foreground text-xs">
+                      <th className="px-5 py-2.5 text-left font-medium">ID</th>
+                      <th className="px-5 py-2.5 text-left font-medium">Amount</th>
+                      <th className="px-5 py-2.5 text-left font-medium">Date</th>
+                      <th className="px-5 py-2.5 text-left font-medium">Status</th>
+                      <th className="px-5 py-2.5 text-right font-medium"></th>
                     </tr>
-                    {expanded === p.id && (
-                      <tr key={`${p.id}-detail`}>
-                        <td colSpan={5} className="px-5 py-4 bg-muted/5 border-b border-border">
-                          {loadingComm === p.id ? (
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <Loader2 className="w-3 h-3 animate-spin" /> Loading commissions…
-                            </div>
-                          ) : (
-                            <>
-                              <p className="font-semibold text-sm mb-0.5">Commissions</p>
-                              <p className="text-xs text-muted-foreground mb-3">
-                                The following commissions have been included in this payout.
-                              </p>
-                              {!commissions[p.id] || commissions[p.id]!.length === 0 ? (
-                                <p className="text-xs text-muted-foreground italic">No commission records found for this payout.</p>
-                              ) : (
-                                <div className="border border-border rounded-lg overflow-hidden">
-                                  <table className="w-full text-xs">
-                                    <thead className="bg-muted/40 text-muted-foreground">
-                                      <tr>
-                                        <th className="px-4 py-2 text-left font-medium">ID</th>
-                                        <th className="px-4 py-2 text-left font-medium">Amount</th>
-                                        <th className="px-4 py-2 text-left font-medium">Reference</th>
-                                        <th className="px-4 py-2 text-left font-medium">Type</th>
-                                        <th className="px-4 py-2 text-left font-medium">Date</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-border">
-                                      {commissions[p.id]!.map((c: any) => (
-                                        <tr key={c.id} className="hover:bg-muted/10">
-                                          <td className="px-4 py-2 text-muted-foreground">{c.id}</td>
-                                          <td className="px-4 py-2 font-medium">{fmt(c.commission)}</td>
-                                          <td className="px-4 py-2 text-muted-foreground">
-                                            {c.productName ?? ""}
-                                          </td>
-                                          <td className="px-4 py-2">Sale</td>
-                                          <td className="px-4 py-2 text-muted-foreground">{fmtDate(c.createdAt)}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
+                  </thead>
+                  <tbody>
+                    {pagedPayouts.map(p => (
+                      <Fragment key={p.id}>
+                        <tr className="border-b border-border last:border-0 hover:bg-muted/10 transition-colors">
+                          <td className="px-5 py-3 text-muted-foreground text-xs">{p.id}</td>
+                          <td className="px-5 py-3 font-semibold">{fmt(p.amount)}</td>
+                          <td className="px-5 py-3 text-muted-foreground text-xs">
+                            {fmtDate(p.processedAt ?? p.requestedAt)}
+                          </td>
+                          <td className="px-5 py-3">
+                            <Badge className={`text-[10px] capitalize ${statusMap[p.status] ?? ""}`}>
+                              {p.status === "approved" ? "Paid" : p.status}
+                            </Badge>
+                          </td>
+                          <td className="px-5 py-3 text-right">
+                            <button
+                              onClick={() => toggleDetails(p.id)}
+                              className="flex items-center gap-0.5 text-xs text-primary hover:underline cursor-pointer whitespace-nowrap ml-auto"
+                            >
+                              Details
+                              <ChevronDown className={`w-3 h-3 transition-transform ${expanded === p.id ? "rotate-180" : ""}`} />
+                            </button>
+                          </td>
+                        </tr>
+                        {expanded === p.id && (
+                          <tr key={`${p.id}-detail`}>
+                            <td colSpan={5} className="px-5 py-4 bg-muted/5 border-b border-border">
+                              {loadingComm === p.id ? (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Loader2 className="w-3 h-3 animate-spin" /> Loading commissions…
                                 </div>
+                              ) : (
+                                <>
+                                  <p className="font-semibold text-sm mb-0.5">Commissions</p>
+                                  <p className="text-xs text-muted-foreground mb-3">
+                                    The following commissions have been included in this payout.
+                                  </p>
+                                  {!commissions[p.id] || commissions[p.id]!.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground italic">No commission records found for this payout.</p>
+                                  ) : (
+                                    <div className="border border-border rounded-lg overflow-hidden">
+                                      <table className="w-full text-xs">
+                                        <thead className="bg-muted/40 text-muted-foreground">
+                                          <tr>
+                                            <th className="px-4 py-2 text-left font-medium">ID</th>
+                                            <th className="px-4 py-2 text-left font-medium">Amount</th>
+                                            <th className="px-4 py-2 text-left font-medium">Reference</th>
+                                            <th className="px-4 py-2 text-left font-medium">Type</th>
+                                            <th className="px-4 py-2 text-left font-medium">Date</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-border">
+                                          {commissions[p.id]!.map((c: any) => (
+                                            <tr key={c.id} className="hover:bg-muted/10">
+                                              <td className="px-4 py-2 text-muted-foreground">{c.id}</td>
+                                              <td className="px-4 py-2 font-medium">{fmt(c.commission)}</td>
+                                              <td className="px-4 py-2 text-muted-foreground">
+                                                {c.productName ?? ""}
+                                              </td>
+                                              <td className="px-4 py-2">Sale</td>
+                                              <td className="px-4 py-2 text-muted-foreground">{fmtDate(c.createdAt)}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </>
                               )}
-                            </>
-                          )}
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Paginator page={payoutsPage} total={payouts.length} onPage={p => { setPayoutsPage(p); setExpanded(null); }} />
+            </>
+          );
+        })()}
       </div>
     </div>
   );
