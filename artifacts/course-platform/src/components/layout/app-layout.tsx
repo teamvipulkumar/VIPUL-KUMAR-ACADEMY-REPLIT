@@ -6,7 +6,7 @@ import { useBranding } from "@/lib/branding-context";
 import { Button } from "@/components/ui/button";
 import { useLogout, useListNotifications, getListNotificationsQueryKey, getGetMeQueryKey, useMarkNotificationRead, useMarkAllNotificationsRead } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Bell, Menu, X, BookOpen, Share2, GraduationCap, LogOut, ShieldCheck, ChevronRight, Mail, Youtube, Twitter, Linkedin, Instagram, CheckCheck, Sun, Moon } from "lucide-react";
+import { Bell, Menu, X, BookOpen, Share2, GraduationCap, LogOut, ShieldCheck, ChevronRight, Mail, Youtube, Twitter, Linkedin, Instagram, CheckCheck, Sun, Moon, User } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EmailVerificationBanner } from "@/components/email-verification-banner";
 
@@ -349,6 +349,32 @@ export function Navbar() {
                 </Link>
               ))}
             </div>
+
+            {isAuthenticated && (
+              <div className="border-t border-white/5 py-2">
+                <Link href="/profile" onClick={() => setMobileOpen(false)}>
+                  <div className={`flex items-center gap-3 px-5 py-3.5 text-sm font-medium transition-colors ${
+                    location === "/profile"
+                      ? "text-primary bg-primary/8 border-l-2 border-primary"
+                      : "text-foreground/70 hover:text-foreground hover:bg-white/5"
+                  }`}>
+                    <User className="w-4 h-4 flex-shrink-0" />
+                    My Profile
+                    <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground/50" />
+                  </div>
+                </Link>
+                <button
+                  onClick={toggleTheme}
+                  className="w-full flex items-center gap-3 px-5 py-3.5 text-sm font-medium text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors cursor-pointer"
+                >
+                  {theme === "dark" ? <Moon className="w-4 h-4 flex-shrink-0" /> : <Sun className="w-4 h-4 flex-shrink-0" />}
+                  {theme === "dark" ? "Dark Mode" : "Light Mode"}
+                  <span className={`ml-auto relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${theme === "dark" ? "bg-primary" : "bg-muted"}`}>
+                    <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform ${theme === "dark" ? "translate-x-3.5" : "translate-x-0.5"}`} />
+                  </span>
+                </button>
+              </div>
+            )}
 
             <div className="px-4 py-4 border-t border-white/5 space-y-2">
               {!isAuthenticated ? (
