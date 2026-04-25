@@ -8,8 +8,142 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Chrome, Info, Construction, Check, Upload, Globe, ImageIcon, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Chrome, Info, Construction, Check, Upload, Globe, ImageIcon, Loader2, FolderOpen, CheckCircle2 } from "lucide-react";
 import { useTheme, type Theme } from "@/lib/theme-context";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+const API_BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+type MediaFile = { filename: string; url: string; size: number; uploadedAt: string; mimetype: string; type: string };
+
+function MediaPickerDialog({
+  open, onClose, onSelect, uploadFn, accept, title,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSelect: (url: string) => void;
+  uploadFn: (file: File) => Promise<string | null>;
+  accept?: string;
+  title: string;
+}) {
+  const [files, setFiles] = useState<MediaFile[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [selected, setSelected] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!open) { setSelected(null); return; }
+    setLoading(true);
+    fetch(`${API_BASE_URL}/api/upload/admin/files`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then((data: MediaFile[]) => setFiles(data.filter(f => f.type === "image")))
+      .catch(() => setFiles([]))
+      .finally(() => setLoading(false));
+  }, [open]);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const url = await uploadFn(file);
+    if (url) {
+      const newFile: MediaFile = {
+        filename: url.split("/").pop() ?? "",
+        url,
+        size: file.size,
+        uploadedAt: new Date().toISOString(),
+        mimetype: file.type,
+        type: "image",
+      };
+      setFiles(prev => [newFile, ...prev]);
+      setSelected(url);
+    } else {
+      toast({ title: "Upload failed", variant: "destructive" });
+    }
+    setUploading(false);
+    e.target.value = "";
+  };
+
+  const handleConfirm = () => {
+    if (selected) { onSelect(selected); onClose(); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-2xl w-full p-0 gap-0 overflow-hidden">
+        <DialogHeader className="px-5 py-4 border-b border-border">
+          <DialogTitle className="text-base flex items-center gap-2">
+            <FolderOpen className="w-4 h-4 text-primary" />{title}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+          {/* Upload from computer */}
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">Select an existing file or upload a new one</p>
+            <input ref={fileRef} type="file" accept={accept ?? "image/*"} className="hidden" onChange={handleUpload} />
+            <Button size="sm" variant="outline" className="gap-1.5 cursor-pointer" onClick={() => fileRef.current?.click()} disabled={uploading}>
+              {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+              {uploading ? "Uploading…" : "Upload from Computer"}
+            </Button>
+          </div>
+
+          {/* File grid */}
+          {loading ? (
+            <div className="grid grid-cols-4 gap-3">
+              {[1,2,3,4,5,6,7,8].map(i => <div key={i} className="aspect-square rounded-lg bg-card animate-pulse" />)}
+            </div>
+          ) : files.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground">
+              <ImageIcon className="w-10 h-10 mx-auto mb-3 opacity-20" />
+              <p className="text-sm">No images uploaded yet</p>
+              <p className="text-xs mt-1">Use the button above to upload your first file</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 gap-3">
+              {files.map(f => {
+                const isSelected = selected === f.url;
+                return (
+                  <button
+                    key={f.filename}
+                    onClick={() => setSelected(isSelected ? null : f.url)}
+                    className={`relative aspect-square rounded-lg border-2 overflow-hidden cursor-pointer transition-all ${
+                      isSelected ? "border-primary ring-2 ring-primary/30" : "border-border hover:border-primary/40"
+                    }`}
+                  >
+                    <img
+                      src={`${API_BASE_URL}${f.url}`}
+                      alt={f.filename}
+                      className="w-full h-full object-cover"
+                    />
+                    {isSelected && (
+                      <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                        <CheckCircle2 className="w-6 h-6 text-primary drop-shadow" />
+                      </div>
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-1 py-0.5 text-[9px] text-white truncate">
+                      {f.filename.replace(/^[a-f0-9]+/, "").replace(/^\./, "") || f.filename.slice(0, 8)}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Footer actions */}
+        <div className="px-5 py-3 border-t border-border flex items-center justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={onClose} className="cursor-pointer">Cancel</Button>
+          <Button size="sm" onClick={handleConfirm} disabled={!selected} className="gap-1.5 cursor-pointer">
+            <CheckCircle2 className="w-3.5 h-3.5" />Use Selected
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 const THEMES: { id: Theme; label: string; description: string; swatches: string[] }[] = [
   {
@@ -56,10 +190,8 @@ export default function AdminSettingsPage() {
     siteName: "", siteLogo: "", logoSize: 34, logoSizeMobile: 28, favicon: "", metaTitle: "", metaDescription: "",
   });
   const [brandingSaving, setBrandingSaving] = useState(false);
-  const [logoUploading, setLogoUploading] = useState(false);
-  const [faviconUploading, setFaviconUploading] = useState(false);
-  const logoInputRef = useRef<HTMLInputElement>(null);
-  const faviconInputRef = useRef<HTMLInputElement>(null);
+  const [logoPicker, setLogoPicker] = useState(false);
+  const [faviconPicker, setFaviconPicker] = useState(false);
   const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
   useEffect(() => {
@@ -125,28 +257,6 @@ export default function AdminSettingsPage() {
     const data = await res.json();
     return data.url as string;
   }, [API_BASE]);
-
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setLogoUploading(true);
-    const url = await uploadImage(file);
-    if (url) setBrandingForm(f => ({ ...f, siteLogo: url }));
-    else toast({ title: "Logo upload failed", variant: "destructive" });
-    setLogoUploading(false);
-    e.target.value = "";
-  };
-
-  const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setFaviconUploading(true);
-    const url = await uploadImage(file);
-    if (url) setBrandingForm(f => ({ ...f, favicon: url }));
-    else toast({ title: "Favicon upload failed", variant: "destructive" });
-    setFaviconUploading(false);
-    e.target.value = "";
-  };
 
   const handleSaveBranding = () => {
     setBrandingSaving(true);
@@ -237,9 +347,23 @@ export default function AdminSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Hidden file inputs */}
-        <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
-        <input ref={faviconInputRef} type="file" accept="image/*,.ico" className="hidden" onChange={handleFaviconUpload} />
+        {/* Media Picker Dialogs */}
+        <MediaPickerDialog
+          open={logoPicker}
+          onClose={() => setLogoPicker(false)}
+          onSelect={url => setBrandingForm(f => ({ ...f, siteLogo: url }))}
+          uploadFn={uploadImage}
+          accept="image/*"
+          title="Choose Logo from Library"
+        />
+        <MediaPickerDialog
+          open={faviconPicker}
+          onClose={() => setFaviconPicker(false)}
+          onSelect={url => setBrandingForm(f => ({ ...f, favicon: url }))}
+          uploadFn={uploadImage}
+          accept="image/*,.ico"
+          title="Choose Favicon from Library"
+        />
 
         {/* Site Identity */}
         <Card className="bg-card border-border">
@@ -286,11 +410,10 @@ export default function AdminSettingsPage() {
                       variant="outline"
                       size="sm"
                       className="gap-1.5 cursor-pointer"
-                      onClick={() => logoInputRef.current?.click()}
-                      disabled={logoUploading}
+                      onClick={() => setLogoPicker(true)}
                     >
-                      {logoUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                      {logoUploading ? "Uploading…" : "Upload Logo"}
+                      <FolderOpen className="w-3.5 h-3.5" />
+                      Choose Logo
                     </Button>
                     {brandingForm.siteLogo && (
                       <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive cursor-pointer"
@@ -364,11 +487,10 @@ export default function AdminSettingsPage() {
                       variant="outline"
                       size="sm"
                       className="gap-1.5 cursor-pointer"
-                      onClick={() => faviconInputRef.current?.click()}
-                      disabled={faviconUploading}
+                      onClick={() => setFaviconPicker(true)}
                     >
-                      {faviconUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                      {faviconUploading ? "Uploading…" : "Upload Favicon"}
+                      <FolderOpen className="w-3.5 h-3.5" />
+                      Choose Favicon
                     </Button>
                     {brandingForm.favicon && (
                       <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive cursor-pointer"
