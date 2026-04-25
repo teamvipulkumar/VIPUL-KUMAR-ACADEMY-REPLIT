@@ -57,12 +57,12 @@ function useMyBundles() {
 
 function StatCard({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string | number; sub?: string }) {
   return (
-    <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3.5">
-      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">{icon}</div>
-      <div>
-        <p className="text-xl font-bold text-foreground leading-none">{value}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
-        {sub && <p className="text-[10px] text-primary mt-0.5">{sub}</p>}
+    <div className="bg-card border border-border rounded-xl p-3 sm:p-4 flex items-center gap-3">
+      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">{icon}</div>
+      <div className="min-w-0">
+        <p className="text-lg sm:text-xl font-bold text-foreground leading-none truncate">{value}</p>
+        <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 leading-tight">{label}</p>
+        {sub && <p className="text-[10px] text-primary mt-0.5 hidden sm:block">{sub}</p>}
       </div>
     </div>
   );
@@ -85,12 +85,12 @@ function CourseCard({ e }: { e: any }) {
           </>
         )}
         {isDone && (
-          <div className="absolute top-3 right-3 bg-green-500/20 border border-green-500/30 text-green-400 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+          <div className="absolute top-2 right-2 bg-green-500/20 border border-green-500/30 text-green-400 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
             <CheckCheck className="w-3 h-3" />Completed
           </div>
         )}
         {!isDone && isStarted && (
-          <div className="absolute top-3 right-3 bg-primary/20 border border-primary/30 text-primary text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+          <div className="absolute top-2 right-2 bg-primary/20 border border-primary/30 text-primary text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
             <Zap className="w-3 h-3" />In Progress
           </div>
         )}
@@ -103,12 +103,8 @@ function CourseCard({ e }: { e: any }) {
         </Link>
       </div>
 
-      <div className="p-4">
-        <div className="flex items-start gap-2 mb-2">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-foreground text-sm leading-tight line-clamp-2">{e.course?.title}</h3>
-          </div>
-        </div>
+      <div className="p-3 sm:p-4">
+        <h3 className="font-bold text-foreground text-sm leading-tight line-clamp-2 mb-2">{e.course?.title}</h3>
         <div className="flex flex-wrap gap-1.5 mb-3">
           {e.course?.category && (
             <Badge variant="outline" className="text-[10px] border-border text-muted-foreground px-1.5 py-0">
@@ -162,55 +158,47 @@ function BundleCard({ bundle, enrollments }: { bundle: MyBundle; enrollments: an
 
   return (
     <div className="bg-gradient-to-br from-primary/10 via-card to-blue-950/30 border border-primary/30 rounded-2xl overflow-hidden hover:border-primary/50 transition-all">
-      {/* Bundle Header */}
-      <div className="p-5">
-        <div className="flex gap-4">
-          {/* Thumbnail */}
-          <div className="flex-shrink-0 w-24 h-16 rounded-xl overflow-hidden">
+      <div className="p-4 sm:p-5">
+        {/* Mobile: stack thumbnail above info; Desktop: side by side */}
+        <div className="flex gap-3 sm:gap-4">
+          <div className="flex-shrink-0 w-20 h-14 sm:w-24 sm:h-16 rounded-xl overflow-hidden">
             {bundle.thumbnailUrl ? (
               <img src={bundle.thumbnailUrl} alt={bundle.name} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-primary/20 to-blue-900/40 flex items-center justify-center">
-                <Package className="w-7 h-7 text-primary/40" />
+                <Package className="w-6 h-6 sm:w-7 sm:h-7 text-primary/40" />
               </div>
             )}
           </div>
 
-          {/* Info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="flex items-center gap-1 text-xs font-semibold text-primary uppercase tracking-wider">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="flex items-center gap-1 text-[11px] font-semibold text-primary uppercase tracking-wider">
                 <Star className="w-3 h-3 fill-primary" />Package
               </span>
-              <span className="text-xs text-muted-foreground">· {bundle.courses.length} courses</span>
+              <span className="text-[11px] text-muted-foreground">· {bundle.courses.length} courses</span>
             </div>
-            <h3 className="font-bold text-foreground text-base leading-tight mb-1">{bundle.name}</h3>
-            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1"><BookOpen className="w-3 h-3 text-primary" />{bundle.courses.length} courses</span>
-              <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-primary" />{totalHours}h total</span>
+            <h3 className="font-bold text-foreground text-sm sm:text-base leading-tight mb-1 line-clamp-2">{bundle.name}</h3>
+            <div className="flex flex-wrap gap-2 sm:gap-3 text-[11px] sm:text-xs text-muted-foreground">
+              <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-primary" />{totalHours}h</span>
               <span className="flex items-center gap-1"><CheckCheck className="w-3 h-3 text-green-400" />{completedCourses}/{bundle.courses.length} done</span>
             </div>
           </div>
 
-          {/* Progress circle + expand */}
-          <div className="flex-shrink-0 flex flex-col items-end gap-2">
-            <div className="text-right">
-              <p className={`text-lg font-bold ${totalProgress === 100 ? "text-green-400" : "text-primary"}`}>{totalProgress}%</p>
-              <p className="text-[10px] text-muted-foreground">overall</p>
-            </div>
+          <div className="flex-shrink-0 text-right">
+            <p className={`text-base sm:text-lg font-bold ${totalProgress === 100 ? "text-green-400" : "text-primary"}`}>{totalProgress}%</p>
+            <p className="text-[10px] text-muted-foreground">overall</p>
           </div>
         </div>
 
-        {/* Overall Progress Bar */}
         <div className="mt-3 mb-3">
           <Progress value={totalProgress} className="h-2" />
         </div>
 
-        {/* Actions */}
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground flex items-center gap-1">
+          <span className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-1">
             <Calendar className="w-3 h-3" />
-            Purchased {bundle.purchasedAt ? new Date(bundle.purchasedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+            {bundle.purchasedAt ? new Date(bundle.purchasedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
           </span>
           <button
             onClick={() => setExpanded(v => !v)}
@@ -222,7 +210,6 @@ function BundleCard({ bundle, enrollments }: { bundle: MyBundle; enrollments: an
         </div>
       </div>
 
-      {/* Expanded Course List */}
       {expanded && (
         <div className="border-t border-primary/20 divide-y divide-border/50">
           {bundle.courses.map((course, idx) => {
@@ -230,12 +217,9 @@ function BundleCard({ bundle, enrollments }: { bundle: MyBundle; enrollments: an
             const isDone = pct === 100;
             const isStarted = pct > 0;
             return (
-              <div key={course.id} className="flex items-center gap-3 px-5 py-3.5 bg-background/30 hover:bg-primary/5 transition-colors">
-                {/* Number */}
+              <div key={course.id} className="flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-3 bg-background/30 hover:bg-primary/5 transition-colors">
                 <span className="text-xs text-primary/50 font-mono w-5 flex-shrink-0">#{idx + 1}</span>
-
-                {/* Thumbnail */}
-                <div className="flex-shrink-0 w-12 h-8 rounded-lg overflow-hidden">
+                <div className="flex-shrink-0 w-10 h-7 sm:w-12 sm:h-8 rounded-lg overflow-hidden">
                   {course.thumbnailUrl ? (
                     <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
                   ) : (
@@ -244,34 +228,28 @@ function BundleCard({ bundle, enrollments }: { bundle: MyBundle; enrollments: an
                     </div>
                   )}
                 </div>
-
-                {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground truncate">{course.title}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-xs sm:text-sm font-semibold text-foreground truncate">{course.title}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
                     <Badge variant="outline" className={`text-[9px] px-1 py-0 capitalize border ${levelColors[course.level] ?? "border-border text-muted-foreground"}`}>
                       {course.level}
                     </Badge>
-                    <span className="text-[10px] text-muted-foreground">{Math.round((course.durationMinutes ?? 0) / 60)}h</span>
+                    <span className="text-[10px] text-muted-foreground hidden sm:inline">{Math.round((course.durationMinutes ?? 0) / 60)}h</span>
                   </div>
                 </div>
-
-                {/* Progress */}
-                <div className="flex-shrink-0 w-16 hidden sm:block">
+                <div className="flex-shrink-0 w-14 hidden sm:block">
                   <div className="flex justify-between mb-0.5">
                     <span className="text-[9px] text-muted-foreground">Progress</span>
                     <span className={`text-[9px] font-bold ${isDone ? "text-green-400" : "text-primary"}`}>{pct}%</span>
                   </div>
                   <Progress value={pct} className="h-1" />
                 </div>
-
-                {/* CTA */}
                 <Button
                   size="sm"
-                  className={`flex-shrink-0 h-7 text-xs px-3 gap-1 ${isDone ? "bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/30" : "bg-primary hover:bg-primary/90 text-white"}`}
+                  className={`flex-shrink-0 h-7 text-xs px-2 sm:px-3 gap-1 ${isDone ? "bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/30" : "bg-primary hover:bg-primary/90 text-white"}`}
                   onClick={() => navigate(`/learn/${course.id}`)}
                 >
-                  {isDone ? <><CheckCheck className="w-3 h-3" />Review</> : isStarted ? <>Continue</> : <><Play className="w-3 h-3 fill-white" />Start</>}
+                  {isDone ? <><CheckCheck className="w-3 h-3" /><span className="hidden sm:inline">Review</span></> : isStarted ? <><span className="hidden sm:inline">Continue</span><Play className="w-3 h-3 fill-white sm:hidden" /></> : <><Play className="w-3 h-3 fill-white" /><span className="hidden sm:inline">Start</span></>}
                 </Button>
               </div>
             );
@@ -286,8 +264,8 @@ function OrderRow({ p }: { p: any }) {
   const meta = STATUS_META[p.status] ?? STATUS_META.pending;
   const isBundle = !!p.bundle;
   return (
-    <div className="flex items-center gap-4 p-4 hover:bg-white/[0.02] transition-colors border-b border-border last:border-0">
-      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isBundle ? "bg-primary/15" : "bg-primary/10"}`}>
+    <div className="flex items-center gap-3 p-3 sm:p-4 hover:bg-white/[0.02] transition-colors border-b border-border last:border-0">
+      <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isBundle ? "bg-primary/15" : "bg-primary/10"}`}>
         {isBundle ? <Package className="w-4 h-4 text-primary" /> : <ShoppingBag className="w-4 h-4 text-primary" />}
       </div>
 
@@ -296,14 +274,14 @@ function OrderRow({ p }: { p: any }) {
           {isBundle && (
             <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">Package</span>
           )}
-          <p className="text-sm font-semibold text-foreground truncate">
+          <p className="text-xs sm:text-sm font-semibold text-foreground truncate">
             {isBundle ? p.bundle.name : (p.course?.title ?? `Course #${p.courseId}`)}
           </p>
         </div>
-        <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-[11px] text-muted-foreground capitalize">{GATEWAY_LABEL[p.gateway] ?? p.gateway}</span>
+        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+          <span className="text-[10px] sm:text-[11px] text-muted-foreground capitalize">{GATEWAY_LABEL[p.gateway] ?? p.gateway}</span>
           <span className="text-muted-foreground/30">·</span>
-          <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+          <span className="text-[10px] sm:text-[11px] text-muted-foreground flex items-center gap-1">
             <Calendar className="w-2.5 h-2.5" />
             {new Date(p.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
           </span>
@@ -336,38 +314,38 @@ export default function MyCoursesPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-5xl mx-auto px-4 py-10">
+      <div className="max-w-5xl mx-auto px-3 sm:px-4 py-6 sm:py-10">
 
         {/* ── Page Header ── */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-extrabold text-foreground tracking-tight">My Learning</h1>
-          <p className="text-muted-foreground mt-1.5 text-sm">Your enrolled courses, bundle packages, and order history — all in one place.</p>
+        <div className="mb-5 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">My Learning</h1>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">Your enrolled courses, bundle packages, and order history — all in one place.</p>
         </div>
 
         {/* ── Stats ── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-          <StatCard icon={<BookOpen className="w-5 h-5" />} label="Enrolled Courses" value={totalCourses} />
-          <StatCard icon={<Package className="w-5 h-5" />} label="Packages" value={bundleCount} sub={bundleCount > 0 ? `${myBundles!.reduce((s, b) => s + b.courses.length, 0)} courses included` : undefined} />
-          <StatCard icon={<TrendingUp className="w-5 h-5" />} label="Avg. Progress" value={`${avgProgress}%`} />
-          <StatCard icon={<BadgeIndianRupee className="w-5 h-5" />} label="Total Invested" value={`₹${totalSpent.toLocaleString("en-IN")}`} />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-5 sm:mb-8">
+          <StatCard icon={<BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />} label="Enrolled" value={totalCourses} />
+          <StatCard icon={<Package className="w-4 h-4 sm:w-5 sm:h-5" />} label="Packages" value={bundleCount} sub={bundleCount > 0 ? `${myBundles!.reduce((s, b) => s + b.courses.length, 0)} courses` : undefined} />
+          <StatCard icon={<TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />} label="Avg. Progress" value={`${avgProgress}%`} />
+          <StatCard icon={<BadgeIndianRupee className="w-4 h-4 sm:w-5 sm:h-5" />} label="Total Spent" value={`₹${totalSpent.toLocaleString("en-IN")}`} />
         </div>
 
         {/* ── Tabs ── */}
-        <div className="flex items-center gap-1 mb-6 bg-card border border-border rounded-xl p-1 w-full">
+        <div className="flex items-center gap-1 mb-5 sm:mb-6 bg-card border border-border rounded-xl p-1 w-full">
           {[
             { id: "courses" as Tab, label: "My Courses", icon: <BookOpen className="w-4 h-4" />, count: totalCourses },
-            { id: "packages" as Tab, label: "My Packages", icon: <Package className="w-4 h-4" />, count: bundleCount },
-            { id: "orders" as Tab, label: "Order History", icon: <CreditCard className="w-4 h-4" />, count: payments?.length ?? 0 },
+            { id: "packages" as Tab, label: "Packages", icon: <Package className="w-4 h-4" />, count: bundleCount },
+            { id: "orders" as Tab, label: "Orders", icon: <CreditCard className="w-4 h-4" />, count: payments?.length ?? 0 },
           ].map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 flex items-center justify-center gap-2 px-2 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                 tab === t.id ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {t.icon}
-              {t.label}
+              <span className="hidden xs:inline sm:inline">{t.label}</span>
               {t.count > 0 && (
                 <span className={`text-[10px] font-bold rounded-full px-1.5 py-0 ${tab === t.id ? "bg-white/20 text-white" : "bg-border text-muted-foreground"}`}>
                   {t.count}
@@ -381,22 +359,22 @@ export default function MyCoursesPage() {
         {tab === "courses" && (
           <>
             {loadingEnrollments ? (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[1, 2, 3].map(i => <div key={i} className="h-72 bg-card rounded-2xl animate-pulse" />)}
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {[1, 2, 3].map(i => <div key={i} className="h-64 sm:h-72 bg-card rounded-2xl animate-pulse" />)}
               </div>
             ) : !enrollments || enrollments.length === 0 ? (
-              <div className="bg-card border border-border rounded-2xl py-20 text-center">
-                <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <BookOpen className="w-8 h-8 text-primary" />
+              <div className="bg-card border border-border rounded-2xl py-16 sm:py-20 text-center px-4">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <BookOpen className="w-7 h-7 sm:w-8 sm:h-8 text-primary" />
                 </div>
-                <h2 className="text-xl font-bold mb-2">No courses yet</h2>
+                <h2 className="text-lg sm:text-xl font-bold mb-2">No courses yet</h2>
                 <p className="text-muted-foreground text-sm mb-6 max-w-xs mx-auto">Explore our catalog and start your learning journey.</p>
                 <Button asChild className="bg-primary hover:bg-primary/90 gap-2">
                   <Link href="/courses"><BookOpen className="w-4 h-4" />Browse Courses</Link>
                 </Button>
               </div>
             ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {enrollments.map(e => <CourseCard key={e.id} e={e} />)}
               </div>
             )}
@@ -407,15 +385,15 @@ export default function MyCoursesPage() {
         {tab === "packages" && (
           <>
             {loadingBundles ? (
-              <div className="space-y-4">
-                {[1, 2].map(i => <div key={i} className="h-40 bg-card rounded-2xl animate-pulse" />)}
+              <div className="space-y-3 sm:space-y-4">
+                {[1, 2].map(i => <div key={i} className="h-36 sm:h-40 bg-card rounded-2xl animate-pulse" />)}
               </div>
             ) : !myBundles || myBundles.length === 0 ? (
-              <div className="bg-card border border-border rounded-2xl py-20 text-center">
-                <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Package className="w-8 h-8 text-primary" />
+              <div className="bg-card border border-border rounded-2xl py-16 sm:py-20 text-center px-4">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Package className="w-7 h-7 sm:w-8 sm:h-8 text-primary" />
                 </div>
-                <h2 className="text-xl font-bold mb-2">No packages yet</h2>
+                <h2 className="text-lg sm:text-xl font-bold mb-2">No packages yet</h2>
                 <p className="text-muted-foreground text-sm mb-6 max-w-xs mx-auto">
                   Get a package to access multiple courses at a discounted price.
                 </p>
@@ -424,7 +402,7 @@ export default function MyCoursesPage() {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {myBundles.map(bundle => (
                   <BundleCard key={bundle.id} bundle={bundle} enrollments={enrollments ?? []} />
                 ))}
@@ -438,14 +416,14 @@ export default function MyCoursesPage() {
           <>
             {loadingOrders ? (
               <div className="space-y-2">
-                {[1, 2, 3].map(i => <div key={i} className="h-16 bg-card rounded-xl animate-pulse" />)}
+                {[1, 2, 3].map(i => <div key={i} className="h-14 sm:h-16 bg-card rounded-xl animate-pulse" />)}
               </div>
             ) : !payments || payments.length === 0 ? (
-              <div className="bg-card border border-border rounded-2xl py-20 text-center">
-                <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <CreditCard className="w-8 h-8 text-primary" />
+              <div className="bg-card border border-border rounded-2xl py-16 sm:py-20 text-center px-4">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <CreditCard className="w-7 h-7 sm:w-8 sm:h-8 text-primary" />
                 </div>
-                <h2 className="text-xl font-bold mb-2">No orders yet</h2>
+                <h2 className="text-lg sm:text-xl font-bold mb-2">No orders yet</h2>
                 <p className="text-muted-foreground text-sm mb-6">Your purchase history will appear here.</p>
                 <Button asChild className="bg-primary hover:bg-primary/90 gap-2">
                   <Link href="/courses"><BookOpen className="w-4 h-4" />Browse Courses</Link>
@@ -454,15 +432,15 @@ export default function MyCoursesPage() {
             ) : (
               <div className="bg-card border border-border rounded-2xl overflow-hidden">
                 <div className="px-4 py-3 border-b border-border bg-background/50 hidden sm:flex items-center gap-4">
-                  <div className="w-9 flex-shrink-0" />
+                  <div className="w-8 sm:w-9 flex-shrink-0" />
                   <div className="flex-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">Product</div>
                   <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide text-right">Amount</div>
                 </div>
                 {payments.map(p => <OrderRow key={p.id} p={p} />)}
-                <div className="px-4 py-3 border-t border-border bg-background/30 flex items-center justify-between">
+                <div className="px-3 sm:px-4 py-3 border-t border-border bg-background/30 flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{payments.length} transaction{payments.length !== 1 ? "s" : ""}</span>
                   <div className="text-xs text-muted-foreground">
-                    Total paid: <span className="font-bold text-foreground">
+                    Total: <span className="font-bold text-foreground">
                       ₹{payments.filter(p => p.status === "completed").reduce((s, p) => s + Number(p.amount), 0).toLocaleString("en-IN")}
                     </span>
                   </div>
