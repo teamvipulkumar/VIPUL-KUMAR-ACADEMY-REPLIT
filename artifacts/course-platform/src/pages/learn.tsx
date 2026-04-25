@@ -55,14 +55,13 @@ function resolveEmbedUrl(url: string): { type: "iframe" | "video"; url: string; 
 }
 
 // ─── Lesson type icons ────────────────────────────────────────────────────────
-function LessonIcon({ type, completed }: { type: string; completed: boolean }) {
-  if (completed) return <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />;
+function LessonIcon({ type }: { type: string }) {
   if (type === "video") return <Play className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />;
   if (type === "pdf") return <FileArchive className="w-3.5 h-3.5 text-orange-400 flex-shrink-0" />;
   if (type === "link") return <Link2 className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />;
   if (type === "quiz") return <HelpCircle className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" />;
   if (type === "embed") return <Play className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />;
-  return <FileText className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />;
+  return <FileText className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />;
 }
 
 // ─── Video player ─────────────────────────────────────────────────────────────
@@ -307,7 +306,7 @@ export default function LearnPage() {
                               {/* Existing content */}
                               <div className="flex items-start gap-2 flex-1 min-w-0 py-2 pl-1">
                                 <div className="flex-shrink-0 mt-0.5">
-                                  <LessonIcon type={lesson.type} completed={lesson.isCompleted} />
+                                  <LessonIcon type={lesson.type} />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className={`text-xs line-clamp-2 leading-snug ${
