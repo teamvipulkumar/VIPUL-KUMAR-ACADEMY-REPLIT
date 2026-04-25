@@ -79,7 +79,7 @@ router.post("/register", async (req, res): Promise<void> => {
   const origin = (req.headers.origin as string) || process.env.SITE_URL || "";
   const verifyLink = `${origin}/verify-email?token=${verifyToken}`;
   triggerAutomation("welcome", user.id, user.email, { name: user.name, email: user.email, verify_link: verifyLink }).catch(() => {});
-  triggerFunnel("user_signup", user.id).catch(() => {});
+  triggerFunnel("user_signup", user.id, { verify_link: verifyLink, site_url: origin, name: user.name, email: user.email }).catch(() => {});
   sendTransactionalEmail(
     user.email,
     "Please verify your email — Vipul Kumar Academy",
@@ -111,7 +111,8 @@ router.post("/login", async (req, res): Promise<void> => {
   res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
   const { password: _, emailVerifyToken: _vt, emailVerifyTokenExpiresAt: _vte, resetToken: _rt, resetTokenExpiresAt: _rte, ...safeUser } = user;
   res.json({ user: { ...safeUser, isStaff, staffPermissions }, message: "Login successful" });
-  triggerFunnel("user_login", user.id).catch(() => {});
+  const loginOrigin = (req.headers.origin as string) || process.env.SITE_URL || "";
+  triggerFunnel("user_login", user.id, { site_url: loginOrigin }).catch(() => {});
 });
 
 router.post("/logout", (req, res): void => {

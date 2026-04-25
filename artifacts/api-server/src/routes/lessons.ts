@@ -16,7 +16,8 @@ router.post("/:lessonId/complete", requireAuth, async (req, res): Promise<void> 
   const existing = await db.select().from(lessonCompletionsTable).where(and(eq(lessonCompletionsTable.userId, authedReq.user.userId), eq(lessonCompletionsTable.lessonId, lessonId))).limit(1);
   if (existing.length === 0) {
     await db.insert(lessonCompletionsTable).values({ userId: authedReq.user.userId, lessonId });
-    triggerFunnel("lesson_completed", authedReq.user.userId).catch(() => {});
+    const siteUrl = process.env.SITE_URL || (req.headers.origin as string) || "";
+    triggerFunnel("lesson_completed", authedReq.user.userId, { site_url: siteUrl }).catch(() => {});
   }
 
   // Check if course is fully completed
@@ -62,7 +63,8 @@ router.post("/:lessonId/complete", requireAuth, async (req, res): Promise<void> 
               email: user.email,
               course_name: course.title,
             }).catch(() => {});
-            triggerFunnel("course_completed", user.id).catch(() => {});
+            const completionSiteUrl = process.env.SITE_URL || (req.headers.origin as string) || "";
+            triggerFunnel("course_completed", user.id, { course_name: course.title, site_url: completionSiteUrl }).catch(() => {});
           }
         }
       }

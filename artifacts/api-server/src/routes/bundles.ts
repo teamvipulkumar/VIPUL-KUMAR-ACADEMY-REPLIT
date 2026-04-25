@@ -75,7 +75,11 @@ async function enrollInBundle(bundleId: number, userId: number, affiliateRef?: s
     triggerAutomation("purchase", buyer.id, buyer.email, {
       name: buyer.name, email: buyer.email, course_name: bundle.name,
     }).catch(() => {});
-    triggerFunnel("new_purchase", buyer.id).catch(() => {});
+    triggerFunnel("new_purchase", buyer.id, {
+      course_name: bundle.name,
+      amount: String(bundle.price.toFixed(2)),
+      site_url: process.env.SITE_URL || "",
+    }).catch(() => {});
   }
 
   if (affiliateRef) {
