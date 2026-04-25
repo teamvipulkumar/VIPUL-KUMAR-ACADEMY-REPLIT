@@ -251,17 +251,50 @@ export default function LearnPage() {
                       className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-background/60 text-left group transition-colors cursor-pointer"
                       onClick={() => setExpandedModules(p => p.includes(idx) ? p.filter(i => i !== idx) : [...p, idx])}
                     >
-                      {/* Progress circle */}
-                      <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                        allDone
-                          ? "border-primary bg-primary"
-                          : completedInMod > 0
-                          ? "border-primary bg-transparent"
-                          : "border-muted-foreground/40 bg-transparent"
-                      }`}>
-                        {allDone && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
-                        {!allDone && completedInMod > 0 && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
-                      </div>
+                      {/* Circular progress ring */}
+                      {(() => {
+                        const size = 22;
+                        const radius = 9;
+                        const circumference = 2 * Math.PI * radius;
+                        const pct = modLessons.length > 0 ? completedInMod / modLessons.length : 0;
+                        const offset = circumference * (1 - pct);
+                        return (
+                          <svg width={size} height={size} className="flex-shrink-0 -rotate-90" viewBox={`0 0 ${size} ${size}`}>
+                            {/* Track */}
+                            <circle cx={size/2} cy={size/2} r={radius}
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              className="text-muted-foreground/25"
+                            />
+                            {/* Progress arc */}
+                            {pct > 0 && (
+                              <circle cx={size/2} cy={size/2} r={radius}
+                                fill={allDone ? "hsl(var(--primary))" : "none"}
+                                stroke="hsl(var(--primary))"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeDasharray={circumference}
+                                strokeDashoffset={allDone ? 0 : offset}
+                                style={{ transition: "stroke-dashoffset 0.4s ease" }}
+                              />
+                            )}
+                            {/* Check icon when all done — rendered upright */}
+                            {allDone && (
+                              <g transform={`rotate(90, ${size/2}, ${size/2})`}>
+                                <polyline
+                                  points={`${size/2 - 3.5},${size/2} ${size/2 - 1},${size/2 + 2.5} ${size/2 + 3.5},${size/2 - 2.5}`}
+                                  fill="none"
+                                  stroke="hsl(var(--primary-foreground))"
+                                  strokeWidth="1.8"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </g>
+                            )}
+                          </svg>
+                        );
+                      })()}
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-foreground line-clamp-2 leading-snug">{mod.title}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">{completedInMod}/{modLessons.length} completed</p>
