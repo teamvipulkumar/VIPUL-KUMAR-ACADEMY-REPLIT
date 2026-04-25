@@ -201,7 +201,10 @@ router.post("/verify", requireAuth, async (req, res): Promise<void> => {
     const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
     await db.insert(notificationsTable).values({ userId: authedReq.user.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success" });
     const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, authedReq.user.userId)).limit(1);
-    if (buyer) triggerAutomation("purchase", buyer.id, buyer.email, { name: buyer.name, email: buyer.email, course_name: course?.title ?? "", amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
+    if (buyer) {
+      triggerAutomation("purchase", buyer.id, buyer.email, { name: buyer.name, email: buyer.email, course_name: course?.title ?? "", amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
+      triggerFunnel("new_purchase", buyer.id, { course_name: course?.title ?? "", amount: String(parseFloat(String(payment.amount)).toFixed(2)), site_url: process.env.SITE_URL || "" }).catch(() => {});
+    }
     await recordAffiliateCommission(payment.affiliateRef, authedReq.user.userId, payment.courseId, parseFloat(String(payment.amount)));
   } else {
     enrollmentId = existing[0].id;
@@ -376,7 +379,10 @@ router.post("/checkout/guest", async (req, res): Promise<void> => {
   const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (freshUser) {
     if (isNewUser) triggerAutomation("welcome", freshUser.id, freshUser.email, { name: freshUser.name, email: freshUser.email }).catch(() => {});
-    if (!existing) triggerAutomation("purchase", freshUser.id, freshUser.email, { name: freshUser.name, email: freshUser.email, course_name: course.title, amount: String(amount.toFixed(2)) }).catch(() => {});
+    if (!existing) {
+      triggerAutomation("purchase", freshUser.id, freshUser.email, { name: freshUser.name, email: freshUser.email, course_name: course.title, amount: String(amount.toFixed(2)) }).catch(() => {});
+      triggerFunnel("new_purchase", freshUser.id, { course_name: course.title, amount: String(amount.toFixed(2)), site_url: process.env.SITE_URL || "" }).catch(() => {});
+    }
   }
   const token = signToken({ userId: freshUser!.id, email: freshUser!.email, role: freshUser!.role });
   res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
@@ -558,6 +564,7 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
           if (!ex) await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId });
         }
         await db.insert(notificationsTable).values({ userId: payment.userId, title: "Package Enrolled! 🎉", message: `You now have access to all courses in "${bundle?.name ?? "the package"}".`, type: "success" });
+        triggerFunnel("new_purchase", payment.userId, { course_name: bundle?.name ?? "", amount: String(parseFloat(String(payment.amount)).toFixed(2)), site_url: process.env.SITE_URL || "" }).catch(() => {});
         if (payment.couponCode) {
           const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
           if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
@@ -578,7 +585,10 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
           if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
         }
         const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
-        if (buyer && course) triggerAutomation("purchase", buyer.id, buyer.email, { name: buyer.name, email: buyer.email, course_name: course.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
+        if (buyer && course) {
+          triggerAutomation("purchase", buyer.id, buyer.email, { name: buyer.name, email: buyer.email, course_name: course.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
+          triggerFunnel("new_purchase", buyer.id, { course_name: course.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)), site_url: process.env.SITE_URL || "" }).catch(() => {});
+        }
         await recordAffiliateCommission(payment.affiliateRef, payment.userId, payment.courseId, parseFloat(String(payment.amount)));
       }
 
@@ -651,6 +661,7 @@ router.post("/cashfree/webhook", async (req, res): Promise<void> => {
       if (!ex) await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId });
     }
     await db.insert(notificationsTable).values({ userId: payment.userId, title: "Package Enrolled! 🎉", message: `You now have access to all courses in "${bundle?.name ?? "the package"}".`, type: "success" });
+    triggerFunnel("new_purchase", payment.userId, { course_name: bundle?.name ?? "", amount: String(parseFloat(String(payment.amount)).toFixed(2)), site_url: process.env.SITE_URL || "" }).catch(() => {});
     if (payment.couponCode) {
       const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
       if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
@@ -662,6 +673,11 @@ router.post("/cashfree/webhook", async (req, res): Promise<void> => {
       await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId: payment.courseId });
       const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
       await db.insert(notificationsTable).values({ userId: payment.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success" });
+      const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+      if (buyer && course) {
+        triggerAutomation("purchase", buyer.id, buyer.email, { name: buyer.name, email: buyer.email, course_name: course.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
+        triggerFunnel("new_purchase", buyer.id, { course_name: course.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)), site_url: process.env.SITE_URL || "" }).catch(() => {});
+      }
       if (payment.couponCode) {
         const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
         if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
@@ -861,6 +877,7 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
           if (!ex) await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId });
         }
         await db.insert(notificationsTable).values({ userId: payment.userId, title: "Package Enrolled! 🎉", message: `You now have access to all courses in "${bundle?.name ?? "the package"}".`, type: "success" });
+        triggerFunnel("new_purchase", payment.userId, { course_name: bundle?.name ?? "", amount: String(parseFloat(String(payment.amount)).toFixed(2)), site_url: process.env.SITE_URL || "" }).catch(() => {});
         if (payment.couponCode) {
           const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
           if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
@@ -882,7 +899,10 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
         }
         const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
         const [course2] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
-        if (buyer && course2) triggerAutomation("purchase", buyer.id, buyer.email, { name: buyer.name, email: buyer.email, course_name: course2.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
+        if (buyer && course2) {
+          triggerAutomation("purchase", buyer.id, buyer.email, { name: buyer.name, email: buyer.email, course_name: course2.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
+          triggerFunnel("new_purchase", buyer.id, { course_name: course2.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)), site_url: process.env.SITE_URL || "" }).catch(() => {});
+        }
         await recordAffiliateCommission(payment.affiliateRef, payment.userId, payment.courseId, parseFloat(String(payment.amount)));
       }
 
@@ -929,6 +949,7 @@ router.post("/paytm/webhook", async (req, res): Promise<void> => {
       if (!ex) await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId });
     }
     await db.insert(notificationsTable).values({ userId: payment.userId, title: "Package Enrolled! 🎉", message: `You now have access to all courses in "${bundle?.name ?? "the package"}".`, type: "success" });
+    triggerFunnel("new_purchase", payment.userId, { course_name: bundle?.name ?? "", amount: String(parseFloat(String(payment.amount)).toFixed(2)), site_url: process.env.SITE_URL || "" }).catch(() => {});
     await recordAffiliateCommission(payment.affiliateRef, payment.userId, null, parseFloat(String(payment.amount)));
   } else {
     const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
@@ -936,6 +957,11 @@ router.post("/paytm/webhook", async (req, res): Promise<void> => {
       await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId: payment.courseId });
       const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
       await db.insert(notificationsTable).values({ userId: payment.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success" });
+      const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+      if (buyer && course) {
+        triggerAutomation("purchase", buyer.id, buyer.email, { name: buyer.name, email: buyer.email, course_name: course.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
+        triggerFunnel("new_purchase", buyer.id, { course_name: course.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)), site_url: process.env.SITE_URL || "" }).catch(() => {});
+      }
       await recordAffiliateCommission(payment.affiliateRef, payment.userId, payment.courseId, parseFloat(String(payment.amount)));
     }
   }
@@ -1187,6 +1213,7 @@ router.post("/stripe/verify", async (req, res): Promise<void> => {
         course_name: course?.title ?? "",
         amount: String(parseFloat(String(payment.amount)).toFixed(2)),
       }).catch(() => {});
+      triggerFunnel("new_purchase", buyer.id, { course_name: course?.title ?? "", amount: String(parseFloat(String(payment.amount)).toFixed(2)), site_url: process.env.SITE_URL || "" }).catch(() => {});
       await recordAffiliateCommission(payment.affiliateRef, payment.userId, payment.courseId, parseFloat(String(payment.amount)));
     }
   }
