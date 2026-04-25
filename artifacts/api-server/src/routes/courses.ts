@@ -57,21 +57,27 @@ router.get("/:courseId", async (req, res): Promise<void> => {
   if (!course) { res.status(404).json({ error: "Course not found" }); return; }
 
   const modules = await db.select().from(modulesTable).where(eq(modulesTable.courseId, courseId)).orderBy(modulesTable.order);
-  const modulesWithLessons = await Promise.all(modules.map(async (m) => {
-    const lessons = await db.select().from(lessonsTable).where(eq(lessonsTable.moduleId, m.id)).orderBy(lessonsTable.order);
-    return { ...m, lessons: lessons.map(l => ({ ...l, isFree: l.isFree === "true", isCompleted: false })) };
-  }));
 
   const token = req.cookies?.token || req.headers.authorization?.replace("Bearer ", "");
   let isEnrolled = false;
+  let completedLessonIds = new Set<number>();
   if (token) {
     try {
       const { verifyToken } = await import("../middlewares/auth");
       const payload = verifyToken(token);
-      const enrollment = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payload.userId), eq(enrollmentsTable.courseId, courseId))).limit(1);
+      const [enrollment, completions] = await Promise.all([
+        db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payload.userId), eq(enrollmentsTable.courseId, courseId))).limit(1),
+        db.select({ lessonId: lessonCompletionsTable.lessonId }).from(lessonCompletionsTable).where(eq(lessonCompletionsTable.userId, payload.userId)),
+      ]);
       isEnrolled = enrollment.length > 0;
+      completedLessonIds = new Set(completions.map(c => c.lessonId));
     } catch {}
   }
+
+  const modulesWithLessons = await Promise.all(modules.map(async (m) => {
+    const lessons = await db.select().from(lessonsTable).where(eq(lessonsTable.moduleId, m.id)).orderBy(lessonsTable.order);
+    return { ...m, lessons: lessons.map(l => ({ ...l, isFree: l.isFree === "true", isCompleted: completedLessonIds.has(l.id) })) };
+  }));
 
   const [enrollResult] = await db.select({ count: count() }).from(enrollmentsTable).where(eq(enrollmentsTable.courseId, courseId));
   res.json({ ...course, price: parseFloat(course.price), modules: modulesWithLessons, isEnrolled, moduleCount: modules.length, lessonCount: modulesWithLessons.reduce((a, m) => a + m.lessons.length, 0), enrollmentCount: enrollResult?.count ?? 0 });

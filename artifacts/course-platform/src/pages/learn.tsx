@@ -160,6 +160,8 @@ export default function LearnPage() {
     completeLesson.mutate({ lessonId }, {
       onSuccess: () => {
         toast({ title: "Lesson completed!", description: "Keep up the great work!" });
+        // Update selected lesson state immediately so the UI reflects completion instantly
+        setSelectedLesson(prev => prev && prev.id === lessonId ? { ...prev, isCompleted: true } : prev);
         queryClient.invalidateQueries({ queryKey: getGetCourseProgressQueryKey(courseId) });
         queryClient.invalidateQueries({ queryKey: getGetCourseQueryKey(courseId) });
         // Auto-advance to next
@@ -253,12 +255,12 @@ export default function LearnPage() {
                       {/* Progress circle */}
                       <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
                         allDone
-                          ? "border-green-500 bg-green-500"
+                          ? "border-primary bg-primary"
                           : completedInMod > 0
-                          ? "border-primary bg-primary/10"
+                          ? "border-primary bg-transparent"
                           : "border-muted-foreground/40 bg-transparent"
                       }`}>
-                        {allDone && <Check className="w-2.5 h-2.5 text-white" />}
+                        {allDone && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
                         {!allDone && completedInMod > 0 && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -290,12 +292,12 @@ export default function LearnPage() {
                               <div className="flex flex-col items-center flex-shrink-0 w-9 pt-2.5">
                                 <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
                                   lesson.isCompleted
-                                    ? "border-green-500 bg-green-500"
+                                    ? "border-primary bg-primary"
                                     : isSelected
-                                    ? "border-primary bg-primary/15"
+                                    ? "border-primary bg-transparent"
                                     : "border-muted-foreground/35 bg-transparent"
                                 }`}>
-                                  {lesson.isCompleted && <Check className="w-2 h-2 text-white" />}
+                                  {lesson.isCompleted && <Check className="w-2 h-2 text-primary-foreground" />}
                                 </div>
                                 {!isLast && (
                                   <div className="w-px flex-1 min-h-[18px] mt-1 bg-border/60" />
