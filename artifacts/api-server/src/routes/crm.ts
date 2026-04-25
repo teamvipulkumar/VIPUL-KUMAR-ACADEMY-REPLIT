@@ -1482,10 +1482,14 @@ export async function triggerFunnel(triggerType: string, userId: number, trigger
         } else if (step.actionType === "send_email") {
           let subject = String(config.subject ?? "");
           let html = String(config.body ?? "");
-          if (config.mode === "template" && config.templateId) {
+          // Default mode is "template" — treat undefined/null/empty the same way
+          const emailMode = config.mode ?? "template";
+          if (emailMode === "template" && config.templateId) {
             const [tpl] = await db.select().from(emailTemplatesTable).where(eq(emailTemplatesTable.id, Number(config.templateId))).limit(1);
             if (tpl) { subject = tpl.subject; html = tpl.htmlBody; }
           }
+          // Guard: skip send if both subject and html are still empty after resolution
+          if (!subject && !html) return;
           subject = subject.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
           html = html.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
           try {

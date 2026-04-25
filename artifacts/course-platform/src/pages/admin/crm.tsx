@@ -1148,7 +1148,7 @@ function AutomationTab() {
   /* ── Add step ── */
   const addStep = async (actionType: string) => {
     if (!activeFunnelId) return;
-    const defaultConfig: Record<string, any> = actionType === "wait" ? { days: 1, hours: 0 } : {};
+    const defaultConfig: Record<string, any> = actionType === "wait" ? { days: 1, hours: 0 } : actionType === "send_email" ? { mode: "template" } : {};
     let insertAfterOrder = -1;
     if (addingAfterId && addingAfterId.startsWith("step-")) {
       const stepId = parseInt(addingAfterId.replace("step-", ""));
@@ -1385,7 +1385,7 @@ function AutomationTab() {
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       {!isEditing && step.actionType !== "end" && (
-                        <button onClick={() => { setEditingStepId(step.id); setStepDraft({ ...(step.config ?? {}) }); }}
+                        <button onClick={() => { const cfg = { ...(step.config ?? {}) }; if (step.actionType === "send_email" && !cfg.mode) cfg.mode = "template"; setEditingStepId(step.id); setStepDraft(cfg); }}
                           className="p-1 text-muted-foreground hover:text-foreground cursor-pointer rounded transition-colors">
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
