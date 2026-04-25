@@ -569,6 +569,41 @@ export default function LearnPage() {
                       <p className="text-muted-foreground text-sm">No content written for this lesson yet.</p>
                     </div>
                   )}
+
+                  {/* Previous & Mark Complete buttons */}
+                  <div className="flex items-center gap-3 mt-8 pt-6 border-t border-border">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!prevLesson}
+                      onClick={() => prevLesson && selectLesson(prevLesson as LessonEntry)}
+                      className="gap-1.5"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Previous
+                    </Button>
+                    <div className="flex-1" />
+                    {!selectedLesson.isCompleted ? (
+                      <Button
+                        size="sm"
+                        className="gap-1.5 bg-green-600 hover:bg-green-500 text-white"
+                        onClick={() => handleCompleteLesson(selectedLesson.id)}
+                        disabled={completeLesson.isPending}
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        {completeLesson.isPending ? "Saving..." : nextLesson ? "Complete & Next" : "Mark Complete"}
+                      </Button>
+                    ) : nextLesson ? (
+                      <Button
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() => selectLesson(nextLesson as LessonEntry)}
+                      >
+                        Next Lesson
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               </div>
 
