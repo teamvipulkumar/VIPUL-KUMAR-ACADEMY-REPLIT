@@ -209,7 +209,6 @@ export default function LearnPage() {
           </Badge>
         </div>
       </header>
-
       <div className="flex flex-1 overflow-hidden relative">
         {/* ── Mobile sidebar backdrop ── */}
         {sidebarOpen && (
@@ -248,7 +247,7 @@ export default function LearnPage() {
                   <div key={mod.id} className="border-b border-border/30">
                     {/* Module button */}
                     <button
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-background/60 text-left group transition-colors cursor-pointer"
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-background/60 text-left group transition-colors cursor-pointer pt-[16px] pb-[16px] text-[16px]"
                       onClick={() => setExpandedModules(p => p.includes(idx) ? p.filter(i => i !== idx) : [...p, idx])}
                     >
                       {/* Circular progress ring */}
@@ -304,7 +303,6 @@ export default function LearnPage() {
                           : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                       </div>
                     </button>
-
                     {/* Lessons */}
                     {isExpanded && (
                       <div className="pb-1">
