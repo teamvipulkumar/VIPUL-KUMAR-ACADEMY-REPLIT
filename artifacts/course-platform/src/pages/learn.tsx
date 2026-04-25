@@ -241,62 +241,93 @@ export default function LearnPage() {
                 const completedInMod = modLessons.filter(l => l.isCompleted).length;
                 const isExpanded = expandedModules.includes(idx);
 
+                const allDone = modLessons.length > 0 && completedInMod === modLessons.length;
+
                 return (
                   <div key={mod.id} className="mb-0.5">
                     {/* Module button */}
                     <button
-                      className="w-full flex items-start gap-2.5 px-4 py-2.5 hover:bg-background/60 text-left group transition-colors cursor-pointer"
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-background/60 text-left group transition-colors cursor-pointer"
                       onClick={() => setExpandedModules(p => p.includes(idx) ? p.filter(i => i !== idx) : [...p, idx])}
                     >
-                      <div className="flex-shrink-0 mt-0.5">
-                        {isExpanded
-                          ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                          : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
+                      {/* Progress circle */}
+                      <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                        allDone
+                          ? "border-green-500 bg-green-500"
+                          : completedInMod > 0
+                          ? "border-primary bg-primary/10"
+                          : "border-muted-foreground/40 bg-transparent"
+                      }`}>
+                        {allDone && <Check className="w-2.5 h-2.5 text-white" />}
+                        {!allDone && completedInMod > 0 && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-foreground line-clamp-2 leading-snug">{mod.title}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">{completedInMod}/{modLessons.length} completed</p>
+                      </div>
+                      <div className="flex-shrink-0 ml-1">
+                        {isExpanded
+                          ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                          : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                       </div>
                     </button>
 
                     {/* Lessons */}
                     {isExpanded && (
                       <div className="pb-1">
-                        {modLessons.map(lesson => {
+                        {modLessons.map((lesson, lessonIdx) => {
                           const isSelected = selectedLesson?.id === lesson.id;
+                          const isLast = lessonIdx === modLessons.length - 1;
                           return (
                             <button
                               key={lesson.id}
-                              className={`w-full flex items-start gap-2.5 pl-9 pr-4 py-2 text-left transition-all duration-150 border-l-2 cursor-pointer ${
-                                isSelected
-                                  ? "bg-primary/10 border-l-primary"
-                                  : "hover:bg-background/60 border-l-transparent hover:border-l-border"
+                              className={`w-full flex items-start gap-0 pl-4 pr-4 py-0 text-left transition-all duration-150 cursor-pointer ${
+                                isSelected ? "bg-primary/10" : "hover:bg-background/60"
                               }`}
                               onClick={() => selectLesson(lesson as LessonEntry)}
                             >
-                              <div className="flex-shrink-0 mt-0.5">
-                                <LessonIcon type={lesson.type} completed={lesson.isCompleted} />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className={`text-xs line-clamp-2 leading-snug ${
-                                  isSelected ? "text-primary font-medium" :
-                                  lesson.isCompleted ? "text-green-400" :
-                                  "text-muted-foreground"
-                                }`}>{lesson.title}</p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  {lesson.durationMinutes && (
-                                    <span className="text-xs text-muted-foreground/70 flex items-center gap-0.5">
-                                      <Clock className="w-2.5 h-2.5" />{lesson.durationMinutes}m
-                                    </span>
-                                  )}
-                                  {lesson.isFree && !lesson.isCompleted && (
-                                    <span className="text-xs text-green-500/80">Preview</span>
-                                  )}
+                              {/* Circle + vertical line column */}
+                              <div className="flex flex-col items-center flex-shrink-0 w-9 pt-2.5">
+                                <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                                  lesson.isCompleted
+                                    ? "border-green-500 bg-green-500"
+                                    : isSelected
+                                    ? "border-primary bg-primary/15"
+                                    : "border-muted-foreground/35 bg-transparent"
+                                }`}>
+                                  {lesson.isCompleted && <Check className="w-2 h-2 text-white" />}
                                 </div>
+                                {!isLast && (
+                                  <div className="w-px flex-1 min-h-[18px] mt-1 bg-border/60" />
+                                )}
                               </div>
-                              {!lesson.isFree && !lesson.isCompleted && (
-                                <Lock className="w-3 h-3 text-muted-foreground/40 flex-shrink-0 mt-0.5" />
-                              )}
+
+                              {/* Existing content */}
+                              <div className="flex items-start gap-2 flex-1 min-w-0 py-2 pl-1">
+                                <div className="flex-shrink-0 mt-0.5">
+                                  <LessonIcon type={lesson.type} completed={lesson.isCompleted} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className={`text-xs line-clamp-2 leading-snug ${
+                                    isSelected ? "text-primary font-medium" :
+                                    lesson.isCompleted ? "text-green-400" :
+                                    "text-muted-foreground"
+                                  }`}>{lesson.title}</p>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    {lesson.durationMinutes && (
+                                      <span className="text-xs text-muted-foreground/70 flex items-center gap-0.5">
+                                        <Clock className="w-2.5 h-2.5" />{lesson.durationMinutes}m
+                                      </span>
+                                    )}
+                                    {lesson.isFree && !lesson.isCompleted && (
+                                      <span className="text-xs text-green-500/80">Preview</span>
+                                    )}
+                                  </div>
+                                </div>
+                                {!lesson.isFree && !lesson.isCompleted && (
+                                  <Lock className="w-3 h-3 text-muted-foreground/40 flex-shrink-0 mt-0.5" />
+                                )}
+                              </div>
                             </button>
                           );
                         })}
