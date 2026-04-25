@@ -247,8 +247,12 @@ export function Navbar() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="gap-2 h-9 px-2 rounded-lg hover:bg-white/5 cursor-pointer">
-                      <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-                        {user?.name?.charAt(0).toUpperCase()}
+                      <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-white flex-shrink-0 overflow-hidden">
+                        {(user as any)?.avatarUrl ? (
+                          <img src={(user as any).avatarUrl} alt={user?.name ?? ""} className="w-full h-full object-cover" />
+                        ) : (
+                          user?.name?.charAt(0).toUpperCase()
+                        )}
                       </div>
                       <span className="hidden lg:block text-sm font-medium text-foreground/80">{user?.name?.split(" ")[0]}</span>
                     </Button>
@@ -316,8 +320,12 @@ export function Navbar() {
           <nav className="absolute top-16 left-0 right-0 border-b shadow-2xl max-h-[calc(100vh-4rem)] overflow-y-auto" style={{ backgroundColor: "var(--mobile-drawer-bg)", borderColor: "var(--nav-border)" }}>
             {isAuthenticated && (
               <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5">
-                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-white">
-                  {user?.name?.charAt(0).toUpperCase()}
+                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-white overflow-hidden flex-shrink-0">
+                  {(user as any)?.avatarUrl ? (
+                    <img src={(user as any).avatarUrl} alt={user?.name ?? ""} className="w-full h-full object-cover" />
+                  ) : (
+                    user?.name?.charAt(0).toUpperCase()
+                  )}
                 </div>
                 <div>
                   <p className="font-semibold text-sm text-foreground">{user?.name}</p>
