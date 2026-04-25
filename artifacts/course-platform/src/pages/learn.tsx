@@ -245,7 +245,7 @@ export default function LearnPage() {
                 const allDone = modLessons.length > 0 && completedInMod === modLessons.length;
 
                 return (
-                  <div key={mod.id} className="mb-0.5">
+                  <div key={mod.id} className="border-b border-border/30">
                     {/* Module button */}
                     <button
                       className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-background/60 text-left group transition-colors cursor-pointer"
