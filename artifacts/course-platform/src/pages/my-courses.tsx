@@ -353,21 +353,22 @@ export default function MyCoursesPage() {
         </div>
 
         {/* ── Tabs ── */}
-        <div className="flex items-center gap-1 mb-6 bg-card border border-border rounded-xl p-1 w-full sm:w-fit flex-wrap">
+        <div className="flex items-center gap-1 mb-6 bg-card border border-border rounded-xl p-1 w-full sm:w-fit">
           {[
-            { id: "courses" as Tab, label: "My Courses", icon: <BookOpen className="w-4 h-4" />, count: totalCourses },
-            { id: "packages" as Tab, label: "My Packages", icon: <Package className="w-4 h-4" />, count: bundleCount },
-            { id: "orders" as Tab, label: "Order History", icon: <CreditCard className="w-4 h-4" />, count: payments?.length ?? 0 },
+            { id: "courses" as Tab, label: "My Courses", shortLabel: "Courses", icon: <BookOpen className="w-4 h-4" />, count: totalCourses },
+            { id: "packages" as Tab, label: "My Packages", shortLabel: "Packages", icon: <Package className="w-4 h-4" />, count: bundleCount },
+            { id: "orders" as Tab, label: "Order History", shortLabel: "Orders", icon: <CreditCard className="w-4 h-4" />, count: payments?.length ?? 0 },
           ].map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 sm:flex-none flex items-center justify-center sm:justify-start gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`flex-1 sm:flex-none flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                 tab === t.id ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {t.icon}
-              <span className="text-xs sm:text-sm">{t.label}</span>
+              <span className="sm:hidden">{t.shortLabel}</span>
+              <span className="hidden sm:inline">{t.label}</span>
               {t.count > 0 && (
                 <span className={`text-[10px] font-bold rounded-full px-1.5 py-0 hidden sm:inline ${tab === t.id ? "bg-white/20 text-white" : "bg-border text-muted-foreground"}`}>
                   {t.count}
