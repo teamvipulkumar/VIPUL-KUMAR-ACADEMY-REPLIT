@@ -203,7 +203,7 @@ router.post("/forgot-password", async (req, res): Promise<void> => {
     const origin = (req.headers.origin as string) || process.env.SITE_URL || "";
     const resetLink = `${origin}/reset-password?token=${token}`;
     triggerAutomation("forgot_password", user.id, user.email, { name: user.name, email: user.email, reset_link: resetLink }).catch(() => {});
-    triggerFunnel("forgot_password", user.id).catch(() => {});
+    triggerFunnel("forgot_password", user.id, { reset_link: resetLink, name: user.name, email: user.email }).catch(() => {});
   }
   res.json({ message: "If that email exists, a reset link has been sent" });
 });

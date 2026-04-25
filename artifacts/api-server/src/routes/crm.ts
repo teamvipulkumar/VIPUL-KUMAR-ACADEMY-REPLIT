@@ -1490,8 +1490,16 @@ export async function triggerFunnel(triggerType: string, userId: number, trigger
           }
           // Guard: skip send if both subject and html are still empty after resolution
           if (!subject && !html) return;
+          // Built-in vars
           subject = subject.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
           html = html.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
+          // Expand any extra vars passed in triggerConfig (e.g. reset_link, course_name)
+          for (const [key, val] of Object.entries(triggerConfig)) {
+            if (typeof val === "string" || typeof val === "number") {
+              subject = subject.replaceAll(`{{${key}}}`, String(val));
+              html = html.replaceAll(`{{${key}}}`, String(val));
+            }
+          }
           try {
             await sendEmailWithFallback(user.email, subject, html);
             await db.insert(emailSendsTable).values({ type: "automation", automationEvent: triggerType, userId, email: user.email, subject, status: "sent" });
