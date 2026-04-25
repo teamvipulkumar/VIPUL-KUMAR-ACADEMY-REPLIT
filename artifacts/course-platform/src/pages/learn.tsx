@@ -297,7 +297,6 @@ export default function LearnPage() {
                       })()}
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-foreground line-clamp-2 leading-snug">{mod.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{completedInMod}/{modLessons.length} completed</p>
                       </div>
                       <div className="flex-shrink-0 ml-1">
                         {isExpanded
