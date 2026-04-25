@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter, ShieldCheck, ShoppingCart, Flag, Minus, BookOpen, GraduationCap, UserCheck, Gift, XCircle, BookMarked, MousePointerClick, LogIn } from "lucide-react";
+import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter, ShieldCheck, ShoppingCart, Flag, Minus, BookOpen, GraduationCap, UserCheck, Gift, XCircle, BookMarked, MousePointerClick, LogIn, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -986,6 +986,7 @@ const FUNNEL_TRIGGERS = [
   /* ── User lifecycle ── */
   { type: "user_signup",        label: "User Signs Up",          icon: UserPlus,           color: "text-blue-400",    bg: "bg-blue-500/10",    border: "border-blue-500/20",    desc: "Fires when a new user registers an account" },
   { type: "user_login",         label: "User Logs In",           icon: LogIn,              color: "text-sky-400",     bg: "bg-sky-500/10",     border: "border-sky-500/20",     desc: "Fires each time a user signs in" },
+  { type: "forgot_password",    label: "Forgot Password",        icon: KeyRound,           color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20",   desc: "Fires when a user requests a password reset" },
   /* ── Purchases & payments ── */
   { type: "new_purchase",       label: "Purchase Completed",     icon: ShoppingCart,       color: "text-green-400",   bg: "bg-green-500/10",   border: "border-green-500/20",   desc: "Fires when any course purchase succeeds" },
   { type: "payment_failed",     label: "Payment Failed",         icon: XCircle,            color: "text-red-400",     bg: "bg-red-500/10",     border: "border-red-500/20",     desc: "Fires when a payment attempt fails" },
@@ -1301,6 +1302,7 @@ function AutomationTab() {
                     <optgroup label="User Lifecycle">
                       <option value="user_signup">User Signs Up</option>
                       <option value="user_login">User Logs In</option>
+                      <option value="forgot_password">Forgot Password</option>
                     </optgroup>
                     <optgroup label="Purchases &amp; Payments">
                       <option value="new_purchase">Purchase Completed</option>
@@ -1526,6 +1528,7 @@ function AutomationTab() {
                 <optgroup label="User Lifecycle">
                   <option value="user_signup">User Signs Up</option>
                   <option value="user_login">User Logs In</option>
+                  <option value="forgot_password">Forgot Password</option>
                 </optgroup>
                 <optgroup label="Purchases &amp; Payments">
                   <option value="new_purchase">Purchase Completed</option>
