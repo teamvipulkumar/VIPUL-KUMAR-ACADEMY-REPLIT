@@ -566,7 +566,7 @@ export default function LearnPage() {
                       size="sm"
                       disabled={!prevLesson}
                       onClick={() => prevLesson && selectLesson(prevLesson as LessonEntry)}
-                      className="gap-1.5"
+                      className="gap-1.5 hover:bg-primary/10 hover:text-primary hover:border-primary transition-colors"
                     >
                       <ChevronLeft className="w-4 h-4" />
                       Previous
@@ -585,7 +585,7 @@ export default function LearnPage() {
                     ) : nextLesson ? (
                       <Button
                         size="sm"
-                        className="gap-1.5"
+                        className="gap-1.5 hover:bg-primary/10 hover:text-primary hover:border-primary transition-colors"
                         onClick={() => selectLesson(nextLesson as LessonEntry)}
                       >
                         Next Lesson
