@@ -174,7 +174,7 @@ export default function AdminSettingsPage() {
   const { theme, setTheme } = useTheme();
 
   const [form, setForm] = useState({
-    siteName: "", siteDescription: "", currency: "INR",
+    siteName: "", siteUrl: "", siteDescription: "", currency: "INR",
     stripeEnabled: true, razorpayEnabled: false, emailNotificationsEnabled: true,
     commissionRate: 20,
     showFeaturedCourses: true, showFeaturedPackages: true,
@@ -197,7 +197,7 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     if (settings) {
       setForm({
-        siteName: settings.siteName, siteDescription: settings.siteDescription,
+        siteName: settings.siteName, siteUrl: (settings as Record<string, unknown>).siteUrl as string ?? "", siteDescription: settings.siteDescription,
         currency: settings.currency, stripeEnabled: settings.stripeEnabled,
         razorpayEnabled: settings.razorpayEnabled, emailNotificationsEnabled: settings.emailNotificationsEnabled,
         commissionRate: settings.commissionRate,
@@ -560,6 +560,11 @@ export default function AdminSettingsPage() {
             <div>
               <Label className="text-sm mb-1.5 block">Platform Name</Label>
               <Input value={form.siteName} onChange={e => setForm(f => ({ ...f, siteName: e.target.value }))} className="bg-background" />
+            </div>
+            <div>
+              <Label className="text-sm mb-1.5 block">Site URL</Label>
+              <Input value={form.siteUrl} onChange={e => setForm(f => ({ ...f, siteUrl: e.target.value }))} placeholder="https://yourdomain.com" className="bg-background" />
+              <p className="text-xs text-muted-foreground mt-1">Used in email buttons (e.g. "Start Learning", "Explore Courses"). No trailing slash.</p>
             </div>
             <div>
               <Label className="text-sm mb-1.5 block">Description</Label>

@@ -21,6 +21,7 @@ if (Number.isNaN(port) || port <= 0) {
 async function runMigrations() {
   try {
     await db.execute(sql`ALTER TABLE automation_funnels ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT false`);
+    await db.execute(sql`ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS site_url text NOT NULL DEFAULT ''`);
     logger.info("DB migrations OK");
   } catch (e) {
     logger.warn({ e }, "Migration warning (non-fatal)");

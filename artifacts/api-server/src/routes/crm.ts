@@ -7,7 +7,7 @@ import {
   emailListsTable, emailListMembersTable,
   contactTagsTable, contactTagAssignmentsTable,
   emailSequencesTable, emailSequenceStepsTable, emailSequenceEnrollmentsTable,
-  automationFunnelsTable, automationFunnelStepsTable,
+  automationFunnelsTable, automationFunnelStepsTable, platformSettingsTable,
 } from "@workspace/db";
 import { eq, count, sql, and, notInArray, inArray, asc } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth";
@@ -1490,11 +1490,18 @@ export async function triggerFunnel(triggerType: string, userId: number, trigger
           }
           // Guard: skip send if both subject and html are still empty after resolution
           if (!subject && !html) return;
+          // Fetch site_url from platform settings if not provided by the caller
+          const mergedConfig = { ...triggerConfig };
+          if (!mergedConfig.site_url) {
+            const [ps] = await db.select({ siteUrl: platformSettingsTable.siteUrl }).from(platformSettingsTable).limit(1);
+            const resolved = ps?.siteUrl || process.env.SITE_URL || "";
+            mergedConfig.site_url = resolved.replace(/\/+$/, "");
+          }
           // Built-in vars
           subject = subject.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
           html = html.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
-          // Expand any extra vars passed in triggerConfig (e.g. reset_link, course_name)
-          for (const [key, val] of Object.entries(triggerConfig)) {
+          // Expand any extra vars passed in triggerConfig (e.g. reset_link, course_name, site_url)
+          for (const [key, val] of Object.entries(mergedConfig)) {
             if (typeof val === "string" || typeof val === "number") {
               subject = subject.replaceAll(`{{${key}}}`, String(val));
               html = html.replaceAll(`{{${key}}}`, String(val));

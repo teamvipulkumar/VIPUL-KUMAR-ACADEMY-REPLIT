@@ -531,10 +531,11 @@ router.get("/settings", requireAdmin, async (req, res): Promise<void> => {
 });
 
 router.put("/settings", requireAdmin, async (req, res): Promise<void> => {
-  const { siteName, siteDescription, commissionRate, currency, stripeEnabled, razorpayEnabled, emailNotificationsEnabled, googleSignInEnabled, googleClientId, googleClientSecret, maintenanceMode, maintenanceMessage, orderPrefix, orderSuffix, showFeaturedCourses, showFeaturedPackages, facebookPixelEnabled, facebookPixelId, facebookAccessToken, facebookPixelBaseCode, siteLogo, logoSize, logoSizeMobile, favicon, metaTitle, metaDescription } = req.body;
+  const { siteName, siteUrl, siteDescription, commissionRate, currency, stripeEnabled, razorpayEnabled, emailNotificationsEnabled, googleSignInEnabled, googleClientId, googleClientSecret, maintenanceMode, maintenanceMessage, orderPrefix, orderSuffix, showFeaturedCourses, showFeaturedPackages, facebookPixelEnabled, facebookPixelId, facebookAccessToken, facebookPixelBaseCode, siteLogo, logoSize, logoSizeMobile, favicon, metaTitle, metaDescription } = req.body;
   const existing = await db.select().from(platformSettingsTable).limit(1);
   const updates: Record<string, unknown> = {};
   if (siteName !== undefined) updates.siteName = siteName;
+  if (siteUrl !== undefined) updates.siteUrl = String(siteUrl).replace(/\/+$/, ""); // strip trailing slash
   if (siteDescription !== undefined) updates.siteDescription = siteDescription;
   if (commissionRate !== undefined) updates.commissionRate = Math.round(commissionRate * 100);
   if (currency !== undefined) updates.currency = currency;
