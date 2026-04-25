@@ -560,7 +560,7 @@ export default function LearnPage() {
                   )}
 
                   {/* Previous & Mark Complete buttons */}
-                  <div className="flex items-center gap-3 mt-8 pt-6 border-t border-border">
+                  <div className="flex items-center gap-3 mt-8">
                     <Button
                       variant="outline"
                       size="sm"
