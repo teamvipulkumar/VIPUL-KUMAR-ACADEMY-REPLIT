@@ -560,9 +560,9 @@ export default function LearnPage() {
                   )}
 
                   {/* Previous & Mark Complete buttons */}
-                  <div className="flex items-center gap-3 mt-8 pt-6">
+                  <div className="flex items-center gap-3 mt-8 pt-6 border-t border-border">
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       disabled={!prevLesson}
                       onClick={() => prevLesson && selectLesson(prevLesson as LessonEntry)}
@@ -584,7 +584,6 @@ export default function LearnPage() {
                       </Button>
                     ) : nextLesson ? (
                       <Button
-                        variant="ghost"
                         size="sm"
                         className="gap-1.5"
                         onClick={() => selectLesson(nextLesson as LessonEntry)}
