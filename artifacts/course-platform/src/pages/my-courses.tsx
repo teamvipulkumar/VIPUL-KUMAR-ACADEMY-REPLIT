@@ -57,12 +57,12 @@ function useMyBundles() {
 
 function StatCard({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string | number; sub?: string }) {
   return (
-    <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3.5">
-      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">{icon}</div>
-      <div>
-        <p className="text-xl font-bold text-foreground leading-none">{value}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
-        {sub && <p className="text-[10px] text-primary mt-0.5">{sub}</p>}
+    <div className="bg-card border border-border rounded-2xl p-3 sm:p-4 flex items-center gap-2.5 sm:gap-3.5">
+      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0 [&>svg]:w-4 [&>svg]:h-4 sm:[&>svg]:w-5 sm:[&>svg]:h-5">{icon}</div>
+      <div className="min-w-0">
+        <p className="text-lg sm:text-xl font-bold text-foreground leading-none">{value}</p>
+        <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">{label}</p>
+        {sub && <p className="text-[10px] text-primary mt-0.5 truncate">{sub}</p>}
       </div>
     </div>
   );
@@ -336,16 +336,16 @@ export default function MyCoursesPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-5xl mx-auto px-4 py-10">
+      <div className="max-w-5xl mx-auto px-4 py-6 sm:py-10">
 
         {/* ── Page Header ── */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-extrabold text-foreground tracking-tight">My Learning</h1>
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">My Learning</h1>
           <p className="text-muted-foreground mt-1.5 text-sm">Your enrolled courses, bundle packages, and order history — all in one place.</p>
         </div>
 
         {/* ── Stats ── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-6 sm:mb-8">
           <StatCard icon={<BookOpen className="w-5 h-5" />} label="Enrolled Courses" value={totalCourses} />
           <StatCard icon={<Package className="w-5 h-5" />} label="Packages" value={bundleCount} sub={bundleCount > 0 ? `${myBundles!.reduce((s, b) => s + b.courses.length, 0)} courses included` : undefined} />
           <StatCard icon={<TrendingUp className="w-5 h-5" />} label="Avg. Progress" value={`${avgProgress}%`} />
@@ -353,7 +353,7 @@ export default function MyCoursesPage() {
         </div>
 
         {/* ── Tabs ── */}
-        <div className="flex items-center gap-1 mb-6 bg-card border border-border rounded-xl p-1 w-fit flex-wrap">
+        <div className="flex items-center gap-1 mb-6 bg-card border border-border rounded-xl p-1 w-full sm:w-fit flex-wrap">
           {[
             { id: "courses" as Tab, label: "My Courses", icon: <BookOpen className="w-4 h-4" />, count: totalCourses },
             { id: "packages" as Tab, label: "My Packages", icon: <Package className="w-4 h-4" />, count: bundleCount },
@@ -362,14 +362,14 @@ export default function MyCoursesPage() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`flex-1 sm:flex-none flex items-center justify-center sm:justify-start gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 tab === t.id ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {t.icon}
-              {t.label}
+              <span className="text-xs sm:text-sm">{t.label}</span>
               {t.count > 0 && (
-                <span className={`text-[10px] font-bold rounded-full px-1.5 py-0 ${tab === t.id ? "bg-white/20 text-white" : "bg-border text-muted-foreground"}`}>
+                <span className={`text-[10px] font-bold rounded-full px-1.5 py-0 hidden sm:inline ${tab === t.id ? "bg-white/20 text-white" : "bg-border text-muted-foreground"}`}>
                   {t.count}
                 </span>
               )}
