@@ -13,11 +13,31 @@ import { EmailVerificationBanner } from "@/components/email-verification-banner"
 function AcademyLogo({ size = 32 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="40" height="40" rx="10" fill="#2563eb" />
-      <path d="M20 8L32 14v2l-12 6L8 16v-2L20 8z" fill="white" opacity="0.95" />
-      <path d="M12 18.5v7c0 1.5 3.6 4.5 8 4.5s8-3 8-4.5v-7L20 22l-8-3.5z" fill="white" opacity="0.85" />
-      <rect x="31" y="14" width="2" height="10" rx="1" fill="white" opacity="0.7" />
-      <circle cx="32" cy="25" r="2" fill="#60a5fa" />
+      <defs>
+        <linearGradient id="logoGrad" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#3b82f6" />
+          <stop offset="100%" stopColor="#1d4ed8" />
+        </linearGradient>
+        <linearGradient id="shineGrad" x1="0" y1="0" x2="40" y2="20" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="white" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="white" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {/* Background */}
+      <rect width="40" height="40" rx="10" fill="url(#logoGrad)" />
+      <rect width="40" height="40" rx="10" fill="url(#shineGrad)" />
+      {/* Mortarboard cap top */}
+      <polygon points="20,9 33,15.5 20,22 7,15.5" fill="white" opacity="0.97" />
+      {/* Cap brim highlight */}
+      <polygon points="20,9 33,15.5 20,16.5 7,15.5" fill="white" opacity="0.2" />
+      {/* Gown / diploma scroll body */}
+      <path d="M13 18.2v7.3c0 2 3.1 4.5 7 4.5s7-2.5 7-4.5v-7.3L20 21.5l-7-3.3z" fill="white" opacity="0.88" />
+      {/* Tassel cord */}
+      <line x1="33" y1="15.5" x2="33" y2="25" stroke="white" strokeWidth="1.8" strokeLinecap="round" opacity="0.7" />
+      {/* Tassel ball */}
+      <circle cx="33" cy="26.5" r="2" fill="#93c5fd" />
+      {/* Star spark top-left */}
+      <circle cx="9" cy="10" r="1" fill="white" opacity="0.5" />
     </svg>
   );
 }
