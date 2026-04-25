@@ -233,10 +233,13 @@ export function Navbar() {
               )}
             </div>
             {!branding.siteLogo && (
-              <div className="leading-none">
-                <span className="font-extrabold text-sm tracking-wide text-foreground whitespace-nowrap">
-                  {branding.siteName}
-                </span>
+              <div className="leading-tight">
+                <p className="font-extrabold text-sm tracking-wide text-foreground whitespace-nowrap leading-none">
+                  VIPUL KUMAR
+                </p>
+                <p className="text-[10px] font-semibold tracking-[0.2em] text-primary uppercase leading-none mt-0.5">
+                  ACADEMY
+                </p>
               </div>
             )}
           </Link>
@@ -474,8 +477,9 @@ export function SiteFooter() {
               ) : (
                 <>
                   <AcademyLogo size={36} />
-                  <div className="leading-none">
-                    <p className="font-extrabold text-sm tracking-wide text-foreground">{branding.siteName}</p>
+                  <div className="leading-tight">
+                    <p className="font-extrabold text-sm tracking-wide text-foreground whitespace-nowrap leading-none">VIPUL KUMAR</p>
+                    <p className="text-[10px] font-semibold tracking-[0.2em] text-primary uppercase leading-none mt-0.5">ACADEMY</p>
                   </div>
                 </>
               )}

@@ -11,7 +11,7 @@ export interface Branding {
 }
 
 const DEFAULT: Branding = {
-  siteName: "Academy",
+  siteName: "VIPUL KUMAR ACADEMY",
   siteLogo: null,
   logoSize: 34,
   logoSizeMobile: 28,
