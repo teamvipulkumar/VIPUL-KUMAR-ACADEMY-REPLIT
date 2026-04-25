@@ -1,6 +1,8 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { processSequences, processScheduledCampaigns } from "./routes/crm";
+import { db } from "@workspace/db";
+import { sql } from "drizzle-orm";
 
 const rawPort = process.env["PORT"];
 
@@ -16,16 +18,27 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
+async function runMigrations() {
+  try {
+    await db.execute(sql`ALTER TABLE automation_funnels ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT false`);
+    logger.info("DB migrations OK");
+  } catch (e) {
+    logger.warn({ e }, "Migration warning (non-fatal)");
   }
+}
 
-  logger.info({ port }, "Server listening");
+runMigrations().then(() => {
+  app.listen(port, (err) => {
+    if (err) {
+      logger.error({ err }, "Error listening on port");
+      process.exit(1);
+    }
 
-  setInterval(async () => {
-    await processSequences();
-    await processScheduledCampaigns();
-  }, 10 * 60 * 1000);
+    logger.info({ port }, "Server listening");
+
+    setInterval(async () => {
+      await processSequences();
+      await processScheduledCampaigns();
+    }, 10 * 60 * 1000);
+  });
 });

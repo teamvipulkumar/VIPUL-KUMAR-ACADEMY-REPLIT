@@ -1367,16 +1367,12 @@ router.put("/funnels/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   const { name, triggerType, triggerConfig, status, isActive } = req.body;
 
-  // Handle isActive separately via raw SQL to avoid Drizzle camelCase→snake_case mapping issues
-  if (isActive !== undefined) {
-    await db.execute(sql`UPDATE automation_funnels SET is_active = ${Boolean(isActive)}, updated_at = now() WHERE id = ${id}`);
-  }
-
   const metaUpdates: Record<string, unknown> = {};
   if (name !== undefined) metaUpdates.name = name;
   if (triggerType !== undefined) metaUpdates.triggerType = triggerType;
   if (triggerConfig !== undefined) metaUpdates.triggerConfig = triggerConfig;
   if (status !== undefined) metaUpdates.status = status;
+  if (isActive !== undefined) metaUpdates.isActive = Boolean(isActive);
 
   let updated: typeof automationFunnelsTable.$inferSelect | undefined;
   if (Object.keys(metaUpdates).length > 0) {
@@ -1432,10 +1428,14 @@ router.delete("/funnels/:id/steps/:stepId", requireAdmin, async (req, res): Prom
   res.json({ success: true });
 });
 
-/* Execute all published funnels for a given trigger + userId */
+/* Execute all published + active funnels for a given trigger + userId */
 export async function triggerFunnel(triggerType: string, userId: number, triggerConfig: Record<string, unknown> = {}) {
   const funnels = await db.select().from(automationFunnelsTable)
-    .where(and(eq(automationFunnelsTable.triggerType, triggerType), eq(automationFunnelsTable.status, "published")));
+    .where(and(
+      eq(automationFunnelsTable.triggerType, triggerType),
+      eq(automationFunnelsTable.status, "published"),
+      eq(automationFunnelsTable.isActive, true),
+    ));
 
   for (const funnel of funnels) {
     const cfg = funnel.triggerConfig as Record<string, unknown>;

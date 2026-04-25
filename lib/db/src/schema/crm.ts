@@ -163,6 +163,7 @@ export const automationFunnelsTable = pgTable("automation_funnels", {
   triggerType: text("trigger_type").notNull().default("user_signup"),
   triggerConfig: jsonb("trigger_config").notNull().default({}),
   status: text("status", { enum: ["draft", "published"] }).notNull().default("draft"),
+  isActive: boolean("is_active").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
