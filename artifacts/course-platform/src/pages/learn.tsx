@@ -596,67 +596,6 @@ export default function LearnPage() {
                 </div>
               </div>
 
-              {/* ── Bottom navigation bar ── */}
-              <div className="border-t border-border bg-card/80 backdrop-blur-sm px-3 md:px-6 py-3 flex items-center gap-2 md:gap-4 flex-shrink-0">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!prevLesson}
-                  onClick={() => prevLesson && selectLesson(prevLesson as LessonEntry)}
-                  className="gap-1 md:gap-1.5 px-2 md:px-3"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  <span className="hidden sm:inline">Previous</span>
-                </Button>
-
-                <div className="flex-1 flex items-center justify-center gap-2 md:gap-3">
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {currentIndex + 1} / {allLessons.length}
-                  </span>
-                  {/* Dot indicators — hidden on mobile */}
-                  {allLessons.length <= 12 && (
-                    <div className="hidden sm:flex items-center gap-1">
-                      {allLessons.map((l, i) => (
-                        <button
-                          key={l.id}
-                          onClick={() => selectLesson(l as LessonEntry)}
-                          className={`rounded-full transition-all cursor-pointer ${
-                            i === currentIndex
-                              ? "w-4 h-2 bg-primary"
-                              : l.isCompleted
-                              ? "w-2 h-2 bg-green-500/60 hover:bg-green-500"
-                              : "w-2 h-2 bg-border hover:bg-muted"
-                          }`}
-                          title={l.title}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {!selectedLesson.isCompleted ? (
-                  <Button
-                    size="sm"
-                    className="gap-1 md:gap-1.5 bg-green-600 hover:bg-green-500 text-white px-2 md:px-3"
-                    onClick={() => handleCompleteLesson(selectedLesson.id)}
-                    disabled={completeLesson.isPending}
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">{nextLesson ? "Complete & Next" : "Complete"}</span>
-                    <span className="sm:hidden">Done</span>
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    disabled={!nextLesson}
-                    onClick={() => nextLesson && selectLesson(nextLesson as LessonEntry)}
-                    className="gap-1 md:gap-1.5 px-2 md:px-3"
-                  >
-                    <span className="hidden sm:inline">Next</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
             </div>
           )}
         </main>
