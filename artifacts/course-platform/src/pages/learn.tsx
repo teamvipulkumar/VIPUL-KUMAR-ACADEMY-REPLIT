@@ -560,38 +560,38 @@ export default function LearnPage() {
                   )}
 
                   {/* Previous & Mark Complete buttons */}
-                  <div className="flex items-center gap-3 mt-8 pt-6 border-t border-border">
-                    <Button
-                      variant="outline"
-                      size="sm"
+                  <div className="flex items-center justify-between gap-3 mt-10">
+                    <button
                       disabled={!prevLesson}
                       onClick={() => prevLesson && selectLesson(prevLesson as LessonEntry)}
-                      className="gap-1.5"
+                      className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
                       <ChevronLeft className="w-4 h-4" />
                       Previous
-                    </Button>
-                    <div className="flex-1" />
+                    </button>
                     {!selectedLesson.isCompleted ? (
                       <Button
-                        size="sm"
-                        className="gap-1.5 bg-green-600 hover:bg-green-500 text-white"
                         onClick={() => handleCompleteLesson(selectedLesson.id)}
                         disabled={completeLesson.isPending}
+                        className="gap-2 px-6"
                       >
-                        <Check className="w-3.5 h-3.5" />
+                        <Check className="w-4 h-4" />
                         {completeLesson.isPending ? "Saving..." : nextLesson ? "Complete & Next" : "Mark Complete"}
                       </Button>
                     ) : nextLesson ? (
                       <Button
-                        size="sm"
-                        className="gap-1.5"
                         onClick={() => selectLesson(nextLesson as LessonEntry)}
+                        className="gap-2 px-6"
                       >
                         Next Lesson
                         <ChevronRight className="w-4 h-4" />
                       </Button>
-                    ) : null}
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-sm text-green-500 font-medium">
+                        <CheckCircle className="w-4 h-4" />
+                        Course Complete
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
