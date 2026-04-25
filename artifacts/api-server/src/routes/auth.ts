@@ -6,7 +6,7 @@ import { usersTable, platformSettingsTable, adminStaffTable } from "@workspace/d
 import { eq, and } from "drizzle-orm";
 import { signToken, requireAuth, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
-import { triggerAutomation, sendTransactionalEmail } from "./crm";
+import { triggerAutomation, triggerFunnel, sendTransactionalEmail } from "./crm";
 import { OAuth2Client } from "google-auth-library";
 
 const router = Router();
@@ -79,6 +79,7 @@ router.post("/register", async (req, res): Promise<void> => {
   const origin = (req.headers.origin as string) || process.env.SITE_URL || "";
   const verifyLink = `${origin}/verify-email?token=${verifyToken}`;
   triggerAutomation("welcome", user.id, user.email, { name: user.name, email: user.email, verify_link: verifyLink }).catch(() => {});
+  triggerFunnel("user_signup", user.id).catch(() => {});
   sendTransactionalEmail(
     user.email,
     "Please verify your email — Vipul Kumar Academy",
@@ -110,6 +111,7 @@ router.post("/login", async (req, res): Promise<void> => {
   res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
   const { password: _, emailVerifyToken: _vt, emailVerifyTokenExpiresAt: _vte, resetToken: _rt, resetTokenExpiresAt: _rte, ...safeUser } = user;
   res.json({ user: { ...safeUser, isStaff, staffPermissions }, message: "Login successful" });
+  triggerFunnel("user_login", user.id).catch(() => {});
 });
 
 router.post("/logout", (req, res): void => {
@@ -201,6 +203,7 @@ router.post("/forgot-password", async (req, res): Promise<void> => {
     const origin = (req.headers.origin as string) || process.env.SITE_URL || "";
     const resetLink = `${origin}/reset-password?token=${token}`;
     triggerAutomation("forgot_password", user.id, user.email, { name: user.name, email: user.email, reset_link: resetLink }).catch(() => {});
+    triggerFunnel("forgot_password", user.id).catch(() => {});
   }
   res.json({ message: "If that email exists, a reset link has been sent" });
 });

@@ -1488,7 +1488,12 @@ export async function triggerFunnel(triggerType: string, userId: number, trigger
           }
           subject = subject.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
           html = html.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
-          await sendEmailWithFallback(user.email, subject, html);
+          try {
+            await sendEmailWithFallback(user.email, subject, html);
+            await db.insert(emailSendsTable).values({ type: "automation", automationEvent: triggerType, userId, email: user.email, subject, status: "sent" });
+          } catch (err: any) {
+            await db.insert(emailSendsTable).values({ type: "automation", automationEvent: triggerType, userId, email: user.email, subject, status: "failed", failReason: String(err?.message ?? err) });
+          }
         }
       };
 

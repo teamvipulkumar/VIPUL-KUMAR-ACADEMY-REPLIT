@@ -4,7 +4,7 @@ import { lessonCompletionsTable, lessonsTable, modulesTable, enrollmentsTable, c
 import { eq, and, count } from "drizzle-orm";
 import { requireAuth, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
-import { triggerAutomation } from "./crm";
+import { triggerAutomation, triggerFunnel } from "./crm";
 
 const router = Router();
 type AuthedRequest = Request & { user: JwtPayload };
@@ -16,6 +16,7 @@ router.post("/:lessonId/complete", requireAuth, async (req, res): Promise<void> 
   const existing = await db.select().from(lessonCompletionsTable).where(and(eq(lessonCompletionsTable.userId, authedReq.user.userId), eq(lessonCompletionsTable.lessonId, lessonId))).limit(1);
   if (existing.length === 0) {
     await db.insert(lessonCompletionsTable).values({ userId: authedReq.user.userId, lessonId });
+    triggerFunnel("lesson_completed", authedReq.user.userId).catch(() => {});
   }
 
   // Check if course is fully completed
@@ -61,6 +62,7 @@ router.post("/:lessonId/complete", requireAuth, async (req, res): Promise<void> 
               email: user.email,
               course_name: course.title,
             }).catch(() => {});
+            triggerFunnel("course_completed", user.id).catch(() => {});
           }
         }
       }

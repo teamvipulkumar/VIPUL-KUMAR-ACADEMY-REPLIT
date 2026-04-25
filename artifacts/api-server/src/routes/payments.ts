@@ -13,7 +13,7 @@ import { eq, and, desc, isNull, or } from "drizzle-orm";
 import { bundlesTable, bundleCoursesTable } from "@workspace/db";
 import { requireAuth, signToken, verifyToken, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
-import { triggerAutomation } from "./crm";
+import { triggerAutomation, triggerFunnel } from "./crm";
 import { sendFbEvent } from "../lib/facebook-pixel";
 import { generateGstInvoice } from "./gst";
 

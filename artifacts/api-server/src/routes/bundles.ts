@@ -10,7 +10,7 @@ import {
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth, requireAdmin, signToken, verifyToken, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
-import { triggerAutomation } from "./crm";
+import { triggerAutomation, triggerFunnel } from "./crm";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PaytmChecksum = require("paytmchecksum");
@@ -75,6 +75,7 @@ async function enrollInBundle(bundleId: number, userId: number, affiliateRef?: s
     triggerAutomation("purchase", buyer.id, buyer.email, {
       name: buyer.name, email: buyer.email, course_name: bundle.name,
     }).catch(() => {});
+    triggerFunnel("new_purchase", buyer.id).catch(() => {});
   }
 
   if (affiliateRef) {
