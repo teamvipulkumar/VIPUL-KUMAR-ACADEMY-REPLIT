@@ -311,9 +311,7 @@ export default function LearnPage() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className={`text-xs line-clamp-2 leading-snug ${
-                                    isSelected ? "text-primary font-medium" :
-                                    lesson.isCompleted ? "text-green-400" :
-                                    "text-muted-foreground"
+                                    isSelected ? "text-primary font-medium" : "text-muted-foreground"
                                   }`}>{lesson.title}</p>
                                   <div className="flex items-center gap-2 mt-0.5">
                                     {lesson.durationMinutes && (
