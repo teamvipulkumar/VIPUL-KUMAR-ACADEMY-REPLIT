@@ -175,7 +175,7 @@ export default function LearnPage() {
   const progressPct = progress?.progressPercent ?? 0;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col" style={{ fontFamily: "var(--font-sans)" }}>
+    <div className="h-screen bg-background flex flex-col" style={{ fontFamily: "var(--font-sans)" }}>
       {/* ── Top navigation bar ── */}
       <header className="h-13 border-b border-border bg-card/95 backdrop-blur-sm flex items-center px-4 gap-3 flex-shrink-0 z-10 sticky top-0">
         <button
