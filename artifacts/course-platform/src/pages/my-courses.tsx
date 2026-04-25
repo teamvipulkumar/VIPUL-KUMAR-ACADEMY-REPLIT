@@ -353,7 +353,7 @@ export default function MyCoursesPage() {
         </div>
 
         {/* ── Tabs ── */}
-        <div className="flex items-center gap-1 mb-6 bg-card border border-border rounded-xl p-1 w-fit flex-wrap">
+        <div className="flex items-center gap-1 mb-6 bg-card border border-border rounded-xl p-1 w-full">
           {[
             { id: "courses" as Tab, label: "My Courses", icon: <BookOpen className="w-4 h-4" />, count: totalCourses },
             { id: "packages" as Tab, label: "My Packages", icon: <Package className="w-4 h-4" />, count: bundleCount },
@@ -362,7 +362,7 @@ export default function MyCoursesPage() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 px-2 py-2 rounded-lg text-sm font-medium transition-all ${
                 tab === t.id ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
