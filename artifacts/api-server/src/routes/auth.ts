@@ -221,14 +221,15 @@ router.post("/reset-password", async (req, res): Promise<void> => {
   res.json({ message: "Password reset successfully" });
 });
 
-/* ── Update own profile (phone, name) ── */
+/* ── Update own profile (phone, name, avatarUrl) ── */
 router.patch("/profile", requireAuth, async (req, res): Promise<void> => {
-  const { phone, name } = req.body;
+  const { phone, name, avatarUrl } = req.body;
   const authReq = req as Request & { user?: JwtPayload };
   if (!authReq.user) { res.status(401).json({ error: "Unauthorized" }); return; }
   const updates: Record<string, unknown> = {};
   if (name !== undefined && name.trim()) updates.name = name.trim();
   if (phone !== undefined) updates.phone = phone.trim() || null;
+  if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl || null;
   if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
   const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, authReq.user.userId)).returning();
   const { password: _, emailVerifyToken: _vt, emailVerifyTokenExpiresAt: _vte, resetToken: _rt, resetTokenExpiresAt: _rte, ...safeUser } = updated;
