@@ -434,17 +434,6 @@ export default function LearnPage() {
                       </div>
                       <h1 className="text-xl font-bold text-foreground leading-tight">{selectedLesson.title}</h1>
                     </div>
-                    {!selectedLesson.isCompleted && (
-                      <Button
-                        size="sm"
-                        className="flex-shrink-0 bg-green-600 hover:bg-green-500 text-white gap-1.5"
-                        onClick={() => handleCompleteLesson(selectedLesson.id)}
-                        disabled={completeLesson.isPending}
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                        {completeLesson.isPending ? "Saving..." : "Mark Complete"}
-                      </Button>
-                    )}
                   </div>
 
                   {/* ── Type-specific content ── */}
