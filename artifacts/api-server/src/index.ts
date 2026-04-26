@@ -27,6 +27,28 @@ async function runMigrations() {
   } catch (e) {
     logger.warn({ e }, "Migration warning (non-fatal)");
   }
+
+  // Enable RLS on all public tables (silences Supabase Security Advisor warnings).
+  // The API server connects as the postgres superuser which bypasses RLS, so this
+  // has no effect on existing queries — it only secures the Supabase REST layer.
+  try {
+    await db.execute(sql`
+      DO $$
+      DECLARE
+        tbl text;
+      BEGIN
+        FOR tbl IN
+          SELECT tablename FROM pg_tables WHERE schemaname = 'public'
+        LOOP
+          EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', tbl);
+        END LOOP;
+      END
+      $$;
+    `);
+    logger.info("RLS enabled on all public tables");
+  } catch (e) {
+    logger.warn({ e }, "RLS migration warning (non-fatal)");
+  }
 }
 
 runMigrations().then(() => {
