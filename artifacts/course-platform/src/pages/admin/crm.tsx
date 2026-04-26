@@ -2180,7 +2180,7 @@ function ListsTab() {
 
   const load = async () => {
     setLoading(true);
-    const r = await apiFetch("/api/crm/lists");
+    const r = await apiFetch("/api/admin/crm/lists");
     if (r.ok) setLists(await r.json());
     setLoading(false);
   };
@@ -2191,14 +2191,14 @@ function ListsTab() {
     setViewList(list);
     setMembersLoading(true);
     setSearchQ(""); setSearchResults([]);
-    const r = await apiFetch(`/api/crm/lists/${list.id}/members`);
+    const r = await apiFetch(`/api/admin/crm/lists/${list.id}/members`);
     if (r.ok) setMembers(await r.json());
     setMembersLoading(false);
   };
 
   const syncList = async (list: any) => {
     setSyncing(list.id);
-    const r = await apiFetch(`/api/crm/lists/${list.id}/sync`, { method: "POST" });
+    const r = await apiFetch(`/api/admin/crm/lists/${list.id}/sync`, { method: "POST" });
     if (r.ok) {
       const d = await r.json();
       toast({ title: "Synced", description: `${d.total} members in list.` });
@@ -2211,7 +2211,7 @@ function ListsTab() {
   const deleteList = async (id: number) => {
     if (!confirm("Delete this list? Members will also be removed.")) return;
     setDeleting(id);
-    const r = await apiFetch(`/api/crm/lists/${id}`, { method: "DELETE" });
+    const r = await apiFetch(`/api/admin/crm/lists/${id}`, { method: "DELETE" });
     if (r.ok) { toast({ title: "Deleted" }); load(); if (viewList?.id === id) setViewList(null); }
     else { const d = await r.json(); toast({ title: "Error", description: d.error, variant: "destructive" }); }
     setDeleting(null);
@@ -2220,7 +2220,7 @@ function ListsTab() {
   const createList = async () => {
     if (!form.name.trim()) return;
     setCreating(true);
-    const r = await apiFetch("/api/crm/lists", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const r = await apiFetch("/api/admin/crm/lists", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
     if (r.ok) { toast({ title: "List created" }); setShowCreate(false); setForm({ name: "", description: "", type: "manual" }); load(); }
     else toast({ title: "Error", variant: "destructive" });
     setCreating(false);
@@ -2230,7 +2230,7 @@ function ListsTab() {
     setSearchQ(q);
     if (!q.trim() || !viewList) { setSearchResults([]); return; }
     setSearching(true);
-    const r = await apiFetch(`/api/crm/lists/${viewList.id}/search-users?q=${encodeURIComponent(q)}`);
+    const r = await apiFetch(`/api/admin/crm/lists/${viewList.id}/search-users?q=${encodeURIComponent(q)}`);
     if (r.ok) setSearchResults(await r.json());
     setSearching(false);
   };
@@ -2238,11 +2238,11 @@ function ListsTab() {
   const addUser = async (userId: number) => {
     if (!viewList) return;
     setAddingUsers(a => [...a, userId]);
-    const r = await apiFetch(`/api/crm/lists/${viewList.id}/members`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userIds: [userId] }) });
+    const r = await apiFetch(`/api/admin/crm/lists/${viewList.id}/members`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userIds: [userId] }) });
     if (r.ok) {
       toast({ title: "Added" });
       setSearchResults(s => s.filter(u => u.id !== userId));
-      const mr = await apiFetch(`/api/crm/lists/${viewList.id}/members`);
+      const mr = await apiFetch(`/api/admin/crm/lists/${viewList.id}/members`);
       if (mr.ok) setMembers(await mr.json());
       load();
     }
@@ -2251,7 +2251,7 @@ function ListsTab() {
 
   const removeMember = async (userId: number) => {
     if (!viewList) return;
-    const r = await apiFetch(`/api/crm/lists/${viewList.id}/members/${userId}`, { method: "DELETE" });
+    const r = await apiFetch(`/api/admin/crm/lists/${viewList.id}/members/${userId}`, { method: "DELETE" });
     if (r.ok) { setMembers(m => m.filter(u => u.id !== userId)); load(); }
   };
 
