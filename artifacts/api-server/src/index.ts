@@ -22,6 +22,7 @@ async function runMigrations() {
   try {
     await db.execute(sql`ALTER TABLE automation_funnels ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT false`);
     await db.execute(sql`ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS site_url text NOT NULL DEFAULT ''`);
+    await db.execute(sql`ALTER TABLE email_sends ADD COLUMN IF NOT EXISTS html_body text`);
     logger.info("DB migrations OK");
   } catch (e) {
     logger.warn({ e }, "Migration warning (non-fatal)");
