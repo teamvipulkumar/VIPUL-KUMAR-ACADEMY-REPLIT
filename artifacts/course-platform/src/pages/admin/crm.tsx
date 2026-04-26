@@ -2525,7 +2525,7 @@ function EmailLogsTab() {
       {/* ── Table ── */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         {/* Column headers */}
-        <div className="grid grid-cols-[32px_1fr_200px_80px_160px_120px] items-center gap-x-4 px-5 py-3 border-b border-border bg-muted/20 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+        <div className="grid grid-cols-[32px_1fr_175px_80px_150px_160px] items-center gap-x-4 px-5 py-3 border-b border-border bg-muted/20 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
           <input
             type="checkbox"
             ref={(el) => { if (el) el.indeterminate = somePageSelected; }}
@@ -2544,7 +2544,7 @@ function EmailLogsTab() {
         {loading ? (
           <div className="divide-y divide-border">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="grid grid-cols-[32px_1fr_200px_80px_160px_120px] items-center gap-x-4 px-5 py-4 animate-pulse">
+              <div key={i} className="grid grid-cols-[32px_1fr_175px_80px_150px_160px] items-center gap-x-4 px-5 py-4 animate-pulse">
                 <div className="w-3.5 h-3.5 rounded bg-muted/40" />
                 <div className="space-y-1.5">
                   <div className="h-3 bg-muted/40 rounded w-64" />
@@ -2585,7 +2585,7 @@ function EmailLogsTab() {
               return (
                 <div
                   key={log.id}
-                  className={`grid grid-cols-[32px_1fr_200px_80px_160px_120px] items-center gap-x-4 px-5 py-3.5 transition-colors group ${
+                  className={`grid grid-cols-[32px_1fr_175px_80px_150px_160px] items-center gap-x-4 px-5 py-3.5 transition-colors group ${
                     isFailed ? "bg-red-500/[0.04] hover:bg-red-500/[0.07]" : "hover:bg-white/[0.02]"
                   }`}
                 >
