@@ -6,6 +6,7 @@ import {
   bundlesTable, bundleCoursesTable, coursesTable, paymentsTable,
   enrollmentsTable, notificationsTable, usersTable, couponsTable,
   platformSettingsTable, paymentGatewaysTable, referralsTable, affiliateClicksTable,
+  affiliateApplicationsTable, commissionGroupsTable,
 } from "@workspace/db";
 import { eq, and, desc, or, isNull } from "drizzle-orm";
 import { requireAuth, requireAdmin, signToken, verifyToken, type JwtPayload } from "../middlewares/auth";
@@ -84,31 +85,54 @@ async function enrollInBundle(bundleId: number, userId: number, affiliateRef?: s
 
   if (affiliateRef) {
     try {
-      const [referrer] = await db.select({ id: usersTable.id }).from(usersTable)
+      const [referrer] = await db.select({ id: usersTable.id, role: usersTable.role }).from(usersTable)
         .where(eq(usersTable.referralCode, affiliateRef)).limit(1);
       if (referrer && referrer.id !== userId) {
-        const [settings] = await db.select({
-          commissionRate: platformSettingsTable.commissionRate,
-        }).from(platformSettingsTable).limit(1);
-        const rate = settings?.commissionRate ?? 20;
+        // Resolve commission rate: individual override → group → platform default
+        const [settings] = await db.select({ commissionRate: platformSettingsTable.commissionRate })
+          .from(platformSettingsTable).limit(1);
+        let rate = settings?.commissionRate ?? 20;
+
+        const [app] = await db.select({
+          commissionOverride: affiliateApplicationsTable.commissionOverride,
+          commissionGroupId: affiliateApplicationsTable.commissionGroupId,
+          isBlocked: affiliateApplicationsTable.isBlocked,
+          status: affiliateApplicationsTable.status,
+        }).from(affiliateApplicationsTable)
+          .where(eq(affiliateApplicationsTable.userId, referrer.id)).limit(1);
+
+        // For affiliates: must have approved, unblocked application
+        if (referrer.role === "affiliate" && (!app || app.status !== "approved" || app.isBlocked)) {
+          // Not eligible — silently skip commission
+        } else {
+        if (app?.commissionOverride != null) {
+          rate = app.commissionOverride;
+        } else if (app?.commissionGroupId != null) {
+          const [grp] = await db.select({ commissionRate: commissionGroupsTable.commissionRate })
+            .from(commissionGroupsTable).where(eq(commissionGroupsTable.id, app.commissionGroupId)).limit(1);
+          if (grp) rate = grp.commissionRate;
+        }
+
         const [payment] = await db.select().from(paymentsTable)
           .where(and(eq(paymentsTable.userId, userId), eq(paymentsTable.bundleId, bundleId)))
           .orderBy(desc(paymentsTable.createdAt)).limit(1);
         if (payment) {
           const commission = parseFloat(((parseFloat(String(payment.amount)) * rate) / 100).toFixed(2));
 
-          // Check for an existing click referral to upgrade, or insert a new purchase record
+          // Find an existing click referral (referredUserId is null at click time) to upgrade
           const [clickRef] = await db.select().from(referralsTable)
             .where(and(
               eq(referralsTable.referrerId, referrer.id),
-              eq(referralsTable.referredUserId, userId),
+              isNull(referralsTable.referredUserId),
               isNull(referralsTable.courseId),
               eq(referralsTable.status, "click"),
-            )).limit(1);
+            ))
+            .orderBy(desc(referralsTable.createdAt))
+            .limit(1);
 
           if (clickRef) {
             await db.update(referralsTable)
-              .set({ status: "purchase", commission: String(commission) })
+              .set({ status: "purchase", referredUserId: userId, commission: String(commission) })
               .where(eq(referralsTable.id, clickRef.id));
           } else {
             await db.insert(referralsTable).values({
@@ -137,6 +161,7 @@ async function enrollInBundle(bundleId: number, userId: number, affiliateRef?: s
             type: "success",
           });
         }
+        } // closes else (eligible affiliate)
       }
     } catch (err) { console.error("[bundle affiliate commission]", err); }
   }

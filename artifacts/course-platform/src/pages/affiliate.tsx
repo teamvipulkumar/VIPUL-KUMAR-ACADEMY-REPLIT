@@ -341,6 +341,11 @@ function AffiliateDashboard({ user }: { user: any }) {
     setRefreshing(false);
   };
 
+  useEffect(() => {
+    const id = setInterval(() => { loadDashboard(); }, 45000);
+    return () => clearInterval(id);
+  }, []);
+
   const copyLink = () => {
     if (dashboard?.referralLink) {
       navigator.clipboard.writeText(dashboard.referralLink);

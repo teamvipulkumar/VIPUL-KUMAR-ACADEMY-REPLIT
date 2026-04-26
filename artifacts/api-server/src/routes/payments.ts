@@ -85,24 +85,38 @@ async function recordAffiliateCommission(
 
     const commission = parseFloat(((saleAmount * rate) / 100).toFixed(2));
 
-    // Find the most recent click referral for this referrer+course that isn't yet a purchase
-    const courseCondition = courseId != null
-      ? eq(referralsTable.courseId, courseId)
-      : isNull(referralsTable.courseId);
+    // Find the most recent click referral for this referrer+course that isn't yet a purchase.
+    // First try exact courseId match; if not found, fall back to a generic click (courseId IS NULL)
+    // which is what gets created when someone clicks a bare affiliate link (no specific course).
     const [clickRef] = await db.select()
       .from(referralsTable)
       .where(and(
         eq(referralsTable.referrerId, referrer.id),
-        courseCondition,
+        courseId != null ? eq(referralsTable.courseId, courseId) : isNull(referralsTable.courseId),
+        isNull(referralsTable.referredUserId),
         eq(referralsTable.status, "click"),
       ))
       .orderBy(desc(referralsTable.createdAt))
       .limit(1);
 
-    if (clickRef) {
+    // If no exact-course click, look for a generic (courseId=null) click referral to upgrade
+    const [genericClickRef] = clickRef ? [null] : await db.select()
+      .from(referralsTable)
+      .where(and(
+        eq(referralsTable.referrerId, referrer.id),
+        isNull(referralsTable.courseId),
+        isNull(referralsTable.referredUserId),
+        eq(referralsTable.status, "click"),
+      ))
+      .orderBy(desc(referralsTable.createdAt))
+      .limit(1);
+
+    const refToUpgrade = clickRef ?? genericClickRef;
+
+    if (refToUpgrade) {
       await db.update(referralsTable)
-        .set({ status: "purchase", referredUserId: buyerId, commission: String(commission) })
-        .where(eq(referralsTable.id, clickRef.id));
+        .set({ status: "purchase", referredUserId: buyerId, courseId: courseId ?? refToUpgrade.courseId, commission: String(commission) })
+        .where(eq(referralsTable.id, refToUpgrade.id));
     } else {
       await db.insert(referralsTable).values({
         referrerId: referrer.id, referredUserId: buyerId, courseId, status: "purchase", commission: String(commission),
