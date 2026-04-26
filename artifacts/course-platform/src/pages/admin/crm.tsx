@@ -146,7 +146,7 @@ export default function AdminCrmPage() {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0">
         {/* Mobile tabs */}
         <div className="lg:hidden flex-shrink-0 flex overflow-x-auto border-b border-border bg-card px-4 gap-1 py-2">
           {TABS.map(t => (
