@@ -2704,7 +2704,7 @@ function EmailLogsTab() {
 
       {/* ── Detail Dialog ── */}
       <Dialog open={!!detailLog} onOpenChange={v => { if (!v) { setDetailLog(null); setDetailData(null); } }}>
-        <DialogContent className="max-w-4xl w-full flex flex-col p-0 gap-0 overflow-hidden max-h-[92vh]" aria-describedby={undefined}>
+        <DialogContent className="max-w-4xl w-full flex flex-col p-0 gap-0 overflow-hidden max-h-[92vh] [&>button:last-of-type]:hidden" aria-describedby={undefined}>
 
           {/* Dialog header */}
           <DialogHeader className="flex-shrink-0 px-6 py-4 border-b border-border bg-card">
