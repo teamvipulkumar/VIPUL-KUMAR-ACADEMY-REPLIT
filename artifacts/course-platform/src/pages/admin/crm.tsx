@@ -1509,7 +1509,7 @@ function AutomationTab() {
           <p className="text-sm text-muted-foreground mt-0.5">Build visual automation sequences triggered by user actions.</p>
         </div>
         <Button size="sm" onClick={() => setShowCreate(true)} className="flex items-center gap-1.5">
-          <Plus className="w-4 h-4" />New Funnel
+          <Plus className="w-4 h-4" />New Automation
         </Button>
       </div>
 
