@@ -2702,12 +2702,12 @@ function EmailLogsTab() {
         )}
       </div>
 
-      {/* ── Detail Sheet ── */}
-      <Sheet open={!!detailLog} onOpenChange={v => { if (!v) { setDetailLog(null); setDetailData(null); } }}>
-        <SheetContent side="right" className="w-full sm:max-w-2xl flex flex-col p-0 gap-0 overflow-hidden">
+      {/* ── Detail Dialog ── */}
+      <Dialog open={!!detailLog} onOpenChange={v => { if (!v) { setDetailLog(null); setDetailData(null); } }}>
+        <DialogContent className="max-w-2xl w-full flex flex-col p-0 gap-0 overflow-hidden max-h-[90vh]" aria-describedby={undefined}>
 
-          {/* Sheet header */}
-          <SheetHeader className="flex-shrink-0 px-6 py-4 border-b border-border bg-card">
+          {/* Dialog header */}
+          <DialogHeader className="flex-shrink-0 px-6 py-4 border-b border-border bg-card">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border ${
@@ -2720,7 +2720,7 @@ function EmailLogsTab() {
                     : <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
                 </div>
                 <div className="min-w-0">
-                  <SheetTitle className="text-sm font-semibold leading-snug truncate">Email Log</SheetTitle>
+                  <DialogTitle className="text-sm font-semibold leading-snug truncate">Email Log</DialogTitle>
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">{detailLog?.subject || "(no subject)"}</p>
                 </div>
               </div>
@@ -2737,17 +2737,18 @@ function EmailLogsTab() {
                     : <RotateCcw className="w-3.5 h-3.5" />}
                   {detailLog?.status === "failed" ? "Retry" : "Resend"}
                 </Button>
-                <SheetClose asChild>
-                  <button className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer">
-                    <X className="w-4 h-4" />
-                  </button>
-                </SheetClose>
+                <button
+                  onClick={() => { setDetailLog(null); setDetailData(null); }}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
             </div>
-          </SheetHeader>
+          </DialogHeader>
 
           {/* Scrollable body */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto min-h-0">
             {detailLoading ? (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -2890,8 +2891,8 @@ function EmailLogsTab() {
               </div>
             ) : null}
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
