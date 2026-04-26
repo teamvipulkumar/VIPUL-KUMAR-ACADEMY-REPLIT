@@ -952,10 +952,13 @@ router.post("/sends/:id/resend", requireAdmin, async (req, res): Promise<void> =
     let html = `<p>Resent email: <strong>${send.subject}</strong></p><p>Originally sent: ${send.sentAt}</p>`;
     if (send.type === "campaign" && send.campaignId) {
       const [campaign] = await db.select().from(emailCampaignsTable).where(eq(emailCampaignsTable.id, send.campaignId)).limit(1);
-      if (campaign?.html) html = campaign.html;
+      if (campaign?.htmlBody) html = campaign.htmlBody;
     } else if (send.type === "automation" && send.automationEvent) {
-      const [tmpl] = await db.select().from(emailTemplatesTable).where(eq(emailTemplatesTable.event, send.automationEvent as any)).limit(1);
-      if (tmpl?.html) html = tmpl.html;
+      const [rule] = await db.select().from(emailAutomationRulesTable).where(eq(emailAutomationRulesTable.event, send.automationEvent as any)).limit(1);
+      if (rule?.templateId) {
+        const [tmpl] = await db.select().from(emailTemplatesTable).where(eq(emailTemplatesTable.id, rule.templateId)).limit(1);
+        if (tmpl?.htmlBody) html = tmpl.htmlBody;
+      }
     }
     await sendEmailWithFallback(send.email, send.subject, html);
     const [newSend] = await db.insert(emailSendsTable).values({ type: send.type, campaignId: send.campaignId, automationEvent: send.automationEvent, userId: send.userId, email: send.email, subject: send.subject, status: "sent" }).returning();
@@ -974,18 +977,21 @@ router.get("/sends/:id", requireAdmin, async (req, res): Promise<void> => {
   let campaignName: string | null = null;
   if (send.type === "campaign" && send.campaignId) {
     const [campaign] = await db.select().from(emailCampaignsTable).where(eq(emailCampaignsTable.id, send.campaignId)).limit(1);
-    html = campaign?.html ?? null;
+    html = campaign?.htmlBody ?? null;
     campaignName = campaign?.name ?? null;
   } else if (send.type === "automation" && send.automationEvent) {
-    const [tmpl] = await db.select().from(emailTemplatesTable).where(eq(emailTemplatesTable.event, send.automationEvent as any)).limit(1);
-    html = tmpl?.html ?? null;
+    const [rule] = await db.select().from(emailAutomationRulesTable).where(eq(emailAutomationRulesTable.event, send.automationEvent as any)).limit(1);
+    if (rule?.templateId) {
+      const [tmpl] = await db.select().from(emailTemplatesTable).where(eq(emailTemplatesTable.id, rule.templateId)).limit(1);
+      html = tmpl?.htmlBody ?? null;
+    }
   } else if (send.type === "sequence") {
     const step = await db.select().from(emailSequenceStepsTable).where(
       and(
         eq(emailSequenceStepsTable.sequenceId, send.campaignId ?? -1)
       )
     ).limit(1);
-    html = step[0]?.html ?? null;
+    html = step[0]?.htmlBody ?? null;
   }
   const smtp = await getSmtp();
   const fromAddress = smtp ? buildFrom(smtp) : null;
