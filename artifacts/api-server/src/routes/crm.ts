@@ -841,6 +841,26 @@ router.post("/campaigns/:id/send", requireAdmin, async (req, res): Promise<void>
 });
 
 /* ── Subscribers ── */
+async function enrichUsersWithTagsAndLists(users: { id: number }[]) {
+  if (users.length === 0) return users as any[];
+  const ids = users.map(u => u.id);
+  const [tagRows, listRows] = await Promise.all([
+    db.select({ userId: contactTagAssignmentsTable.userId, name: contactTagsTable.name, color: contactTagsTable.color })
+      .from(contactTagAssignmentsTable)
+      .innerJoin(contactTagsTable, eq(contactTagAssignmentsTable.tagId, contactTagsTable.id))
+      .where(inArray(contactTagAssignmentsTable.userId, ids)),
+    db.select({ userId: emailListMembersTable.userId, name: emailListsTable.name })
+      .from(emailListMembersTable)
+      .innerJoin(emailListsTable, eq(emailListMembersTable.listId, emailListsTable.id))
+      .where(inArray(emailListMembersTable.userId, ids)),
+  ]);
+  const tagMap: Record<number, { name: string; color: string }[]> = {};
+  for (const r of tagRows) { if (!tagMap[r.userId]) tagMap[r.userId] = []; tagMap[r.userId].push({ name: r.name, color: r.color }); }
+  const listMap: Record<number, string[]> = {};
+  for (const r of listRows) { if (!listMap[r.userId]) listMap[r.userId] = []; listMap[r.userId].push(r.name); }
+  return users.map((u: any) => ({ ...u, tags: tagMap[u.id] ?? [], lists: listMap[u.id] ?? [] }));
+}
+
 router.get("/subscribers", requireAdmin, async (req, res): Promise<void> => {
   const { search, limit = "50", offset = "0", tagId, listId } = req.query as Record<string, string>;
 
@@ -853,7 +873,7 @@ router.get("/subscribers", requireAdmin, async (req, res): Promise<void> => {
       .from(usersTable).where(inArray(usersTable.id, userIds));
     if (search) users = users.filter(u => u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()));
     const paginated = users.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
-    res.json({ users: paginated, total: users.length }); return;
+    res.json({ users: await enrichUsersWithTagsAndLists(paginated), total: users.length }); return;
   }
 
   if (listId) {
@@ -865,7 +885,7 @@ router.get("/subscribers", requireAdmin, async (req, res): Promise<void> => {
       .from(usersTable).where(inArray(usersTable.id, userIds));
     if (search) users = users.filter(u => u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()));
     const paginated = users.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
-    res.json({ users: paginated, total: users.length }); return;
+    res.json({ users: await enrichUsersWithTagsAndLists(paginated), total: users.length }); return;
   }
 
   let query = db.select({
@@ -882,7 +902,7 @@ router.get("/subscribers", requireAdmin, async (req, res): Promise<void> => {
     query.limit(parseInt(limit)).offset(parseInt(offset)),
     db.select({ count: count() }).from(usersTable),
   ]);
-  res.json({ users, total: totalResult[0]?.count ?? 0 });
+  res.json({ users: await enrichUsersWithTagsAndLists(users), total: totalResult[0]?.count ?? 0 });
 });
 
 /* ── Dashboard Stats ── */

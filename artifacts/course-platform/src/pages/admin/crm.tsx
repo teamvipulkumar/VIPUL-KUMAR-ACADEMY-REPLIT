@@ -2127,8 +2127,8 @@ function SubscribersTab() {
       </div>
 
       <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-x-4 px-4 py-2.5 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-          <span>Name</span><span>Email</span><span>Role</span><span>Joined</span><span></span>
+        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto_auto_auto] gap-x-4 px-4 py-2.5 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+          <span>Name</span><span>Email</span><span>Lists</span><span>Tags</span><span>Role</span><span>Joined</span><span></span>
         </div>
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
@@ -2137,9 +2137,25 @@ function SubscribersTab() {
         ) : (
           <div className="divide-y divide-border">
             {subs.map(s => (
-              <div key={s.id} className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-x-4 items-center px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setProfileUserId(s.id)}>
+              <div key={s.id} className="grid grid-cols-[1fr_1fr_1fr_1fr_auto_auto_auto] gap-x-4 items-center px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setProfileUserId(s.id)}>
                 <p className="text-sm font-medium text-foreground truncate">{s.name}</p>
                 <p className="text-xs text-muted-foreground truncate">{s.email}</p>
+                <div className="flex flex-wrap gap-1 min-w-0">
+                  {(s.lists ?? []).slice(0, 2).map((l: string) => (
+                    <span key={l} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 truncate max-w-[80px]">{l}</span>
+                  ))}
+                  {(s.lists ?? []).length > 2 && <span className="text-[10px] text-muted-foreground">+{s.lists.length - 2}</span>}
+                  {(s.lists ?? []).length === 0 && <span className="text-[10px] text-muted-foreground">—</span>}
+                </div>
+                <div className="flex flex-wrap gap-1 min-w-0">
+                  {(s.tags ?? []).slice(0, 2).map((t: { name: string; color: string }) => (
+                    <span key={t.name} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border border-border truncate max-w-[80px]">
+                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: t.color }} />{t.name}
+                    </span>
+                  ))}
+                  {(s.tags ?? []).length > 2 && <span className="text-[10px] text-muted-foreground">+{s.tags.length - 2}</span>}
+                  {(s.tags ?? []).length === 0 && <span className="text-[10px] text-muted-foreground">—</span>}
+                </div>
                 <Badge variant="outline" className={`text-[10px] capitalize ${s.role === "admin" ? "text-red-400 border-red-400/30" : s.role === "affiliate" ? "text-purple-400 border-purple-400/30" : "text-muted-foreground border-border"}`}>{s.role}</Badge>
                 <span className="text-[11px] text-muted-foreground">{new Date(s.createdAt).toLocaleDateString("en-IN")}</span>
                 <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
