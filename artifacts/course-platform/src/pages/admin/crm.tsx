@@ -2531,7 +2531,7 @@ function EmailLogsTab() {
             ref={(el) => { if (el) el.indeterminate = somePageSelected; }}
             checked={allPageSelected}
             onChange={toggleSelectAll}
-            className="w-3.5 h-3.5 rounded accent-primary cursor-pointer bg-transparent"
+            className="w-3.5 h-3.5 rounded accent-primary cursor-pointer [color-scheme:dark]"
           />
           <span>Subject</span>
           <span>To</span>
@@ -2593,7 +2593,7 @@ function EmailLogsTab() {
                     type="checkbox"
                     checked={selectedIds.has(log.id)}
                     onChange={() => toggleSelect(log.id)}
-                    className="w-3.5 h-3.5 rounded accent-primary cursor-pointer bg-transparent"
+                    className="w-3.5 h-3.5 rounded accent-primary cursor-pointer [color-scheme:dark]"
                   />
 
                   {/* Subject + type */}
