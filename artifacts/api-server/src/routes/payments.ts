@@ -27,15 +27,26 @@ async function recordAffiliateCommission(
   courseId: number | null,
   saleAmount: number,
 ): Promise<void> {
-  if (!affiliateRef) return;
+  if (!affiliateRef) {
+    console.info("[affiliate commission] skipped — no affiliateRef");
+    return;
+  }
+  const purchaseType = courseId != null ? `course(${courseId})` : "bundle";
+  console.info(`[affiliate commission] start | ref=${affiliateRef} buyer=${buyerId} type=${purchaseType} amount=${saleAmount}`);
   try {
     // Find referrer (include role for eligibility check)
     const [referrer] = await db.select({ id: usersTable.id, role: usersTable.role })
       .from(usersTable).where(eq(usersTable.referralCode, affiliateRef)).limit(1);
-    if (!referrer) return;
+    if (!referrer) {
+      console.warn(`[affiliate commission] referrer not found for code=${affiliateRef}`);
+      return;
+    }
 
     // Prevent self-referral
-    if (referrer.id === buyerId) return;
+    if (referrer.id === buyerId) {
+      console.info(`[affiliate commission] self-referral skipped referrerId=${referrer.id}`);
+      return;
+    }
 
     // Get commission rate: check application for commission override; admins/affiliates both eligible
     const [settings] = await db.select({ commissionRate: platformSettingsTable.commissionRate }).from(platformSettingsTable).limit(1);
@@ -53,8 +64,14 @@ async function recordAffiliateCommission(
         .from(affiliateApplicationsTable)
         .where(and(eq(affiliateApplicationsTable.userId, referrer.id), eq(affiliateApplicationsTable.status, "approved")))
         .limit(1);
-      if (!app) return; // No approved application
-      if (app.isBlocked) return; // Blocked
+      if (!app) {
+        console.warn(`[affiliate commission] affiliate referrerId=${referrer.id} has no approved application — skipping`);
+        return;
+      }
+      if (app.isBlocked) {
+        console.warn(`[affiliate commission] affiliate referrerId=${referrer.id} is blocked — skipping`);
+        return;
+      }
       if (app.commissionOverride != null) {
         rate = app.commissionOverride; // Individual override takes highest priority
       } else if (app.commissionGroupId != null) {
@@ -80,10 +97,12 @@ async function recordAffiliateCommission(
       }
     } else {
       // Students and other roles cannot earn commission without an application
+      console.warn(`[affiliate commission] referrerId=${referrer.id} role=${referrer.role} is ineligible — skipping`);
       return;
     }
 
     const commission = parseFloat(((saleAmount * rate) / 100).toFixed(2));
+    console.info(`[affiliate commission] rate=${rate}% commission=₹${commission} referrerId=${referrer.id}`);
 
     // Find the most recent click referral for this referrer+course that isn't yet a purchase.
     // First try exact courseId match; if not found, fall back to a generic click (courseId IS NULL)
@@ -99,7 +118,7 @@ async function recordAffiliateCommission(
       .orderBy(desc(referralsTable.createdAt))
       .limit(1);
 
-    // If no exact-course click, look for a generic (courseId=null) click referral to upgrade
+    // If no exact-course click, look for ANY generic (courseId=null) click referral to upgrade
     const [genericClickRef] = clickRef ? [null] : await db.select()
       .from(referralsTable)
       .where(and(
@@ -114,31 +133,37 @@ async function recordAffiliateCommission(
     const refToUpgrade = clickRef ?? genericClickRef;
 
     if (refToUpgrade) {
+      console.info(`[affiliate commission] upgrading click referral id=${refToUpgrade.id} → purchase`);
       await db.update(referralsTable)
         .set({ status: "purchase", referredUserId: buyerId, courseId: courseId ?? refToUpgrade.courseId, commission: String(commission) })
         .where(eq(referralsTable.id, refToUpgrade.id));
     } else {
+      console.info(`[affiliate commission] no click referral found — inserting new purchase referral`);
       await db.insert(referralsTable).values({
         referrerId: referrer.id, referredUserId: buyerId, courseId, status: "purchase", commission: String(commission),
       });
     }
 
-    // Mark click as converted
+    // Mark affiliate click as converted (use IS NULL for courseId to avoid SQL = NULL bug)
     await db.update(affiliateClicksTable)
       .set({ convertedAt: new Date() })
       .where(and(
         eq(affiliateClicksTable.affiliateId, referrer.id),
-        or(eq(affiliateClicksTable.courseId, courseId), isNull(affiliateClicksTable.courseId)),
+        courseId != null
+          ? or(eq(affiliateClicksTable.courseId, courseId), isNull(affiliateClicksTable.courseId))
+          : isNull(affiliateClicksTable.courseId),
         isNull(affiliateClicksTable.convertedAt),
       ));
 
-    // Notify the affiliate
+    // Notify the affiliate — context-aware message for course vs bundle
+    const purchaseLabel = courseId != null ? "a course purchase" : "a bundle/package purchase";
     await db.insert(notificationsTable).values({
       userId: referrer.id,
       title: "Commission Earned! 🎉",
-      message: `You earned ₹${commission.toFixed(2)} commission from a course purchase.`,
+      message: `You earned ₹${commission.toFixed(2)} commission from ${purchaseLabel}.`,
       type: "success",
     });
+    console.info(`[affiliate commission] done — commission=₹${commission} referrerId=${referrer.id} type=${purchaseType}`);
 
     // Fire FB Purchase event (non-blocking) — value = affiliate commission
     const [pixel] = await db.select({ facebookPixelId: affiliatePixelTable.facebookPixelId, accessToken: affiliatePixelTable.accessToken })
@@ -150,7 +175,7 @@ async function recordAffiliateCommission(
         currency: "INR",
       }).catch(e => console.error("[fb pixel Purchase]", e));
     }
-  } catch (err) { console.error("[affiliate commission]", err); }
+  } catch (err) { console.error("[affiliate commission] ERROR:", err); }
 }
 
 router.post("/checkout", requireAuth, async (req, res): Promise<void> => {
@@ -535,9 +560,15 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
   const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.gatewayOrderId, orderId)).limit(1);
   if (!payment) { res.status(404).json({ error: "Payment record not found" }); return; }
   if (payment.status === "completed") {
-    // Payment was already processed (by webhook or previous verify call) — show success, not "already enrolled"
-    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
-    res.json({ success: true, enrolled: true, courseId: payment.courseId, courseTitle: course?.title, amount: parseFloat(String(payment.amount)), currency: "INR" });
+    // Payment was already processed (by webhook or previous verify call) — show success
+    if (payment.bundleId && !payment.courseId) {
+      const [bundle] = await db.select().from(bundlesTable).where(eq(bundlesTable.id, payment.bundleId)).limit(1);
+      const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
+      res.json({ success: true, enrolled: true, bundleId: payment.bundleId, bundleName: bundle?.name, courseCount: bundleCourses.length, amount: parseFloat(String(payment.amount)), currency: "INR" });
+    } else {
+      const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+      res.json({ success: true, enrolled: true, courseId: payment.courseId, courseTitle: course?.title, amount: parseFloat(String(payment.amount)), currency: "INR" });
+    }
     return;
   }
 
