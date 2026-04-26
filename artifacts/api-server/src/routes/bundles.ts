@@ -5,9 +5,9 @@ import { db } from "@workspace/db";
 import {
   bundlesTable, bundleCoursesTable, coursesTable, paymentsTable,
   enrollmentsTable, notificationsTable, usersTable, couponsTable,
-  platformSettingsTable, paymentGatewaysTable,
+  platformSettingsTable, paymentGatewaysTable, referralsTable, affiliateClicksTable,
 } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, or, isNull } from "drizzle-orm";
 import { requireAuth, requireAdmin, signToken, verifyToken, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import { triggerAutomation, triggerFunnel } from "./crm";
@@ -83,17 +83,53 @@ async function enrollInBundle(bundleId: number, userId: number, affiliateRef?: s
   }
 
   if (affiliateRef) {
-    // No per-course commission for bundles, just log the referral purchase
     try {
-      const [referrer] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.referralCode, affiliateRef)).limit(1);
+      const [referrer] = await db.select({ id: usersTable.id }).from(usersTable)
+        .where(eq(usersTable.referralCode, affiliateRef)).limit(1);
       if (referrer && referrer.id !== userId) {
-        const [settings] = await db.select({ commissionRate: platformSettingsTable.commissionRate }).from(platformSettingsTable).limit(1);
+        const [settings] = await db.select({
+          commissionRate: platformSettingsTable.commissionRate,
+        }).from(platformSettingsTable).limit(1);
         const rate = settings?.commissionRate ?? 20;
-        const [payment] = await db.select().from(paymentsTable).where(
-          and(eq(paymentsTable.userId, userId), eq(paymentsTable.bundleId, bundleId))
-        ).orderBy(desc(paymentsTable.createdAt)).limit(1);
+        const [payment] = await db.select().from(paymentsTable)
+          .where(and(eq(paymentsTable.userId, userId), eq(paymentsTable.bundleId, bundleId)))
+          .orderBy(desc(paymentsTable.createdAt)).limit(1);
         if (payment) {
           const commission = parseFloat(((parseFloat(String(payment.amount)) * rate) / 100).toFixed(2));
+
+          // Check for an existing click referral to upgrade, or insert a new purchase record
+          const [clickRef] = await db.select().from(referralsTable)
+            .where(and(
+              eq(referralsTable.referrerId, referrer.id),
+              eq(referralsTable.referredUserId, userId),
+              isNull(referralsTable.courseId),
+              eq(referralsTable.status, "click"),
+            )).limit(1);
+
+          if (clickRef) {
+            await db.update(referralsTable)
+              .set({ status: "purchase", commission: String(commission) })
+              .where(eq(referralsTable.id, clickRef.id));
+          } else {
+            await db.insert(referralsTable).values({
+              referrerId: referrer.id,
+              referredUserId: userId,
+              courseId: null,
+              status: "purchase",
+              commission: String(commission),
+            });
+          }
+
+          // Mark any unconverted click as converted
+          await db.update(affiliateClicksTable)
+            .set({ convertedAt: new Date() })
+            .where(and(
+              eq(affiliateClicksTable.affiliateId, referrer.id),
+              isNull(affiliateClicksTable.courseId),
+              isNull(affiliateClicksTable.convertedAt),
+            ));
+
+          // Notify the affiliate
           await db.insert(notificationsTable).values({
             userId: referrer.id,
             title: "Commission Earned! 🎉",
@@ -102,7 +138,7 @@ async function enrollInBundle(bundleId: number, userId: number, affiliateRef?: s
           });
         }
       }
-    } catch { /* ignore */ }
+    } catch (err) { console.error("[bundle affiliate commission]", err); }
   }
 
   return { enrolledCourses, bundleName: bundle.name };
