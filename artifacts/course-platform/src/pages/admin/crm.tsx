@@ -2185,6 +2185,18 @@ function SubscribersTab() {
 
 /* ══════════════════════════════════════════════ EMAIL LOGS ══════════════════════════════════════════════ */
 
+const RETENTION_OPTIONS = [
+  { value: "none",  label: "Disabled (keep forever)" },
+  { value: "7",     label: "7 Days" },
+  { value: "14",    label: "14 Days" },
+  { value: "30",    label: "30 Days" },
+  { value: "60",    label: "60 Days" },
+  { value: "90",    label: "90 Days" },
+  { value: "180",   label: "6 Months" },
+  { value: "365",   label: "1 Year" },
+  { value: "730",   label: "2 Years" },
+];
+
 const SEND_TYPE_META: Record<string, { label: string; color: string }> = {
   campaign:   { label: "Campaign",   color: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
   automation: { label: "Automation", color: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
@@ -2211,6 +2223,8 @@ function EmailLogsTab() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkResending, setBulkResending] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [retentionDays, setRetentionDays] = useState<string>("none");
+  const [savingRetention, setSavingRetention] = useState(false);
   const pageSize = 25;
 
   const load = async (opts?: { status?: string; q?: string; start?: string; end?: string; pg?: number }) => {
@@ -2232,6 +2246,24 @@ function EmailLogsTab() {
   };
 
   useEffect(() => { load(); }, [statusFilter, search, startDate, endDate, page]);
+
+  useEffect(() => {
+    apiFetch("/api/admin/crm/email-log-retention").then(r => r.ok ? r.json() : null).then(d => {
+      if (d) setRetentionDays(d.retentionDays ? String(d.retentionDays) : "none");
+    });
+  }, []);
+
+  const saveRetention = async () => {
+    setSavingRetention(true);
+    const r = await apiFetch("/api/admin/crm/email-log-retention", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ retentionDays: retentionDays === "none" ? null : Number(retentionDays) }),
+    });
+    if (r.ok) toast({ title: "Saved", description: retentionDays === "none" ? "Auto-delete disabled." : `Logs older than ${RETENTION_OPTIONS.find(o => o.value === retentionDays)?.label} will be deleted automatically.` });
+    else toast({ title: "Error saving retention setting", variant: "destructive" });
+    setSavingRetention(false);
+  };
 
   const handleSearch = () => { setSearch(searchInput); setPage(1); };
   const handleStatusChange = (s: "all" | "sent" | "failed") => { setStatusFilter(s); setPage(1); };
@@ -2329,6 +2361,43 @@ function EmailLogsTab() {
             <X className="w-3.5 h-3.5" />Clear filters
           </Button>
         )}
+      </div>
+
+      {/* ── Auto-Delete Logs Setting ── */}
+      <div className="bg-card border border-border rounded-2xl px-5 py-4 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center flex-shrink-0">
+            <Trash2 className="w-4 h-4 text-red-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground">Auto-Delete Email Logs</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {retentionDays === "none"
+                ? "Logs are kept forever. Select a period to enable auto-delete."
+                : `Logs older than ${RETENTION_OPTIONS.find(o => o.value === retentionDays)?.label} will be automatically deleted.`}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <select
+            value={retentionDays}
+            onChange={e => setRetentionDays(e.target.value)}
+            className="h-8 rounded-lg border border-border bg-background text-sm text-foreground px-3 pr-8 appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            {RETENTION_OPTIONS.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+          <Button
+            size="sm"
+            className="h-8 text-xs cursor-pointer gap-1.5"
+            onClick={saveRetention}
+            disabled={savingRetention}
+          >
+            {savingRetention ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+            Save
+          </Button>
+        </div>
       </div>
 
       {/* ── Filter bar ── */}

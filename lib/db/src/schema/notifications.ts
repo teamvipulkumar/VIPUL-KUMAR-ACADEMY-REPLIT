@@ -47,6 +47,7 @@ export const platformSettingsTable = pgTable("platform_settings", {
   favicon: text("favicon"),
   metaTitle: text("meta_title"),
   metaDescription: text("meta_description"),
+  emailLogRetentionDays: integer("email_log_retention_days"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

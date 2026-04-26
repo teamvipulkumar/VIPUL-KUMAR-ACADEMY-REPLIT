@@ -1663,4 +1663,19 @@ export async function triggerFunnel(triggerType: string, userId: number, trigger
   }
 }
 
+/* ── Email Log Retention Setting ── */
+router.get("/email-log-retention", requireAdmin, async (_req, res): Promise<void> => {
+  const [row] = await db.select({ emailLogRetentionDays: platformSettingsTable.emailLogRetentionDays }).from(platformSettingsTable).limit(1);
+  res.json({ retentionDays: row?.emailLogRetentionDays ?? null });
+});
+
+router.put("/email-log-retention", requireAdmin, async (req, res): Promise<void> => {
+  const days = req.body.retentionDays === null ? null : Number(req.body.retentionDays);
+  if (days !== null && (isNaN(days) || days <= 0)) { res.status(400).json({ error: "Invalid retention period" }); return; }
+  const existing = await db.select().from(platformSettingsTable).limit(1);
+  if (existing.length === 0) await db.insert(platformSettingsTable).values({});
+  await db.update(platformSettingsTable).set({ emailLogRetentionDays: days });
+  res.json({ retentionDays: days });
+});
+
 export default router;

@@ -23,6 +23,7 @@ async function runMigrations() {
     await db.execute(sql`ALTER TABLE automation_funnels ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT false`);
     await db.execute(sql`ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS site_url text NOT NULL DEFAULT ''`);
     await db.execute(sql`ALTER TABLE email_sends ADD COLUMN IF NOT EXISTS html_body text`);
+    await db.execute(sql`ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS email_log_retention_days integer`);
     logger.info("DB migrations OK");
   } catch (e) {
     logger.warn({ e }, "Migration warning (non-fatal)");
@@ -125,5 +126,25 @@ runMigrations().then(() => {
       await processSequences();
       await processScheduledCampaigns();
     }, 10 * 60 * 1000);
+
+    // Auto-delete old email logs based on retention setting (runs every 6 hours)
+    const runEmailLogCleanup = async () => {
+      try {
+        const rows = await db.execute(sql`SELECT email_log_retention_days FROM platform_settings LIMIT 1`);
+        const days = (rows.rows[0] as any)?.email_log_retention_days;
+        if (days && Number(days) > 0) {
+          const result = await db.execute(
+            sql`DELETE FROM email_sends WHERE sent_at < NOW() - INTERVAL '1 day' * ${Number(days)}`
+          );
+          if ((result.rowCount ?? 0) > 0) {
+            logger.info({ deleted: result.rowCount, retentionDays: days }, "Auto-deleted old email logs");
+          }
+        }
+      } catch (e) {
+        logger.warn({ e }, "Email log cleanup error (non-fatal)");
+      }
+    };
+    runEmailLogCleanup();
+    setInterval(runEmailLogCleanup, 6 * 60 * 60 * 1000);
   });
 });
