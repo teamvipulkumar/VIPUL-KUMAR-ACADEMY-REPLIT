@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter, ShieldCheck, ShoppingCart, Flag, Minus, BookOpen, GraduationCap, UserCheck, Gift, XCircle, BookMarked, MousePointerClick, LogIn, KeyRound } from "lucide-react";
+import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter, ShieldCheck, ShoppingCart, Flag, Minus, BookOpen, GraduationCap, UserCheck, Gift, XCircle, BookMarked, MousePointerClick, LogIn, KeyRound, MoreVertical, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -2188,23 +2188,46 @@ const LIST_TYPE_META: Record<string, { label: string; color: string; description
   manual:          { label: "Manual",           color: "bg-amber-500/10 text-amber-400 border-amber-500/20", description: "Manually managed" },
 };
 
+function relativeTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return "—";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hour${hrs > 1 ? "s" : ""} ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days} day${days > 1 ? "s" : ""} ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} month${months > 1 ? "s" : ""} ago`;
+  return `${Math.floor(months / 12)} year${Math.floor(months / 12) > 1 ? "s" : ""} ago`;
+}
+
 function ListsTab() {
   const { toast } = useToast();
   const [lists, setLists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [viewList, setViewList] = useState<any | null>(null);
   const [members, setMembers] = useState<any[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
-  const [searchQ, setSearchQ] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [memberSearch, setMemberSearch] = useState("");
+  const [memberSearchResults, setMemberSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
   const [addingUsers, setAddingUsers] = useState<number[]>([]);
 
-  const [form, setForm] = useState({ name: "", description: "", type: "manual" });
-  const [showCreate, setShowCreate] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: "", description: "", type: "manual" });
+
+  const [editList, setEditList] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", description: "", type: "manual" });
+
+  const [listSearch, setListSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const load = async () => {
     setLoading(true);
@@ -2212,13 +2235,12 @@ function ListsTab() {
     if (r.ok) setLists(await r.json());
     setLoading(false);
   };
-
   useEffect(() => { load(); }, []);
 
   const openList = async (list: any) => {
     setViewList(list);
     setMembersLoading(true);
-    setSearchQ(""); setSearchResults([]);
+    setMemberSearch(""); setMemberSearchResults([]);
     const r = await apiFetch(`/api/admin/crm/lists/${list.id}/members`);
     if (r.ok) setMembers(await r.json());
     setMembersLoading(false);
@@ -2232,7 +2254,7 @@ function ListsTab() {
       toast({ title: "Synced", description: `${d.total} members in list.` });
       load();
       if (viewList?.id === list.id) openList(list);
-    } else toast({ title: "Error", description: "Sync failed", variant: "destructive" });
+    } else toast({ title: "Sync failed", variant: "destructive" });
     setSyncing(null);
   };
 
@@ -2246,20 +2268,29 @@ function ListsTab() {
   };
 
   const createList = async () => {
-    if (!form.name.trim()) return;
+    if (!createForm.name.trim()) return;
     setCreating(true);
-    const r = await apiFetch("/api/admin/crm/lists", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    if (r.ok) { toast({ title: "List created" }); setShowCreate(false); setForm({ name: "", description: "", type: "manual" }); load(); }
+    const r = await apiFetch("/api/admin/crm/lists", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(createForm) });
+    if (r.ok) { toast({ title: "List created" }); setCreateOpen(false); setCreateForm({ name: "", description: "", type: "manual" }); load(); }
     else toast({ title: "Error", variant: "destructive" });
     setCreating(false);
   };
 
+  const saveEdit = async () => {
+    if (!editList || !editForm.name.trim()) return;
+    setSaving(true);
+    const r = await apiFetch(`/api/admin/crm/lists/${editList.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editForm) });
+    if (r.ok) { toast({ title: "List updated" }); setEditList(null); load(); }
+    else toast({ title: "Error", variant: "destructive" });
+    setSaving(false);
+  };
+
   const searchUsers = async (q: string) => {
-    setSearchQ(q);
-    if (!q.trim() || !viewList) { setSearchResults([]); return; }
+    setMemberSearch(q);
+    if (!q.trim() || !viewList) { setMemberSearchResults([]); return; }
     setSearching(true);
     const r = await apiFetch(`/api/admin/crm/lists/${viewList.id}/search-users?q=${encodeURIComponent(q)}`);
-    if (r.ok) setSearchResults(await r.json());
+    if (r.ok) setMemberSearchResults(await r.json());
     setSearching(false);
   };
 
@@ -2269,7 +2300,7 @@ function ListsTab() {
     const r = await apiFetch(`/api/admin/crm/lists/${viewList.id}/members`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userIds: [userId] }) });
     if (r.ok) {
       toast({ title: "Added" });
-      setSearchResults(s => s.filter(u => u.id !== userId));
+      setMemberSearchResults(s => s.filter(u => u.id !== userId));
       const mr = await apiFetch(`/api/admin/crm/lists/${viewList.id}/members`);
       if (mr.ok) setMembers(await mr.json());
       load();
@@ -2304,18 +2335,17 @@ function ListsTab() {
         )}
       </div>
 
-      {/* Add member search (manual lists only) */}
-      {viewList.type === "manual" || viewList.type === "optin" ? (
+      {(viewList.type === "manual" || viewList.type === "optin") && (
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
           <p className="text-sm font-semibold">Add Members</p>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <Input placeholder="Search by name or email…" value={searchQ} onChange={e => searchUsers(e.target.value)} className="pl-8 h-8 text-sm" />
+            <Input placeholder="Search by name or email…" value={memberSearch} onChange={e => searchUsers(e.target.value)} className="pl-8 h-8 text-sm" />
           </div>
           {searching && <p className="text-xs text-muted-foreground">Searching…</p>}
-          {searchResults.length > 0 && (
+          {memberSearchResults.length > 0 && (
             <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
-              {searchResults.map(u => (
+              {memberSearchResults.map(u => (
                 <div key={u.id} className="flex items-center gap-3 px-3 py-2.5">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">{u.name}</p>
@@ -2329,9 +2359,8 @@ function ListsTab() {
             </div>
           )}
         </div>
-      ) : null}
+      )}
 
-      {/* Members list */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <p className="text-sm font-semibold">{members.length} Member{members.length !== 1 ? "s" : ""}</p>
@@ -2339,7 +2368,9 @@ function ListsTab() {
         {membersLoading ? (
           <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
         ) : members.length === 0 ? (
-          <div className="py-12 text-center text-sm text-muted-foreground">No members yet. {(viewList.type === "enrolled" || viewList.type === "all_subscribers") ? "Click Sync to populate." : "Search above to add."}</div>
+          <div className="py-12 text-center text-sm text-muted-foreground">
+            No members yet. {(viewList.type === "enrolled" || viewList.type === "all_subscribers") ? "Click Sync to populate." : "Search above to add."}
+          </div>
         ) : (
           <div className="divide-y divide-border">
             {members.map(m => (
@@ -2352,7 +2383,7 @@ function ListsTab() {
                   <p className="text-xs text-muted-foreground">{m.email}</p>
                 </div>
                 <Badge variant="outline" className="text-[10px] capitalize hidden sm:flex">{m.role}</Badge>
-                <span className="text-[11px] text-muted-foreground hidden md:block">{new Date(m.subscribedAt).toLocaleDateString("en-IN")}</span>
+                <span className="text-[11px] text-muted-foreground hidden md:block">{new Date(m.subscribedAt ?? m.createdAt).toLocaleDateString("en-IN")}</span>
                 <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer h-7 w-7 p-0" onClick={() => removeMember(m.id)}>
                   <X className="w-3.5 h-3.5" />
                 </Button>
@@ -2364,94 +2395,206 @@ function ListsTab() {
     </div>
   );
 
-  /* ── Lists overview ── */
+  /* ── Lists table view ── */
+  const filtered = lists.filter(l => l.name.toLowerCase().includes(listSearch.toLowerCase()));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between gap-4">
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-xl font-bold">Email Lists</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">Organise your contacts into targeted lists for campaigns.</p>
+          <div className="flex items-center gap-2">
+            <List className="w-4 h-4 text-muted-foreground" />
+            <h2 className="text-base font-bold text-foreground">Lists ({lists.length})</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1 max-w-lg">
+            Lists are categories of your contacts. You can add lists and assign contacts to your list for better segmentation.
+          </p>
         </div>
-        <Button size="sm" className="gap-1.5 cursor-pointer" onClick={() => setShowCreate(true)}>
-          <Plus className="w-4 h-4" />New List
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Type and Enter..."
+              value={listSearch}
+              onChange={e => { setListSearch(e.target.value); setCurrentPage(1); }}
+              className="pl-8 h-8 text-xs w-44 bg-card border-border"
+            />
+          </div>
+          <Button size="sm" className="gap-1.5 h-8 cursor-pointer" onClick={() => setCreateOpen(true)}>
+            <Plus className="w-3.5 h-3.5" />Create List
+          </Button>
+          <Button variant="outline" size="sm" className="h-8 w-8 p-0 cursor-pointer">
+            <MoreVertical className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
-      {/* Create form */}
-      {showCreate && (
-        <div className="bg-card border border-primary/30 rounded-xl p-5 space-y-4">
-          <p className="text-sm font-semibold">Create New List</p>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <Label className="text-xs mb-1.5 block">List Name *</Label>
-              <Input placeholder="e.g. VIP Members" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="h-8 text-sm" />
+      {/* Table */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        {/* Table header */}
+        <div className="grid grid-cols-[40px_64px_1fr_180px_150px_130px] items-center gap-x-3 px-4 py-3 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+          <input type="checkbox" className="w-4 h-4 rounded accent-primary cursor-pointer" />
+          <button className="flex items-center gap-1 hover:text-foreground transition-colors text-left">
+            ID <ArrowUpDown className="w-3 h-3" />
+          </button>
+          <button className="flex items-center gap-1 hover:text-foreground transition-colors text-left">
+            Title <ArrowUpDown className="w-3 h-3" />
+          </button>
+          <span>Subscribers</span>
+          <span>Created</span>
+          <span>Actions</span>
+        </div>
+
+        {/* Rows */}
+        {loading ? (
+          <div className="py-12 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+        ) : paginated.length === 0 ? (
+          <div className="py-14 text-center text-sm text-muted-foreground">No lists found.</div>
+        ) : (
+          <div className="divide-y divide-border">
+            {paginated.map(list => {
+              const meta = LIST_TYPE_META[list.type] ?? LIST_TYPE_META.manual;
+              return (
+                <div key={list.id} className="grid grid-cols-[40px_64px_1fr_180px_150px_130px] items-center gap-x-3 px-4 py-3.5 hover:bg-white/3 transition-colors">
+                  <input type="checkbox" className="w-4 h-4 rounded accent-primary cursor-pointer" />
+                  <span className="text-sm text-muted-foreground">{list.id}</span>
+                  <div className="min-w-0">
+                    <button
+                      onClick={() => openList(list)}
+                      className="text-sm font-semibold text-primary hover:underline cursor-pointer text-left truncate block max-w-full"
+                    >
+                      {list.name}
+                    </button>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">
+                      {meta.label}{list.description ? ` · ${list.description}` : ""}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{list.memberCount}</p>
+                    <p className="text-[11px] text-muted-foreground">Subscribed</p>
+                  </div>
+                  <span className="text-sm text-muted-foreground">{relativeTime(list.createdAt)}</span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      title="Edit"
+                      onClick={() => { setEditList(list); setEditForm({ name: list.name, description: list.description ?? "", type: list.type }); }}
+                      className="w-7 h-7 rounded flex items-center justify-center bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-colors cursor-pointer"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      title={list.type === "enrolled" || list.type === "all_subscribers" ? "Sync" : "View Members"}
+                      onClick={() => (list.type === "enrolled" || list.type === "all_subscribers") ? syncList(list) : openList(list)}
+                      disabled={syncing === list.id}
+                      className="w-7 h-7 rounded flex items-center justify-center bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      <RotateCcw className={`w-3.5 h-3.5 ${syncing === list.id ? "animate-spin" : ""}`} />
+                    </button>
+                    {!list.isSystem && (
+                      <button
+                        title="Delete"
+                        onClick={() => deleteList(list.id)}
+                        disabled={deleting === list.id}
+                        className="w-7 h-7 rounded flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        {deleting === list.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
+        <span>Total {filtered.length}</span>
+        <span className="h-7 px-2.5 rounded border border-border bg-card flex items-center gap-1">{pageSize}/page</span>
+        <button
+          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+          disabled={currentPage === 1}
+          className="w-7 h-7 flex items-center justify-center rounded border border-border hover:bg-white/5 disabled:opacity-40 cursor-pointer transition-colors"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />
+        </button>
+        <span className="w-7 h-7 flex items-center justify-center rounded border border-primary bg-primary/10 text-primary text-xs font-semibold">
+          {currentPage}
+        </span>
+        <button
+          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+          disabled={currentPage >= totalPages}
+          className="w-7 h-7 flex items-center justify-center rounded border border-border hover:bg-white/5 disabled:opacity-40 cursor-pointer transition-colors"
+        >
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Create Dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New List</DialogTitle>
+            <DialogDescription>Add a new contact list to segment your audience.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">List Name *</Label>
+              <Input placeholder="e.g. VIP Members" value={createForm.name} onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))} className="h-9" />
             </div>
-            <div>
-              <Label className="text-xs mb-1.5 block">Type</Label>
-              <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-                className="w-full h-8 rounded-md border border-border bg-background px-2 text-sm text-foreground">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Type</Label>
+              <select value={createForm.type} onChange={e => setCreateForm(f => ({ ...f, type: e.target.value }))}
+                className="w-full h-9 rounded-md border border-border bg-background px-2.5 text-sm text-foreground">
                 <option value="manual">Manual</option>
                 <option value="optin">Optin</option>
               </select>
             </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Description</Label>
+              <Input placeholder="Optional description" value={createForm.description} onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))} className="h-9" />
+            </div>
           </div>
-          <div>
-            <Label className="text-xs mb-1.5 block">Description</Label>
-            <Input placeholder="Optional description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="h-8 text-sm" />
-          </div>
-          <div className="flex gap-2">
-            <Button size="sm" onClick={createList} disabled={creating} className="cursor-pointer">
-              {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Create List"}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)} className="cursor-pointer">Cancel</Button>
+            <Button onClick={createList} disabled={creating || !createForm.name.trim()} className="cursor-pointer">
+              {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+              Create List
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setShowCreate(false)} className="cursor-pointer">Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editList} onOpenChange={v => { if (!v) setEditList(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit List</DialogTitle>
+            <DialogDescription>Update the details of this list.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">List Name *</Label>
+              <Input placeholder="e.g. VIP Members" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} className="h-9" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Description</Label>
+              <Input placeholder="Optional description" value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} className="h-9" />
+            </div>
           </div>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
-      ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {lists.map(list => {
-            const meta = LIST_TYPE_META[list.type] ?? LIST_TYPE_META.manual;
-            return (
-              <div key={list.id} className="bg-card border border-border rounded-xl p-4 flex flex-col gap-3 hover:border-primary/30 transition-colors">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">{list.name}</p>
-                    {list.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{list.description}</p>}
-                  </div>
-                  {list.isSystem && <Badge variant="outline" className="text-[10px] text-muted-foreground border-border flex-shrink-0">System</Badge>}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className={`text-[10px] ${meta.color}`}>{meta.label}</Badge>
-                  <span className="text-xs text-muted-foreground ml-auto font-semibold">{list.memberCount} members</span>
-                </div>
-
-                <div className="flex items-center gap-2 pt-1 border-t border-border">
-                  <Button size="sm" variant="outline" className="flex-1 h-7 text-xs gap-1.5 cursor-pointer" onClick={() => openList(list)}>
-                    <Eye className="w-3 h-3" />View
-                  </Button>
-                  {(list.type === "enrolled" || list.type === "all_subscribers") && (
-                    <Button size="sm" variant="outline" className="h-7 w-7 p-0 cursor-pointer" onClick={() => syncList(list)} disabled={syncing === list.id} title="Sync">
-                      <RotateCcw className={`w-3 h-3 ${syncing === list.id ? "animate-spin" : ""}`} />
-                    </Button>
-                  )}
-                  {!list.isSystem && (
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer" onClick={() => deleteList(list.id)} disabled={deleting === list.id}>
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          {lists.length === 0 && !loading && (
-            <p className="col-span-3 text-center text-sm text-muted-foreground py-12">No lists yet. Create your first one above.</p>
-          )}
-        </div>
-      )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditList(null)} className="cursor-pointer">Cancel</Button>
+            <Button onClick={saveEdit} disabled={saving || !editForm.name.trim()} className="cursor-pointer">
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -957,6 +957,16 @@ router.post("/lists", requireAdmin, async (req, res): Promise<void> => {
   res.json(list);
 });
 
+/* Update a list */
+router.put("/lists/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  const { name, description = "" } = req.body as { name: string; description?: string };
+  if (!name?.trim()) { res.status(400).json({ error: "Name is required" }); return; }
+  const [updated] = await db.update(emailListsTable).set({ name: name.trim(), description }).where(eq(emailListsTable.id, id)).returning();
+  if (!updated) { res.status(404).json({ error: "Not found" }); return; }
+  res.json(updated);
+});
+
 /* Delete a list (non-system only) */
 router.delete("/lists/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
