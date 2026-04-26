@@ -1141,7 +1141,8 @@ const FUNNEL_TRIGGERS = [
   { type: "tag_applied",        label: "Tag Applied",            icon: Tag,                color: "text-violet-400",  bg: "bg-violet-500/10",  border: "border-violet-500/20",  desc: "Fires when a specific tag is applied to a contact" },
   { type: "list_added",         label: "Added to List",          icon: List,               color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20",   desc: "Fires when a contact is added to a list" },
   /* ── Affiliate ── */
-  { type: "affiliate_joined",   label: "Affiliate Joined",       icon: UserCheck,          color: "text-purple-400",  bg: "bg-purple-500/10",  border: "border-purple-500/20",  desc: "Fires when a user is approved as an affiliate" },
+  { type: "affiliate_joined",     label: "Affiliate Joined",       icon: UserCheck,    color: "text-purple-400",  bg: "bg-purple-500/10",  border: "border-purple-500/20",  desc: "Fires when a user is approved as an affiliate" },
+  { type: "affiliate_commission", label: "Commission Earned",      icon: TrendingUp,   color: "text-yellow-400",  bg: "bg-yellow-500/10",  border: "border-yellow-500/20",  desc: "Fires when an affiliate earns a commission from a referral purchase" },
   /* ── Engagement ── */
   { type: "link_clicked",       label: "Email Link Clicked",     icon: MousePointerClick,  color: "text-orange-400",  bg: "bg-orange-500/10",  border: "border-orange-500/20",  desc: "Fires when a contact clicks a tracked link in an email" },
 ];
@@ -1694,7 +1695,7 @@ function AutomationTab() {
                     new_purchase: "purchases", payment_failed: "purchases", coupon_used: "purchases",
                     course_enrolled: "courses", course_completed: "courses", lesson_completed: "courses",
                     tag_applied: "crm", list_added: "crm",
-                    affiliate_joined: "affiliate",
+                    affiliate_joined: "affiliate", affiliate_commission: "affiliate",
                     link_clicked: "engagement",
                   };
                   return newTriggerCategory === "all" || catMap[t.type] === newTriggerCategory;
