@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { EmailBlockBuilder } from "@/components/email-block-builder";
 
@@ -1059,6 +1060,7 @@ function AutomationTab() {
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [newTrigger, setNewTrigger] = useState("user_signup");
+  const [newTriggerCategory, setNewTriggerCategory] = useState("all");
 
   /* ── Load ── */
   const loadAll = useCallback(async () => {
@@ -1511,54 +1513,77 @@ function AutomationTab() {
         </Button>
       </div>
 
-      {/* Create form */}
-      {showCreate && (
-        <div className="p-4 bg-card border border-border rounded-xl space-y-4">
-          <h3 className="font-semibold text-foreground text-sm">Create Automation Funnel</h3>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Funnel Name</Label>
-              <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Welcome Sequence"
-                className="bg-background border-border" onKeyDown={e => e.key === "Enter" && createFunnel()} />
+      {/* Create Funnel Dialog */}
+      <Dialog open={showCreate} onOpenChange={open => { if (!open) { setShowCreate(false); setNewName(""); setNewTrigger("user_signup"); setNewTriggerCategory("all"); } }}>
+        <DialogContent className="max-w-4xl w-full p-0 gap-0 overflow-hidden" aria-describedby={undefined}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+            <h2 className="text-lg font-bold text-foreground">Create an Automation Funnel</h2>
+          </div>
+          {/* Internal Label */}
+          <div className="px-6 py-4 border-b border-border">
+            <Label className="text-sm font-medium mb-1.5 block">Internal Label</Label>
+            <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Internal Label"
+              className="bg-background border-border" onKeyDown={e => e.key === "Enter" && newName.trim() && createFunnel()} />
+          </div>
+          {/* Body: sidebar + grid */}
+          <div className="flex" style={{ minHeight: 360, maxHeight: "60vh" }}>
+            {/* Left category sidebar */}
+            <div className="w-48 shrink-0 border-r border-border overflow-y-auto py-2">
+              {[
+                { id: "all",            label: "All Triggers" },
+                { id: "user_lifecycle", label: "User Lifecycle" },
+                { id: "purchases",      label: "Purchases" },
+                { id: "courses",        label: "Course Events" },
+                { id: "crm",            label: "CRM" },
+                { id: "affiliate",      label: "Affiliate" },
+                { id: "engagement",     label: "Engagement" },
+              ].map(cat => (
+                <button key={cat.id} onClick={() => setNewTriggerCategory(cat.id)}
+                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors ${newTriggerCategory === cat.id ? "bg-primary/10 text-primary border-r-2 border-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}>
+                  {cat.label}
+                </button>
+              ))}
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Trigger</Label>
-              <select value={newTrigger} onChange={e => setNewTrigger(e.target.value)}
-                className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground">
-                <optgroup label="User Lifecycle">
-                  <option value="user_signup">User Signs Up</option>
-                  <option value="user_login">User Logs In</option>
-                  <option value="forgot_password">Forgot Password</option>
-                </optgroup>
-                <optgroup label="Purchases &amp; Payments">
-                  <option value="new_purchase">Purchase Completed</option>
-                  <option value="payment_failed">Payment Failed</option>
-                  <option value="coupon_used">Coupon Redeemed</option>
-                </optgroup>
-                <optgroup label="Course &amp; Lessons">
-                  <option value="course_enrolled">Course Enrolled</option>
-                  <option value="course_completed">Course Completed</option>
-                  <option value="lesson_completed">Lesson Completed</option>
-                </optgroup>
-                <optgroup label="CRM Events">
-                  <option value="tag_applied">Tag Applied</option>
-                  <option value="list_added">Added to List</option>
-                </optgroup>
-                <optgroup label="Other">
-                  <option value="affiliate_joined">Affiliate Joined</option>
-                  <option value="link_clicked">Email Link Clicked</option>
-                </optgroup>
-              </select>
+            {/* Right trigger grid */}
+            <div className="flex-1 overflow-y-auto p-5">
+              <p className="text-sm font-semibold text-foreground mb-4">Select the trigger for this automation</p>
+              <div className="grid grid-cols-3 gap-3">
+                {FUNNEL_TRIGGERS.filter(t => {
+                  const catMap: Record<string, string> = {
+                    user_signup: "user_lifecycle", user_login: "user_lifecycle", forgot_password: "user_lifecycle",
+                    new_purchase: "purchases", payment_failed: "purchases", coupon_used: "purchases",
+                    course_enrolled: "courses", course_completed: "courses", lesson_completed: "courses",
+                    tag_applied: "crm", list_added: "crm",
+                    affiliate_joined: "affiliate",
+                    link_clicked: "engagement",
+                  };
+                  return newTriggerCategory === "all" || catMap[t.type] === newTriggerCategory;
+                }).map(t => {
+                  const Icon = t.icon;
+                  const selected = newTrigger === t.type;
+                  return (
+                    <button key={t.type} onClick={() => setNewTrigger(t.type)}
+                      className={`text-left p-4 rounded-lg border-2 transition-all cursor-pointer ${selected ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40 hover:bg-muted/30"}`}>
+                      <Icon className={`w-5 h-5 mb-2 ${t.color}`} />
+                      <p className="text-sm font-semibold text-foreground leading-tight mb-1">{t.label}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{t.desc}</p>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
-          <div className="flex gap-2">
+          {/* Footer */}
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
+            <Button variant="outline" size="sm" onClick={() => { setShowCreate(false); setNewName(""); setNewTrigger("user_signup"); setNewTriggerCategory("all"); }}>Cancel</Button>
             <Button size="sm" onClick={createFunnel} disabled={saving || !newName.trim()}>
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create Funnel"}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Create Funnel
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => { setShowCreate(false); setNewName(""); }}>Cancel</Button>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Empty state */}
       {funnels.length === 0 && !showCreate && (
