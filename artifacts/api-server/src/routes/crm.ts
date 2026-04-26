@@ -842,12 +842,24 @@ router.post("/campaigns/:id/send", requireAdmin, async (req, res): Promise<void>
 
 /* ── Subscribers ── */
 router.get("/subscribers", requireAdmin, async (req, res): Promise<void> => {
-  const { search, limit = "50", offset = "0", tagId } = req.query as Record<string, string>;
+  const { search, limit = "50", offset = "0", tagId, listId } = req.query as Record<string, string>;
 
   if (tagId) {
     const assignments = await db.select({ userId: contactTagAssignmentsTable.userId })
       .from(contactTagAssignmentsTable).where(eq(contactTagAssignmentsTable.tagId, parseInt(tagId)));
     const userIds = assignments.map(a => a.userId);
+    if (userIds.length === 0) { res.json({ users: [], total: 0 }); return; }
+    let users = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, role: usersTable.role, isBanned: usersTable.isBanned, createdAt: usersTable.createdAt })
+      .from(usersTable).where(inArray(usersTable.id, userIds));
+    if (search) users = users.filter(u => u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()));
+    const paginated = users.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
+    res.json({ users: paginated, total: users.length }); return;
+  }
+
+  if (listId) {
+    const members = await db.select({ userId: emailListMembersTable.userId })
+      .from(emailListMembersTable).where(eq(emailListMembersTable.listId, parseInt(listId)));
+    const userIds = members.map(m => m.userId);
     if (userIds.length === 0) { res.json({ users: [], total: 0 }); return; }
     let users = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, role: usersTable.role, isBanned: usersTable.isBanned, createdAt: usersTable.createdAt })
       .from(usersTable).where(inArray(usersTable.id, userIds));

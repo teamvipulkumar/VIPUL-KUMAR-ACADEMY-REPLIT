@@ -2078,33 +2078,45 @@ function SubscribersTab() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [tagFilter, setTagFilter] = useState("");
+  const [listFilter, setListFilter] = useState("");
   const [tags, setTags] = useState<any[]>([]);
+  const [lists, setLists] = useState<any[]>([]);
   const [profileUserId, setProfileUserId] = useState<number | null>(null);
   const limit = 30;
 
-  const load = useCallback(async (q = "", p = 0, tf = "") => {
+  const load = useCallback(async (q = "", p = 0, tf = "", lf = "") => {
     setLoading(true);
     const params = new URLSearchParams({ limit: String(limit), offset: String(p * limit) });
     if (q) params.set("search", q);
     if (tf) params.set("tagId", tf);
-    const [res, tagRes] = await Promise.all([
+    if (lf) params.set("listId", lf);
+    const [res, tagRes, listRes] = await Promise.all([
       apiFetch(`/api/admin/crm/subscribers?${params}`),
       apiFetch("/api/admin/crm/tags"),
+      apiFetch("/api/admin/crm/lists"),
     ]);
     if (res.ok) { const data = await res.json(); setSubs(data.users); setTotal(data.total); }
     if (tagRes.ok) { const td = await tagRes.json(); setTags(Array.isArray(td) ? td : []); }
+    if (listRes.ok) { const ld = await listRes.json(); setLists(Array.isArray(ld) ? ld : []); }
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(search, page, tagFilter); }, [load, search, page, tagFilter]);
+  useEffect(() => { load(search, page, tagFilter, listFilter); }, [load, search, page, tagFilter, listFilter]);
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div><h2 className="text-xl font-bold text-foreground">Contacts</h2><p className="text-sm text-muted-foreground mt-0.5">All registered users — <span className="text-foreground font-medium">{total}</span> total</p></div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {lists.length > 0 && (
+            <select value={listFilter} onChange={e => { setListFilter(e.target.value); setTagFilter(""); setPage(0); }}
+              className="h-9 px-2 rounded-md border border-border bg-card text-xs text-foreground">
+              <option value="">All Lists</option>
+              {lists.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          )}
           {tags.length > 0 && (
-            <select value={tagFilter} onChange={e => { setTagFilter(e.target.value); setPage(0); }}
+            <select value={tagFilter} onChange={e => { setTagFilter(e.target.value); setListFilter(""); setPage(0); }}
               className="h-9 px-2 rounded-md border border-border bg-card text-xs text-foreground">
               <option value="">All Tags</option>
               {tags.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
