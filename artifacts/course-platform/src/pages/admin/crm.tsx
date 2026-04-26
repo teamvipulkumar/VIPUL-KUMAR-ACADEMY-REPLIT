@@ -2360,12 +2360,7 @@ function EmailLogsTab() {
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         {/* Column headers */}
         <div className="grid grid-cols-[32px_1fr_200px_80px_160px_120px] items-center gap-x-4 px-5 py-3 border-b border-border bg-muted/20 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-          <label className="flex items-center cursor-pointer flex-shrink-0">
-            <input type="checkbox" className="peer sr-only" />
-            <div className="w-[18px] h-[18px] rounded-[4px] border border-border/70 bg-background peer-checked:bg-primary peer-checked:border-primary flex items-center justify-center transition-all">
-              <svg className="w-2.5 h-2.5 text-primary-foreground opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-            </div>
-          </label>
+          <input type="checkbox" className="w-3.5 h-3.5 rounded accent-primary cursor-pointer" />
           <span>Subject</span>
           <span>To</span>
           <span>Status</span>
@@ -2422,12 +2417,7 @@ function EmailLogsTab() {
                     isFailed ? "bg-red-500/[0.04] hover:bg-red-500/[0.07]" : "hover:bg-white/[0.02]"
                   }`}
                 >
-                  <label className="flex items-center cursor-pointer flex-shrink-0">
-            <input type="checkbox" className="peer sr-only" />
-            <div className="w-[18px] h-[18px] rounded-[4px] border border-border/70 bg-background peer-checked:bg-primary peer-checked:border-primary flex items-center justify-center transition-all">
-              <svg className="w-2.5 h-2.5 text-primary-foreground opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-            </div>
-          </label>
+                  <input type="checkbox" className="w-3.5 h-3.5 rounded accent-primary cursor-pointer" />
 
                   {/* Subject + type */}
                   <div className="min-w-0">
@@ -3107,12 +3097,7 @@ function ListsTab() {
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         {/* Table header */}
         <div className="grid grid-cols-[32px_1fr_140px_130px_130px_100px] items-center gap-x-4 px-5 py-3 border-b border-border bg-muted/20 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-          <label className="flex items-center cursor-pointer flex-shrink-0">
-            <input type="checkbox" className="peer sr-only" />
-            <div className="w-[18px] h-[18px] rounded-[4px] border border-border/70 bg-background peer-checked:bg-primary peer-checked:border-primary flex items-center justify-center transition-all">
-              <svg className="w-2.5 h-2.5 text-primary-foreground opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-            </div>
-          </label>
+          <input type="checkbox" className="w-3.5 h-3.5 rounded accent-primary cursor-pointer" />
           <button className="flex items-center gap-1 hover:text-foreground transition-colors text-left">
             List Name <ArrowUpDown className="w-3 h-3 opacity-60" />
           </button>
@@ -3171,12 +3156,7 @@ function ListsTab() {
               const meta = LIST_TYPE_META[list.type] ?? LIST_TYPE_META.manual;
               return (
                 <div key={list.id} className="grid grid-cols-[32px_1fr_140px_130px_130px_100px] items-center gap-x-4 px-5 py-3.5 hover:bg-white/[0.02] transition-colors group">
-                  <label className="flex items-center cursor-pointer flex-shrink-0">
-            <input type="checkbox" className="peer sr-only" />
-            <div className="w-[18px] h-[18px] rounded-[4px] border border-border/70 bg-background peer-checked:bg-primary peer-checked:border-primary flex items-center justify-center transition-all">
-              <svg className="w-2.5 h-2.5 text-primary-foreground opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-            </div>
-          </label>
+                  <input type="checkbox" className="w-3.5 h-3.5 rounded accent-primary cursor-pointer" />
 
                   {/* Name + description */}
                   <div className="min-w-0 flex items-center gap-3">
