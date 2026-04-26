@@ -950,8 +950,12 @@ router.post("/sends/:id/resend", requireAdmin, async (req, res): Promise<void> =
   const id = parseInt(req.params.id);
   const [send] = await db.select().from(emailSendsTable).where(eq(emailSendsTable.id, id)).limit(1);
   if (!send) { res.status(404).json({ error: "Not found" }); return; }
-  try {
-    let html = `<p>Resent email: <strong>${send.subject}</strong></p><p>Originally sent: ${send.sentAt}</p>`;
+
+  // Resolve HTML before try/catch so it's accessible in the catch block.
+  // Prefer stored htmlBody (all sends after the column was added).
+  // Fall back to live lookup only for older records that pre-date the column.
+  let html: string = send.htmlBody ?? "";
+  if (!html) {
     if (send.type === "campaign" && send.campaignId) {
       const [campaign] = await db.select().from(emailCampaignsTable).where(eq(emailCampaignsTable.id, send.campaignId)).limit(1);
       if (campaign?.htmlBody) html = campaign.htmlBody;
@@ -961,7 +965,17 @@ router.post("/sends/:id/resend", requireAdmin, async (req, res): Promise<void> =
         const [tmpl] = await db.select().from(emailTemplatesTable).where(eq(emailTemplatesTable.id, rule.templateId)).limit(1);
         if (tmpl?.htmlBody) html = tmpl.htmlBody;
       }
+      if (!html) {
+        const validTypes = ["welcome", "purchase", "refund", "forgot_password", "remarketing", "completion", "affiliate_commission"];
+        if (validTypes.includes(send.automationEvent)) {
+          const [tmpl] = await db.select().from(emailTemplatesTable).where(eq(emailTemplatesTable.type, send.automationEvent as any)).limit(1);
+          if (tmpl?.htmlBody) html = tmpl.htmlBody;
+        }
+      }
     }
+  }
+
+  try {
     await sendEmailWithFallback(send.email, send.subject, html);
     const [newSend] = await db.insert(emailSendsTable).values({ type: send.type, campaignId: send.campaignId, automationEvent: send.automationEvent, userId: send.userId, email: send.email, subject: send.subject, htmlBody: html, status: "sent" }).returning();
     res.json({ ok: true, send: newSend });
