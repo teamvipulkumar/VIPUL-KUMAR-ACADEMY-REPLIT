@@ -2127,7 +2127,7 @@ function SubscribersTab() {
       </div>
 
       <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto_auto_auto] gap-x-4 px-4 py-2.5 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase tracking-wide justify-items-start items-center">
+        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_72px_88px_16px] gap-x-4 px-4 py-2.5 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase tracking-wide items-center">
           <span>Name</span><span>Email</span><span>Lists</span><span>Tags</span><span>Role</span><span>Joined</span><span></span>
         </div>
         {loading ? (
@@ -2137,7 +2137,7 @@ function SubscribersTab() {
         ) : (
           <div className="divide-y divide-border">
             {subs.map(s => (
-              <div key={s.id} className="grid grid-cols-[1fr_1fr_1fr_1fr_auto_auto_auto] gap-x-4 items-center px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setProfileUserId(s.id)}>
+              <div key={s.id} className="grid grid-cols-[1fr_1fr_1fr_1fr_72px_88px_16px] gap-x-4 items-center px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setProfileUserId(s.id)}>
                 <p className="text-sm font-medium text-foreground truncate">{s.name}</p>
                 <p className="text-xs text-muted-foreground truncate">{s.email}</p>
                 <div className="flex flex-wrap gap-1 min-w-0">
