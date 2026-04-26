@@ -2315,190 +2315,376 @@ function ListsTab() {
   };
 
   /* ── Member detail view ── */
-  if (viewList) return (
-    <div className="space-y-5">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" className="gap-1.5 cursor-pointer" onClick={() => setViewList(null)}>
-          <ChevronLeft className="w-4 h-4" />Back
-        </Button>
-        <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-bold text-foreground">{viewList.name}</h2>
-          {viewList.description && <p className="text-xs text-muted-foreground">{viewList.description}</p>}
+  if (viewList) {
+    const meta = LIST_TYPE_META[viewList.type] ?? LIST_TYPE_META.manual;
+    return (
+      <div className="space-y-5">
+        {/* Breadcrumb + header */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <button onClick={() => setViewList(null)} className="hover:text-foreground transition-colors cursor-pointer flex items-center gap-1">
+            <List className="w-3.5 h-3.5" />Lists
+          </button>
+          <ChevronRight className="w-3 h-3 opacity-40" />
+          <span className="text-foreground font-medium">{viewList.name}</span>
         </div>
-        <Badge variant="outline" className={`text-xs ${LIST_TYPE_META[viewList.type]?.color}`}>
-          {LIST_TYPE_META[viewList.type]?.label ?? viewList.type}
-        </Badge>
-        {(viewList.type === "enrolled" || viewList.type === "all_subscribers") && (
-          <Button size="sm" variant="outline" className="gap-1.5 cursor-pointer" onClick={() => syncList(viewList)} disabled={syncing === viewList.id}>
-            <RotateCcw className={`w-3.5 h-3.5 ${syncing === viewList.id ? "animate-spin" : ""}`} />Sync
-          </Button>
-        )}
-      </div>
 
-      {(viewList.type === "manual" || viewList.type === "optin") && (
-        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <p className="text-sm font-semibold">Add Members</p>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <Input placeholder="Search by name or email…" value={memberSearch} onChange={e => searchUsers(e.target.value)} className="pl-8 h-8 text-sm" />
+        {/* List info card */}
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="px-6 py-5 flex items-start gap-5">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+              <List className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h2 className="text-lg font-bold text-foreground">{viewList.name}</h2>
+                <Badge variant="outline" className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${meta.color}`}>
+                  {meta.label}
+                </Badge>
+                {viewList.isSystem && (
+                  <Badge variant="outline" className="text-[11px] px-2 py-0.5 rounded-full bg-muted/40 text-muted-foreground border-border">
+                    System
+                  </Badge>
+                )}
+              </div>
+              {viewList.description && <p className="text-sm text-muted-foreground mt-1">{viewList.description}</p>}
+              <p className="text-xs text-muted-foreground mt-1.5">{meta.description}</p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {(viewList.type === "enrolled" || viewList.type === "all_subscribers") && (
+                <Button size="sm" variant="outline" className="gap-1.5 h-8 cursor-pointer text-xs" onClick={() => syncList(viewList)} disabled={syncing === viewList.id}>
+                  <RotateCcw className={`w-3.5 h-3.5 ${syncing === viewList.id ? "animate-spin" : ""}`} />
+                  {syncing === viewList.id ? "Syncing…" : "Sync Now"}
+                </Button>
+              )}
+              <Button size="sm" variant="ghost" className="gap-1.5 h-8 cursor-pointer text-xs" onClick={() => setViewList(null)}>
+                <ChevronLeft className="w-3.5 h-3.5" />Back
+              </Button>
+            </div>
           </div>
-          {searching && <p className="text-xs text-muted-foreground">Searching…</p>}
-          {memberSearchResults.length > 0 && (
-            <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
-              {memberSearchResults.map(u => (
-                <div key={u.id} className="flex items-center gap-3 px-3 py-2.5">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{u.name}</p>
-                    <p className="text-xs text-muted-foreground">{u.email}</p>
+
+          {/* Stat strip */}
+          <div className="border-t border-border grid grid-cols-3 divide-x divide-border">
+            <div className="px-6 py-3.5">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Members</p>
+              <p className="text-xl font-bold text-foreground mt-0.5">{membersLoading ? "—" : members.length}</p>
+            </div>
+            <div className="px-6 py-3.5">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Type</p>
+              <p className="text-sm font-semibold text-foreground mt-0.5 capitalize">{viewList.type?.replace("_", " ")}</p>
+            </div>
+            <div className="px-6 py-3.5">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Created</p>
+              <p className="text-sm font-semibold text-foreground mt-0.5">{relativeTime(viewList.createdAt)}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Add members panel (manual / optin only) */}
+        {(viewList.type === "manual" || viewList.type === "optin") && (
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <UserPlus className="w-4 h-4 text-muted-foreground" />
+              <p className="text-sm font-semibold text-foreground">Add Members</p>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+              <Input placeholder="Search contacts by name or email…" value={memberSearch} onChange={e => searchUsers(e.target.value)} className="pl-9 h-9 text-sm bg-background" />
+              {searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+            </div>
+            {memberSearchResults.length > 0 && (
+              <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
+                {memberSearchResults.map(u => (
+                  <div key={u.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/3 transition-colors">
+                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary flex-shrink-0">
+                      {u.name?.charAt(0)?.toUpperCase() ?? "?"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium leading-tight">{u.name}</p>
+                      <p className="text-xs text-muted-foreground">{u.email}</p>
+                    </div>
+                    <Button size="sm" variant="outline" className="gap-1.5 cursor-pointer h-7 px-3 text-xs" onClick={() => addUser(u.id)} disabled={addingUsers.includes(u.id)}>
+                      {addingUsers.includes(u.id) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                      Add
+                    </Button>
                   </div>
-                  <Button size="sm" variant="outline" className="gap-1 cursor-pointer h-7 px-2 text-xs" onClick={() => addUser(u.id)} disabled={addingUsers.includes(u.id)}>
-                    <UserPlus className="w-3 h-3" />Add
-                  </Button>
+                ))}
+              </div>
+            )}
+            {memberSearch.trim() && !searching && memberSearchResults.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-2">No users found matching "{memberSearch}"</p>
+            )}
+          </div>
+        )}
+
+        {/* Members table */}
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-muted-foreground" />
+              <p className="text-sm font-semibold text-foreground">
+                {membersLoading ? "Loading…" : `${members.length} Member${members.length !== 1 ? "s" : ""}`}
+              </p>
+            </div>
+          </div>
+
+          {/* Column header */}
+          {!membersLoading && members.length > 0 && (
+            <div className="grid grid-cols-[1fr_100px_110px_36px] gap-x-3 px-5 py-2.5 border-b border-border bg-muted/20">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Member</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Role</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Joined</span>
+              <span />
+            </div>
+          )}
+
+          {membersLoading ? (
+            <div className="divide-y divide-border">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3 px-5 py-3.5 animate-pulse">
+                  <div className="w-8 h-8 rounded-full bg-muted/40 flex-shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3 bg-muted/40 rounded w-32" />
+                    <div className="h-2.5 bg-muted/30 rounded w-48" />
+                  </div>
+                  <div className="h-5 bg-muted/30 rounded w-16 hidden sm:block" />
+                  <div className="h-3 bg-muted/30 rounded w-20 hidden md:block" />
+                </div>
+              ))}
+            </div>
+          ) : members.length === 0 ? (
+            <div className="py-16 flex flex-col items-center gap-3 text-center">
+              <div className="w-12 h-12 rounded-full bg-muted/30 flex items-center justify-center">
+                <Users className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">No members yet</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {(viewList.type === "enrolled" || viewList.type === "all_subscribers")
+                    ? 'Click "Sync Now" to populate this list automatically.'
+                    : "Search for contacts above to add them to this list."}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {members.map(m => (
+                <div key={m.id} className="grid grid-cols-[1fr_100px_110px_36px] items-center gap-x-3 px-5 py-3 hover:bg-white/3 transition-colors group">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-[11px] font-bold text-primary flex-shrink-0">
+                      {m.name?.charAt(0)?.toUpperCase() ?? "?"}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground leading-tight truncate">{m.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{m.email}</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] capitalize w-fit px-2 py-0.5">{m.role}</Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(m.subscribedAt ?? m.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  </span>
+                  <button
+                    onClick={() => removeMember(m.id)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                    title="Remove member"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               ))}
             </div>
           )}
         </div>
-      )}
-
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <p className="text-sm font-semibold">{members.length} Member{members.length !== 1 ? "s" : ""}</p>
-        </div>
-        {membersLoading ? (
-          <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
-        ) : members.length === 0 ? (
-          <div className="py-12 text-center text-sm text-muted-foreground">
-            No members yet. {(viewList.type === "enrolled" || viewList.type === "all_subscribers") ? "Click Sync to populate." : "Search above to add."}
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {members.map(m => (
-              <div key={m.id} className="flex items-center gap-3 px-4 py-3">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
-                  {m.name?.charAt(0)?.toUpperCase() ?? "?"}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{m.name}</p>
-                  <p className="text-xs text-muted-foreground">{m.email}</p>
-                </div>
-                <Badge variant="outline" className="text-[10px] capitalize hidden sm:flex">{m.role}</Badge>
-                <span className="text-[11px] text-muted-foreground hidden md:block">{new Date(m.subscribedAt ?? m.createdAt).toLocaleDateString("en-IN")}</span>
-                <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer h-7 w-7 p-0" onClick={() => removeMember(m.id)}>
-                  <X className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
-    </div>
-  );
+    );
+  }
 
   /* ── Lists table view ── */
   const filtered = lists.filter(l => l.name.toLowerCase().includes(listSearch.toLowerCase()));
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const totalSubscribers = lists.reduce((s, l) => s + (l.memberCount ?? 0), 0);
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
+    <div className="space-y-5">
+      {/* ── Page header ── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <div className="flex items-center gap-2">
+          <h2 className="text-base font-bold text-foreground flex items-center gap-2">
             <List className="w-4 h-4 text-muted-foreground" />
-            <h2 className="text-base font-bold text-foreground">Lists ({lists.length})</h2>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1 max-w-lg">
-            Lists are categories of your contacts. You can add lists and assign contacts to your list for better segmentation.
+            Contact Lists
+          </h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Segment your audience into lists for targeted email campaigns and automations.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
             <Input
-              placeholder="Type and Enter..."
+              placeholder="Search lists…"
               value={listSearch}
               onChange={e => { setListSearch(e.target.value); setCurrentPage(1); }}
               className="pl-8 h-8 text-xs w-44 bg-card border-border"
             />
           </div>
-          <Button size="sm" className="gap-1.5 h-8 cursor-pointer" onClick={() => setCreateOpen(true)}>
-            <Plus className="w-3.5 h-3.5" />Create List
-          </Button>
-          <Button variant="outline" size="sm" className="h-8 w-8 p-0 cursor-pointer">
-            <MoreVertical className="w-4 h-4" />
+          <Button size="sm" className="gap-1.5 h-8 cursor-pointer font-medium" onClick={() => setCreateOpen(true)}>
+            <Plus className="w-3.5 h-3.5" />New List
           </Button>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      {/* ── Summary stat cards ── */}
+      {!loading && (
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: "Total Lists", value: lists.length, icon: <List className="w-4 h-4" />, accent: "text-blue-400", bg: "bg-blue-500/10" },
+            { label: "Total Subscribers", value: totalSubscribers.toLocaleString(), icon: <Users className="w-4 h-4" />, accent: "text-emerald-400", bg: "bg-emerald-500/10" },
+            { label: "Manual Lists", value: lists.filter(l => l.type === "manual" || l.type === "optin").length, icon: <Edit2 className="w-4 h-4" />, accent: "text-amber-400", bg: "bg-amber-500/10" },
+          ].map(card => (
+            <div key={card.label} className="bg-card border border-border rounded-xl px-4 py-3.5 flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-lg ${card.bg} flex items-center justify-center ${card.accent} flex-shrink-0`}>
+                {card.icon}
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground font-medium">{card.label}</p>
+                <p className="text-lg font-bold text-foreground leading-tight">{card.value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Table ── */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
         {/* Table header */}
-        <div className="grid grid-cols-[40px_64px_1fr_180px_150px_130px] items-center gap-x-3 px-4 py-3 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-          <input type="checkbox" className="w-4 h-4 rounded accent-primary cursor-pointer" />
+        <div className="grid grid-cols-[32px_1fr_140px_130px_130px_100px] items-center gap-x-4 px-5 py-3 border-b border-border bg-muted/20 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+          <input type="checkbox" className="w-3.5 h-3.5 rounded accent-primary cursor-pointer" />
           <button className="flex items-center gap-1 hover:text-foreground transition-colors text-left">
-            ID <ArrowUpDown className="w-3 h-3" />
+            List Name <ArrowUpDown className="w-3 h-3 opacity-60" />
+          </button>
+          <span>Type</span>
+          <button className="flex items-center gap-1 hover:text-foreground transition-colors text-left">
+            Subscribers <ArrowUpDown className="w-3 h-3 opacity-60" />
           </button>
           <button className="flex items-center gap-1 hover:text-foreground transition-colors text-left">
-            Title <ArrowUpDown className="w-3 h-3" />
+            Created <ArrowUpDown className="w-3 h-3 opacity-60" />
           </button>
-          <span>Subscribers</span>
-          <span>Created</span>
           <span>Actions</span>
         </div>
 
         {/* Rows */}
         {loading ? (
-          <div className="py-12 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          <div className="divide-y divide-border">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="grid grid-cols-[32px_1fr_140px_130px_130px_100px] items-center gap-x-4 px-5 py-4 animate-pulse">
+                <div className="w-3.5 h-3.5 rounded bg-muted/40" />
+                <div className="space-y-1.5">
+                  <div className="h-3.5 bg-muted/40 rounded w-36" />
+                  <div className="h-2.5 bg-muted/30 rounded w-52" />
+                </div>
+                <div className="h-5 bg-muted/30 rounded-full w-20" />
+                <div className="h-3 bg-muted/30 rounded w-12" />
+                <div className="h-3 bg-muted/30 rounded w-20" />
+                <div className="flex gap-1.5">
+                  <div className="w-7 h-7 rounded-lg bg-muted/30" />
+                  <div className="w-7 h-7 rounded-lg bg-muted/30" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : paginated.length === 0 ? (
-          <div className="py-14 text-center text-sm text-muted-foreground">No lists found.</div>
+          <div className="py-20 flex flex-col items-center gap-4 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-muted/30 flex items-center justify-center">
+              <List className="w-6 h-6 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                {listSearch ? `No lists matching "${listSearch}"` : "No lists yet"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {listSearch ? "Try a different search term." : "Create your first list to start segmenting your audience."}
+              </p>
+            </div>
+            {!listSearch && (
+              <Button size="sm" className="gap-1.5 cursor-pointer" onClick={() => setCreateOpen(true)}>
+                <Plus className="w-3.5 h-3.5" />Create First List
+              </Button>
+            )}
+          </div>
         ) : (
           <div className="divide-y divide-border">
             {paginated.map(list => {
               const meta = LIST_TYPE_META[list.type] ?? LIST_TYPE_META.manual;
               return (
-                <div key={list.id} className="grid grid-cols-[40px_64px_1fr_180px_150px_130px] items-center gap-x-3 px-4 py-3.5 hover:bg-white/3 transition-colors">
-                  <input type="checkbox" className="w-4 h-4 rounded accent-primary cursor-pointer" />
-                  <span className="text-sm text-muted-foreground">{list.id}</span>
-                  <div className="min-w-0">
-                    <button
-                      onClick={() => openList(list)}
-                      className="text-sm font-semibold text-primary hover:underline cursor-pointer text-left truncate block max-w-full"
-                    >
-                      {list.name}
-                    </button>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">
-                      {meta.label}{list.description ? ` · ${list.description}` : ""}
-                    </p>
+                <div key={list.id} className="grid grid-cols-[32px_1fr_140px_130px_130px_100px] items-center gap-x-4 px-5 py-3.5 hover:bg-white/[0.02] transition-colors group">
+                  <input type="checkbox" className="w-3.5 h-3.5 rounded accent-primary cursor-pointer" />
+
+                  {/* Name + description */}
+                  <div className="min-w-0 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/15 flex items-center justify-center flex-shrink-0">
+                      <List className="w-3.5 h-3.5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <button
+                        onClick={() => openList(list)}
+                        className="text-sm font-semibold text-foreground hover:text-primary transition-colors cursor-pointer text-left leading-tight block truncate max-w-full"
+                      >
+                        {list.name}
+                        {list.isSystem && (
+                          <span className="ml-2 text-[9px] uppercase tracking-wider text-muted-foreground font-medium border border-border rounded px-1 py-0.5 align-middle">System</span>
+                        )}
+                      </button>
+                      {list.description ? (
+                        <p className="text-[11px] text-muted-foreground truncate mt-0.5">{list.description}</p>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground/50 mt-0.5">{meta.description}</p>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Type badge */}
                   <div>
-                    <p className="text-sm font-semibold text-foreground">{list.memberCount}</p>
-                    <p className="text-[11px] text-muted-foreground">Subscribed</p>
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium border ${meta.color}`}>
+                      {meta.label}
+                    </span>
                   </div>
-                  <span className="text-sm text-muted-foreground">{relativeTime(list.createdAt)}</span>
-                  <div className="flex items-center gap-1.5">
+
+                  {/* Subscriber count */}
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{(list.memberCount ?? 0).toLocaleString()}</p>
+                    <p className="text-[11px] text-muted-foreground">contacts</p>
+                  </div>
+
+                  {/* Created */}
+                  <span className="text-xs text-muted-foreground">{relativeTime(list.createdAt)}</span>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1">
                     <button
-                      title="Edit"
+                      title="Edit list"
                       onClick={() => { setEditList(list); setEditForm({ name: list.name, description: list.description ?? "", type: list.type }); }}
-                      className="w-7 h-7 rounded flex items-center justify-center bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-colors cursor-pointer"
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10 transition-colors cursor-pointer"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      title={list.type === "enrolled" || list.type === "all_subscribers" ? "Sync" : "View Members"}
+                      title={(list.type === "enrolled" || list.type === "all_subscribers") ? "Sync members" : "View members"}
                       onClick={() => (list.type === "enrolled" || list.type === "all_subscribers") ? syncList(list) : openList(list)}
                       disabled={syncing === list.id}
-                      className="w-7 h-7 rounded flex items-center justify-center bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-colors cursor-pointer disabled:opacity-50"
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer disabled:opacity-40"
                     >
-                      <RotateCcw className={`w-3.5 h-3.5 ${syncing === list.id ? "animate-spin" : ""}`} />
+                      {syncing === list.id
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : (list.type === "enrolled" || list.type === "all_subscribers")
+                          ? <RotateCcw className="w-3.5 h-3.5" />
+                          : <Users className="w-3.5 h-3.5" />}
                     </button>
                     {!list.isSystem && (
                       <button
-                        title="Delete"
+                        title="Delete list"
                         onClick={() => deleteList(list.id)}
                         disabled={deleting === list.id}
-                        className="w-7 h-7 rounded flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors cursor-pointer disabled:opacity-50"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer disabled:opacity-40"
                       >
                         {deleting === list.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                       </button>
@@ -2509,87 +2695,145 @@ function ListsTab() {
             })}
           </div>
         )}
+
+        {/* Table footer / pagination */}
+        {!loading && filtered.length > 0 && (
+          <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-muted/10">
+            <span className="text-xs text-muted-foreground">
+              Showing {Math.min((currentPage - 1) * pageSize + 1, filtered.length)}–{Math.min(currentPage * pageSize, filtered.length)} of {filtered.length} list{filtered.length !== 1 ? "s" : ""}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="w-7 h-7 flex items-center justify-center rounded-lg border border-border hover:bg-white/5 disabled:opacity-30 cursor-pointer transition-colors"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(pg => (
+                  <button
+                    key={pg}
+                    onClick={() => setCurrentPage(pg)}
+                    className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                      pg === currentPage
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-white/5 text-muted-foreground"
+                    }`}
+                  >
+                    {pg}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                className="w-7 h-7 flex items-center justify-center rounded-lg border border-border hover:bg-white/5 disabled:opacity-30 cursor-pointer transition-colors"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
-        <span>Total {filtered.length}</span>
-        <span className="h-7 px-2.5 rounded border border-border bg-card flex items-center gap-1">{pageSize}/page</span>
-        <button
-          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-          disabled={currentPage === 1}
-          className="w-7 h-7 flex items-center justify-center rounded border border-border hover:bg-white/5 disabled:opacity-40 cursor-pointer transition-colors"
-        >
-          <ChevronLeft className="w-3.5 h-3.5" />
-        </button>
-        <span className="w-7 h-7 flex items-center justify-center rounded border border-primary bg-primary/10 text-primary text-xs font-semibold">
-          {currentPage}
-        </span>
-        <button
-          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-          disabled={currentPage >= totalPages}
-          className="w-7 h-7 flex items-center justify-center rounded border border-border hover:bg-white/5 disabled:opacity-40 cursor-pointer transition-colors"
-        >
-          <ChevronRight className="w-3.5 h-3.5" />
-        </button>
-      </div>
-
-      {/* Create Dialog */}
+      {/* ── Create List Dialog ── */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-[440px]">
           <DialogHeader>
-            <DialogTitle>Create New List</DialogTitle>
-            <DialogDescription>Add a new contact list to segment your audience.</DialogDescription>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+                <List className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <DialogTitle className="text-base">Create New List</DialogTitle>
+                <DialogDescription className="text-xs mt-0.5">Segment your audience into a targeted contact list.</DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-1">
             <div className="space-y-1.5">
-              <Label className="text-xs">List Name *</Label>
-              <Input placeholder="e.g. VIP Members" value={createForm.name} onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))} className="h-9" />
+              <Label className="text-xs font-medium">List Name <span className="text-red-400">*</span></Label>
+              <Input
+                placeholder="e.g. VIP Members, Newsletter Subscribers…"
+                value={createForm.name}
+                onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))}
+                onKeyDown={e => e.key === "Enter" && createList()}
+                className="h-9"
+                autoFocus
+              />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Type</Label>
-              <select value={createForm.type} onChange={e => setCreateForm(f => ({ ...f, type: e.target.value }))}
-                className="w-full h-9 rounded-md border border-border bg-background px-2.5 text-sm text-foreground">
-                <option value="manual">Manual</option>
-                <option value="optin">Optin</option>
+              <Label className="text-xs font-medium">Type</Label>
+              <select
+                value={createForm.type}
+                onChange={e => setCreateForm(f => ({ ...f, type: e.target.value }))}
+                className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="manual">Manual — you control membership</option>
+                <option value="optin">Optin — populated via opt-in forms</option>
               </select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Description</Label>
-              <Input placeholder="Optional description" value={createForm.description} onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))} className="h-9" />
+              <Label className="text-xs font-medium">Description <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Input
+                placeholder="Brief description of this list's purpose…"
+                value={createForm.description}
+                onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))}
+                className="h-9"
+              />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 mt-2">
             <Button variant="outline" onClick={() => setCreateOpen(false)} className="cursor-pointer">Cancel</Button>
-            <Button onClick={createList} disabled={creating || !createForm.name.trim()} className="cursor-pointer">
-              {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+            <Button onClick={createList} disabled={creating || !createForm.name.trim()} className="cursor-pointer gap-1.5">
+              {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
               Create List
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
+      {/* ── Edit List Dialog ── */}
       <Dialog open={!!editList} onOpenChange={v => { if (!v) setEditList(null); }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-[440px]">
           <DialogHeader>
-            <DialogTitle>Edit List</DialogTitle>
-            <DialogDescription>Update the details of this list.</DialogDescription>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
+                <Edit2 className="w-4 h-4 text-blue-400" />
+              </div>
+              <div>
+                <DialogTitle className="text-base">Edit List</DialogTitle>
+                <DialogDescription className="text-xs mt-0.5">Update the name or description of "{editList?.name}".</DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-1">
             <div className="space-y-1.5">
-              <Label className="text-xs">List Name *</Label>
-              <Input placeholder="e.g. VIP Members" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} className="h-9" />
+              <Label className="text-xs font-medium">List Name <span className="text-red-400">*</span></Label>
+              <Input
+                placeholder="e.g. VIP Members"
+                value={editForm.name}
+                onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                onKeyDown={e => e.key === "Enter" && saveEdit()}
+                className="h-9"
+                autoFocus
+              />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Description</Label>
-              <Input placeholder="Optional description" value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} className="h-9" />
+              <Label className="text-xs font-medium">Description <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Input
+                placeholder="Brief description…"
+                value={editForm.description}
+                onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+                className="h-9"
+              />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 mt-2">
             <Button variant="outline" onClick={() => setEditList(null)} className="cursor-pointer">Cancel</Button>
-            <Button onClick={saveEdit} disabled={saving || !editForm.name.trim()} className="cursor-pointer">
-              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+            <Button onClick={saveEdit} disabled={saving || !editForm.name.trim()} className="cursor-pointer gap-1.5">
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
               Save Changes
             </Button>
           </DialogFooter>
