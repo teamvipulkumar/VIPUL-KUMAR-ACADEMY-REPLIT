@@ -157,7 +157,7 @@ export default function AdminCrmPage() {
           ))}
         </div>
 
-        <div className={`flex-1 p-5 sm:p-6 ${tab === "logs" ? "overflow-hidden flex flex-col" : "overflow-y-auto"}`}>
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6">
           {tab === "dashboard" && <DashboardTab />}
           {tab === "campaigns" && <CampaignsTab />}
           {tab === "sequences" && <SequencesTab />}
@@ -2272,7 +2272,7 @@ function EmailLogsTab() {
   const hasFilters = statusFilter !== "all" || search || startDate || endDate;
 
   return (
-    <div className="flex flex-col h-full gap-5">
+    <div className="space-y-5">
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -2355,9 +2355,9 @@ function EmailLogsTab() {
         </div>
       </div>
       {/* ── Table ── */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden flex flex-col flex-1 min-h-0">
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
         {/* Column headers */}
-        <div className="grid grid-cols-[32px_1fr_200px_80px_160px_120px] items-center gap-x-4 px-5 py-3 border-b border-border bg-muted/20 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide flex-shrink-0">
+        <div className="grid grid-cols-[32px_1fr_200px_80px_160px_120px] items-center gap-x-4 px-5 py-3 border-b border-border bg-muted/20 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
           <label className="group flex items-center cursor-pointer flex-shrink-0">
             <input type="checkbox" className="sr-only" />
             <div className="w-[13px] h-[13px] rounded-[3px] border border-border/60 bg-muted/30 group-has-[:checked]:bg-primary group-has-[:checked]:border-primary flex items-center justify-center transition-all">
@@ -2372,7 +2372,6 @@ function EmailLogsTab() {
         </div>
 
         {/* Rows */}
-        <div className="flex-1 overflow-y-auto min-h-0">
         {loading ? (
           <div className="divide-y divide-border">
             {[...Array(8)].map((_, i) => (
@@ -2485,7 +2484,6 @@ function EmailLogsTab() {
             })}
           </div>
         )}
-        </div>
 
         {/* Footer pagination */}
         {!loading && data.total > 0 && (
