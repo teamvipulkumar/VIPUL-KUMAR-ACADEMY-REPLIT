@@ -2360,7 +2360,7 @@ function EmailLogsTab() {
         <div className="grid grid-cols-[32px_1fr_200px_80px_160px_120px] items-center gap-x-4 px-5 py-3 border-b border-border bg-muted/20 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
           <label className="group flex items-center cursor-pointer flex-shrink-0">
             <input type="checkbox" className="sr-only" />
-            <div className="w-[18px] h-[18px] rounded-[4px] border border-border/60 group-has-[:checked]:bg-primary group-has-[:checked]:border-primary flex items-center justify-center transition-all border-t-[#93a2b8] border-r-[#93a2b8] border-b-[#93a2b8] border-l-[#93a2b8] border-t-[2px] border-r-[2px] border-b-[2px] border-l-[2px] bg-[transparent]">
+            <div className="w-[18px] h-[18px] rounded-[4px] border border-border/60 bg-muted/30 group-has-[:checked]:bg-primary group-has-[:checked]:border-primary flex items-center justify-center transition-all">
               <svg className="w-2.5 h-2.5 text-white opacity-0 group-has-[:checked]:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
             </div>
           </label>
@@ -2421,11 +2421,11 @@ function EmailLogsTab() {
                   }`}
                 >
                   <label className="group flex items-center cursor-pointer flex-shrink-0">
-            <input type="checkbox" className="sr-only" />
-            <div className="w-[18px] h-[18px] rounded-[4px] border border-border/60 group-has-[:checked]:bg-primary group-has-[:checked]:border-primary flex items-center justify-center transition-all border-t-[#93a2b8] border-r-[#93a2b8] border-b-[#93a2b8] border-l-[#93a2b8] text-[#f8fafc] border-t-[2px] border-r-[2px] border-b-[2px] border-l-[2px] bg-[transparent]">
-              <svg className="w-2.5 h-2.5 text-white opacity-0 group-has-[:checked]:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-            </div>
-          </label>
+                    <input type="checkbox" className="sr-only" />
+                    <div className="w-[18px] h-[18px] rounded-[4px] border border-border/60 bg-muted/30 group-has-[:checked]:bg-primary group-has-[:checked]:border-primary flex items-center justify-center transition-all">
+                      <svg className="w-2.5 h-2.5 text-white opacity-0 group-has-[:checked]:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    </div>
+                  </label>
                   {/* Subject + type */}
                   <div className="min-w-0">
                     <button
