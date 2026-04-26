@@ -2560,6 +2560,11 @@ function EmailLogsTab() {
                     : <RotateCcw className="w-3.5 h-3.5" />}
                   {detailLog?.status === "failed" ? "Retry" : "Resend"}
                 </Button>
+                <SheetClose asChild>
+                  <button className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer">
+                    <X className="w-4 h-4" />
+                  </button>
+                </SheetClose>
               </div>
             </div>
           </SheetHeader>
