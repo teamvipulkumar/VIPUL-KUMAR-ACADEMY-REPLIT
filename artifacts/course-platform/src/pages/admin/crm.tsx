@@ -126,7 +126,7 @@ export default function AdminCrmPage() {
   const [tab, setTab] = useState<Tab>("dashboard");
 
   return (
-    <div className="flex h-full bg-background overflow-hidden">
+    <div className="flex h-screen bg-background overflow-hidden">
       {/* Sidebar */}
       <aside className="hidden lg:flex w-48 flex-shrink-0 border-r border-border bg-card flex-col">
         <div className="p-4 border-b border-border flex-shrink-0">
