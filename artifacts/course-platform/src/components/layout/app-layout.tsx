@@ -78,7 +78,7 @@ function NotificationPopup({ iconSize = "w-4 h-4" }: { iconSize?: string }) {
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="relative w-9 h-9 p-0 rounded-lg hover:bg-white/5 cursor-pointer">
           <Bell className={`${iconSize} text-foreground/70`} />
@@ -267,7 +267,7 @@ export function Navbar() {
             ) : (
               <div className="flex items-center gap-1.5">
                 <NotificationPopup iconSize="w-4 h-4" />
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="gap-2 h-9 px-2 rounded-lg hover:bg-white/5 cursor-pointer">
                       <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-white flex-shrink-0 overflow-hidden">
