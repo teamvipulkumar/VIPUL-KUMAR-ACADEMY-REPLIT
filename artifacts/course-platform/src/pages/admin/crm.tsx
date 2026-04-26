@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter, ShieldCheck, ShoppingCart, Flag, Minus, BookOpen, GraduationCap, UserCheck, Gift, XCircle, BookMarked, MousePointerClick, LogIn, KeyRound, MoreVertical, ArrowUpDown } from "lucide-react";
+import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter, ShieldCheck, ShoppingCart, Flag, Minus, BookOpen, GraduationCap, UserCheck, Gift, XCircle, BookMarked, MousePointerClick, LogIn, KeyRound, MoreVertical, ArrowUpDown, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -2225,6 +2225,7 @@ function EmailLogsTab() {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [retentionDays, setRetentionDays] = useState<string>("none");
   const [savingRetention, setSavingRetention] = useState(false);
+  const [retentionEditing, setRetentionEditing] = useState(false);
   const pageSize = 25;
 
   const load = async (opts?: { status?: string; q?: string; start?: string; end?: string; pg?: number }) => {
@@ -2249,7 +2250,11 @@ function EmailLogsTab() {
 
   useEffect(() => {
     apiFetch("/api/admin/crm/email-log-retention").then(r => r.ok ? r.json() : null).then(d => {
-      if (d) setRetentionDays(d.retentionDays ? String(d.retentionDays) : "none");
+      if (d) {
+        const val = d.retentionDays ? String(d.retentionDays) : "none";
+        setRetentionDays(val);
+        setRetentionEditing(val === "none");
+      }
     });
   }, []);
 
@@ -2260,8 +2265,12 @@ function EmailLogsTab() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ retentionDays: retentionDays === "none" ? null : Number(retentionDays) }),
     });
-    if (r.ok) toast({ title: "Saved", description: retentionDays === "none" ? "Auto-delete disabled." : `Logs older than ${RETENTION_OPTIONS.find(o => o.value === retentionDays)?.label} will be deleted automatically.` });
-    else toast({ title: "Error saving retention setting", variant: "destructive" });
+    if (r.ok) {
+      toast({ title: "Saved", description: retentionDays === "none" ? "Auto-delete disabled." : `Logs older than ${RETENTION_OPTIONS.find(o => o.value === retentionDays)?.label} will be deleted automatically.` });
+      setRetentionEditing(false);
+    } else {
+      toast({ title: "Error saving retention setting", variant: "destructive" });
+    }
     setSavingRetention(false);
   };
 
@@ -2366,37 +2375,53 @@ function EmailLogsTab() {
       {/* ── Auto-Delete Logs Setting ── */}
       <div className="bg-card border border-border rounded-2xl px-5 py-4 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center flex-shrink-0">
-            <Trash2 className="w-4 h-4 text-red-400" />
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border ${retentionEditing ? "bg-red-500/10 border-red-500/20" : "bg-emerald-500/10 border-emerald-500/20"}`}>
+            <Trash2 className={`w-4 h-4 ${retentionEditing ? "text-red-400" : "text-emerald-400"}`} />
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-foreground">Auto-Delete Email Logs</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {retentionDays === "none"
-                ? "Logs are kept forever. Select a period to enable auto-delete."
-                : `Logs older than ${RETENTION_OPTIONS.find(o => o.value === retentionDays)?.label} will be automatically deleted.`}
+              {retentionEditing
+                ? (retentionDays === "none" ? "Logs are kept forever. Select a period to enable auto-delete." : `Will delete logs older than ${RETENTION_OPTIONS.find(o => o.value === retentionDays)?.label}. Click Save to confirm.`)
+                : (retentionDays === "none" ? "Auto-delete is disabled — logs are kept forever." : `Active: logs older than ${RETENTION_OPTIONS.find(o => o.value === retentionDays)?.label} are deleted automatically.`)}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <select
-            value={retentionDays}
-            onChange={e => setRetentionDays(e.target.value)}
-            className="h-8 rounded-lg border border-border bg-background text-sm text-foreground px-3 pr-8 appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            {RETENTION_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-          <Button
-            size="sm"
-            className="h-8 text-xs cursor-pointer gap-1.5"
-            onClick={saveRetention}
-            disabled={savingRetention}
-          >
-            {savingRetention ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-            Save
-          </Button>
+          {retentionEditing ? (
+            <>
+              <select
+                value={retentionDays}
+                onChange={e => setRetentionDays(e.target.value)}
+                className="h-8 rounded-lg border border-border bg-background text-sm text-foreground px-3 pr-8 appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                {RETENTION_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              <Button size="sm" className="h-8 text-xs cursor-pointer gap-1.5" onClick={saveRetention} disabled={savingRetention}>
+                {savingRetention ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                Save
+              </Button>
+              <button onClick={() => setRetentionEditing(false)} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer" title="Cancel">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </>
+          ) : (
+            <>
+              {retentionDays !== "none" && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  {RETENTION_OPTIONS.find(o => o.value === retentionDays)?.label}
+                </span>
+              )}
+              <button
+                onClick={() => setRetentionEditing(true)}
+                className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                <Pencil className="w-3 h-3" />Edit
+              </button>
+            </>
+          )}
         </div>
       </div>
 
