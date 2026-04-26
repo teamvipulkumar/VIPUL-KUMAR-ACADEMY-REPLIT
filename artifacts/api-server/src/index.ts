@@ -59,6 +59,8 @@ async function runMigrations() {
   }
 
   // Create indexes on all unindexed foreign key columns in the public schema.
+  // Only counts a column as "indexed" if it is the LEADING column of some index
+  // (composite indexes where the FK col is not first do NOT help FK lookups).
   // Fixes Supabase Performance Advisor "Unindexed foreign keys" suggestions.
   try {
     await db.execute(sql`
@@ -78,18 +80,21 @@ async function runMigrations() {
                   AND relkind = 'r'
               )
           ),
-          indexed_cols AS (
-            SELECT indrelid, UNNEST(indkey) AS col FROM pg_index
+          -- Only the FIRST column of each index counts as a covering index for FK lookups
+          leading_indexed_cols AS (
+            SELECT indrelid,
+                   (string_to_array(indkey::text, ' '))[1]::smallint AS col
+            FROM pg_index
           )
           SELECT DISTINCT
-            pc.relname  AS table_name,
-            pa.attname  AS column_name
+            pc.relname AS table_name,
+            pa.attname AS column_name
           FROM fk_cols f
-          JOIN pg_class     pc ON pc.oid  = f.tbl
-          JOIN pg_attribute pa ON pa.attrelid = f.tbl AND pa.attnum = f.col
+          JOIN pg_class     pc ON pc.oid       = f.tbl
+          JOIN pg_attribute pa ON pa.attrelid  = f.tbl AND pa.attnum = f.col
           WHERE NOT EXISTS (
-            SELECT 1 FROM indexed_cols ic
-            WHERE ic.indrelid = f.tbl AND ic.col = f.col
+            SELECT 1 FROM leading_indexed_cols lic
+            WHERE lic.indrelid = f.tbl AND lic.col = f.col
           )
         LOOP
           idx_name := left('idx_' || r.table_name || '_' || r.column_name, 63);
