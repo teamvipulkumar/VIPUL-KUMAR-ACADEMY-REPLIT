@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter, ShieldCheck, ShoppingCart, Flag, Minus, BookOpen, GraduationCap, UserCheck, Gift, XCircle, BookMarked, MousePointerClick, LogIn, KeyRound, MoreVertical, ArrowUpDown, Pencil } from "lucide-react";
+import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter, ShieldCheck, ShoppingCart, Flag, Minus, BookOpen, GraduationCap, UserCheck, Gift, XCircle, BookMarked, MousePointerClick, LogIn, KeyRound, MoreVertical, ArrowUpDown, Pencil, TrendingUp } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -175,61 +176,198 @@ export default function AdminCrmPage() {
 }
 
 /* ══════════════════════════════════════════════ DASHBOARD ══════════════════════════════════════════════ */
+const TYPE_COLORS: Record<string, string> = {
+  automation: "#a78bfa",
+  campaign:   "#60a5fa",
+  manual:     "#34d399",
+  test:       "#fbbf24",
+  other:      "#94a3b8",
+};
+const TYPE_LABELS: Record<string, string> = {
+  automation: "Automation",
+  campaign:   "Campaign",
+  manual:     "Manual",
+  test:       "Test",
+};
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-card border border-border rounded-xl px-3 py-2 text-xs shadow-lg">
+      <p className="font-semibold text-foreground mb-1">{label}</p>
+      {payload.map((p: any) => (
+        <p key={p.name} style={{ color: p.fill ?? p.color }} className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full inline-block" style={{ background: p.fill ?? p.color }} />
+          {p.name}: <span className="font-semibold">{p.value}</span>
+        </p>
+      ))}
+    </div>
+  );
+};
+
 function DashboardTab() {
-  const [stats, setStats] = useState<any>(null);
-  const [sends, setSends] = useState<any[]>([]);
+  const [stats, setStats]   = useState<any>(null);
+  const [chart, setChart]   = useState<any>(null);
+  const [sends, setSends]   = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [s, l] = await Promise.all([
+    const [s, c, l] = await Promise.all([
       apiFetch("/api/admin/crm/stats").then(r => r.json()),
-      apiFetch("/api/admin/crm/sends?limit=20").then(r => r.json()),
+      apiFetch("/api/admin/crm/dashboard-chart").then(r => r.json()),
+      apiFetch("/api/admin/crm/sends?limit=10").then(r => r.json()),
     ]);
-    setStats(s); setSends(Array.isArray(l) ? l : []);
+    setStats(s);
+    setChart(c);
+    setSends(Array.isArray(l?.sends) ? l.sends : []);
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
+  const deliveryRate = chart ? Math.round((chart.totals.sent / Math.max(1, chart.totals.sent + chart.totals.failed)) * 100) : 0;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div><h2 className="text-xl font-bold text-foreground">CRM Dashboard</h2><p className="text-sm text-muted-foreground mt-0.5">Email delivery overview</p></div>
-        <Button variant="outline" size="sm" onClick={load} className="gap-1.5"><RefreshCw className="w-3.5 h-3.5" />Refresh</Button>
+        <div>
+          <h2 className="text-xl font-bold text-foreground">CRM Dashboard</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Email delivery overview</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={load} className="gap-1.5 cursor-pointer">
+          <RefreshCw className="w-3.5 h-3.5" />Refresh
+        </Button>
       </div>
 
-      {loading ? <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div> : (
+      {loading ? (
+        <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+      ) : (
         <>
+          {/* ── Stat Cards ── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Stat label="Total Subscribers" value={stats?.totalSubscribers ?? 0} icon={<Users className="w-4 h-4 text-blue-400" />} color="text-blue-400" />
-            <Stat label="Sent This Month" value={stats?.sentThisMonth ?? 0} icon={<Send className="w-4 h-4 text-green-400" />} color="text-green-400" />
-            <Stat label="Campaigns Sent" value={stats?.campaignsSent ?? 0} icon={<BarChart2 className="w-4 h-4 text-purple-400" />} color="text-purple-400" />
-            <Stat label="Automation Fired" value={stats?.automationEmailsFired ?? 0} icon={<Zap className="w-4 h-4 text-amber-400" />} color="text-amber-400" />
+            <Stat label="Sent This Month"   value={stats?.sentThisMonth ?? 0}    icon={<Send className="w-4 h-4 text-emerald-400" />} color="text-emerald-400" />
+            <Stat label="Campaigns Sent"    value={stats?.campaignsSent ?? 0}    icon={<BarChart2 className="w-4 h-4 text-purple-400" />} color="text-purple-400" />
+            <Stat label="Automation Fired"  value={stats?.automationEmailsFired ?? 0} icon={<Zap className="w-4 h-4 text-amber-400" />} color="text-amber-400" />
           </div>
 
-          <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm ${stats?.smtpConnected ? "bg-green-500/5 border-green-500/20 text-green-400" : "bg-red-500/5 border-red-500/20 text-red-400"}`}>
+          {/* ── SMTP Status ── */}
+          <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm ${stats?.smtpConnected ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-400" : "bg-red-500/5 border-red-500/20 text-red-400"}`}>
             {stats?.smtpConnected ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
-            {stats?.smtpConnected ? "SMTP is enabled — use the SMTP tab to send a test email and verify delivery" : "SMTP is not enabled — emails won't be sent. Go to the SMTP tab to configure."}
+            {stats?.smtpConnected ? "SMTP is enabled — use the SMTP tab to send a test email and verify delivery" : "SMTP is not configured — emails won't be sent. Go to the SMTP tab to set it up."}
           </div>
 
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+          {/* ── Charts Row ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+            {/* Daily Bar Chart — takes 2 cols */}
+            <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Email Activity</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Sent vs failed — last 30 days</p>
+                </div>
+                <div className="flex items-center gap-3 text-[11px]">
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-400 inline-block" />Sent</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-red-400 inline-block" />Failed</span>
+                </div>
+              </div>
+              {chart?.daily?.length === 0 ? (
+                <div className="h-48 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                  <TrendingUp className="w-8 h-8 opacity-30" />
+                  <p className="text-sm">No email activity in the last 30 days</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={chart?.daily ?? []} barCategoryGap="30%" barGap={2}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                    <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+                    <Bar dataKey="sent"   name="Sent"   fill="#34d399" radius={[3,3,0,0]} />
+                    <Bar dataKey="failed" name="Failed" fill="#f87171" radius={[3,3,0,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            {/* Right column: Delivery Rate + Type Breakdown */}
+            <div className="flex flex-col gap-4">
+
+              {/* Delivery Rate */}
+              <div className="bg-card border border-border rounded-2xl p-5 flex-1">
+                <p className="text-sm font-semibold text-foreground mb-1">Delivery Rate</p>
+                <p className="text-xs text-muted-foreground mb-4">Last 30 days</p>
+                <div className="flex items-end gap-3 mb-3">
+                  <span className="text-4xl font-bold text-foreground">{deliveryRate}<span className="text-xl text-muted-foreground">%</span></span>
+                </div>
+                <div className="w-full h-2 bg-muted/30 rounded-full overflow-hidden mb-3">
+                  <div className="h-full bg-emerald-400 rounded-full transition-all" style={{ width: `${deliveryRate}%` }} />
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1 text-emerald-400"><CheckCircle2 className="w-3 h-3" />{chart?.totals?.sent ?? 0} sent</span>
+                  <span className="flex items-center gap-1 text-red-400"><XCircle className="w-3 h-3" />{chart?.totals?.failed ?? 0} failed</span>
+                </div>
+              </div>
+
+              {/* Email Types */}
+              <div className="bg-card border border-border rounded-2xl p-5 flex-1">
+                <p className="text-sm font-semibold text-foreground mb-1">Email Types</p>
+                <p className="text-xs text-muted-foreground mb-4">All time breakdown</p>
+                {chart?.types?.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">No data yet</p>
+                ) : (
+                  <div className="space-y-2.5">
+                    {(chart?.types ?? []).slice(0, 5).map((t: any) => {
+                      const total = (chart?.types ?? []).reduce((s: number, x: any) => s + x.count, 0);
+                      const pct = Math.round((t.count / Math.max(1, total)) * 100);
+                      const color = TYPE_COLORS[t.type] ?? TYPE_COLORS.other;
+                      return (
+                        <div key={t.type}>
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="font-medium text-foreground capitalize">{TYPE_LABELS[t.type] ?? t.type}</span>
+                            <span className="text-muted-foreground">{t.count} <span className="text-[10px]">({pct}%)</span></span>
+                          </div>
+                          <div className="w-full h-1.5 bg-muted/30 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Recent Sends ── */}
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
               <h3 className="text-sm font-semibold text-foreground">Recent Email Sends</h3>
-              <span className="text-xs text-muted-foreground">Last 20</span>
+              <span className="text-xs text-muted-foreground">Last 10</span>
             </div>
             {sends.length === 0 ? (
-              <div className="py-12 text-center"><Mail className="w-8 h-8 text-muted-foreground mx-auto mb-2" /><p className="text-sm text-muted-foreground">No emails sent yet</p></div>
+              <div className="py-14 text-center">
+                <Mail className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">No emails sent yet</p>
+              </div>
             ) : (
               <div className="divide-y divide-border">
-                {sends.map(s => (
-                  <div key={s.id} className="flex items-center gap-3 px-4 py-3">
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${s.status === "sent" ? "bg-green-400" : "bg-red-400"}`} />
+                {sends.map((s: any) => (
+                  <div key={s.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors">
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${s.status === "sent" ? "bg-emerald-400" : "bg-red-400"}`} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-foreground truncate">{s.subject}</p>
-                      <p className="text-xs text-muted-foreground">{s.email} · {s.type}</p>
+                      <p className="text-sm text-foreground truncate">{s.subject || "(no subject)"}</p>
+                      <p className="text-xs text-muted-foreground">{s.email} · <span className="capitalize">{s.type}</span></p>
                     </div>
-                    <span className="text-[11px] text-muted-foreground flex-shrink-0">{new Date(s.sentAt).toLocaleDateString("en-IN")}</span>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${s.status === "sent" ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
+                      {s.status}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground flex-shrink-0 hidden sm:block">
+                      {new Date(s.sentAt).toLocaleDateString("en-IN")}
+                    </span>
                   </div>
                 ))}
               </div>

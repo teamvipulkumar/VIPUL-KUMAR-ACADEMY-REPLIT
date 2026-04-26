@@ -928,6 +928,37 @@ router.get("/stats", requireAdmin, async (_req, res): Promise<void> => {
   });
 });
 
+/* ── Dashboard Chart Data ── */
+router.get("/dashboard-chart", requireAdmin, async (_req, res): Promise<void> => {
+  const [daily, types, totals] = await Promise.all([
+    db.execute(sql`
+      SELECT
+        TO_CHAR(DATE(sent_at AT TIME ZONE 'UTC'), 'DD MMM') AS label,
+        DATE(sent_at AT TIME ZONE 'UTC') AS date,
+        COUNT(*) FILTER (WHERE status = 'sent')::int AS sent,
+        COUNT(*) FILTER (WHERE status = 'failed')::int AS failed
+      FROM email_sends
+      WHERE sent_at >= NOW() - INTERVAL '30 days'
+      GROUP BY DATE(sent_at AT TIME ZONE 'UTC')
+      ORDER BY date ASC
+    `),
+    db.execute(sql`
+      SELECT type, COUNT(*)::int AS count
+      FROM email_sends
+      GROUP BY type
+      ORDER BY count DESC
+    `),
+    db.execute(sql`
+      SELECT
+        COUNT(*) FILTER (WHERE status = 'sent')::int AS sent,
+        COUNT(*) FILTER (WHERE status = 'failed')::int AS failed
+      FROM email_sends
+      WHERE sent_at >= NOW() - INTERVAL '30 days'
+    `),
+  ]);
+  res.json({ daily: daily.rows, types: types.rows, totals: totals.rows[0] ?? { sent: 0, failed: 0 } });
+});
+
 /* ── Send Log ── */
 router.get("/sends", requireAdmin, async (req, res): Promise<void> => {
   const { status, search, startDate, endDate, page = "1", pageSize = "25" } = req.query as Record<string, string>;
