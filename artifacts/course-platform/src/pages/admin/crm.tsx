@@ -2422,7 +2422,7 @@ function EmailLogsTab() {
                 >
                   <label className="group flex items-center cursor-pointer flex-shrink-0">
                     <input type="checkbox" className="sr-only" />
-                    <div className="w-[13px] h-[13px] rounded-[3px] border border-border/60 bg-muted/30 group-has-[:checked]:bg-primary group-has-[:checked]:border-primary flex items-center justify-center transition-all">
+                    <div className="w-[13px] h-[13px] rounded-[3px] border border-border/60 group-has-[:checked]:bg-primary group-has-[:checked]:border-primary flex items-center justify-center transition-all bg-[transparent] border-t-[#93a2b8] border-r-[#93a2b8] border-b-[#93a2b8] border-l-[#93a2b8] border-t-[2px] border-r-[2px] border-b-[2px] border-l-[2px]">
                       <svg className="w-[9px] h-[9px] text-white opacity-0 group-has-[:checked]:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                     </div>
                   </label>
