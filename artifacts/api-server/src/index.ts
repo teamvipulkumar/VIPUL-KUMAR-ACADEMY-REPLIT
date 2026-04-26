@@ -57,6 +57,54 @@ async function runMigrations() {
   } catch (e) {
     logger.warn({ e }, "RLS migration warning (non-fatal)");
   }
+
+  // Create indexes on all unindexed foreign key columns in the public schema.
+  // Fixes Supabase Performance Advisor "Unindexed foreign keys" suggestions.
+  try {
+    await db.execute(sql`
+      DO $$
+      DECLARE
+        r RECORD;
+        idx_name text;
+      BEGIN
+        FOR r IN
+          WITH fk_cols AS (
+            SELECT c.conrelid AS tbl, UNNEST(c.conkey) AS col
+            FROM pg_constraint c
+            WHERE c.contype = 'f'
+              AND c.conrelid IN (
+                SELECT oid FROM pg_class
+                WHERE relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+                  AND relkind = 'r'
+              )
+          ),
+          indexed_cols AS (
+            SELECT indrelid, UNNEST(indkey) AS col FROM pg_index
+          )
+          SELECT DISTINCT
+            pc.relname  AS table_name,
+            pa.attname  AS column_name
+          FROM fk_cols f
+          JOIN pg_class     pc ON pc.oid  = f.tbl
+          JOIN pg_attribute pa ON pa.attrelid = f.tbl AND pa.attnum = f.col
+          WHERE NOT EXISTS (
+            SELECT 1 FROM indexed_cols ic
+            WHERE ic.indrelid = f.tbl AND ic.col = f.col
+          )
+        LOOP
+          idx_name := left('idx_' || r.table_name || '_' || r.column_name, 63);
+          EXECUTE format(
+            'CREATE INDEX IF NOT EXISTS %I ON public.%I (%I)',
+            idx_name, r.table_name, r.column_name
+          );
+        END LOOP;
+      END
+      $$;
+    `);
+    logger.info("FK indexes created on all public tables");
+  } catch (e) {
+    logger.warn({ e }, "FK index migration warning (non-fatal)");
+  }
 }
 
 runMigrations().then(() => {
