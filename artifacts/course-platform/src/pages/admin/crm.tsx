@@ -15,7 +15,7 @@ async function apiFetch(path: string, opts?: RequestInit) {
   return fetch(`${API_BASE}${path}`, { credentials: "include", ...opts });
 }
 
-type Tab = "dashboard" | "campaigns" | "sequences" | "automation" | "templates" | "tags" | "subscribers" | "smtp" | "lists";
+type Tab = "dashboard" | "campaigns" | "sequences" | "automation" | "templates" | "tags" | "subscribers" | "smtp" | "lists" | "logs";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "dashboard", label: "Dashboard", icon: <BarChart2 className="w-4 h-4" /> },
@@ -27,6 +27,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "lists", label: "Lists", icon: <List className="w-4 h-4" /> },
   { id: "subscribers", label: "Contacts", icon: <Users className="w-4 h-4" /> },
   { id: "smtp", label: "SMTP", icon: <Server className="w-4 h-4" /> },
+  { id: "logs", label: "Email Logs", icon: <Clock className="w-4 h-4" /> },
 ];
 
 const EVENT_META: Record<string, { label: string; description: string; badge: string }> = {
@@ -165,6 +166,7 @@ export default function AdminCrmPage() {
           {tab === "lists" && <ListsTab />}
           {tab === "subscribers" && <SubscribersTab />}
           {tab === "smtp" && <SmtpTab />}
+          {tab === "logs" && <EmailLogsTab />}
         </div>
       </main>
     </div>
@@ -2176,6 +2178,385 @@ function SubscribersTab() {
       )}
 
       {profileUserId !== null && <ContactProfilePanel userId={profileUserId} onClose={() => setProfileUserId(null)} />}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════ EMAIL LOGS ══════════════════════════════════════════════ */
+
+const SEND_TYPE_META: Record<string, { label: string; color: string }> = {
+  campaign:   { label: "Campaign",   color: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+  automation: { label: "Automation", color: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
+  sequence:   { label: "Sequence",   color: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20" },
+  test:       { label: "Test",       color: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
+};
+
+function EmailLogsTab() {
+  const { toast } = useToast();
+  const [data, setData] = useState<{ sends: any[]; total: number; totalPages: number }>({ sends: [], total: 0, totalPages: 1 });
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<"all" | "sent" | "failed">("all");
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [page, setPage] = useState(1);
+  const [resending, setResending] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const [detailLog, setDetailLog] = useState<any | null>(null);
+  const pageSize = 25;
+
+  const load = async (opts?: { status?: string; q?: string; start?: string; end?: string; pg?: number }) => {
+    setLoading(true);
+    const params = new URLSearchParams({ pageSize: String(pageSize) });
+    const s = opts?.status ?? statusFilter;
+    const q = opts?.q ?? search;
+    const sd = opts?.start ?? startDate;
+    const ed = opts?.end ?? endDate;
+    const p = String(opts?.pg ?? page);
+    if (s && s !== "all") params.set("status", s);
+    if (q.trim()) params.set("search", q.trim());
+    if (sd) params.set("startDate", sd);
+    if (ed) params.set("endDate", ed);
+    params.set("page", p);
+    const r = await apiFetch(`/api/admin/crm/sends?${params}`);
+    if (r.ok) setData(await r.json());
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, [statusFilter, search, startDate, endDate, page]);
+
+  const handleSearch = () => { setSearch(searchInput); setPage(1); };
+  const handleStatusChange = (s: "all" | "sent" | "failed") => { setStatusFilter(s); setPage(1); };
+  const applyDateFilter = () => { setPage(1); load({ start: startDate, end: endDate, pg: 1 }); };
+  const clearFilters = () => { setStatusFilter("all"); setSearch(""); setSearchInput(""); setStartDate(""); setEndDate(""); setPage(1); };
+
+  const resend = async (id: number) => {
+    setResending(id);
+    const r = await apiFetch(`/api/admin/crm/sends/${id}/resend`, { method: "POST" });
+    if (r.ok) { toast({ title: "Email resent successfully" }); load(); }
+    else { const d = await r.json(); toast({ title: "Resend failed", description: d.error, variant: "destructive" }); }
+    setResending(null);
+  };
+
+  const deleteLog = async (id: number) => {
+    if (!confirm("Delete this log entry?")) return;
+    setDeleting(id);
+    const r = await apiFetch(`/api/admin/crm/sends/${id}`, { method: "DELETE" });
+    if (r.ok) { toast({ title: "Log deleted" }); load(); }
+    setDeleting(null);
+  };
+
+  const formatDateTime = (dt: string) => {
+    const d = new Date(dt);
+    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) + " · " +
+      d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }).toUpperCase();
+  };
+
+  const sentCount = data.sends.filter(s => s.status === "sent").length;
+  const failedCount = data.sends.filter(s => s.status === "failed").length;
+  const hasFilters = statusFilter !== "all" || search || startDate || endDate;
+
+  return (
+    <div className="space-y-5">
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+            <Clock className="w-4 h-4 text-muted-foreground" />Email Logs
+          </h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Full history of every email sent through this platform — campaigns, automations, sequences and tests.
+          </p>
+        </div>
+        {hasFilters && (
+          <Button variant="ghost" size="sm" className="gap-1.5 h-8 text-xs cursor-pointer text-muted-foreground" onClick={clearFilters}>
+            <X className="w-3.5 h-3.5" />Clear filters
+          </Button>
+        )}
+      </div>
+
+      {/* ── Filter bar ── */}
+      <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Status pills */}
+          <div className="flex items-center gap-1 bg-background border border-border rounded-xl p-1">
+            {(["all", "sent", "failed"] as const).map(s => (
+              <button
+                key={s}
+                onClick={() => handleStatusChange(s)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer capitalize ${
+                  statusFilter === s
+                    ? s === "failed"
+                      ? "bg-red-500/15 text-red-400 border border-red-500/20"
+                      : s === "sent"
+                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
+                      : "bg-primary/15 text-primary border border-primary/20"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {s === "all" ? "All Statuses" : s.charAt(0).toUpperCase() + s.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {/* Date range */}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <Calendar className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+            <Input
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              className="h-8 text-xs w-36 bg-background"
+              placeholder="Start date"
+            />
+            <span className="text-xs text-muted-foreground flex-shrink-0">to</span>
+            <Input
+              type="date"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
+              className="h-8 text-xs w-36 bg-background"
+              placeholder="End date"
+            />
+            <Button size="sm" variant="outline" className="h-8 px-3 text-xs cursor-pointer" onClick={applyDateFilter}>
+              <Filter className="w-3 h-3 mr-1" />Filter
+            </Button>
+          </div>
+
+          {/* Search */}
+          <div className="flex items-center gap-1.5">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder="Subject or recipient…"
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleSearch()}
+                className="pl-8 h-8 text-xs w-52 bg-background"
+              />
+            </div>
+            <Button size="sm" variant="outline" className="h-8 w-8 p-0 cursor-pointer" onClick={handleSearch}>
+              <Search className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Table ── */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        {/* Column headers */}
+        <div className="grid grid-cols-[32px_1fr_200px_80px_160px_120px] items-center gap-x-4 px-5 py-3 border-b border-border bg-muted/20 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+          <input type="checkbox" className="w-3.5 h-3.5 rounded accent-primary cursor-pointer" />
+          <span>Subject</span>
+          <span>To</span>
+          <span>Status</span>
+          <span>Date &amp; Time</span>
+          <span>Actions</span>
+        </div>
+
+        {/* Rows */}
+        {loading ? (
+          <div className="divide-y divide-border">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="grid grid-cols-[32px_1fr_200px_80px_160px_120px] items-center gap-x-4 px-5 py-4 animate-pulse">
+                <div className="w-3.5 h-3.5 rounded bg-muted/40" />
+                <div className="space-y-1.5">
+                  <div className="h-3 bg-muted/40 rounded w-64" />
+                  <div className="h-2.5 bg-muted/30 rounded w-24" />
+                </div>
+                <div className="h-3 bg-muted/30 rounded w-36" />
+                <div className="h-5 bg-muted/30 rounded-full w-14" />
+                <div className="h-3 bg-muted/30 rounded w-32" />
+                <div className="flex gap-1.5">
+                  <div className="w-16 h-7 rounded-lg bg-muted/30" />
+                  <div className="w-7 h-7 rounded-lg bg-muted/30" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : data.sends.length === 0 ? (
+          <div className="py-20 flex flex-col items-center gap-4 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-muted/30 flex items-center justify-center">
+              <Clock className="w-6 h-6 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">No email logs found</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {hasFilters ? "Try adjusting your filters or search term." : "Emails sent through the platform will appear here."}
+              </p>
+            </div>
+            {hasFilters && (
+              <Button size="sm" variant="outline" className="cursor-pointer gap-1.5" onClick={clearFilters}>
+                <X className="w-3.5 h-3.5" />Clear Filters
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {data.sends.map((log: any) => {
+              const isFailed = log.status === "failed";
+              const typeMeta = SEND_TYPE_META[log.type] ?? SEND_TYPE_META.test;
+              return (
+                <div
+                  key={log.id}
+                  className={`grid grid-cols-[32px_1fr_200px_80px_160px_120px] items-center gap-x-4 px-5 py-3.5 transition-colors group ${
+                    isFailed ? "bg-red-500/[0.04] hover:bg-red-500/[0.07]" : "hover:bg-white/[0.02]"
+                  }`}
+                >
+                  <input type="checkbox" className="w-3.5 h-3.5 rounded accent-primary cursor-pointer" />
+
+                  {/* Subject + type */}
+                  <div className="min-w-0">
+                    <button
+                      onClick={() => setDetailLog(log)}
+                      className="text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer text-left leading-tight block truncate max-w-full"
+                    >
+                      {log.subject || "(no subject)"}
+                    </button>
+                    <span className={`inline-flex items-center mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium border ${typeMeta.color}`}>
+                      {typeMeta.label}
+                    </span>
+                  </div>
+
+                  {/* Recipient */}
+                  <p className="text-xs text-muted-foreground truncate">{log.email}</p>
+
+                  {/* Status badge */}
+                  {isFailed ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-red-500/10 text-red-400 border border-red-500/20 w-fit">
+                      <XCircle className="w-3 h-3" />Failed
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 w-fit">
+                      <CheckCircle2 className="w-3 h-3" />Sent
+                    </span>
+                  )}
+
+                  {/* Date-time */}
+                  <span className="text-xs text-muted-foreground">{formatDateTime(log.sentAt)}</span>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => resend(log.id)}
+                      disabled={resending === log.id}
+                      title="Resend this email"
+                      className="flex items-center gap-1 px-2.5 h-7 rounded-lg text-[11px] font-medium bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-colors cursor-pointer disabled:opacity-40"
+                    >
+                      {resending === log.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                      {isFailed ? "Retry" : "Resend"}
+                    </button>
+                    <button
+                      onClick={() => setDetailLog(log)}
+                      title="View details"
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => deleteLog(log.id)}
+                      disabled={deleting === log.id}
+                      title="Delete log"
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer disabled:opacity-40"
+                    >
+                      {deleting === log.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Footer pagination */}
+        {!loading && data.total > 0 && (
+          <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-muted/10">
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">
+                Showing {Math.min((page - 1) * pageSize + 1, data.total)}–{Math.min(page * pageSize, data.total)} of <span className="font-medium text-foreground">{data.total.toLocaleString()}</span> logs
+              </span>
+              {!loading && data.sends.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-1 text-[11px] text-emerald-400">
+                    <CheckCircle2 className="w-3 h-3" />{sentCount} sent
+                  </span>
+                  {failedCount > 0 && (
+                    <span className="flex items-center gap-1 text-[11px] text-red-400">
+                      <XCircle className="w-3 h-3" />{failedCount} failed
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="w-7 h-7 flex items-center justify-center rounded-lg border border-border hover:bg-white/5 disabled:opacity-30 cursor-pointer transition-colors"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-xs text-muted-foreground px-2">
+                Page <span className="font-semibold text-foreground">{page}</span> of {data.totalPages}
+              </span>
+              <button
+                onClick={() => setPage(p => Math.min(data.totalPages, p + 1))}
+                disabled={page >= data.totalPages}
+                className="w-7 h-7 flex items-center justify-center rounded-lg border border-border hover:bg-white/5 disabled:opacity-30 cursor-pointer transition-colors"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Detail Dialog ── */}
+      <Dialog open={!!detailLog} onOpenChange={v => { if (!v) setDetailLog(null); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${detailLog?.status === "failed" ? "bg-red-500/10 border border-red-500/20" : "bg-emerald-500/10 border border-emerald-500/20"}`}>
+                {detailLog?.status === "failed" ? <XCircle className="w-4 h-4 text-red-400" /> : <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+              </div>
+              <div>
+                <DialogTitle className="text-base leading-snug">{detailLog?.subject || "(no subject)"}</DialogTitle>
+                <DialogDescription className="text-xs mt-0.5">Email log details</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {detailLog && (
+            <div className="space-y-3 py-1">
+              {[
+                { label: "Recipient", value: detailLog.email },
+                { label: "Status", value: detailLog.status === "failed" ? "Failed" : "Sent" },
+                { label: "Type", value: SEND_TYPE_META[detailLog.type]?.label ?? detailLog.type },
+                { label: "Sent At", value: formatDateTime(detailLog.sentAt) },
+                detailLog.automationEvent && { label: "Automation Event", value: detailLog.automationEvent.replace(/_/g, " ") },
+                detailLog.failReason && { label: "Failure Reason", value: detailLog.failReason },
+              ].filter(Boolean).map((row: any) => (
+                <div key={row.label} className="flex items-start gap-3 px-4 py-2.5 rounded-xl bg-muted/20">
+                  <span className="text-xs font-medium text-muted-foreground w-32 flex-shrink-0 pt-0.5">{row.label}</span>
+                  <span className={`text-sm font-medium break-all ${row.label === "Failure Reason" ? "text-red-400" : "text-foreground"}`}>{row.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 mt-1">
+            <Button variant="outline" onClick={() => setDetailLog(null)} className="cursor-pointer">Close</Button>
+            <Button
+              onClick={() => { resend(detailLog.id); setDetailLog(null); }}
+              disabled={resending === detailLog?.id}
+              className="cursor-pointer gap-1.5"
+            >
+              {resending === detailLog?.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+              {detailLog?.status === "failed" ? "Retry Send" : "Resend"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

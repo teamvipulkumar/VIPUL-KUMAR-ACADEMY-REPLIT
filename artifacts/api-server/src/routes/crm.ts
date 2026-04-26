@@ -9,7 +9,7 @@ import {
   emailSequencesTable, emailSequenceStepsTable, emailSequenceEnrollmentsTable,
   automationFunnelsTable, automationFunnelStepsTable, platformSettingsTable,
 } from "@workspace/db";
-import { eq, count, sql, and, notInArray, inArray, asc } from "drizzle-orm";
+import { eq, count, sql, and, notInArray, inArray, asc, ilike, gte, lte, or, desc } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth";
 
 const router = Router();
@@ -928,11 +928,48 @@ router.get("/stats", requireAdmin, async (_req, res): Promise<void> => {
 
 /* ── Send Log ── */
 router.get("/sends", requireAdmin, async (req, res): Promise<void> => {
-  const { limit = "50" } = req.query as Record<string, string>;
-  const sends = await db.select().from(emailSendsTable)
-    .orderBy(sql`${emailSendsTable.sentAt} desc`)
-    .limit(parseInt(limit));
-  res.json(sends);
+  const { status, search, startDate, endDate, page = "1", pageSize = "25" } = req.query as Record<string, string>;
+  const conditions: any[] = [];
+  if (status && status !== "all") conditions.push(eq(emailSendsTable.status, status as any));
+  if (search?.trim()) conditions.push(or(ilike(emailSendsTable.subject, `%${search}%`), ilike(emailSendsTable.email, `%${search}%`)));
+  if (startDate) conditions.push(gte(emailSendsTable.sentAt, new Date(startDate)));
+  if (endDate) conditions.push(lte(emailSendsTable.sentAt, new Date(endDate + "T23:59:59")));
+  const where = conditions.length ? and(...conditions) : undefined;
+  const pg = Math.max(1, parseInt(page));
+  const ps = Math.min(100, Math.max(1, parseInt(pageSize)));
+  const [{ total }] = await db.select({ total: count() }).from(emailSendsTable).where(where);
+  const sends = await db.select().from(emailSendsTable).where(where)
+    .orderBy(desc(emailSendsTable.sentAt))
+    .limit(ps).offset((pg - 1) * ps);
+  res.json({ sends, total, page: pg, pageSize: ps, totalPages: Math.max(1, Math.ceil(total / ps)) });
+});
+
+router.post("/sends/:id/resend", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  const [send] = await db.select().from(emailSendsTable).where(eq(emailSendsTable.id, id)).limit(1);
+  if (!send) { res.status(404).json({ error: "Not found" }); return; }
+  try {
+    let html = `<p>Resent email: <strong>${send.subject}</strong></p><p>Originally sent: ${send.sentAt}</p>`;
+    if (send.type === "campaign" && send.campaignId) {
+      const [campaign] = await db.select().from(emailCampaignsTable).where(eq(emailCampaignsTable.id, send.campaignId)).limit(1);
+      if (campaign?.html) html = campaign.html;
+    } else if (send.type === "automation" && send.automationEvent) {
+      const [tmpl] = await db.select().from(emailTemplatesTable).where(eq(emailTemplatesTable.event, send.automationEvent as any)).limit(1);
+      if (tmpl?.html) html = tmpl.html;
+    }
+    await sendEmailWithFallback(send.email, send.subject, html);
+    const [newSend] = await db.insert(emailSendsTable).values({ type: send.type, campaignId: send.campaignId, automationEvent: send.automationEvent, userId: send.userId, email: send.email, subject: send.subject, status: "sent" }).returning();
+    res.json({ ok: true, send: newSend });
+  } catch (err: any) {
+    await db.insert(emailSendsTable).values({ type: send.type, campaignId: send.campaignId, automationEvent: send.automationEvent, userId: send.userId, email: send.email, subject: send.subject, status: "failed", failReason: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete("/sends/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  await db.delete(emailSendsTable).where(eq(emailSendsTable.id, id));
+  res.json({ ok: true });
 });
 
 /* ──────────────── LISTS ──────────────── */
