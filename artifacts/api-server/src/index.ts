@@ -28,9 +28,10 @@ async function runMigrations() {
     logger.warn({ e }, "Migration warning (non-fatal)");
   }
 
-  // Enable RLS on all public tables (silences Supabase Security Advisor warnings).
-  // The API server connects as the postgres superuser which bypasses RLS, so this
-  // has no effect on existing queries — it only secures the Supabase REST layer.
+  // Enable RLS on all public tables and add explicit deny-all policies for anon/authenticated
+  // roles (Supabase PostgREST roles). The API server connects as the postgres superuser
+  // which bypasses RLS, so this has zero effect on existing queries.
+  // This silences both "RLS Disabled" and "RLS Enabled No Policy" Security Advisor warnings.
   try {
     await db.execute(sql`
       DO $$
@@ -40,12 +41,19 @@ async function runMigrations() {
         FOR tbl IN
           SELECT tablename FROM pg_tables WHERE schemaname = 'public'
         LOOP
+          -- Enable RLS
           EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', tbl);
+          -- Drop old deny policy if exists, then re-create (idempotent)
+          EXECUTE format('DROP POLICY IF EXISTS deny_external_access ON public.%I', tbl);
+          EXECUTE format(
+            'CREATE POLICY deny_external_access ON public.%I AS RESTRICTIVE FOR ALL TO anon, authenticated USING (false) WITH CHECK (false)',
+            tbl
+          );
         END LOOP;
       END
       $$;
     `);
-    logger.info("RLS enabled on all public tables");
+    logger.info("RLS enabled with deny-all policies on all public tables");
   } catch (e) {
     logger.warn({ e }, "RLS migration warning (non-fatal)");
   }
