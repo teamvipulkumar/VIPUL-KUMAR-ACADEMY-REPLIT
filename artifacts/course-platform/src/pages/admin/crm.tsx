@@ -2127,7 +2127,7 @@ function SubscribersTab() {
       </div>
 
       <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto_auto_auto] gap-x-4 px-4 py-2.5 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto_auto_auto] gap-x-4 px-4 py-2.5 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase tracking-wide justify-items-start items-center">
           <span>Name</span><span>Email</span><span>Lists</span><span>Tags</span><span>Role</span><span>Joined</span><span></span>
         </div>
         {loading ? (
