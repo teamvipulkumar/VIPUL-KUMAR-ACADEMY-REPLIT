@@ -157,7 +157,7 @@ export default function AdminCrmPage() {
           ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6">
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 overscroll-contain">
           {tab === "dashboard" && <DashboardTab />}
           {tab === "campaigns" && <CampaignsTab />}
           {tab === "sequences" && <SequencesTab />}
