@@ -37,7 +37,12 @@ function RefTracker() {
     const ref = params.get("ref");
     if (!ref) return;
 
-    // Track click and get cookieDays from server, then store with expiry
+    // Store ref IMMEDIATELY with a 30-day default so it's available even if user
+    // goes straight to checkout before the API response comes back (last-click wins).
+    const defaultExpiry = Date.now() + 30 * 24 * 60 * 60 * 1000;
+    localStorage.setItem(VKA_REF_KEY, JSON.stringify({ code: ref, expiry: defaultExpiry }));
+
+    // Then refine the expiry using the platform's configured cookieDays setting
     fetch(`${API_BASE}/api/affiliate/track`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -48,11 +53,7 @@ function RefTracker() {
         const expiry = Date.now() + cookieDays * 24 * 60 * 60 * 1000;
         localStorage.setItem(VKA_REF_KEY, JSON.stringify({ code: ref, expiry }));
       })
-      .catch(() => {
-        // Fallback: store with 30-day default if fetch fails
-        const expiry = Date.now() + 30 * 24 * 60 * 60 * 1000;
-        localStorage.setItem(VKA_REF_KEY, JSON.stringify({ code: ref, expiry }));
-      });
+      .catch(() => { /* already stored with default expiry above */ });
   }, []);
   return null;
 }

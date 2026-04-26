@@ -131,8 +131,9 @@ async function enrollInBundle(bundleId: number, userId: number, affiliateRef?: s
             .limit(1);
 
           if (clickRef) {
+            // Update createdAt to NOW so dashboard time-based filters reflect purchase date
             await db.update(referralsTable)
-              .set({ status: "purchase", referredUserId: userId, commission: String(commission) })
+              .set({ status: "purchase", referredUserId: userId, commission: String(commission), createdAt: new Date() })
               .where(eq(referralsTable.id, clickRef.id));
           } else {
             await db.insert(referralsTable).values({

@@ -134,8 +134,10 @@ async function recordAffiliateCommission(
 
     if (refToUpgrade) {
       console.info(`[affiliate commission] upgrading click referral id=${refToUpgrade.id} → purchase`);
+      // Update createdAt to NOW so dashboard time-based filters (today, last 7 days, etc.)
+      // reflect WHEN the commission was earned, not when the affiliate link was clicked.
       await db.update(referralsTable)
-        .set({ status: "purchase", referredUserId: buyerId, courseId: courseId ?? refToUpgrade.courseId, commission: String(commission) })
+        .set({ status: "purchase", referredUserId: buyerId, courseId: courseId ?? refToUpgrade.courseId, commission: String(commission), createdAt: new Date() })
         .where(eq(referralsTable.id, refToUpgrade.id));
     } else {
       console.info(`[affiliate commission] no click referral found — inserting new purchase referral`);
