@@ -966,6 +966,32 @@ router.post("/sends/:id/resend", requireAdmin, async (req, res): Promise<void> =
   }
 });
 
+router.get("/sends/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  const [send] = await db.select().from(emailSendsTable).where(eq(emailSendsTable.id, id)).limit(1);
+  if (!send) { res.status(404).json({ error: "Not found" }); return; }
+  let html: string | null = null;
+  let campaignName: string | null = null;
+  if (send.type === "campaign" && send.campaignId) {
+    const [campaign] = await db.select().from(emailCampaignsTable).where(eq(emailCampaignsTable.id, send.campaignId)).limit(1);
+    html = campaign?.html ?? null;
+    campaignName = campaign?.name ?? null;
+  } else if (send.type === "automation" && send.automationEvent) {
+    const [tmpl] = await db.select().from(emailTemplatesTable).where(eq(emailTemplatesTable.event, send.automationEvent as any)).limit(1);
+    html = tmpl?.html ?? null;
+  } else if (send.type === "sequence") {
+    const step = await db.select().from(emailSequenceStepsTable).where(
+      and(
+        eq(emailSequenceStepsTable.sequenceId, send.campaignId ?? -1)
+      )
+    ).limit(1);
+    html = step[0]?.html ?? null;
+  }
+  const smtp = await getSmtp();
+  const fromAddress = smtp ? buildFrom(smtp) : null;
+  res.json({ ...send, html, fromAddress, campaignName });
+});
+
 router.delete("/sends/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   await db.delete(emailSendsTable).where(eq(emailSendsTable.id, id));

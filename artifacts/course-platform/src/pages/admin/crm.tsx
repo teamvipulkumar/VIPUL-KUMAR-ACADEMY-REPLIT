@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { EmailBlockBuilder } from "@/components/email-block-builder";
 
@@ -2204,6 +2205,9 @@ function EmailLogsTab() {
   const [resending, setResending] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [detailLog, setDetailLog] = useState<any | null>(null);
+  const [detailData, setDetailData] = useState<any | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [bodyExpanded, setBodyExpanded] = useState(true);
   const pageSize = 25;
 
   const load = async (opts?: { status?: string; q?: string; start?: string; end?: string; pg?: number }) => {
@@ -2245,6 +2249,16 @@ function EmailLogsTab() {
     const r = await apiFetch(`/api/admin/crm/sends/${id}`, { method: "DELETE" });
     if (r.ok) { toast({ title: "Log deleted" }); load(); }
     setDeleting(null);
+  };
+
+  const openDetail = async (log: any) => {
+    setDetailLog(log);
+    setDetailData(null);
+    setDetailLoading(true);
+    setBodyExpanded(true);
+    const r = await apiFetch(`/api/admin/crm/sends/${log.id}`);
+    if (r.ok) setDetailData(await r.json());
+    setDetailLoading(false);
   };
 
   const formatDateTime = (dt: string) => {
@@ -2408,7 +2422,7 @@ function EmailLogsTab() {
                   {/* Subject + type */}
                   <div className="min-w-0">
                     <button
-                      onClick={() => setDetailLog(log)}
+                      onClick={() => openDetail(log)}
                       className="text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer text-left leading-tight block truncate max-w-full"
                     >
                       {log.subject || "(no subject)"}
@@ -2447,7 +2461,7 @@ function EmailLogsTab() {
                       {isFailed ? "Retry" : "Resend"}
                     </button>
                     <button
-                      onClick={() => setDetailLog(log)}
+                      onClick={() => openDetail(log)}
                       title="View details"
                       className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer"
                     >
@@ -2511,52 +2525,196 @@ function EmailLogsTab() {
         )}
       </div>
 
-      {/* ── Detail Dialog ── */}
-      <Dialog open={!!detailLog} onOpenChange={v => { if (!v) setDetailLog(null); }}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${detailLog?.status === "failed" ? "bg-red-500/10 border border-red-500/20" : "bg-emerald-500/10 border border-emerald-500/20"}`}>
-                {detailLog?.status === "failed" ? <XCircle className="w-4 h-4 text-red-400" /> : <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
-              </div>
-              <div>
-                <DialogTitle className="text-base leading-snug">{detailLog?.subject || "(no subject)"}</DialogTitle>
-                <DialogDescription className="text-xs mt-0.5">Email log details</DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
+      {/* ── Detail Sheet ── */}
+      <Sheet open={!!detailLog} onOpenChange={v => { if (!v) { setDetailLog(null); setDetailData(null); } }}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl flex flex-col p-0 gap-0 overflow-hidden">
 
-          {detailLog && (
-            <div className="space-y-3 py-1">
-              {[
-                { label: "Recipient", value: detailLog.email },
-                { label: "Status", value: detailLog.status === "failed" ? "Failed" : "Sent" },
-                { label: "Type", value: SEND_TYPE_META[detailLog.type]?.label ?? detailLog.type },
-                { label: "Sent At", value: formatDateTime(detailLog.sentAt) },
-                detailLog.automationEvent && { label: "Automation Event", value: detailLog.automationEvent.replace(/_/g, " ") },
-                detailLog.failReason && { label: "Failure Reason", value: detailLog.failReason },
-              ].filter(Boolean).map((row: any) => (
-                <div key={row.label} className="flex items-start gap-3 px-4 py-2.5 rounded-xl bg-muted/20">
-                  <span className="text-xs font-medium text-muted-foreground w-32 flex-shrink-0 pt-0.5">{row.label}</span>
-                  <span className={`text-sm font-medium break-all ${row.label === "Failure Reason" ? "text-red-400" : "text-foreground"}`}>{row.value}</span>
+          {/* Sheet header */}
+          <SheetHeader className="flex-shrink-0 px-6 py-4 border-b border-border bg-card">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border ${
+                  detailLog?.status === "failed"
+                    ? "bg-red-500/10 border-red-500/20"
+                    : "bg-emerald-500/10 border-emerald-500/20"
+                }`}>
+                  {detailLog?.status === "failed"
+                    ? <XCircle className="w-4 h-4 text-red-400" />
+                    : <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
                 </div>
-              ))}
+                <div className="min-w-0">
+                  <SheetTitle className="text-sm font-semibold leading-snug truncate">Email Log</SheetTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{detailLog?.subject || "(no subject)"}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 h-8 text-xs cursor-pointer"
+                  disabled={resending === detailLog?.id}
+                  onClick={() => resend(detailLog?.id)}
+                >
+                  {resending === detailLog?.id
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <RotateCcw className="w-3.5 h-3.5" />}
+                  {detailLog?.status === "failed" ? "Retry" : "Resend"}
+                </Button>
+                <SheetClose asChild>
+                  <button className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer">
+                    <X className="w-4 h-4" />
+                  </button>
+                </SheetClose>
+              </div>
             </div>
-          )}
+          </SheetHeader>
 
-          <DialogFooter className="gap-2 mt-1">
-            <Button variant="outline" onClick={() => setDetailLog(null)} className="cursor-pointer">Close</Button>
-            <Button
-              onClick={() => { resend(detailLog.id); setDetailLog(null); }}
-              disabled={resending === detailLog?.id}
-              className="cursor-pointer gap-1.5"
-            >
-              {resending === detailLog?.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
-              {detailLog?.status === "failed" ? "Retry Send" : "Resend"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          {/* Scrollable body */}
+          <div className="flex-1 overflow-y-auto">
+            {detailLoading ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-3">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">Loading email details…</p>
+              </div>
+            ) : detailLog ? (
+              <div className="divide-y divide-border">
+
+                {/* ── Status + Date row ── */}
+                <div className="px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</span>
+                    {detailLog.status === "failed" ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
+                        <XCircle className="w-3.5 h-3.5" />Failed
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <CheckCircle2 className="w-3.5 h-3.5" />Sent
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span className="font-medium text-foreground">{formatDateTime(detailLog.sentAt)}</span>
+                  </div>
+                </div>
+
+                {/* ── From / To ── */}
+                <div className="px-6 py-4 grid grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">From</p>
+                    <p className="text-sm text-foreground font-medium break-all">
+                      {detailData?.fromAddress ?? "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">To</p>
+                    <p className="text-sm text-foreground font-medium break-all">{detailLog.email}</p>
+                  </div>
+                </div>
+
+                {/* ── Subject / Type / Event ── */}
+                <div className="px-6 py-4 grid grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Subject</p>
+                    <p className="text-sm text-foreground font-medium">{detailLog.subject || "(no subject)"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Type</p>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${SEND_TYPE_META[detailLog.type]?.color ?? ""}`}>
+                      {SEND_TYPE_META[detailLog.type]?.label ?? detailLog.type}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Automation event / campaign name if applicable */}
+                {(detailLog.automationEvent || detailData?.campaignName) && (
+                  <div className="px-6 py-4">
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                      {detailLog.automationEvent ? "Automation Event" : "Campaign"}
+                    </p>
+                    <p className="text-sm text-foreground font-medium capitalize">
+                      {detailLog.automationEvent
+                        ? detailLog.automationEvent.replace(/_/g, " ")
+                        : detailData?.campaignName}
+                    </p>
+                  </div>
+                )}
+
+                {/* ── Email Body Preview ── */}
+                <div>
+                  <button
+                    onClick={() => setBodyExpanded(e => !e)}
+                    className="w-full px-6 py-3.5 flex items-center justify-between text-left hover:bg-white/[0.02] transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm font-semibold text-foreground">Email Body</span>
+                      {!detailData && !detailLoading && (
+                        <span className="text-[11px] text-muted-foreground">(loading…)</span>
+                      )}
+                      {detailData && !detailData.html && (
+                        <span className="text-[11px] text-muted-foreground">(not available)</span>
+                      )}
+                    </div>
+                    <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${bodyExpanded ? "rotate-90" : ""}`} />
+                  </button>
+
+                  {bodyExpanded && (
+                    <div className="border-t border-border">
+                      {!detailData ? (
+                        <div className="px-6 py-8 flex items-center justify-center">
+                          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : detailData.html ? (
+                        <div className="relative">
+                          <iframe
+                            srcDoc={detailData.html}
+                            title="Email Preview"
+                            className="w-full border-0 bg-white"
+                            style={{ height: "480px" }}
+                            sandbox="allow-same-origin"
+                          />
+                          <button
+                            onClick={() => {
+                              const win = window.open("", "_blank");
+                              if (win) { win.document.write(detailData.html); win.document.close(); }
+                            }}
+                            className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/90 backdrop-blur border border-border text-xs font-medium text-foreground hover:bg-background transition-colors cursor-pointer shadow-sm"
+                          >
+                            <Eye className="w-3.5 h-3.5" />Open full screen
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="px-6 py-10 flex flex-col items-center gap-2 text-center">
+                          <Mail className="w-8 h-8 text-muted-foreground/40" />
+                          <p className="text-sm text-muted-foreground">Email body not stored for this log type.</p>
+                          <p className="text-xs text-muted-foreground/70">Only Campaign and Automation emails have a retrievable body.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Server Response / Fail Reason ── */}
+                <div className="px-6 py-4">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Server Response</p>
+                  <div className={`rounded-xl p-4 font-mono text-xs leading-relaxed ${
+                    detailLog.status === "failed"
+                      ? "bg-red-500/5 border border-red-500/15 text-red-400"
+                      : "bg-muted/30 border border-border text-emerald-400"
+                  }`}>
+                    {detailLog.status === "failed"
+                      ? `{ "status": "failed",\n  "reason": "${detailLog.failReason ?? "Unknown error"}" }`
+                      : `{ "status": "sent",\n  "response": "OK" }`}
+                  </div>
+                </div>
+
+              </div>
+            ) : null}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
