@@ -2208,6 +2208,9 @@ function EmailLogsTab() {
   const [detailData, setDetailData] = useState<any | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [bodyExpanded, setBodyExpanded] = useState(true);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkResending, setBulkResending] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const pageSize = 25;
 
   const load = async (opts?: { status?: string; q?: string; start?: string; end?: string; pg?: number }) => {
@@ -2249,6 +2252,44 @@ function EmailLogsTab() {
     const r = await apiFetch(`/api/admin/crm/sends/${id}`, { method: "DELETE" });
     if (r.ok) { toast({ title: "Log deleted" }); load(); }
     setDeleting(null);
+  };
+
+  const bulkDelete = async () => {
+    if (!selectedIds.size) return;
+    if (!confirm(`Delete ${selectedIds.size} selected log${selectedIds.size > 1 ? "s" : ""}?`)) return;
+    setBulkDeleting(true);
+    await Promise.all([...selectedIds].map(id => apiFetch(`/api/admin/crm/sends/${id}`, { method: "DELETE" })));
+    setSelectedIds(new Set());
+    toast({ title: `${selectedIds.size} log${selectedIds.size > 1 ? "s" : ""} deleted` });
+    load();
+    setBulkDeleting(false);
+  };
+
+  const bulkResend = async () => {
+    if (!selectedIds.size) return;
+    setBulkResending(true);
+    const results = await Promise.allSettled([...selectedIds].map(id => apiFetch(`/api/admin/crm/sends/${id}/resend`, { method: "POST" })));
+    const ok = results.filter(r => r.status === "fulfilled" && (r.value as Response).ok).length;
+    const fail = results.length - ok;
+    setSelectedIds(new Set());
+    toast({ title: `${ok} email${ok !== 1 ? "s" : ""} resent${fail > 0 ? `, ${fail} failed` : ""}`, variant: fail > 0 ? "destructive" : "default" });
+    load();
+    setBulkResending(false);
+  };
+
+  const toggleSelect = (id: number) =>
+    setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const currentPageIds = data.sends.map((s: any) => s.id);
+  const allPageSelected = currentPageIds.length > 0 && currentPageIds.every(id => selectedIds.has(id));
+  const somePageSelected = currentPageIds.some(id => selectedIds.has(id)) && !allPageSelected;
+
+  const toggleSelectAll = () => {
+    if (allPageSelected) {
+      setSelectedIds(prev => { const n = new Set(prev); currentPageIds.forEach(id => n.delete(id)); return n; });
+    } else {
+      setSelectedIds(prev => { const n = new Set(prev); currentPageIds.forEach(id => n.add(id)); return n; });
+    }
   };
 
   const openDetail = async (log: any) => {
@@ -2356,11 +2397,48 @@ function EmailLogsTab() {
         </div>
       </div>
 
+      {/* ── Bulk action bar ── */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/20">
+          <span className="text-xs font-medium text-primary">{selectedIds.size} selected</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={bulkResend}
+              disabled={bulkResending || bulkDeleting}
+              className="flex items-center gap-1.5 px-3 h-7 rounded-lg text-xs font-medium bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-colors cursor-pointer disabled:opacity-40"
+            >
+              {bulkResending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+              Resend Selected
+            </button>
+            <button
+              onClick={bulkDelete}
+              disabled={bulkDeleting || bulkResending}
+              className="flex items-center gap-1.5 px-3 h-7 rounded-lg text-xs font-medium bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-colors cursor-pointer disabled:opacity-40"
+            >
+              {bulkDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+              Delete Selected
+            </button>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Table ── */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         {/* Column headers */}
         <div className="grid grid-cols-[32px_1fr_200px_80px_160px_120px] items-center gap-x-4 px-5 py-3 border-b border-border bg-muted/20 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-          <input type="checkbox" className="w-3.5 h-3.5 rounded accent-primary cursor-pointer" />
+          <input
+            type="checkbox"
+            ref={(el) => { if (el) el.indeterminate = somePageSelected; }}
+            checked={allPageSelected}
+            onChange={toggleSelectAll}
+            className="w-3.5 h-3.5 rounded accent-primary cursor-pointer"
+          />
           <span>Subject</span>
           <span>To</span>
           <span>Status</span>
@@ -2417,7 +2495,12 @@ function EmailLogsTab() {
                     isFailed ? "bg-red-500/[0.04] hover:bg-red-500/[0.07]" : "hover:bg-white/[0.02]"
                   }`}
                 >
-                  <input type="checkbox" className="w-3.5 h-3.5 rounded accent-primary cursor-pointer" />
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(log.id)}
+                    onChange={() => toggleSelect(log.id)}
+                    className="w-3.5 h-3.5 rounded accent-primary cursor-pointer"
+                  />
 
                   {/* Subject + type */}
                   <div className="min-w-0">
