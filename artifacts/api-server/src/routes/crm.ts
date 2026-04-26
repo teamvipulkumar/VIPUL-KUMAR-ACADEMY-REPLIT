@@ -980,10 +980,19 @@ router.get("/sends/:id", requireAdmin, async (req, res): Promise<void> => {
     html = campaign?.htmlBody ?? null;
     campaignName = campaign?.name ?? null;
   } else if (send.type === "automation" && send.automationEvent) {
+    // First: look up via automation rule → templateId
     const [rule] = await db.select().from(emailAutomationRulesTable).where(eq(emailAutomationRulesTable.event, send.automationEvent as any)).limit(1);
     if (rule?.templateId) {
       const [tmpl] = await db.select().from(emailTemplatesTable).where(eq(emailTemplatesTable.id, rule.templateId)).limit(1);
       html = tmpl?.htmlBody ?? null;
+    }
+    // Fallback: match template directly by type = automationEvent (e.g. "forgot_password")
+    if (!html) {
+      const validTemplateTypes = ["welcome", "purchase", "refund", "forgot_password", "remarketing", "completion", "affiliate_commission"];
+      if (validTemplateTypes.includes(send.automationEvent)) {
+        const [tmpl] = await db.select().from(emailTemplatesTable).where(eq(emailTemplatesTable.type, send.automationEvent as any)).limit(1);
+        html = tmpl?.htmlBody ?? null;
+      }
     }
   } else if (send.type === "sequence") {
     const step = await db.select().from(emailSequenceStepsTable).where(
