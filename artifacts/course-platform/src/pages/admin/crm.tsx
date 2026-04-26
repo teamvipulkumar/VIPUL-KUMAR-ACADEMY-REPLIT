@@ -124,16 +124,16 @@ export default function AdminCrmPage() {
   const [tab, setTab] = useState<Tab>("dashboard");
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen bg-background overflow-hidden">
       {/* Sidebar */}
       <aside className="hidden lg:flex w-48 flex-shrink-0 border-r border-border bg-card flex-col">
-        <div className="p-4 border-b border-border">
+        <div className="p-4 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-2">
             <Mail className="w-4 h-4 text-primary" />
             <p className="font-semibold text-sm text-foreground">CRM & Email</p>
           </div>
         </div>
-        <nav className="flex-1 p-2 space-y-0.5">
+        <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg text-left transition-colors cursor-pointer ${tab === t.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-white/5"}`}>
@@ -144,9 +144,9 @@ export default function AdminCrmPage() {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 flex flex-col min-w-0">
         {/* Mobile tabs */}
-        <div className="lg:hidden flex overflow-x-auto border-b border-border bg-card px-4 gap-1 py-2">
+        <div className="lg:hidden flex-shrink-0 flex overflow-x-auto border-b border-border bg-card px-4 gap-1 py-2">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors cursor-pointer ${tab === t.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}>
@@ -155,7 +155,7 @@ export default function AdminCrmPage() {
           ))}
         </div>
 
-        <div className="p-5 sm:p-6">
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6">
           {tab === "dashboard" && <DashboardTab />}
           {tab === "campaigns" && <CampaignsTab />}
           {tab === "sequences" && <SequencesTab />}
