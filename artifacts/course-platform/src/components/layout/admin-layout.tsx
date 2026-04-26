@@ -184,7 +184,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <main className={`flex-1 min-w-0 md:pt-0 pt-14 ${location === "/admin/crm" ? "overflow-hidden" : "overflow-y-auto"}`}>
+      <main className="flex-1 overflow-y-auto min-w-0 md:pt-0 pt-14">
         {children}
       </main>
     </div>
