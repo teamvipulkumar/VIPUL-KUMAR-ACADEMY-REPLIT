@@ -118,9 +118,9 @@ export async function triggerAutomation(
     const send = async () => {
       try {
         await sendEmailWithFallback(email, subject, html);
-        await db.insert(emailSendsTable).values({ type: "automation", automationEvent: event, userId, email, subject, status: "sent" });
+        await db.insert(emailSendsTable).values({ type: "automation", automationEvent: event, userId, email, subject, htmlBody: html, status: "sent" });
       } catch (err: any) {
-        await db.insert(emailSendsTable).values({ type: "automation", automationEvent: event, userId, email, subject, status: "failed", failReason: String(err?.message ?? err) });
+        await db.insert(emailSendsTable).values({ type: "automation", automationEvent: event, userId, email, subject, htmlBody: html, status: "failed", failReason: String(err?.message ?? err) });
       }
     };
 
@@ -167,18 +167,19 @@ router.post("/smtp/test", requireAdmin, async (req, res): Promise<void> => {
   if (!to) { res.status(400).json({ error: "Recipient email required" }); return; }
   try {
     const transporter = await createTransporter(smtp);
+    const smtpTestHtml = `<div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px;background:#0a0f1e;color:#e2e8f0;border-radius:12px;">
+        <h2 style="color:#2563eb;">✅ SMTP Test Successful</h2>
+        <p>Your SMTP configuration is working correctly.</p>
+        <p style="color:#64748b;font-size:12px;">Sent from VK Academy CRM · Host: ${smtp.host}:${smtp.port}</p>
+      </div>`;
     const info = await transporter.sendMail({
       from: buildFrom(smtp),
       to,
       subject: "VK Academy — SMTP Test",
-      html: `<div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px;background:#0a0f1e;color:#e2e8f0;border-radius:12px;">
-        <h2 style="color:#2563eb;">✅ SMTP Test Successful</h2>
-        <p>Your SMTP configuration is working correctly.</p>
-        <p style="color:#64748b;font-size:12px;">Sent from VK Academy CRM · Host: ${smtp.host}:${smtp.port}</p>
-      </div>`,
+      html: smtpTestHtml,
     });
     console.log("[SMTP test] Sent OK — messageId:", info.messageId);
-    await db.insert(emailSendsTable).values({ type: "test", email: to, subject: "VK Academy — SMTP Test", status: "sent" });
+    await db.insert(emailSendsTable).values({ type: "test", email: to, subject: "VK Academy — SMTP Test", htmlBody: smtpTestHtml, status: "sent" });
     res.json({ success: true, message: "Test email sent successfully" });
   } catch (err: any) {
     const msg = err?.message ?? "Unknown error";
@@ -211,18 +212,19 @@ router.post("/smtp/test-live", requireAdmin, async (req, res): Promise<void> => 
 
   try {
     const transporter = await createTransporter(cfg);
+    const smtpLiveTestHtml = `<div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px;background:#0a0f1e;color:#e2e8f0;border-radius:12px;">
+        <h2 style="color:#2563eb;">✅ SMTP Live Test Successful</h2>
+        <p>Your unsaved SMTP settings are working correctly.</p>
+        <p style="color:#64748b;font-size:12px;">Host: ${host}:${port} · User: ${username}</p>
+      </div>`;
     const info = await transporter.sendMail({
       from: buildFrom(cfg),
       to,
       subject: "VK Academy — SMTP Live Test",
-      html: `<div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px;background:#0a0f1e;color:#e2e8f0;border-radius:12px;">
-        <h2 style="color:#2563eb;">✅ SMTP Live Test Successful</h2>
-        <p>Your unsaved SMTP settings are working correctly.</p>
-        <p style="color:#64748b;font-size:12px;">Host: ${host}:${port} · User: ${username}</p>
-      </div>`,
+      html: smtpLiveTestHtml,
     });
     console.log("[SMTP live-test] Sent OK — messageId:", info.messageId);
-    await db.insert(emailSendsTable).values({ type: "test", email: to, subject: "VK Academy — SMTP Live Test", status: "sent" });
+    await db.insert(emailSendsTable).values({ type: "test", email: to, subject: "VK Academy — SMTP Live Test", htmlBody: smtpLiveTestHtml, status: "sent" });
     res.json({ success: true, message: "Test email sent with current form settings" });
   } catch (err: any) {
     const msg = err?.message ?? "Unknown error";
@@ -334,7 +336,7 @@ router.post("/smtp/accounts/:id/test", requireAdmin, async (req, res): Promise<v
     res.status(500).json({ error: err }); return;
   }
   await db.update(smtpAccountsTable).set({ lastError: null, lastTestedAt: new Date() }).where(eq(smtpAccountsTable.id, id));
-  await db.insert(emailSendsTable).values({ type: "test", email: to, subject: `SMTP Test — ${account.name}`, status: "sent" });
+  await db.insert(emailSendsTable).values({ type: "test", email: to, subject: `SMTP Test — ${account.name}`, htmlBody: `<div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px;background:#0a0f1e;color:#e2e8f0;border-radius:12px;"><h2 style="color:#2563eb;">✅ Backup SMTP Test Successful</h2><p>Your backup SMTP account <strong>${account.name}</strong> is working correctly.</p><p style="color:#64748b;font-size:12px;">Host: ${account.host}:${account.port} · Priority: ${account.priority}</p></div>`, status: "sent" });
   res.json({ success: true });
 });
 
@@ -367,7 +369,7 @@ router.post("/templates/test-send", requireAdmin, async (req, res): Promise<void
       processedSubject = processedSubject.replaceAll(`{{${key}}}`, val);
     }
     await sendEmailWithFallback(to, `[TEST] ${processedSubject}`, processedHtml);
-    await db.insert(emailSendsTable).values({ type: "test", email: to, subject: `[TEST] ${processedSubject}`, status: "sent" });
+    await db.insert(emailSendsTable).values({ type: "test", email: to, subject: `[TEST] ${processedSubject}`, htmlBody: processedHtml, status: "sent" });
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: `Failed to send: ${err?.message ?? "Unknown error"}` });
@@ -824,10 +826,10 @@ router.post("/campaigns/:id/send", requireAdmin, async (req, res): Promise<void>
         let html = campaign.htmlBody.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
         try {
           await sendEmailWithFallback(user.email, campaign.subject, html);
-          await db.insert(emailSendsTable).values({ type: "campaign", campaignId: id, userId: user.id, email: user.email, subject: campaign.subject, status: "sent" });
+          await db.insert(emailSendsTable).values({ type: "campaign", campaignId: id, userId: user.id, email: user.email, subject: campaign.subject, htmlBody: html, status: "sent" });
           sentCount++;
         } catch (err: any) {
-          await db.insert(emailSendsTable).values({ type: "campaign", campaignId: id, userId: user.id, email: user.email, subject: campaign.subject, status: "failed", failReason: String(err?.message ?? err) });
+          await db.insert(emailSendsTable).values({ type: "campaign", campaignId: id, userId: user.id, email: user.email, subject: campaign.subject, htmlBody: html, status: "failed", failReason: String(err?.message ?? err) });
           failedCount++;
         }
         await new Promise(r => setTimeout(r, 100));
@@ -961,10 +963,10 @@ router.post("/sends/:id/resend", requireAdmin, async (req, res): Promise<void> =
       }
     }
     await sendEmailWithFallback(send.email, send.subject, html);
-    const [newSend] = await db.insert(emailSendsTable).values({ type: send.type, campaignId: send.campaignId, automationEvent: send.automationEvent, userId: send.userId, email: send.email, subject: send.subject, status: "sent" }).returning();
+    const [newSend] = await db.insert(emailSendsTable).values({ type: send.type, campaignId: send.campaignId, automationEvent: send.automationEvent, userId: send.userId, email: send.email, subject: send.subject, htmlBody: html, status: "sent" }).returning();
     res.json({ ok: true, send: newSend });
   } catch (err: any) {
-    await db.insert(emailSendsTable).values({ type: send.type, campaignId: send.campaignId, automationEvent: send.automationEvent, userId: send.userId, email: send.email, subject: send.subject, status: "failed", failReason: err.message });
+    await db.insert(emailSendsTable).values({ type: send.type, campaignId: send.campaignId, automationEvent: send.automationEvent, userId: send.userId, email: send.email, subject: send.subject, htmlBody: html, status: "failed", failReason: err.message });
     res.status(500).json({ error: err.message });
   }
 });
@@ -973,34 +975,36 @@ router.get("/sends/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   const [send] = await db.select().from(emailSendsTable).where(eq(emailSendsTable.id, id)).limit(1);
   if (!send) { res.status(404).json({ error: "Not found" }); return; }
-  let html: string | null = null;
+  // Use stored htmlBody if available (all new sends); fall back to reverse-lookup for older records
+  let html: string | null = send.htmlBody ?? null;
   let campaignName: string | null = null;
-  if (send.type === "campaign" && send.campaignId) {
-    const [campaign] = await db.select().from(emailCampaignsTable).where(eq(emailCampaignsTable.id, send.campaignId)).limit(1);
-    html = campaign?.htmlBody ?? null;
-    campaignName = campaign?.name ?? null;
-  } else if (send.type === "automation" && send.automationEvent) {
-    // First: look up via automation rule → templateId
-    const [rule] = await db.select().from(emailAutomationRulesTable).where(eq(emailAutomationRulesTable.event, send.automationEvent as any)).limit(1);
-    if (rule?.templateId) {
-      const [tmpl] = await db.select().from(emailTemplatesTable).where(eq(emailTemplatesTable.id, rule.templateId)).limit(1);
-      html = tmpl?.htmlBody ?? null;
-    }
-    // Fallback: match template directly by type = automationEvent (e.g. "forgot_password")
-    if (!html) {
-      const validTemplateTypes = ["welcome", "purchase", "refund", "forgot_password", "remarketing", "completion", "affiliate_commission"];
-      if (validTemplateTypes.includes(send.automationEvent)) {
-        const [tmpl] = await db.select().from(emailTemplatesTable).where(eq(emailTemplatesTable.type, send.automationEvent as any)).limit(1);
+  if (!html) {
+    if (send.type === "campaign" && send.campaignId) {
+      const [campaign] = await db.select().from(emailCampaignsTable).where(eq(emailCampaignsTable.id, send.campaignId)).limit(1);
+      html = campaign?.htmlBody ?? null;
+      campaignName = campaign?.name ?? null;
+    } else if (send.type === "automation" && send.automationEvent) {
+      const [rule] = await db.select().from(emailAutomationRulesTable).where(eq(emailAutomationRulesTable.event, send.automationEvent as any)).limit(1);
+      if (rule?.templateId) {
+        const [tmpl] = await db.select().from(emailTemplatesTable).where(eq(emailTemplatesTable.id, rule.templateId)).limit(1);
         html = tmpl?.htmlBody ?? null;
       }
+      if (!html) {
+        const validTemplateTypes = ["welcome", "purchase", "refund", "forgot_password", "remarketing", "completion", "affiliate_commission"];
+        if (validTemplateTypes.includes(send.automationEvent)) {
+          const [tmpl] = await db.select().from(emailTemplatesTable).where(eq(emailTemplatesTable.type, send.automationEvent as any)).limit(1);
+          html = tmpl?.htmlBody ?? null;
+        }
+      }
+    } else if (send.type === "sequence") {
+      const step = await db.select().from(emailSequenceStepsTable).where(eq(emailSequenceStepsTable.sequenceId, send.campaignId ?? -1)).limit(1);
+      html = step[0]?.htmlBody ?? null;
     }
-  } else if (send.type === "sequence") {
-    const step = await db.select().from(emailSequenceStepsTable).where(
-      and(
-        eq(emailSequenceStepsTable.sequenceId, send.campaignId ?? -1)
-      )
-    ).limit(1);
-    html = step[0]?.htmlBody ?? null;
+  }
+  // Also resolve campaignName when we already have html (send.htmlBody was set)
+  if (send.type === "campaign" && send.campaignId && !campaignName) {
+    const [campaign] = await db.select({ name: emailCampaignsTable.name }).from(emailCampaignsTable).where(eq(emailCampaignsTable.id, send.campaignId)).limit(1);
+    campaignName = campaign?.name ?? null;
   }
   const smtp = await getSmtp();
   const fromAddress = smtp ? buildFrom(smtp) : null;
@@ -1389,9 +1393,9 @@ export async function processSequences(): Promise<void> {
 
       try {
         await sendEmailWithFallback(user.email, subject, html);
-        await db.insert(emailSendsTable).values({ type: "sequence", userId: user.id, email: user.email, subject, status: "sent" });
+        await db.insert(emailSendsTable).values({ type: "sequence", userId: user.id, email: user.email, subject, htmlBody: html, status: "sent" });
       } catch (err: any) {
-        await db.insert(emailSendsTable).values({ type: "sequence", userId: user.id, email: user.email, subject, status: "failed", failReason: String(err?.message ?? err) });
+        await db.insert(emailSendsTable).values({ type: "sequence", userId: user.id, email: user.email, subject, htmlBody: html, status: "failed", failReason: String(err?.message ?? err) });
       }
 
       const nextStepIndex = enrollment.currentStep + 1;
@@ -1432,10 +1436,10 @@ export async function processScheduledCampaigns(): Promise<void> {
             const html = campaign.htmlBody.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
             try {
               await sendEmailWithFallback(user.email, campaign.subject, html);
-              await db.insert(emailSendsTable).values({ type: "campaign", campaignId: campaign.id, userId: user.id, email: user.email, subject: campaign.subject, status: "sent" });
+              await db.insert(emailSendsTable).values({ type: "campaign", campaignId: campaign.id, userId: user.id, email: user.email, subject: campaign.subject, htmlBody: html, status: "sent" });
               sentCount++;
             } catch (err: any) {
-              await db.insert(emailSendsTable).values({ type: "campaign", campaignId: campaign.id, userId: user.id, email: user.email, subject: campaign.subject, status: "failed", failReason: String(err?.message ?? err) });
+              await db.insert(emailSendsTable).values({ type: "campaign", campaignId: campaign.id, userId: user.id, email: user.email, subject: campaign.subject, htmlBody: html, status: "failed", failReason: String(err?.message ?? err) });
               failedCount++;
             }
             await new Promise(r => setTimeout(r, 100));
@@ -1629,9 +1633,9 @@ export async function triggerFunnel(triggerType: string, userId: number, trigger
           }
           try {
             await sendEmailWithFallback(user.email, subject, html);
-            await db.insert(emailSendsTable).values({ type: "automation", automationEvent: triggerType, userId, email: user.email, subject, status: "sent" });
+            await db.insert(emailSendsTable).values({ type: "automation", automationEvent: triggerType, userId, email: user.email, subject, htmlBody: html, status: "sent" });
           } catch (err: any) {
-            await db.insert(emailSendsTable).values({ type: "automation", automationEvent: triggerType, userId, email: user.email, subject, status: "failed", failReason: String(err?.message ?? err) });
+            await db.insert(emailSendsTable).values({ type: "automation", automationEvent: triggerType, userId, email: user.email, subject, htmlBody: html, status: "failed", failReason: String(err?.message ?? err) });
           }
         }
       };
