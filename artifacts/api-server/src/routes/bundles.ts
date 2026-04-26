@@ -85,7 +85,7 @@ async function enrollInBundle(bundleId: number, userId: number, affiliateRef?: s
 
   if (affiliateRef) {
     try {
-      const [referrer] = await db.select({ id: usersTable.id, role: usersTable.role }).from(usersTable)
+      const [referrer] = await db.select({ id: usersTable.id, role: usersTable.role, name: usersTable.name, email: usersTable.email }).from(usersTable)
         .where(eq(usersTable.referralCode, affiliateRef)).limit(1);
       if (referrer && referrer.id !== userId) {
         // Resolve commission rate: individual override → group → platform default
@@ -160,6 +160,16 @@ async function enrollInBundle(bundleId: number, userId: number, affiliateRef?: s
             message: `You earned ₹${commission.toFixed(2)} commission from a bundle purchase.`,
             type: "success",
           });
+
+          // Fire CRM automation + funnel for affiliate_commission event (non-blocking)
+          const commissionVars = {
+            name: referrer.name ?? "",
+            commission_amount: commission.toFixed(2),
+            payout_amount: commission.toFixed(2),
+            site_url: process.env.SITE_URL || "",
+          };
+          triggerAutomation("affiliate_commission", referrer.id, referrer.email ?? "", commissionVars).catch(e => console.error("[bundle affiliate commission] triggerAutomation error:", e));
+          triggerFunnel("affiliate_commission", referrer.id, commissionVars).catch(e => console.error("[bundle affiliate commission] triggerFunnel error:", e));
         }
         } // closes else (eligible affiliate)
       }

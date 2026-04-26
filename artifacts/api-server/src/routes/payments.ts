@@ -34,8 +34,8 @@ async function recordAffiliateCommission(
   const purchaseType = courseId != null ? `course(${courseId})` : "bundle";
   console.info(`[affiliate commission] start | ref=${affiliateRef} buyer=${buyerId} type=${purchaseType} amount=${saleAmount}`);
   try {
-    // Find referrer (include role for eligibility check)
-    const [referrer] = await db.select({ id: usersTable.id, role: usersTable.role })
+    // Find referrer (include role, name, email for eligibility check + automation triggers)
+    const [referrer] = await db.select({ id: usersTable.id, role: usersTable.role, name: usersTable.name, email: usersTable.email })
       .from(usersTable).where(eq(usersTable.referralCode, affiliateRef)).limit(1);
     if (!referrer) {
       console.warn(`[affiliate commission] referrer not found for code=${affiliateRef}`);
@@ -163,6 +163,17 @@ async function recordAffiliateCommission(
       message: `You earned ₹${commission.toFixed(2)} commission from ${purchaseLabel}.`,
       type: "success",
     });
+
+    // Fire CRM automation + funnel for affiliate_commission event (non-blocking)
+    const commissionVars = {
+      name: referrer.name,
+      commission_amount: commission.toFixed(2),
+      payout_amount: commission.toFixed(2),
+      site_url: process.env.SITE_URL || "",
+    };
+    triggerAutomation("affiliate_commission", referrer.id, referrer.email, commissionVars).catch(e => console.error("[affiliate commission] triggerAutomation error:", e));
+    triggerFunnel("affiliate_commission", referrer.id, commissionVars).catch(e => console.error("[affiliate commission] triggerFunnel error:", e));
+
     console.info(`[affiliate commission] done — commission=₹${commission} referrerId=${referrer.id} type=${purchaseType}`);
 
     // Fire FB Purchase event (non-blocking) — value = affiliate commission
