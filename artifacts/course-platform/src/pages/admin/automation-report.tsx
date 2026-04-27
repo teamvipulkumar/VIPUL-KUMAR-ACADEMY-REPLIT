@@ -523,7 +523,7 @@ export default function AutomationReportPage() {
                                     <span className="w-1 h-1 rounded-full bg-blue-500" />
                                   </span>
                                   <div className="text-foreground text-sm font-medium leading-snug">
-                                    Entrance ({funnel.name}{funnel.createdAt ? ` (Created at ${formatDate(funnel.createdAt)})` : ""})
+                                    Entrance ({funnel.name})
                                   </div>
                                   <div className="text-muted-foreground text-[11px] mt-1">{timeAgo(row.startedAt)}</div>
                                 </li>
