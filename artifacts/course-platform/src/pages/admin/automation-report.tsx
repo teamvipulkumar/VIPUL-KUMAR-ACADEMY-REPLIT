@@ -151,6 +151,16 @@ export default function AutomationReportPage() {
   const fetchedRef = useRef<Set<number>>(new Set());
   const inflightRef = useRef<Set<number>>(new Set());
 
+  // Reset expansion + cached step details whenever we switch to a different funnel,
+  // otherwise execution IDs from the previous funnel would block fetches here.
+  useEffect(() => {
+    expandedRef.current.clear();
+    fetchedRef.current.clear();
+    inflightRef.current.clear();
+    setExpanded(new Set());
+    setStepDetails(new Map());
+  }, [funnelId]);
+
   const toggleExpand = useCallback(async (executionId: number) => {
     // Toggle expansion synchronously via ref, then sync to React state
     if (expandedRef.current.has(executionId)) {

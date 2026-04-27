@@ -1710,7 +1710,7 @@ router.get("/funnels/:id/step-report", requireAdmin, async (req, res): Promise<v
   }));
 
   res.json({
-    funnel: { id: funnel.id, name: funnel.name, triggerType: funnel.triggerType },
+    funnel: { id: funnel.id, name: funnel.name, triggerType: funnel.triggerType, status: funnel.status, isActive: funnel.isActive, createdAt: funnel.createdAt },
     totalExecutions,
     steps: stepStats,
   });
