@@ -1852,9 +1852,12 @@ router.get("/funnels/:id/executions/:executionId", requireAdmin, async (req, res
     .where(eq(automationFunnelStepsTable.funnelId, exec.funnelId));
   const labelMap = new Map<number, string>();
   for (const s of allFunnelSteps) {
-    const cfg = s.config as Record<string, unknown>;
-    let label = s.actionType;
-    if (s.actionType === "send_email" && cfg.subject) label = String(cfg.subject);
+    const cfg = (s.config ?? {}) as Record<string, unknown>;
+    const customLabel = typeof s.label === "string" ? s.label.trim() : "";
+    let label: string;
+    if (customLabel) label = customLabel;
+    else if (s.actionType === "send_email" && cfg.subject) label = String(cfg.subject);
+    else label = s.actionType;
     labelMap.set(s.id, label);
   }
 
