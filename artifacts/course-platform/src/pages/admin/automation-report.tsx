@@ -3,7 +3,7 @@ import { useRoute, useLocation, Link } from "wouter";
 import {
   ChevronLeft, BarChart2, Mail, Activity, Loader2, Search, RefreshCw, Trash2,
   ChevronRight, ChevronDown, Eye, X, Info, CheckCircle2, XCircle, Clock, Users,
-  Zap, TrendingUp, Send, Pencil, Circle, AlertCircle,
+  Zap, TrendingUp, Send, Pencil, Circle, AlertCircle, ArrowDown, LogIn,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Line, ComposedChart } from "recharts";
 import { Input } from "@/components/ui/input";
@@ -796,12 +796,13 @@ function ChartReportPanel({ report, loading }: { report: any; loading: boolean }
   );
 }
 
-/* ─── Step Report Tab: detailed table ────────────────────── */
+/* ─── Step Report Tab: donut chart cards ─────────────────── */
 function StepReportPanel({ report, loading }: { report: any; loading: boolean }) {
   if (loading && !report) {
     return <div className="py-16 flex items-center justify-center text-muted-foreground"><Loader2 className="w-5 h-5 animate-spin mr-2" />Loading…</div>;
   }
   const steps: any[] = report?.steps ?? [];
+  const totalExecutions: number = report?.totalExecutions ?? 0;
   if (steps.length === 0) {
     return (
       <div className="py-16 text-center">
@@ -810,59 +811,133 @@ function StepReportPanel({ report, loading }: { report: any; loading: boolean })
       </div>
     );
   }
+
+  // Build cards: synthetic "Entrance" tile first, then one per real step.
+  const cards: Array<{
+    key: string; label: string; entered: number; completed: number; failed: number; completionRate: number; isEntrance?: boolean;
+  }> = [
+    {
+      key: "__entrance",
+      label: "Entrance",
+      entered: totalExecutions,
+      completed: totalExecutions,
+      failed: 0,
+      completionRate: totalExecutions > 0 ? 100 : 0,
+      isEntrance: true,
+    },
+    ...steps.map((s: any) => ({
+      key: String(s.stepId),
+      label: s.label,
+      entered: s.entered,
+      completed: s.completed,
+      failed: s.failed,
+      completionRate: s.completionRate,
+    })),
+  ];
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
         <div>
           <h4 className="text-sm font-semibold text-foreground">Step-by-step Breakdown</h4>
-          <p className="text-xs text-muted-foreground mt-0.5">{(report?.totalExecutions ?? 0).toLocaleString()} total executions across all steps</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{totalExecutions.toLocaleString()} total execution{totalExecutions === 1 ? "" : "s"} across all steps</p>
         </div>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/20 text-[11px] text-muted-foreground uppercase tracking-wider">
-            <tr>
-              <th className="px-4 py-3 text-left font-semibold w-12">#</th>
-              <th className="px-4 py-3 text-left font-semibold">Step</th>
-              <th className="px-4 py-3 text-left font-semibold w-32">Type</th>
-              <th className="px-4 py-3 text-right font-semibold w-24">Entered</th>
-              <th className="px-4 py-3 text-right font-semibold w-24">Completed</th>
-              <th className="px-4 py-3 text-right font-semibold w-24">Failed</th>
-              <th className="px-4 py-3 text-right font-semibold w-24">Pending</th>
-              <th className="px-4 py-3 text-left font-semibold w-64">Completion</th>
-            </tr>
-          </thead>
-          <tbody>
-            {steps.map(s => (
-              <tr key={s.stepId} className="border-t border-border hover:bg-muted/15 transition-colors">
-                <td className="px-4 py-3.5 align-middle">
-                  <span className="inline-flex w-6 h-6 rounded-md bg-primary/10 text-primary text-xs font-bold items-center justify-center">
-                    {s.stepOrder + 1}
-                  </span>
-                </td>
-                <td className="px-4 py-3.5 align-middle text-foreground font-medium">{s.label}</td>
-                <td className="px-4 py-3.5 align-middle">
-                  <span className="text-[11px] text-muted-foreground bg-muted/40 px-2 py-0.5 rounded font-mono">{s.actionType}</span>
-                </td>
-                <td className="px-4 py-3.5 align-middle text-right text-foreground font-medium tabular-nums">{s.entered.toLocaleString()}</td>
-                <td className="px-4 py-3.5 align-middle text-right text-emerald-400 font-medium tabular-nums">{s.completed.toLocaleString()}</td>
-                <td className="px-4 py-3.5 align-middle text-right text-red-400 font-medium tabular-nums">{s.failed.toLocaleString()}</td>
-                <td className="px-4 py-3.5 align-middle text-right text-amber-400 font-medium tabular-nums">{s.pending.toLocaleString()}</td>
-                <td className="px-4 py-3.5 align-middle">
-                  <div className="flex items-center gap-2">
-                    <div className="relative h-1.5 flex-1 bg-muted/40 rounded-full overflow-hidden min-w-[80px]">
-                      <div
-                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-blue-400 rounded-full transition-all"
-                        style={{ width: `${s.completionRate}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-semibold text-foreground tabular-nums w-12 text-right">{s.completionRate}%</span>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {cards.map(({ key, ...rest }) => <StepDonutCard key={key} {...rest} />)}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Single donut card showing completion + failure breakdown ─── */
+function StepDonutCard({
+  label, entered, completed, failed, completionRate, isEntrance,
+}: {
+  label: string; entered: number; completed: number; failed: number; completionRate: number; isEntrance?: boolean;
+}) {
+  // Clamp the failure rate so success + failure never exceeds 100% of the ring's
+  // circumference, even if upstream data is inconsistent (e.g., retries inflating counts).
+  const rawFailRate = entered > 0 ? Math.round((failed / entered) * 100) : 0;
+  const failRate = Math.max(0, Math.min(rawFailRate, 100 - completionRate));
+  const hasFailure = failed > 0 && failRate > 0;
+
+  // Donut geometry
+  const size = 132;
+  const stroke = 11;
+  const r = (size - stroke) / 2;
+  const C = 2 * Math.PI * r;
+  const successLen = Math.max(0, Math.min(C, C * (completionRate / 100)));
+  const failLen = Math.max(0, Math.min(C, C * (failRate / 100)));
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-5 flex flex-col items-center text-center hover:border-primary/40 transition-colors">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} className="-rotate-90 overflow-visible">
+          {/* Background ring */}
+          <circle
+            cx={size / 2} cy={size / 2} r={r}
+            fill="none"
+            stroke="hsl(var(--muted))"
+            strokeWidth={stroke}
+          />
+          {/* Success arc (completion%) */}
+          {completionRate > 0 && (
+            <circle
+              cx={size / 2} cy={size / 2} r={r}
+              fill="none"
+              stroke="hsl(245, 75%, 62%)"
+              strokeWidth={stroke}
+              strokeDasharray={`${successLen} ${C}`}
+              strokeDashoffset={0}
+              strokeLinecap={completionRate >= 100 ? "butt" : "round"}
+            />
+          )}
+          {/* Failure arc, rendered after success */}
+          {hasFailure && (
+            <circle
+              cx={size / 2} cy={size / 2} r={r}
+              fill="none"
+              stroke="hsl(0, 78%, 60%)"
+              strokeWidth={stroke}
+              strokeDasharray={`${failLen} ${C}`}
+              strokeDashoffset={-successLen}
+              strokeLinecap="round"
+            />
+          )}
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-2xl font-semibold text-foreground tabular-nums">{completionRate}%</span>
+        </div>
+      </div>
+
+      <div className="mt-4 text-sm font-semibold text-foreground line-clamp-2 min-h-[2.5rem] flex items-center" title={label}>
+        {isEntrance ? (
+          <span className="inline-flex items-center gap-1.5"><LogIn className="w-3.5 h-3.5 text-primary" />{label}</span>
+        ) : label}
+      </div>
+
+      <div className="mt-3 flex items-center gap-1.5 flex-wrap justify-center">
+        <span
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-border text-[11px] text-muted-foreground"
+          title={`${entered.toLocaleString()} contact${entered === 1 ? "" : "s"} entered`}
+        >
+          <Users className="w-3 h-3" />{entered.toLocaleString()}
+        </span>
+        <span
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-primary/30 bg-primary/10 text-[11px] text-primary font-medium"
+          title={`${completed.toLocaleString()} completed (${completionRate}%)`}
+        >
+          {completionRate}%
+        </span>
+        {hasFailure && (
+          <span
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-red-500/30 bg-red-500/10 text-[11px] text-red-400 font-medium"
+            title={`${failed.toLocaleString()} failed (${failRate}%)`}
+          >
+            <ArrowDown className="w-3 h-3" />{failRate}%
+          </span>
+        )}
       </div>
     </div>
   );
