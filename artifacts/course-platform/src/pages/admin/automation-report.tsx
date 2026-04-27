@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
 import { useRoute, useLocation, Link } from "wouter";
 import {
-  ChevronLeft, BarChart2, Mail, Activity, Loader2, Search, RefreshCw, Trash2,
+  ChevronLeft, BarChart2, Mail, MailOpen, Activity, Loader2, Search, RefreshCw, Trash2,
   ChevronRight, ChevronDown, Eye, X, Info, CheckCircle2, XCircle, Clock, Users,
   Zap, TrendingUp, Send, Pencil, Circle, AlertCircle, ArrowDown, LogIn,
+  MousePointerClick, UserMinus,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Line, ComposedChart } from "recharts";
 import { Input } from "@/components/ui/input";
@@ -974,10 +975,10 @@ function EmailsAnalyticsPanel({ report, loading, onPreview }: { report: any; loa
 
       {/* Time-based stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Today" value={stats.today.toLocaleString()} icon={<Clock className="w-4 h-4" />} tone="amber" />
-        <StatCard label="Last 7 Days" value={stats.last7.toLocaleString()} icon={<Clock className="w-4 h-4" />} tone="amber" />
-        <StatCard label="Last 30 Days" value={stats.last30.toLocaleString()} icon={<Clock className="w-4 h-4" />} tone="amber" />
-        <StatCard label="Unique Recipients" value={stats.uniqueRecipients.toLocaleString()} icon={<Users className="w-4 h-4" />} tone="violet" />
+        <StatCard label="Open Rate" value={stats.openRate != null ? `${stats.openRate}%` : "—"} icon={<MailOpen className="w-4 h-4" />} tone="blue" />
+        <StatCard label="Clicked" value={stats.clicked != null ? stats.clicked.toLocaleString() : "—"} icon={<MousePointerClick className="w-4 h-4" />} tone="violet" />
+        <StatCard label="Unsubscribed" value={stats.unsubscribed != null ? stats.unsubscribed.toLocaleString() : "—"} icon={<UserMinus className="w-4 h-4" />} tone="red" />
+        <StatCard label="Unique Recipients" value={stats.uniqueRecipients.toLocaleString()} icon={<Users className="w-4 h-4" />} tone="amber" />
       </div>
 
       {/* Daily chart */}
