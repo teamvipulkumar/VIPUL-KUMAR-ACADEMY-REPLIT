@@ -69,6 +69,11 @@ A full-stack SaaS course-selling platform with dark/blue premium theme. Built on
 
 Tables: users, courses, modules, lessons, enrollments, payments, affiliates (referrals + payouts), coupons, notifications, platform_settings, smtp_settings, smtp_accounts, email_lists, email_list_members, contact_tags, contact_tag_assignments, email_campaigns, email_automation_rules, email_sequences, email_sequence_steps, email_sequence_enrollments, email_sends, email_templates, **automation_funnels, automation_funnel_steps, funnel_executions, funnel_execution_steps**
 
+### Funnel Step "Internal Label"
+- Each step in `automation_funnel_steps` has an optional `label text` column (nullable). Set per-step via the funnel builder's edit form (top input, "Internal Label").
+- API: `POST /api/admin/crm/funnels/:id/steps` and `PUT /api/admin/crm/funnels/:id/steps/:stepId` accept `label` (trimmed string; empty/whitespace → null). `config` jsonb is unaffected — frontend uses `__label` key in stepDraft and destructures it before sending.
+- Display priority across UI/API: `step.label` (custom Internal Label) → email subject (for send_email steps) → `actionType`. Used by funnel builder card heading, `/step-report` (`label` + `customLabel` fields), and `/executions` timeline labels.
+
 ### Automation Report Page (FluentCRM-style)
 - Route: `/admin/crm/automation/:id/report` → `artifacts/course-platform/src/pages/admin/automation-report.tsx`
 - Desktop-optimized layout: `max-w-[1600px]` wrapper, hero card (breadcrumb → Zap-icon title row + status pill → Trigger/Steps/Created/ID meta → 5-col KPI strip: Subscribers, Avg Completion, Emails Sent, Delivery Success, Today)

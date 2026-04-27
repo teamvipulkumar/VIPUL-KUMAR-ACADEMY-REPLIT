@@ -174,6 +174,7 @@ export const automationFunnelStepsTable = pgTable("automation_funnel_steps", {
   funnelId: integer("funnel_id").notNull().references(() => automationFunnelsTable.id, { onDelete: "cascade" }),
   stepOrder: integer("step_order").notNull().default(0),
   actionType: text("action_type").notNull(),
+  label: text("label"),
   config: jsonb("config").notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -1691,13 +1691,16 @@ router.get("/funnels/:id/step-report", requireAdmin, async (req, res): Promise<v
     const entered = completed + failed + pending;
     const completionRate = entered > 0 ? Math.round((completed / entered) * 1000) / 10 : 0;
     const cfg = step.config as Record<string, unknown>;
+    const customLabel = typeof step.label === "string" ? step.label.trim() : "";
     let label = step.actionType;
-    if (step.actionType === "send_email" && cfg.subject) label = String(cfg.subject);
+    if (customLabel) label = customLabel;
+    else if (step.actionType === "send_email" && cfg.subject) label = String(cfg.subject);
     return {
       stepId: step.id,
       stepOrder: step.stepOrder,
       actionType: step.actionType,
       label,
+      customLabel: customLabel || null,
       entered,
       completed,
       failed,
@@ -1770,13 +1773,15 @@ router.get("/funnels/:id/executions", requireAdmin, async (req, res): Promise<vo
         eq(funnelExecutionStepsTable.status, "completed"),
       ))
       .orderBy(desc(funnelExecutionStepsTable.stepOrder));
-    // Need step labels (subject line for emails)
+    // Need step labels (custom Internal Label > subject line for emails > action type)
     const allFunnelSteps = await db.select().from(automationFunnelStepsTable).where(eq(automationFunnelStepsTable.funnelId, id));
     const stepLabelMap = new Map<number, string>();
     for (const s of allFunnelSteps) {
       const cfg = s.config as Record<string, unknown>;
+      const customLabel = typeof s.label === "string" ? s.label.trim() : "";
       let label = s.actionType;
-      if (s.actionType === "send_email" && cfg.subject) label = String(cfg.subject);
+      if (customLabel) label = customLabel;
+      else if (s.actionType === "send_email" && cfg.subject) label = String(cfg.subject);
       stepLabelMap.set(s.id, label);
     }
     for (const ls of latestSteps) {
@@ -1873,23 +1878,34 @@ router.delete("/funnels/:id/executions/:executionId", requireAdmin, async (req, 
 
 router.post("/funnels/:id/steps", requireAdmin, async (req, res): Promise<void> => {
   const funnelId = parseInt(req.params.id);
-  const { actionType, config, insertAfterOrder } = req.body;
+  const { actionType, config, insertAfterOrder, label } = req.body;
   if (!actionType) { res.status(400).json({ error: "actionType required" }); return; }
 
   // Shift existing steps after insertion point
   const insertOrder = typeof insertAfterOrder === "number" ? insertAfterOrder + 1 : 9999;
   await db.execute(sql`UPDATE automation_funnel_steps SET step_order = step_order + 1 WHERE funnel_id = ${funnelId} AND step_order >= ${insertOrder}`);
 
-  const [step] = await db.insert(automationFunnelStepsTable).values({ funnelId, actionType, config: config ?? {}, stepOrder: insertOrder }).returning();
+  const trimmedLabel = typeof label === "string" ? label.trim() : "";
+  const [step] = await db.insert(automationFunnelStepsTable).values({
+    funnelId,
+    actionType,
+    config: config ?? {},
+    stepOrder: insertOrder,
+    label: trimmedLabel ? trimmedLabel : null,
+  }).returning();
   res.json(step);
 });
 
 router.put("/funnels/:id/steps/:stepId", requireAdmin, async (req, res): Promise<void> => {
   const stepId = parseInt(req.params.stepId);
-  const { actionType, config } = req.body;
+  const { actionType, config, label } = req.body;
   const updates: Record<string, unknown> = {};
   if (actionType !== undefined) updates.actionType = actionType;
   if (config !== undefined) updates.config = config;
+  if (label !== undefined) {
+    const trimmed = typeof label === "string" ? label.trim() : "";
+    updates.label = trimmed ? trimmed : null;
+  }
   const [updated] = await db.update(automationFunnelStepsTable).set(updates).where(eq(automationFunnelStepsTable.id, stepId)).returning();
   if (!updated) { res.status(404).json({ error: "Step not found" }); return; }
   res.json(updated);

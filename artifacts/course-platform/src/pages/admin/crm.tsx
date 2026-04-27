@@ -1323,13 +1323,15 @@ function AutomationTab() {
   };
 
   /* ── Update step ── */
-  const updateStep = async (stepId: number, config: Record<string, any>) => {
+  const updateStep = async (stepId: number, draft: Record<string, any>) => {
     if (!activeFunnelId) return;
+    const { __label, ...config } = draft;
+    const labelTrimmed = typeof __label === "string" ? __label.trim() : "";
     await apiFetch(`/api/admin/crm/funnels/${activeFunnelId}/steps/${stepId}`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ config }),
+      body: JSON.stringify({ config, label: labelTrimmed }),
     });
-    setSteps(prev => prev.map(s => s.id === stepId ? { ...s, config } : s));
+    setSteps(prev => prev.map(s => s.id === stepId ? { ...s, config, label: labelTrimmed || null } : s));
     setEditingStepId(null);
     toast({ title: "Step saved" });
   };
@@ -1528,13 +1530,16 @@ function AutomationTab() {
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <Badge variant="outline" className={`text-[10px] border ${actionDef.border} ${actionDef.color}`}>Step {idx + 1}</Badge>
                         <ActionIcon className={`w-3.5 h-3.5 ${actionDef.color}`} />
-                        <span className="text-sm font-semibold text-foreground">{actionDef.label}</span>
+                        <span className="text-sm font-semibold text-foreground">{step.label?.trim() || actionDef.label}</span>
+                        {step.label?.trim() && (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${actionDef.border} ${actionDef.color} opacity-70`}>{actionDef.label}</span>
+                        )}
                       </div>
                       {!isEditing && <p className="text-xs text-muted-foreground">{stepSummaryLabel(step)}</p>}
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       {!isEditing && step.actionType !== "end" && (
-                        <button onClick={() => { const cfg = { ...(step.config ?? {}) }; if (step.actionType === "send_email" && !cfg.mode) cfg.mode = "template"; setEditingStepId(step.id); setStepDraft(cfg); }}
+                        <button onClick={() => { const cfg = { ...(step.config ?? {}) }; if (step.actionType === "send_email" && !cfg.mode) cfg.mode = "template"; setEditingStepId(step.id); setStepDraft({ ...cfg, __label: step.label ?? "" }); }}
                           className="p-1 text-muted-foreground hover:text-foreground cursor-pointer rounded transition-colors">
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
@@ -1549,6 +1554,19 @@ function AutomationTab() {
                   {/* Step edit form */}
                   {isEditing && (
                     <div className="mt-3 space-y-3 border-t border-border pt-3">
+                      <div className="space-y-1">
+                        <Label htmlFor={`step-internal-label-${step.id}`} className="text-xs text-muted-foreground">
+                          Internal Label <span className="opacity-60">(optional — for your reference)</span>
+                        </Label>
+                        <Input
+                          id={`step-internal-label-${step.id}`}
+                          value={c.__label ?? ""}
+                          onChange={e => setStepDraft(p => ({ ...p, __label: e.target.value }))}
+                          placeholder={`e.g. ${actionDef.label} — Welcome`}
+                          maxLength={120}
+                          className="bg-background border-border h-9"
+                        />
+                      </div>
                       {step.actionType === "wait" && (
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1">
