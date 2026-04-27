@@ -1857,7 +1857,7 @@ function AutomationTab({ initialFunnelId = null }: { initialFunnelId?: number | 
                   </button>
                   <button onClick={() => openReport(f)}
                     className="inline-flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2 rounded-md border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 hover:border-primary/50 cursor-pointer transition-colors">
-                    <BarChart2 className="w-3.5 h-3.5" />Report
+                    <BarChart2 className="w-3.5 h-3.5" />Reports
                   </button>
                 </div>
               </div>
