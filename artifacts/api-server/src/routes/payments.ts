@@ -430,7 +430,10 @@ router.post("/checkout/guest", async (req, res): Promise<void> => {
   // Auto-login: set JWT cookie
   const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (freshUser) {
-    if (isNewUser) triggerAutomation("welcome", freshUser.id, freshUser.email, { name: freshUser.name, email: freshUser.email }).catch(() => {});
+    if (isNewUser) {
+      triggerAutomation("welcome", freshUser.id, freshUser.email, { name: freshUser.name, email: freshUser.email }).catch(() => {});
+      triggerFunnel("user_signup", freshUser.id, { verify_link: "", site_url: process.env.SITE_URL || "", name: freshUser.name, email: freshUser.email }).catch(e => console.error("[course payment new user] triggerFunnel error:", e));
+    }
     if (!existing) {
       triggerAutomation("purchase", freshUser.id, freshUser.email, { name: freshUser.name, email: freshUser.email, course_name: course.title, amount: String(amount.toFixed(2)) }).catch(() => {});
       triggerFunnel("new_purchase", freshUser.id, { course_name: course.title, amount: String(amount.toFixed(2)), site_url: process.env.SITE_URL || "" }).catch(() => {});
@@ -482,6 +485,7 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
       }).returning();
       userId = newUser.id;
       isNewUser = true;
+      triggerFunnel("user_signup", userId, { verify_link: "", site_url: process.env.SITE_URL || "", name: newUser.name, email: newUser.email }).catch(err => console.error("[cashfree course new user] triggerFunnel error:", err));
     }
   }
 
@@ -790,6 +794,7 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
       }).returning();
       userId = newUser.id;
       isNewUser = true;
+      triggerFunnel("user_signup", userId, { verify_link: "", site_url: process.env.SITE_URL || "", name: newUser.name, email: newUser.email }).catch(err => console.error("[paytm course new user] triggerFunnel error:", err));
     }
   }
 
@@ -1143,6 +1148,7 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
       }).returning();
       userId = newUser.id;
       isNewUser = true;
+      triggerFunnel("user_signup", userId, { verify_link: "", site_url: process.env.SITE_URL || "", name: newUser.name, email: newUser.email }).catch(err => console.error("[stripe course new user] triggerFunnel error:", err));
     }
   }
 

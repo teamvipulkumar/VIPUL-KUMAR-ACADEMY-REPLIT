@@ -409,7 +409,10 @@ router.post("/checkout/guest", async (req, res): Promise<void> => {
   // Auto-login
   const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (freshUser) {
-    if (isNewUser) triggerAutomation("welcome", freshUser.id, freshUser.email, { name: freshUser.name, email: freshUser.email }).catch(() => {});
+    if (isNewUser) {
+      triggerAutomation("welcome", freshUser.id, freshUser.email, { name: freshUser.name, email: freshUser.email }).catch(() => {});
+      triggerFunnel("user_signup", freshUser.id, { verify_link: "", site_url: process.env.SITE_URL || "", name: freshUser.name, email: freshUser.email }).catch(e => console.error("[bundle payment new user] triggerFunnel error:", e));
+    }
   }
   const token = signToken({ userId: freshUser!.id, email: freshUser!.email, role: freshUser!.role });
   res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
@@ -465,6 +468,7 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
       }).returning();
       userId = newUser.id;
       isNewUser = true;
+      triggerFunnel("user_signup", userId, { verify_link: "", site_url: process.env.SITE_URL || "", name: newUser.name, email: newUser.email }).catch(err => console.error("[cashfree bundle new user] triggerFunnel error:", err));
     }
   }
 
@@ -593,6 +597,7 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
       }).returning();
       userId = newUser.id;
       isNewUser = true;
+      triggerFunnel("user_signup", userId, { verify_link: "", site_url: process.env.SITE_URL || "", name: newUser.name, email: newUser.email }).catch(err => console.error("[paytm bundle new user] triggerFunnel error:", err));
     }
   }
 
@@ -716,6 +721,7 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
       }).returning();
       userId = newUser.id;
       isNewUser = true;
+      triggerFunnel("user_signup", userId, { verify_link: "", site_url: process.env.SITE_URL || "", name: newUser.name, email: newUser.email }).catch(err => console.error("[stripe bundle new user] triggerFunnel error:", err));
     }
   }
 

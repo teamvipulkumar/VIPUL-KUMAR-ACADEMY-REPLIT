@@ -94,3 +94,5 @@ Tables: users, courses, modules, lessons, enrollments, payments, affiliates (ref
   - Action types: wait (X days/hours), apply_list, remove_list, apply_tag, remove_tag, send_email, end
   - Draft/Published toggle; steps added/edited/deleted inline via visual flow UI
   - Execution engine: `triggerFunnel()` in crm.ts for programmatic firing
+  - **`user_signup` trigger fired from**: auth.ts /register, auth.ts Google OAuth, payments.ts simulated /checkout/guest, bundles.ts simulated /checkout/guest, **and all 6 live-gateway create-order routes** (Cashfree/Paytm/Stripe × course/bundle). Fires at user-creation time, not at payment success — so welcome email lands even if checkout is abandoned.
+  - Known limitation: `wait` steps use `setTimeout` in-process — long delays do NOT survive API restart (needs DB-backed scheduler in a future PR).

@@ -78,8 +78,8 @@ router.post("/register", async (req, res): Promise<void> => {
   // Fire off both welcome automation and verification email (don't block response)
   const origin = (req.headers.origin as string) || process.env.SITE_URL || "";
   const verifyLink = `${origin}/verify-email?token=${verifyToken}`;
-  triggerAutomation("welcome", user.id, user.email, { name: user.name, email: user.email, verify_link: verifyLink }).catch(() => {});
-  triggerFunnel("user_signup", user.id, { verify_link: verifyLink, site_url: origin, name: user.name, email: user.email }).catch(() => {});
+  triggerAutomation("welcome", user.id, user.email, { name: user.name, email: user.email, verify_link: verifyLink }).catch(e => console.error("[register] triggerAutomation error:", e));
+  triggerFunnel("user_signup", user.id, { verify_link: verifyLink, site_url: origin, name: user.name, email: user.email }).catch(e => console.error("[register] triggerFunnel error:", e));
   sendTransactionalEmail(
     user.email,
     "Please verify your email — Vipul Kumar Academy",
@@ -296,7 +296,9 @@ router.post("/google-login", async (req, res): Promise<void> => {
       emailVerified: true,
     }).returning();
     user = created;
+    const googleOrigin = (req.headers.origin as string) || process.env.SITE_URL || "";
     triggerAutomation("welcome", user.id, user.email, { name: user.name, email: user.email, verify_link: "" }).catch(() => {});
+    triggerFunnel("user_signup", user.id, { verify_link: "", site_url: googleOrigin, name: user.name, email: user.email }).catch(e => console.error("[google signup] triggerFunnel error:", e));
   } else if (user.isBanned) {
     res.status(403).json({ error: "Account is banned" });
     return;
