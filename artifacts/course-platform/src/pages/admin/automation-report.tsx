@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
 import { useRoute, useLocation, Link } from "wouter";
 import {
   ChevronLeft, BarChart2, Mail, Activity, Loader2, Search, RefreshCw, Trash2,
@@ -145,26 +145,29 @@ export default function AutomationReportPage() {
   useEffect(() => { loadReports(); }, [loadReports]);
   useEffect(() => { loadExecutions(); }, [loadExecutions]);
 
+  // Refs let us check current state synchronously without depending on React's
+  // setState updater timing (which can be deferred in React 18 concurrent mode).
+  const expandedRef = useRef<Set<number>>(new Set());
+  const fetchedRef = useRef<Set<number>>(new Set());
+  const inflightRef = useRef<Set<number>>(new Set());
+
   const toggleExpand = useCallback(async (executionId: number) => {
-    let shouldFetch = false;
-    setExpanded(prev => {
-      const next = new Set(prev);
-      if (next.has(executionId)) {
-        next.delete(executionId);
-      } else {
-        next.add(executionId);
-        shouldFetch = true;
-      }
-      return next;
-    });
-    if (!shouldFetch) return;
-    setStepDetails(prev => {
-      if (prev.has(executionId)) { shouldFetch = false; }
-      return prev;
-    });
-    if (!shouldFetch) return;
+    // Toggle expansion synchronously via ref, then sync to React state
+    if (expandedRef.current.has(executionId)) {
+      expandedRef.current.delete(executionId);
+      setExpanded(new Set(expandedRef.current));
+      return;
+    }
+    expandedRef.current.add(executionId);
+    setExpanded(new Set(expandedRef.current));
+
+    // Skip fetch if already loaded or another fetch is in flight for this id
+    if (fetchedRef.current.has(executionId) || inflightRef.current.has(executionId)) return;
+
+    inflightRef.current.add(executionId);
     try {
       const res = await apiFetch(`/api/admin/crm/funnels/${funnelId}/executions/${executionId}`).then(r => r.json());
+      fetchedRef.current.add(executionId);
       setStepDetails(prev => {
         const next = new Map(prev);
         next.set(executionId, res.steps ?? []);
@@ -172,6 +175,8 @@ export default function AutomationReportPage() {
       });
     } catch {
       toast({ title: "Failed to load steps", variant: "destructive" });
+    } finally {
+      inflightRef.current.delete(executionId);
     }
   }, [funnelId, toast]);
 
