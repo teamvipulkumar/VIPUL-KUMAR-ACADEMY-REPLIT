@@ -1832,24 +1832,28 @@ router.get("/funnels/:id/executions/:executionId", requireAdmin, async (req, res
   if (!Number.isInteger(funnelId) || funnelId <= 0 || !Number.isInteger(executionId) || executionId <= 0) {
     res.status(400).json({ error: "Invalid id" }); return;
   }
-  const [exec] = await db.select().from(funnelExecutionsTable)
-    .where(and(eq(funnelExecutionsTable.id, executionId), eq(funnelExecutionsTable.funnelId, funnelId))).limit(1);
+  // Run the 3 independent queries in parallel — funnelId comes from URL so step/funnel-step
+  // queries don't need to wait on the execution row. Cuts latency from 3 round-trips to 1.
+  const [execRows, steps, allFunnelSteps] = await Promise.all([
+    db.select().from(funnelExecutionsTable)
+      .where(and(eq(funnelExecutionsTable.id, executionId), eq(funnelExecutionsTable.funnelId, funnelId))).limit(1),
+    db.select({
+      id: funnelExecutionStepsTable.id,
+      funnelStepId: funnelExecutionStepsTable.funnelStepId,
+      stepOrder: funnelExecutionStepsTable.stepOrder,
+      actionType: funnelExecutionStepsTable.actionType,
+      status: funnelExecutionStepsTable.status,
+      executedAt: funnelExecutionStepsTable.executedAt,
+      errorMessage: funnelExecutionStepsTable.errorMessage,
+    }).from(funnelExecutionStepsTable)
+      .where(eq(funnelExecutionStepsTable.executionId, executionId))
+      .orderBy(asc(funnelExecutionStepsTable.stepOrder)),
+    db.select().from(automationFunnelStepsTable)
+      .where(eq(automationFunnelStepsTable.funnelId, funnelId)),
+  ]);
+  const exec = execRows[0];
   if (!exec) { res.status(404).json({ error: "Execution not found" }); return; }
 
-  const steps = await db.select({
-    id: funnelExecutionStepsTable.id,
-    funnelStepId: funnelExecutionStepsTable.funnelStepId,
-    stepOrder: funnelExecutionStepsTable.stepOrder,
-    actionType: funnelExecutionStepsTable.actionType,
-    status: funnelExecutionStepsTable.status,
-    executedAt: funnelExecutionStepsTable.executedAt,
-    errorMessage: funnelExecutionStepsTable.errorMessage,
-  }).from(funnelExecutionStepsTable)
-    .where(eq(funnelExecutionStepsTable.executionId, executionId))
-    .orderBy(asc(funnelExecutionStepsTable.stepOrder));
-
-  const allFunnelSteps = await db.select().from(automationFunnelStepsTable)
-    .where(eq(automationFunnelStepsTable.funnelId, exec.funnelId));
   const labelMap = new Map<number, string>();
   for (const s of allFunnelSteps) {
     const cfg = (s.config ?? {}) as Record<string, unknown>;
