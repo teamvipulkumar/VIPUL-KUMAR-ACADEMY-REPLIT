@@ -8,6 +8,7 @@ import {
   contactTagsTable, contactTagAssignmentsTable,
   emailSequencesTable, emailSequenceStepsTable, emailSequenceEnrollmentsTable,
   automationFunnelsTable, automationFunnelStepsTable, platformSettingsTable,
+  funnelExecutionsTable, funnelExecutionStepsTable,
 } from "@workspace/db";
 import { eq, count, sql, and, notInArray, inArray, asc, ilike, gte, lte, or, desc } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth";
@@ -1646,6 +1647,230 @@ router.get("/funnels/:id/report", requireAdmin, async (req, res): Promise<void> 
   });
 });
 
+/* ── Step Report: per-step entered/completed/failed counts (Chart Report tab) ── */
+router.get("/funnels/:id/step-report", requireAdmin, async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid funnel id" }); return; }
+  const [funnel] = await db.select().from(automationFunnelsTable).where(eq(automationFunnelsTable.id, id)).limit(1);
+  if (!funnel) { res.status(404).json({ error: "Funnel not found" }); return; }
+
+  const steps = await db.select().from(automationFunnelStepsTable)
+    .where(eq(automationFunnelStepsTable.funnelId, id))
+    .orderBy(asc(automationFunnelStepsTable.stepOrder));
+
+  const [totalExecRow] = await db.select({ c: count() }).from(funnelExecutionsTable)
+    .where(eq(funnelExecutionsTable.funnelId, id));
+  const totalExecutions = Number(totalExecRow?.c ?? 0);
+
+  // For each step, count completed / failed / pending across all executions of this funnel
+  const stepStats = await Promise.all(steps.map(async (step) => {
+    const [completedRow] = await db.select({ c: count() }).from(funnelExecutionStepsTable)
+      .innerJoin(funnelExecutionsTable, eq(funnelExecutionStepsTable.executionId, funnelExecutionsTable.id))
+      .where(and(
+        eq(funnelExecutionsTable.funnelId, id),
+        eq(funnelExecutionStepsTable.funnelStepId, step.id),
+        eq(funnelExecutionStepsTable.status, "completed"),
+      ));
+    const [failedRow] = await db.select({ c: count() }).from(funnelExecutionStepsTable)
+      .innerJoin(funnelExecutionsTable, eq(funnelExecutionStepsTable.executionId, funnelExecutionsTable.id))
+      .where(and(
+        eq(funnelExecutionsTable.funnelId, id),
+        eq(funnelExecutionStepsTable.funnelStepId, step.id),
+        eq(funnelExecutionStepsTable.status, "failed"),
+      ));
+    const [pendingRow] = await db.select({ c: count() }).from(funnelExecutionStepsTable)
+      .innerJoin(funnelExecutionsTable, eq(funnelExecutionStepsTable.executionId, funnelExecutionsTable.id))
+      .where(and(
+        eq(funnelExecutionsTable.funnelId, id),
+        eq(funnelExecutionStepsTable.funnelStepId, step.id),
+        eq(funnelExecutionStepsTable.status, "pending"),
+      ));
+    const completed = Number(completedRow?.c ?? 0);
+    const failed = Number(failedRow?.c ?? 0);
+    const pending = Number(pendingRow?.c ?? 0);
+    const entered = completed + failed + pending;
+    const completionRate = entered > 0 ? Math.round((completed / entered) * 1000) / 10 : 0;
+    const cfg = step.config as Record<string, unknown>;
+    let label = step.actionType;
+    if (step.actionType === "send_email" && cfg.subject) label = String(cfg.subject);
+    return {
+      stepId: step.id,
+      stepOrder: step.stepOrder,
+      actionType: step.actionType,
+      label,
+      entered,
+      completed,
+      failed,
+      pending,
+      completionRate,
+    };
+  }));
+
+  res.json({
+    funnel: { id: funnel.id, name: funnel.name, triggerType: funnel.triggerType },
+    totalExecutions,
+    steps: stepStats,
+  });
+});
+
+/* ── Individual Reporting: paginated list of per-contact funnel executions ── */
+router.get("/funnels/:id/executions", requireAdmin, async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid funnel id" }); return; }
+  const [funnel] = await db.select().from(automationFunnelsTable).where(eq(automationFunnelsTable.id, id)).limit(1);
+  if (!funnel) { res.status(404).json({ error: "Funnel not found" }); return; }
+
+  const page = Math.max(1, parseInt(String(req.query.page ?? "1")) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit ?? "10")) || 10));
+  const offset = (page - 1) * limit;
+  const statusFilter = String(req.query.status ?? "all");
+  const search = String(req.query.search ?? "").trim();
+
+  const whereParts: any[] = [eq(funnelExecutionsTable.funnelId, id)];
+  if (statusFilter !== "all") whereParts.push(eq(funnelExecutionsTable.status, statusFilter));
+  if (search) whereParts.push(or(ilike(usersTable.name, `%${search}%`), ilike(usersTable.email, `%${search}%`)));
+  const whereClause = and(...whereParts);
+
+  const [totalRow] = await db.select({ c: count() }).from(funnelExecutionsTable)
+    .leftJoin(usersTable, eq(usersTable.id, funnelExecutionsTable.userId))
+    .where(whereClause);
+
+  const rows = await db.select({
+    id: funnelExecutionsTable.id,
+    funnelId: funnelExecutionsTable.funnelId,
+    userId: funnelExecutionsTable.userId,
+    status: funnelExecutionsTable.status,
+    currentStepOrder: funnelExecutionsTable.currentStepOrder,
+    nextActionType: funnelExecutionsTable.nextActionType,
+    startedAt: funnelExecutionsTable.startedAt,
+    lastExecutedAt: funnelExecutionsTable.lastExecutedAt,
+    completedAt: funnelExecutionsTable.completedAt,
+    userName: usersTable.name,
+    userEmail: usersTable.email,
+  }).from(funnelExecutionsTable)
+    .leftJoin(usersTable, eq(usersTable.id, funnelExecutionsTable.userId))
+    .where(whereClause)
+    .orderBy(desc(funnelExecutionsTable.lastExecutedAt))
+    .limit(limit)
+    .offset(offset);
+
+  // Find latest completed step's action type for each execution (for "Latest Action" column)
+  const executionIds = rows.map(r => r.id);
+  const latestStepsMap = new Map<number, { actionType: string; executedAt: Date | null; label: string }>();
+  if (executionIds.length > 0) {
+    const latestSteps = await db.select({
+      executionId: funnelExecutionStepsTable.executionId,
+      actionType: funnelExecutionStepsTable.actionType,
+      executedAt: funnelExecutionStepsTable.executedAt,
+      stepOrder: funnelExecutionStepsTable.stepOrder,
+      funnelStepId: funnelExecutionStepsTable.funnelStepId,
+    }).from(funnelExecutionStepsTable)
+      .where(and(
+        inArray(funnelExecutionStepsTable.executionId, executionIds),
+        eq(funnelExecutionStepsTable.status, "completed"),
+      ))
+      .orderBy(desc(funnelExecutionStepsTable.stepOrder));
+    // Need step labels (subject line for emails)
+    const allFunnelSteps = await db.select().from(automationFunnelStepsTable).where(eq(automationFunnelStepsTable.funnelId, id));
+    const stepLabelMap = new Map<number, string>();
+    for (const s of allFunnelSteps) {
+      const cfg = s.config as Record<string, unknown>;
+      let label = s.actionType;
+      if (s.actionType === "send_email" && cfg.subject) label = String(cfg.subject);
+      stepLabelMap.set(s.id, label);
+    }
+    for (const ls of latestSteps) {
+      if (!latestStepsMap.has(ls.executionId)) {
+        latestStepsMap.set(ls.executionId, {
+          actionType: ls.actionType,
+          executedAt: ls.executedAt,
+          label: stepLabelMap.get(ls.funnelStepId) ?? ls.actionType,
+        });
+      }
+    }
+  }
+
+  // Build label lookup for next step from funnel steps
+  const allSteps = await db.select().from(automationFunnelStepsTable)
+    .where(eq(automationFunnelStepsTable.funnelId, id))
+    .orderBy(asc(automationFunnelStepsTable.stepOrder));
+
+  const enriched = rows.map(r => {
+    const next = allSteps.find(s => s.stepOrder > r.currentStepOrder);
+    let nextLabel = r.nextActionType ?? null;
+    if (next) {
+      const cfg = next.config as Record<string, unknown>;
+      nextLabel = next.actionType === "send_email" && cfg.subject ? String(cfg.subject) : next.actionType;
+    }
+    const latest = latestStepsMap.get(r.id);
+    return {
+      ...r,
+      latestActionLabel: latest?.label ?? null,
+      latestActionAt: latest?.executedAt ?? null,
+      nextStepLabel: r.status === "completed" ? null : nextLabel,
+    };
+  });
+
+  res.json({
+    funnel: { id: funnel.id, name: funnel.name, triggerType: funnel.triggerType, createdAt: funnel.createdAt },
+    total: Number(totalRow?.c ?? 0),
+    page,
+    limit,
+    rows: enriched,
+  });
+});
+
+/* ── Single execution detail (for the expandable step list in Individual Reporting) ── */
+router.get("/funnels/:id/executions/:executionId", requireAdmin, async (req, res): Promise<void> => {
+  const funnelId = Number(req.params.id);
+  const executionId = Number(req.params.executionId);
+  if (!Number.isInteger(funnelId) || funnelId <= 0 || !Number.isInteger(executionId) || executionId <= 0) {
+    res.status(400).json({ error: "Invalid id" }); return;
+  }
+  const [exec] = await db.select().from(funnelExecutionsTable)
+    .where(and(eq(funnelExecutionsTable.id, executionId), eq(funnelExecutionsTable.funnelId, funnelId))).limit(1);
+  if (!exec) { res.status(404).json({ error: "Execution not found" }); return; }
+
+  const steps = await db.select({
+    id: funnelExecutionStepsTable.id,
+    funnelStepId: funnelExecutionStepsTable.funnelStepId,
+    stepOrder: funnelExecutionStepsTable.stepOrder,
+    actionType: funnelExecutionStepsTable.actionType,
+    status: funnelExecutionStepsTable.status,
+    executedAt: funnelExecutionStepsTable.executedAt,
+    errorMessage: funnelExecutionStepsTable.errorMessage,
+  }).from(funnelExecutionStepsTable)
+    .where(eq(funnelExecutionStepsTable.executionId, executionId))
+    .orderBy(asc(funnelExecutionStepsTable.stepOrder));
+
+  const allFunnelSteps = await db.select().from(automationFunnelStepsTable)
+    .where(eq(automationFunnelStepsTable.funnelId, exec.funnelId));
+  const labelMap = new Map<number, string>();
+  for (const s of allFunnelSteps) {
+    const cfg = s.config as Record<string, unknown>;
+    let label = s.actionType;
+    if (s.actionType === "send_email" && cfg.subject) label = String(cfg.subject);
+    labelMap.set(s.id, label);
+  }
+
+  res.json({
+    execution: exec,
+    steps: steps.map(s => ({ ...s, label: labelMap.get(s.funnelStepId) ?? s.actionType })),
+  });
+});
+
+/* ── Delete an individual execution row ── */
+router.delete("/funnels/:id/executions/:executionId", requireAdmin, async (req, res): Promise<void> => {
+  const funnelId = Number(req.params.id);
+  const executionId = Number(req.params.executionId);
+  if (!Number.isInteger(funnelId) || funnelId <= 0 || !Number.isInteger(executionId) || executionId <= 0) {
+    res.status(400).json({ error: "Invalid id" }); return;
+  }
+  await db.delete(funnelExecutionsTable)
+    .where(and(eq(funnelExecutionsTable.id, executionId), eq(funnelExecutionsTable.funnelId, funnelId)));
+  res.json({ success: true });
+});
+
 router.post("/funnels/:id/steps", requireAdmin, async (req, res): Promise<void> => {
   const funnelId = parseInt(req.params.id);
   const { actionType, config, insertAfterOrder } = req.body;
@@ -1702,19 +1927,80 @@ export async function triggerFunnel(triggerType: string, userId: number, trigger
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
     if (!user) continue;
 
+    // Create execution record + pre-create per-step pending records
+    const [execution] = await db.insert(funnelExecutionsTable).values({
+      funnelId: funnel.id,
+      userId,
+      status: "running",
+      currentStepOrder: 0,
+      nextActionType: steps[0]?.actionType ?? null,
+    }).returning({ id: funnelExecutionsTable.id });
+    const executionId = execution!.id;
+
+    // C4 fix: insert per-step rows lazily (only when actually attempted) so that
+    // step-report metrics reflect real drop-off instead of always showing entered === totalExecutions.
+    const markStep = async (
+      step: typeof steps[number],
+      status: "completed" | "failed" | "skipped",
+      errorMessage?: string,
+    ) => {
+      try {
+        await db.insert(funnelExecutionStepsTable).values({
+          executionId,
+          funnelStepId: step.id,
+          stepOrder: step.stepOrder,
+          actionType: step.actionType,
+          status,
+          executedAt: new Date(),
+          ...(errorMessage ? { errorMessage } : {}),
+        });
+      } catch (e) {
+        // Defensive: never let recording failure break execution flow
+        console.error(`[funnel] markStep insert failed for execution=${executionId} step=${step.id}:`, e);
+      }
+    };
+
+    const advanceExecution = async (currentStep: typeof steps[number], isLast: boolean, finalStatus: "completed" | "failed" | "running" = "running") => {
+      const nextStep = steps.find((s) => s.stepOrder > currentStep.stepOrder);
+      const isFinished = isLast || finalStatus !== "running" || currentStep.actionType === "end";
+      await db.update(funnelExecutionsTable).set({
+        currentStepOrder: currentStep.stepOrder,
+        nextActionType: isFinished ? null : (nextStep?.actionType ?? null),
+        lastExecutedAt: new Date(),
+        ...(isFinished ? { status: finalStatus === "running" ? "completed" : finalStatus, completedAt: new Date() } : {}),
+      }).where(eq(funnelExecutionsTable.id, executionId));
+    };
+
     let cumulativeDelayMs = 0;
-    for (const step of steps) {
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i]!;
       const config = step.config as Record<string, unknown>;
-      if (step.actionType === "end") break;
+      const isLast = i === steps.length - 1;
+
+      if (step.actionType === "end") {
+        await markStep(step, "completed");
+        await advanceExecution(step, true, "completed");
+        break;
+      }
 
       if (step.actionType === "wait") {
         const days = Number(config.days ?? 0);
         const hours = Number(config.hours ?? 0);
         cumulativeDelayMs += (days * 86400 + hours * 3600) * 1000;
+        // Wait step itself is "completed" (the delay is applied to subsequent steps)
+        if (cumulativeDelayMs > 0) {
+          setTimeout(() => { void (async () => { await markStep(step, "completed"); await advanceExecution(step, isLast, isLast ? "completed" : "running"); })(); }, cumulativeDelayMs);
+        } else {
+          await markStep(step, "completed");
+          await advanceExecution(step, isLast, isLast ? "completed" : "running");
+        }
         continue;
       }
 
       const execute = async () => {
+        let stepFailed = false;
+        let stepError = "";
+        try {
         if (step.actionType === "apply_list" && config.listId) {
           const listId = Number(config.listId);
           const existing = await db.select().from(emailListMembersTable)
@@ -1741,7 +2027,7 @@ export async function triggerFunnel(triggerType: string, userId: number, trigger
             if (tpl) { subject = tpl.subject; html = tpl.htmlBody; }
           }
           // Guard: skip send if both subject and html are still empty after resolution
-          if (!subject && !html) return;
+          if (!subject && !html) { stepFailed = true; stepError = "empty subject and body"; return; }
           // Fetch site_url from platform settings if not provided by the caller
           const mergedConfig = { ...triggerConfig };
           if (!mergedConfig.site_url) {
@@ -1764,12 +2050,20 @@ export async function triggerFunnel(triggerType: string, userId: number, trigger
             await db.insert(emailSendsTable).values({ type: "automation", automationEvent: triggerType, userId, email: user.email, subject, htmlBody: html, status: "sent" });
           } catch (err: any) {
             await db.insert(emailSendsTable).values({ type: "automation", automationEvent: triggerType, userId, email: user.email, subject, htmlBody: html, status: "failed", failReason: String(err?.message ?? err) });
+            stepFailed = true;
+            stepError = String(err?.message ?? err);
           }
         }
+        } catch (err: any) {
+          stepFailed = true;
+          stepError = String(err?.message ?? err);
+        }
+        await markStep(step, stepFailed ? "failed" : "completed", stepError || undefined);
+        await advanceExecution(step, isLast, isLast ? (stepFailed ? "failed" : "completed") : "running");
       };
 
       if (cumulativeDelayMs > 0) {
-        setTimeout(execute, cumulativeDelayMs);
+        setTimeout(() => { void execute(); }, cumulativeDelayMs);
       } else {
         await execute();
       }

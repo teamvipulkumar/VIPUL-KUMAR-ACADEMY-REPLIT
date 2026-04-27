@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useLocation } from "wouter";
 import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter, ShieldCheck, ShoppingCart, Flag, Minus, BookOpen, GraduationCap, UserCheck, Gift, XCircle, BookMarked, MousePointerClick, LogIn, KeyRound, MoreVertical, ArrowUpDown, Pencil, TrendingUp } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -1204,36 +1205,11 @@ function AutomationTab() {
   const [newTrigger, setNewTrigger] = useState("user_signup");
   const [newTriggerCategory, setNewTriggerCategory] = useState("all");
 
-  /* ── Report modal ── */
-  const [reportFunnel, setReportFunnel] = useState<any | null>(null);
-  const [reportData, setReportData] = useState<any | null>(null);
-  const [reportLoading, setReportLoading] = useState(false);
-  const [reportPreview, setReportPreview] = useState<string | null>(null);
-
-  const openReport = useCallback(async (f: any) => {
-    setReportFunnel(f);
-    setReportData(null);
-    setReportLoading(true);
-    try {
-      const res = await apiFetch(`/api/admin/crm/funnels/${f.id}/report`).then(r => r.json());
-      setReportData(res);
-    } catch {
-      toast({ title: "Failed to load report", variant: "destructive" });
-    }
-    setReportLoading(false);
-  }, [toast]);
-
-  const refreshReport = async () => {
-    if (!reportFunnel) return;
-    setReportLoading(true);
-    try {
-      const res = await apiFetch(`/api/admin/crm/funnels/${reportFunnel.id}/report`).then(r => r.json());
-      setReportData(res);
-    } catch {
-      toast({ title: "Failed to refresh", variant: "destructive" });
-    }
-    setReportLoading(false);
-  };
+  /* ── Report navigation ── */
+  const [, navigate] = useLocation();
+  const openReport = useCallback((f: any) => {
+    navigate(`/admin/crm/automation/${f.id}/report`);
+  }, [navigate]);
 
   /* ── Load ── */
   const loadAll = useCallback(async () => {
@@ -1840,201 +1816,6 @@ function AutomationTab() {
         </div>
       )}
 
-      {/* Report Dialog */}
-      <Dialog open={!!reportFunnel} onOpenChange={open => { if (!open) { setReportFunnel(null); setReportData(null); setReportPreview(null); } }}>
-        <DialogContent className="max-w-3xl w-full p-0 gap-0 overflow-hidden max-h-[90vh] flex flex-col" aria-describedby={undefined}>
-          {reportFunnel && (() => {
-            const trig = FUNNEL_TRIGGERS.find(t => t.type === reportFunnel.triggerType) ?? FUNNEL_TRIGGERS[0];
-            const TIcon = trig.icon;
-            const stats = reportData?.stats;
-            const daily = reportData?.daily ?? [];
-            const recent = reportData?.recent ?? [];
-            const maxDaily = daily.reduce((m: number, d: any) => Math.max(m, (d.sent ?? 0) + (d.failed ?? 0)), 0);
-            return (
-              <>
-                <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${trig.bg} ${trig.border} border`}>
-                      <TIcon className={`w-4 h-4 ${trig.color}`} />
-                    </div>
-                    <div className="min-w-0">
-                      <h2 className="text-base font-bold text-foreground truncate">{reportFunnel.name}</h2>
-                      <p className="text-[11px] text-muted-foreground">{trig.label} · Automation Report</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <button onClick={refreshReport} disabled={reportLoading}
-                      className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted/50 cursor-pointer disabled:opacity-50" title="Refresh">
-                      {reportLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                    </button>
-                    <button onClick={() => { setReportFunnel(null); setReportData(null); setReportPreview(null); }}
-                      className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted/50 cursor-pointer">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                  {reportLoading && !stats ? (
-                    <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
-                  ) : !stats ? (
-                    <div className="text-center py-12 text-sm text-muted-foreground">No report data available.</div>
-                  ) : (
-                    <>
-                      {/* Top stats grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div className="bg-card border border-border rounded-xl p-3">
-                          <p className="text-[11px] text-muted-foreground mb-1">Total Sent</p>
-                          <p className="text-2xl font-bold text-foreground">{stats.total.toLocaleString("en-IN")}</p>
-                        </div>
-                        <div className="bg-card border border-green-500/20 rounded-xl p-3">
-                          <p className="text-[11px] text-muted-foreground mb-1">Delivered</p>
-                          <p className="text-2xl font-bold text-green-400">{stats.sent.toLocaleString("en-IN")}</p>
-                        </div>
-                        <div className="bg-card border border-red-500/20 rounded-xl p-3">
-                          <p className="text-[11px] text-muted-foreground mb-1">Failed</p>
-                          <p className="text-2xl font-bold text-red-400">{stats.failed.toLocaleString("en-IN")}</p>
-                        </div>
-                        <div className="bg-card border border-primary/20 rounded-xl p-3">
-                          <p className="text-[11px] text-muted-foreground mb-1">Success Rate</p>
-                          <p className="text-2xl font-bold text-primary">{stats.successRate}%</p>
-                        </div>
-                      </div>
-
-                      {/* Secondary stats */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div className="bg-muted/30 border border-border rounded-lg p-3">
-                          <p className="text-[10px] text-muted-foreground">Today</p>
-                          <p className="text-base font-semibold text-foreground">{stats.today}</p>
-                        </div>
-                        <div className="bg-muted/30 border border-border rounded-lg p-3">
-                          <p className="text-[10px] text-muted-foreground">Last 7 days</p>
-                          <p className="text-base font-semibold text-foreground">{stats.last7}</p>
-                        </div>
-                        <div className="bg-muted/30 border border-border rounded-lg p-3">
-                          <p className="text-[10px] text-muted-foreground">Last 30 days</p>
-                          <p className="text-base font-semibold text-foreground">{stats.last30}</p>
-                        </div>
-                        <div className="bg-muted/30 border border-border rounded-lg p-3">
-                          <p className="text-[10px] text-muted-foreground">Unique recipients</p>
-                          <p className="text-base font-semibold text-foreground">{stats.uniqueRecipients}</p>
-                        </div>
-                      </div>
-
-                      {/* Daily chart (last 7 days) */}
-                      <div className="bg-card border border-border rounded-xl p-4">
-                        <p className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                          <TrendingUp className="w-4 h-4 text-primary" />Last 7 Days
-                        </p>
-                        {daily.length === 0 ? (
-                          <p className="text-xs text-muted-foreground text-center py-6">No emails sent in the last 7 days.</p>
-                        ) : (
-                          <div className="flex items-end gap-2 h-32">
-                            {daily.map((d: any) => {
-                              const total = (d.sent ?? 0) + (d.failed ?? 0);
-                              const heightPct = maxDaily > 0 ? (total / maxDaily) * 100 : 0;
-                              const sentPct = total > 0 ? (d.sent / total) * 100 : 0;
-                              const dateLabel = new Date(d.day).toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
-                              return (
-                                <div key={d.day} className="flex-1 flex flex-col items-center gap-1 group/bar relative">
-                                  <div className="absolute -top-7 opacity-0 group-hover/bar:opacity-100 transition-opacity bg-popover border border-border rounded px-2 py-0.5 text-[10px] text-foreground whitespace-nowrap z-10">
-                                    {d.sent} sent{d.failed > 0 ? `, ${d.failed} failed` : ""}
-                                  </div>
-                                  <div className="w-full flex-1 flex items-end">
-                                    <div className="w-full rounded-t-md overflow-hidden flex flex-col-reverse" style={{ height: `${heightPct}%`, minHeight: total > 0 ? "4px" : "0" }}>
-                                      <div className="bg-green-500" style={{ height: `${sentPct}%` }} />
-                                      <div className="bg-red-500" style={{ height: `${100 - sentPct}%` }} />
-                                    </div>
-                                  </div>
-                                  <span className="text-[9px] text-muted-foreground">{dateLabel}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Funnel structure summary */}
-                      <div className="bg-card border border-border rounded-xl p-4">
-                        <p className="text-sm font-semibold text-foreground mb-2">Funnel Configuration</p>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <span>Status: <span className={`font-medium ${reportFunnel.status === "published" ? "text-green-400" : "text-muted-foreground"}`}>{reportFunnel.status}</span></span>
-                          <span>·</span>
-                          <span>{stats.stepCount} step{stats.stepCount !== 1 ? "s" : ""}</span>
-                          <span>·</span>
-                          <span>{stats.emailStepCount} email step{stats.emailStepCount !== 1 ? "s" : ""}</span>
-                        </div>
-                      </div>
-
-                      {/* Recent activity */}
-                      <div className="bg-card border border-border rounded-xl overflow-hidden">
-                        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                          <p className="text-sm font-semibold text-foreground">Recent Activity</p>
-                          <span className="text-[11px] text-muted-foreground">Last {recent.length} sends</span>
-                        </div>
-                        {recent.length === 0 ? (
-                          <p className="text-xs text-muted-foreground text-center py-8">No emails sent yet for this automation.</p>
-                        ) : (
-                          <div className="divide-y divide-border">
-                            {recent.map((r: any) => (
-                              <div key={r.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
-                                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${r.status === "sent" ? "bg-green-500" : "bg-red-500"}`} />
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-medium text-foreground truncate">{r.subject}</p>
-                                  <p className="text-[10px] text-muted-foreground truncate">
-                                    {r.userName ?? r.email}
-                                    {r.status === "failed" && r.failReason ? <span className="text-red-400"> — {r.failReason}</span> : null}
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                                    {new Date(r.sentAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                                  </span>
-                                  {r.htmlBody && (
-                                    <button onClick={() => setReportPreview(r.htmlBody)}
-                                      className="p-1 text-muted-foreground hover:text-foreground rounded hover:bg-muted/50 cursor-pointer" title="Preview email">
-                                      <Eye className="w-3 h-3" />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {reportData?.note && (
-                        <p className="text-[10px] text-muted-foreground italic flex items-start gap-1.5">
-                          <Info className="w-3 h-3 flex-shrink-0 mt-0.5" />{reportData.note}
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
-              </>
-            );
-          })()}
-        </DialogContent>
-      </Dialog>
-
-      {/* Email body preview overlay */}
-      {reportPreview !== null && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
-          <div className="bg-card border border-border rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <h3 className="text-sm font-semibold">Email Preview</h3>
-              <button onClick={() => setReportPreview(null)} className="cursor-pointer text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="overflow-y-auto flex-1 p-4">
-              {reportPreview ? (
-                <iframe srcDoc={reportPreview} className="w-full min-h-[480px] rounded-lg border border-border bg-white" title="email-preview" />
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-12">Email body not available.</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -109,6 +109,7 @@ import AdminPaymentGatewaysPage from "@/pages/admin/payment-gateways";
 import AdminSettingsPage from "@/pages/admin/settings";
 import AdminFacebookPixelPage from "@/pages/admin/facebook-pixel";
 import AdminCrmPage from "@/pages/admin/crm";
+import AutomationReportPage from "@/pages/admin/automation-report";
 import AdminPagesPage from "@/pages/admin/pages";
 import AdminGstInvoicingPage from "@/pages/admin/gst-invoicing";
 import AdminFilesPage from "@/pages/admin/files";
@@ -183,6 +184,7 @@ function Router() {
       <Route path="/admin/settings" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminSettingsPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/facebook-pixel" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminFacebookPixelPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/crm" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminCrmPage /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/crm/automation/:id/report" component={() => <ProtectedRoute adminOnly><AdminLayout><AutomationReportPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/pages" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminPagesPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/gst-invoicing" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminGstInvoicingPage /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/files" component={() => <ProtectedRoute adminOnly><AdminLayout><AdminFilesPage /></AdminLayout></ProtectedRoute>} />

@@ -67,7 +67,15 @@ A full-stack SaaS course-selling platform with dark/blue premium theme. Built on
 
 ## DB Schema (lib/db/src/schema/)
 
-Tables: users, courses, modules, lessons, enrollments, payments, affiliates (referrals + payouts), coupons, notifications, platform_settings, smtp_settings, smtp_accounts, email_lists, email_list_members, contact_tags, contact_tag_assignments, email_campaigns, email_automation_rules, email_sequences, email_sequence_steps, email_sequence_enrollments, email_sends, email_templates, **automation_funnels, automation_funnel_steps**
+Tables: users, courses, modules, lessons, enrollments, payments, affiliates (referrals + payouts), coupons, notifications, platform_settings, smtp_settings, smtp_accounts, email_lists, email_list_members, contact_tags, contact_tag_assignments, email_campaigns, email_automation_rules, email_sequences, email_sequence_steps, email_sequence_enrollments, email_sends, email_templates, **automation_funnels, automation_funnel_steps, funnel_executions, funnel_execution_steps**
+
+### Automation Report Page (FluentCRM-style)
+- Route: `/admin/crm/automation/:id/report` → `artifacts/course-platform/src/pages/admin/automation-report.tsx`
+- Three tabs: Chart Report (bar+line per-step), Step Report (table), Emails Analytics (reuses legacy /report aggregator)
+- Individual Reporting table at the bottom: paginated per-contact runs with expand-to-step-timeline + delete
+- Backend endpoints (admin only): `GET/DELETE /api/admin/crm/funnels/:id/{report,step-report,executions,executions/:executionId}`
+- `triggerFunnel()` records each execution + per-step row lazily on attempt (so step-report metrics reflect real drop-off)
+- Known limitation: in-flight `wait` steps are scheduled with `setTimeout`, so an API restart will leave executions stuck in `running` until manually cleaned up — replace with a persistent scheduler before high-volume use
 
 ## Features
 

@@ -178,6 +178,30 @@ export const automationFunnelStepsTable = pgTable("automation_funnel_steps", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/* ─── Funnel Execution Tracking (per-user runs through a funnel) ─── */
+export const funnelExecutionsTable = pgTable("funnel_executions", {
+  id: serial("id").primaryKey(),
+  funnelId: integer("funnel_id").notNull().references(() => automationFunnelsTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  status: text("status", { enum: ["running", "completed", "failed"] }).notNull().default("running"),
+  currentStepOrder: integer("current_step_order").notNull().default(0),
+  nextActionType: text("next_action_type"),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  lastExecutedAt: timestamp("last_executed_at", { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+});
+
+export const funnelExecutionStepsTable = pgTable("funnel_execution_steps", {
+  id: serial("id").primaryKey(),
+  executionId: integer("execution_id").notNull().references(() => funnelExecutionsTable.id, { onDelete: "cascade" }),
+  funnelStepId: integer("funnel_step_id").notNull(),
+  stepOrder: integer("step_order").notNull(),
+  actionType: text("action_type").notNull(),
+  status: text("status", { enum: ["pending", "completed", "failed", "skipped"] }).notNull().default("pending"),
+  executedAt: timestamp("executed_at", { withTimezone: true }),
+  errorMessage: text("error_message"),
+});
+
 /* ─── Zod schemas & types ─── */
 export const insertEmailListSchema = createInsertSchema(emailListsTable).omit({ id: true, createdAt: true });
 export type InsertEmailList = z.infer<typeof insertEmailListSchema>;

@@ -24,6 +24,33 @@ async function runMigrations() {
     await db.execute(sql`ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS site_url text NOT NULL DEFAULT ''`);
     await db.execute(sql`ALTER TABLE email_sends ADD COLUMN IF NOT EXISTS html_body text`);
     await db.execute(sql`ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS email_log_retention_days integer`);
+
+    // Funnel execution tracking (per-user runs through automation funnels)
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS funnel_executions (
+        id serial PRIMARY KEY,
+        funnel_id integer NOT NULL REFERENCES automation_funnels(id) ON DELETE CASCADE,
+        user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status text NOT NULL DEFAULT 'running',
+        current_step_order integer NOT NULL DEFAULT 0,
+        next_action_type text,
+        started_at timestamptz NOT NULL DEFAULT now(),
+        last_executed_at timestamptz NOT NULL DEFAULT now(),
+        completed_at timestamptz
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS funnel_execution_steps (
+        id serial PRIMARY KEY,
+        execution_id integer NOT NULL REFERENCES funnel_executions(id) ON DELETE CASCADE,
+        funnel_step_id integer NOT NULL,
+        step_order integer NOT NULL,
+        action_type text NOT NULL,
+        status text NOT NULL DEFAULT 'pending',
+        executed_at timestamptz,
+        error_message text
+      )
+    `);
     logger.info("DB migrations OK");
   } catch (e) {
     logger.warn({ e }, "Migration warning (non-fatal)");
