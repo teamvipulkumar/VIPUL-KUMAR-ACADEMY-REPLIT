@@ -71,8 +71,9 @@ Tables: users, courses, modules, lessons, enrollments, payments, affiliates (ref
 
 ### Automation Report Page (FluentCRM-style)
 - Route: `/admin/crm/automation/:id/report` → `artifacts/course-platform/src/pages/admin/automation-report.tsx`
-- Three tabs: Chart Report (bar+line per-step), Step Report (table), Emails Analytics (reuses legacy /report aggregator)
-- Individual Reporting table at the bottom: paginated per-contact runs with expand-to-step-timeline + delete
+- Desktop-optimized layout: `max-w-[1600px]` wrapper, hero card (breadcrumb → Zap-icon title row + status pill → Trigger/Steps/Created/ID meta → 5-col KPI strip: Subscribers, Avg Completion, Emails Sent, Delivery Success, Today)
+- Three tabs in a single card: Chart Report (12-col grid: bar+line chart 8 cols + Step Overview sidebar with mini progress bars 4 cols), Step Report (table with inline gradient progress bars in Completion column), Email Analytics (8 stat cards in 2 rows + 7-day chart + recent table)
+- Individual Reporting table: gradient-avatar rows, expand-to-vertical-timeline (color-coded dots per step status), delete action, pagination with "showing X of Y" counter
 - Backend endpoints (admin only): `GET/DELETE /api/admin/crm/funnels/:id/{report,step-report,executions,executions/:executionId}`
 - `triggerFunnel()` records each execution + per-step row lazily on attempt (so step-report metrics reflect real drop-off)
 - Known limitation: in-flight `wait` steps are scheduled with `setTimeout`, so an API restart will leave executions stuck in `running` until manually cleaned up — replace with a persistent scheduler before high-volume use
