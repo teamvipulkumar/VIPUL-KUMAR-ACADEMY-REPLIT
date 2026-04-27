@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { useLocation } from "wouter";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useLocation, useSearch } from "wouter";
 import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter, ShieldCheck, ShoppingCart, Flag, Minus, BookOpen, GraduationCap, UserCheck, Gift, XCircle, BookMarked, MousePointerClick, LogIn, KeyRound, MoreVertical, ArrowUpDown, Pencil, TrendingUp } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -125,7 +125,21 @@ function Stat({ label, value, sub, icon, color = "text-foreground" }: { label: s
 
 /* ── Main CRM Page ── */
 export default function AdminCrmPage() {
-  const [tab, setTab] = useState<Tab>("dashboard");
+  const search = useSearch();
+  // Read deep-link params on first render: ?tab=automation&funnel=3
+  const initialParams = (() => {
+    const sp = new URLSearchParams(search);
+    const t = sp.get("tab") as Tab | null;
+    const validTabs: Tab[] = ["dashboard", "campaigns", "sequences", "automation", "templates", "tags", "subscribers", "smtp", "lists", "logs"];
+    const f = sp.get("funnel");
+    return {
+      tab: t && validTabs.includes(t) ? t : ("dashboard" as Tab),
+      funnelId: f && /^\d+$/.test(f) ? Number(f) : null,
+    };
+  })();
+  const [tab, setTab] = useState<Tab>(initialParams.tab);
+  // initialFunnelId is captured once; AutomationTab uses it on mount only
+  const [initialFunnelId] = useState<number | null>(initialParams.funnelId);
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -163,7 +177,7 @@ export default function AdminCrmPage() {
           {tab === "dashboard" && <DashboardTab />}
           {tab === "campaigns" && <CampaignsTab />}
           {tab === "sequences" && <SequencesTab />}
-          {tab === "automation" && <AutomationTab />}
+          {tab === "automation" && <AutomationTab initialFunnelId={initialFunnelId} />}
           {tab === "templates" && <TemplatesTab />}
           {tab === "tags" && <TagsTab />}
           {tab === "lists" && <ListsTab />}
@@ -1172,7 +1186,7 @@ function stepSummaryLabel(step: any): string {
   }
 }
 
-function AutomationTab() {
+function AutomationTab({ initialFunnelId = null }: { initialFunnelId?: number | null }) {
   const { toast } = useToast();
 
   /* ── View state ── */
@@ -1225,8 +1239,24 @@ function AutomationTab() {
     setTags(Array.isArray(t) ? t : []);
     setTemplates(Array.isArray(tp) ? tp.filter((x: any) => x.isActive) : []);
     setLoading(false);
+    return Array.isArray(f) ? f : [];
   }, []);
-  useEffect(() => { loadAll(); }, [loadAll]);
+  // Auto-open the funnel builder once funnels are loaded if a deep-link funnel id was provided.
+  // Use a ref so this only ever fires once per mount (not when user manually closes the builder).
+  const autoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (autoOpenedRef.current) { loadAll(); return; }
+    (async () => {
+      const list = await loadAll();
+      if (initialFunnelId != null && !autoOpenedRef.current) {
+        const f = list.find((x: any) => x.id === initialFunnelId);
+        if (f) {
+          autoOpenedRef.current = true;
+          openFunnel(f);
+        }
+      }
+    })();
+  }, [loadAll, initialFunnelId]);
 
   /* ── Open builder ── */
   const openFunnel = (f: any) => {
