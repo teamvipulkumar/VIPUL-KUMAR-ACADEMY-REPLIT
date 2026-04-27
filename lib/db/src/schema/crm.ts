@@ -89,6 +89,12 @@ export const emailSendsTable = pgTable("email_sends", {
   status: text("status", { enum: ["sent", "failed"] }).notNull().default("sent"),
   failReason: text("fail_reason"),
   sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  trackingToken: text("tracking_token").unique(),
+  openedAt: timestamp("opened_at", { withTimezone: true }),
+  openCount: integer("open_count").notNull().default(0),
+  clickedAt: timestamp("clicked_at", { withTimezone: true }),
+  clickCount: integer("click_count").notNull().default(0),
+  unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
 });
 
 export const emailListsTable = pgTable("email_lists", {

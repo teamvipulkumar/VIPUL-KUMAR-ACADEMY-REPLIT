@@ -83,6 +83,13 @@ Tables: users, courses, modules, lessons, enrollments, payments, affiliates (ref
 - `triggerFunnel()` records each execution + per-step row lazily on attempt (so step-report metrics reflect real drop-off)
 - Known limitation: in-flight `wait` steps are scheduled with `setTimeout`, so an API restart will leave executions stuck in `running` until manually cleaned up — replace with a persistent scheduler before high-volume use
 
+### Email Open / Click / Unsubscribe Tracking
+- Schema additions on `email_sends`: `tracking_token` (unique), `opened_at`, `open_count`, `clicked_at`, `click_count`, `unsubscribed_at`. Plus `email_unsubscribed_at` on `users`. Applied via direct SQL ALTER (drizzle-kit push had unrelated interactive prompt).
+- `crm.ts` helpers: `newTrackingToken()` (16-byte hex), `getPublicBaseUrl()` (uses `REPLIT_DEV_DOMAIN`), `signClickTarget(token, target)` (HMAC-SHA256 of `${token}:${target}` keyed on `SESSION_SECRET`, truncated to 16 hex chars), `injectEmailTracking(html, token)` (Pass 1 rewrites href on any anchor whose text/attrs contain "unsubscribe"; Pass 2 rewrites all other hrefs through the click endpoint with `&sig=`; appends footer only when Pass 1 missed; appends 1×1 open-pixel), `isUserUnsubscribed(email)`. All 6 real send call sites skip-if-unsubscribed → inject tracking → store token.
+- Public routes mounted at `/api/email/`: `GET /track/open/:token` (returns 1×1 GIF + COALESCE openedAt + bumps open_count); `GET /track/click/:token?to=&sig=` (looks up token → 404 if unknown; verifies HMAC sig with `timingSafeEqual` → 400 if mismatch/missing; only http(s) absolute or root-relative `/foo` targets allowed, else falls back to `/`; bumps click_count, COALESCEs clickedAt, also sets openedAt if null; 302); `GET /unsubscribe/:token` (HTML confirmation, marks send + user). Lives in `artifacts/api-server/src/routes/email-tracking.ts`.
+- `/funnels/:id/report` stats now expose `opened`, `openRate`, `clicked`, `clickRate`, `unsubscribed` (1-decimal rates, sent-as-denominator). Frontend `automation-report.tsx` reads these directly.
+- Security: open-redirect closed by token+HMAC double check. Note: `signClickTarget` (and `auth.ts` JWT) fall back to `"dev-secret-change-in-production"` if `SESSION_SECRET` is unset — production must enforce a real secret (currently set to a strong 88-char value).
+
 ## Features
 
 - JWT auth via httpOnly cookies

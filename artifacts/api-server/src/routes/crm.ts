@@ -1,5 +1,6 @@
 import { Router } from "express";
 import nodemailer from "nodemailer";
+import { randomBytes, createHmac } from "crypto";
 import { db } from "@workspace/db";
 import {
   smtpSettingsTable, smtpAccountsTable, emailTemplatesTable, emailCampaignsTable,
@@ -88,6 +89,87 @@ export async function sendTransactionalEmail(to: string, subject: string, html: 
   await sendEmailWithFallback(to, subject, html);
 }
 
+/* ── Email tracking helpers ───────────────────────────────────────────
+ * For analytics (opens / clicks / unsubscribes) we generate a per-send
+ * token, inject a 1×1 pixel + rewrite anchor hrefs + add an unsubscribe
+ * footer into the HTML body, then store the token alongside the send.
+ * Public tracking endpoints live in routes/email-tracking.ts.
+ * ──────────────────────────────────────────────────────────────────── */
+export function getPublicBaseUrl(): string {
+  const explicit = process.env.PUBLIC_BASE_URL?.replace(/\/+$/, "");
+  if (explicit) return explicit;
+  const dev = process.env.REPLIT_DEV_DOMAIN;
+  if (dev) return `https://${dev}`;
+  return "";
+}
+
+export function newTrackingToken(): string {
+  return randomBytes(16).toString("hex");
+}
+
+/** Sign a click target so the click endpoint can refuse tampered `to` params. */
+export function signClickTarget(token: string, target: string): string {
+  const secret = process.env.SESSION_SECRET || "dev-secret-change-in-production";
+  return createHmac("sha256", secret).update(`${token}:${target}`).digest("hex").slice(0, 16);
+}
+
+const escapeHtmlAttr = (s: string) => s.replace(/"/g, "&quot;");
+
+export function injectEmailTracking(html: string, token: string): string {
+  const base = getPublicBaseUrl();
+  if (!base || !token || !html) return html;
+  const unsubUrl = `${base}/api/email/unsubscribe/${token}`;
+
+  // Pass 1: rewrite hrefs of any existing "Unsubscribe" anchors to the tracked
+  // unsubscribe URL. This handles the common case where a template ships with a
+  // dead `href="#"` unsubscribe link.
+  let unsubInjected = false;
+  let out = html.replace(
+    /<a\b([^>]*?)\shref=(["'])([^"']*)\2([^>]*)>([\s\S]*?)<\/a>/gi,
+    (m, before, q, _url, after, inner) => {
+      if (/unsubscribe/i.test(inner) || /unsubscribe/i.test(before + after)) {
+        unsubInjected = true;
+        return `<a${before} href=${q}${escapeHtmlAttr(unsubUrl)}${q}${after}>${inner}</a>`;
+      }
+      return m;
+    },
+  );
+
+  // Pass 2: rewrite all other anchor hrefs through the click endpoint. The
+  // destination is HMAC-signed so the click endpoint can refuse tampered links.
+  out = out.replace(/<a\b([^>]*?)\shref=(["'])([^"']+)\2([^>]*)>/gi, (m, before, q, url, after) => {
+    if (!url) return m;
+    if (/^(mailto:|tel:|sms:|#|javascript:)/i.test(url)) return m;
+    if (url.includes("/api/email/track/") || url.includes("/api/email/unsubscribe/")) return m;
+    const sig = signClickTarget(token, url);
+    const tracked = `${base}/api/email/track/click/${token}?to=${encodeURIComponent(url)}&sig=${sig}`;
+    return `<a${before} href=${q}${escapeHtmlAttr(tracked)}${q}${after}>`;
+  });
+
+  // Append unsubscribe footer only if no anchor was rewritten in Pass 1.
+  if (!unsubInjected) {
+    out += `<div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;font-family:-apple-system,sans-serif;font-size:11px;color:#9ca3af;text-align:center;line-height:1.6;">Don't want these emails? <a href="${escapeHtmlAttr(unsubUrl)}" style="color:#6b7280;text-decoration:underline;">Unsubscribe</a></div>`;
+  }
+
+  // Append 1×1 tracking pixel (before </body> if present)
+  const pixelUrl = `${base}/api/email/track/open/${token}`;
+  const pixel = `<img src="${escapeHtmlAttr(pixelUrl)}" width="1" height="1" alt="" style="display:block;border:0;outline:none;text-decoration:none;height:1px;width:1px;" />`;
+  if (/<\/body>/i.test(out)) {
+    out = out.replace(/<\/body>/i, `${pixel}</body>`);
+  } else {
+    out += pixel;
+  }
+  return out;
+}
+
+/** Returns true if the user has previously unsubscribed and we should skip sending. */
+export async function isUserUnsubscribed(userId: number | null | undefined): Promise<boolean> {
+  if (!userId) return false;
+  const [u] = await db.select({ unsub: usersTable.emailUnsubscribedAt })
+    .from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  return !!(u?.unsub);
+}
+
 /** Public function called from other routes to fire automation emails */
 export async function triggerAutomation(
   event: "welcome" | "purchase" | "refund" | "forgot_password" | "completion" | "affiliate_commission",
@@ -117,11 +199,14 @@ export async function triggerAutomation(
     }
 
     const send = async () => {
+      if (await isUserUnsubscribed(userId)) return;
+      const token = newTrackingToken();
+      const trackedHtml = injectEmailTracking(html, token);
       try {
-        await sendEmailWithFallback(email, subject, html);
-        await db.insert(emailSendsTable).values({ type: "automation", automationEvent: event, userId, email, subject, htmlBody: html, status: "sent" });
+        await sendEmailWithFallback(email, subject, trackedHtml);
+        await db.insert(emailSendsTable).values({ type: "automation", automationEvent: event, userId, email, subject, htmlBody: trackedHtml, status: "sent", trackingToken: token });
       } catch (err: any) {
-        await db.insert(emailSendsTable).values({ type: "automation", automationEvent: event, userId, email, subject, htmlBody: html, status: "failed", failReason: String(err?.message ?? err) });
+        await db.insert(emailSendsTable).values({ type: "automation", automationEvent: event, userId, email, subject, htmlBody: trackedHtml, status: "failed", failReason: String(err?.message ?? err), trackingToken: token });
       }
     };
 
@@ -824,13 +909,16 @@ router.post("/campaigns/:id/send", requireAdmin, async (req, res): Promise<void>
       let failedCount = 0;
 
       for (const user of users) {
+        if (await isUserUnsubscribed(user.id)) continue;
         let html = campaign.htmlBody.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
+        const token = newTrackingToken();
+        const trackedHtml = injectEmailTracking(html, token);
         try {
-          await sendEmailWithFallback(user.email, campaign.subject, html);
-          await db.insert(emailSendsTable).values({ type: "campaign", campaignId: id, userId: user.id, email: user.email, subject: campaign.subject, htmlBody: html, status: "sent" });
+          await sendEmailWithFallback(user.email, campaign.subject, trackedHtml);
+          await db.insert(emailSendsTable).values({ type: "campaign", campaignId: id, userId: user.id, email: user.email, subject: campaign.subject, htmlBody: trackedHtml, status: "sent", trackingToken: token });
           sentCount++;
         } catch (err: any) {
-          await db.insert(emailSendsTable).values({ type: "campaign", campaignId: id, userId: user.id, email: user.email, subject: campaign.subject, htmlBody: html, status: "failed", failReason: String(err?.message ?? err) });
+          await db.insert(emailSendsTable).values({ type: "campaign", campaignId: id, userId: user.id, email: user.email, subject: campaign.subject, htmlBody: trackedHtml, status: "failed", failReason: String(err?.message ?? err), trackingToken: token });
           failedCount++;
         }
         await new Promise(r => setTimeout(r, 100));
@@ -1007,12 +1095,14 @@ router.post("/sends/:id/resend", requireAdmin, async (req, res): Promise<void> =
     }
   }
 
+  const token = newTrackingToken();
+  const trackedHtml = injectEmailTracking(html, token);
   try {
-    await sendEmailWithFallback(send.email, send.subject, html);
-    const [newSend] = await db.insert(emailSendsTable).values({ type: send.type, campaignId: send.campaignId, automationEvent: send.automationEvent, userId: send.userId, email: send.email, subject: send.subject, htmlBody: html, status: "sent" }).returning();
+    await sendEmailWithFallback(send.email, send.subject, trackedHtml);
+    const [newSend] = await db.insert(emailSendsTable).values({ type: send.type, campaignId: send.campaignId, automationEvent: send.automationEvent, userId: send.userId, email: send.email, subject: send.subject, htmlBody: trackedHtml, status: "sent", trackingToken: token }).returning();
     res.json({ ok: true, send: newSend });
   } catch (err: any) {
-    await db.insert(emailSendsTable).values({ type: send.type, campaignId: send.campaignId, automationEvent: send.automationEvent, userId: send.userId, email: send.email, subject: send.subject, htmlBody: html, status: "failed", failReason: err.message });
+    await db.insert(emailSendsTable).values({ type: send.type, campaignId: send.campaignId, automationEvent: send.automationEvent, userId: send.userId, email: send.email, subject: send.subject, htmlBody: trackedHtml, status: "failed", failReason: err.message, trackingToken: token });
     res.status(500).json({ error: err.message });
   }
 });
@@ -1437,11 +1527,17 @@ export async function processSequences(): Promise<void> {
       let html = currentStepData.htmlBody.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
       let subject = currentStepData.subject.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
 
-      try {
-        await sendEmailWithFallback(user.email, subject, html);
-        await db.insert(emailSendsTable).values({ type: "sequence", userId: user.id, email: user.email, subject, htmlBody: html, status: "sent" });
-      } catch (err: any) {
-        await db.insert(emailSendsTable).values({ type: "sequence", userId: user.id, email: user.email, subject, htmlBody: html, status: "failed", failReason: String(err?.message ?? err) });
+      if (await isUserUnsubscribed(user.id)) {
+        // Skip silently — user has opted out of emails
+      } else {
+        const token = newTrackingToken();
+        const trackedHtml = injectEmailTracking(html, token);
+        try {
+          await sendEmailWithFallback(user.email, subject, trackedHtml);
+          await db.insert(emailSendsTable).values({ type: "sequence", userId: user.id, email: user.email, subject, htmlBody: trackedHtml, status: "sent", trackingToken: token });
+        } catch (err: any) {
+          await db.insert(emailSendsTable).values({ type: "sequence", userId: user.id, email: user.email, subject, htmlBody: trackedHtml, status: "failed", failReason: String(err?.message ?? err), trackingToken: token });
+        }
       }
 
       const nextStepIndex = enrollment.currentStep + 1;
@@ -1479,13 +1575,16 @@ export async function processScheduledCampaigns(): Promise<void> {
           }
           let sentCount = 0; let failedCount = 0;
           for (const user of users) {
+            if (await isUserUnsubscribed(user.id)) continue;
             const html = campaign.htmlBody.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
+            const token = newTrackingToken();
+            const trackedHtml = injectEmailTracking(html, token);
             try {
-              await sendEmailWithFallback(user.email, campaign.subject, html);
-              await db.insert(emailSendsTable).values({ type: "campaign", campaignId: campaign.id, userId: user.id, email: user.email, subject: campaign.subject, htmlBody: html, status: "sent" });
+              await sendEmailWithFallback(user.email, campaign.subject, trackedHtml);
+              await db.insert(emailSendsTable).values({ type: "campaign", campaignId: campaign.id, userId: user.id, email: user.email, subject: campaign.subject, htmlBody: trackedHtml, status: "sent", trackingToken: token });
               sentCount++;
             } catch (err: any) {
-              await db.insert(emailSendsTable).values({ type: "campaign", campaignId: campaign.id, userId: user.id, email: user.email, subject: campaign.subject, htmlBody: html, status: "failed", failReason: String(err?.message ?? err) });
+              await db.insert(emailSendsTable).values({ type: "campaign", campaignId: campaign.id, userId: user.id, email: user.email, subject: campaign.subject, htmlBody: trackedHtml, status: "failed", failReason: String(err?.message ?? err), trackingToken: token });
               failedCount++;
             }
             await new Promise(r => setTimeout(r, 100));
@@ -1598,6 +1697,12 @@ router.get("/funnels/:id/report", requireAdmin, async (req, res): Promise<void> 
   const [last30Row] = await db.select({ c: count() }).from(emailSendsTable)
     .where(and(sendFilter, gte(emailSendsTable.sentAt, start30d)));
   const [uniqueRow] = await db.select({ c: sql<number>`count(distinct ${emailSendsTable.userId})` }).from(emailSendsTable).where(sendFilter);
+  const [openedRow] = await db.select({ c: count() }).from(emailSendsTable)
+    .where(and(sendFilter, eq(emailSendsTable.status, "sent"), sql`${emailSendsTable.openedAt} is not null`));
+  const [clickedRow] = await db.select({ c: count() }).from(emailSendsTable)
+    .where(and(sendFilter, sql`${emailSendsTable.clickedAt} is not null`));
+  const [unsubRow] = await db.select({ c: count() }).from(emailSendsTable)
+    .where(and(sendFilter, sql`${emailSendsTable.unsubscribedAt} is not null`));
 
   // Last 7 days daily breakdown for the chart
   const dailyRows = await db.select({
@@ -1628,7 +1733,12 @@ router.get("/funnels/:id/report", requireAdmin, async (req, res): Promise<void> 
   const total = Number(totalRow?.c ?? 0);
   const sent = Number(sentRow?.c ?? 0);
   const failed = Number(failedRow?.c ?? 0);
+  const opened = Number(openedRow?.c ?? 0);
+  const clicked = Number(clickedRow?.c ?? 0);
+  const unsubscribed = Number(unsubRow?.c ?? 0);
   const successRate = total > 0 ? Math.round((sent / total) * 1000) / 10 : 0;
+  const openRate = sent > 0 ? Math.round((opened / sent) * 1000) / 10 : 0;
+  const clickRate = sent > 0 ? Math.round((clicked / sent) * 1000) / 10 : 0;
 
   res.json({
     funnel: { id: funnel.id, name: funnel.name, triggerType: funnel.triggerType, status: funnel.status, isActive: funnel.isActive, createdAt: funnel.createdAt },
@@ -1638,6 +1748,9 @@ router.get("/funnels/:id/report", requireAdmin, async (req, res): Promise<void> 
       last7: Number(last7Row?.c ?? 0),
       last30: Number(last30Row?.c ?? 0),
       uniqueRecipients: Number(uniqueRow?.c ?? 0),
+      opened, openRate,
+      clicked, clickRate,
+      unsubscribed,
       stepCount: steps.length,
       emailStepCount: steps.filter(s => s.actionType === "send_email").length,
     },
@@ -2068,13 +2181,19 @@ export async function triggerFunnel(triggerType: string, userId: number, trigger
               html = html.replaceAll(`{{${key}}}`, String(val));
             }
           }
-          try {
-            await sendEmailWithFallback(user.email, subject, html);
-            await db.insert(emailSendsTable).values({ type: "automation", automationEvent: triggerType, userId, email: user.email, subject, htmlBody: html, status: "sent" });
-          } catch (err: any) {
-            await db.insert(emailSendsTable).values({ type: "automation", automationEvent: triggerType, userId, email: user.email, subject, htmlBody: html, status: "failed", failReason: String(err?.message ?? err) });
-            stepFailed = true;
-            stepError = String(err?.message ?? err);
+          if (await isUserUnsubscribed(userId)) {
+            // Skip silently — recipient has opted out
+          } else {
+            const token = newTrackingToken();
+            const trackedHtml = injectEmailTracking(html, token);
+            try {
+              await sendEmailWithFallback(user.email, subject, trackedHtml);
+              await db.insert(emailSendsTable).values({ type: "automation", automationEvent: triggerType, userId, email: user.email, subject, htmlBody: trackedHtml, status: "sent", trackingToken: token });
+            } catch (err: any) {
+              await db.insert(emailSendsTable).values({ type: "automation", automationEvent: triggerType, userId, email: user.email, subject, htmlBody: trackedHtml, status: "failed", failReason: String(err?.message ?? err), trackingToken: token });
+              stepFailed = true;
+              stepError = String(err?.message ?? err);
+            }
           }
         }
         } catch (err: any) {
