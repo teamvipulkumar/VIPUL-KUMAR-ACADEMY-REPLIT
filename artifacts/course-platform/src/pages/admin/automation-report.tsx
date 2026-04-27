@@ -492,41 +492,59 @@ export default function AutomationReportPage() {
                       </tr>
                       {isOpen && (
                         <tr className="border-t border-border bg-muted/10">
-                          <td className="px-4 py-4"></td>
-                          <td colSpan={7} className="px-4 py-4">
-                            <div className="text-[11px] text-muted-foreground mb-3 flex items-center gap-1.5 uppercase tracking-wider font-semibold">
+                          <td className="px-4 py-5"></td>
+                          <td colSpan={7} className="px-4 py-5">
+                            <div className="text-[11px] text-muted-foreground mb-4 flex items-center gap-1.5 uppercase tracking-wider font-semibold">
                               <Info className="w-3 h-3" />Step-by-step Timeline
                             </div>
-                            {steps.length === 0 ? (
-                              <div className="text-xs text-muted-foreground py-2 flex items-center gap-2">
-                                <Loader2 className="w-3 h-3 animate-spin" />Loading steps…
-                              </div>
-                            ) : (
-                              <ol className="relative border-l-2 border-border ml-1 space-y-3 py-1">
-                                {steps.map((s: any) => {
-                                  const dotColor =
-                                    s.status === "completed" ? "bg-emerald-500 ring-emerald-500/30" :
-                                    s.status === "failed" ? "bg-red-500 ring-red-500/30" :
-                                    s.status === "skipped" ? "bg-muted-foreground ring-border" :
-                                    "bg-blue-500 ring-blue-500/30";
-                                  return (
-                                    <li key={s.id} className="ml-4 flex items-center gap-2.5 flex-wrap">
-                                      <span aria-hidden="true" className={`absolute -left-[5px] w-2.5 h-2.5 rounded-full ring-4 ${dotColor}`} style={{ marginLeft: "-1.25rem" }} />
-                                      <span className="text-foreground text-xs font-medium">{s.label}</span>
+                            <ol className="relative pl-1 space-y-5" aria-busy={steps.length === 0}>
+                              {/* Continuous vertical line behind dots */}
+                              <span aria-hidden="true" className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
+
+                              {/* Entrance entry — funnel trigger event (only when funnel loaded) */}
+                              {funnel?.name && (
+                                <li className="relative pl-7 min-h-[1.75rem]">
+                                  <span aria-hidden="true" className="absolute left-0 top-0.5 w-3.5 h-3.5 rounded-full bg-card border-2 border-blue-500 flex items-center justify-center">
+                                    <span className="w-1 h-1 rounded-full bg-blue-500" />
+                                  </span>
+                                  <div className="text-foreground text-sm font-medium leading-snug">
+                                    Entrance ({funnel.name}{funnel.createdAt ? ` (Created at ${formatDate(funnel.createdAt)})` : ""})
+                                  </div>
+                                  <div className="text-muted-foreground text-[11px] mt-1">{timeAgo(row.startedAt)}</div>
+                                </li>
+                              )}
+
+                              {/* Step entries */}
+                              {steps.length === 0 ? (
+                                <li role="status" className="relative pl-7 text-xs text-muted-foreground flex items-center gap-2">
+                                  <span aria-hidden="true" className="absolute left-0 top-0.5 w-3.5 h-3.5 rounded-full bg-muted border-2 border-border" />
+                                  <Loader2 aria-hidden="true" className="w-3 h-3 animate-spin" />Loading steps…
+                                </li>
+                              ) : steps.map((s: any) => {
+                                const dotBg =
+                                  s.status === "completed" ? "bg-emerald-500" :
+                                  s.status === "failed" ? "bg-red-500" :
+                                  s.status === "skipped" ? "bg-muted-foreground" :
+                                  "bg-blue-500";
+                                return (
+                                  <li key={s.id} className="relative pl-7 min-h-[1.75rem]">
+                                    <span aria-hidden="true" className={`absolute left-0 top-0.5 w-3.5 h-3.5 rounded-full ${dotBg} ring-4 ring-card`} />
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-foreground text-sm font-medium leading-snug">{s.label}</span>
                                       <StatusBadge status={s.status} />
-                                      {s.executedAt && (
-                                        <span className="text-muted-foreground text-[11px]">{timeAgo(s.executedAt)}</span>
-                                      )}
-                                      {s.errorMessage && (
-                                        <span className="text-red-400 text-[11px] truncate max-w-[400px]" title={s.errorMessage}>
-                                          — {s.errorMessage}
-                                        </span>
-                                      )}
-                                    </li>
-                                  );
-                                })}
-                              </ol>
-                            )}
+                                    </div>
+                                    <div className="text-muted-foreground text-[11px] mt-1">
+                                      {s.executedAt ? timeAgo(s.executedAt) : "Not yet executed"}
+                                    </div>
+                                    {s.errorMessage && (
+                                      <div className="text-red-400 text-[11px] mt-1 truncate max-w-[600px]" title={s.errorMessage}>
+                                        {s.errorMessage}
+                                      </div>
+                                    )}
+                                  </li>
+                                );
+                              })}
+                            </ol>
                           </td>
                         </tr>
                       )}
