@@ -1824,10 +1824,6 @@ function AutomationTab({ initialFunnelId = null }: { initialFunnelId?: number | 
                     >
                       <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${f.isActive ? "translate-x-4" : "translate-x-0.5"}`} />
                     </button>
-                    <button onClick={() => openReport(f)}
-                      className="p-1.5 text-muted-foreground hover:text-primary cursor-pointer rounded-md hover:bg-primary/10 transition-colors" title="View Report">
-                      <BarChart2 className="w-3.5 h-3.5" />
-                    </button>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => openFunnel(f)}
                         className="p-1.5 text-muted-foreground hover:text-foreground cursor-pointer rounded-md hover:bg-muted/50 transition-colors" title="Edit">
@@ -1854,10 +1850,16 @@ function AutomationTab({ initialFunnelId = null }: { initialFunnelId?: number | 
                     {stepCount > 4 && <span className="text-[10px] text-muted-foreground self-center">+{stepCount - 4} more</span>}
                   </div>
                 )}
-                <button onClick={() => openFunnel(f)}
-                  className="mt-3 w-full text-xs text-primary hover:underline cursor-pointer text-left flex items-center gap-1">
-                  <Edit2 className="w-3 h-3" />Open Funnel Builder
-                </button>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button onClick={() => openFunnel(f)}
+                    className="inline-flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2 rounded-md border border-border text-foreground hover:bg-muted/40 hover:border-primary/40 cursor-pointer transition-colors">
+                    <Edit2 className="w-3.5 h-3.5" />Open Builder
+                  </button>
+                  <button onClick={() => openReport(f)}
+                    className="inline-flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2 rounded-md border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 hover:border-primary/50 cursor-pointer transition-colors">
+                    <BarChart2 className="w-3.5 h-3.5" />Report
+                  </button>
+                </div>
               </div>
             );
           })}
