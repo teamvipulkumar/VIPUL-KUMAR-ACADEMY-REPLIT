@@ -1563,6 +1563,89 @@ router.delete("/funnels/:id", requireAdmin, async (req, res): Promise<void> => {
   res.json({ success: true });
 });
 
+/* Report / analytics for a single funnel */
+router.get("/funnels/:id/report", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  const [funnel] = await db.select().from(automationFunnelsTable).where(eq(automationFunnelsTable.id, id)).limit(1);
+  if (!funnel) { res.status(404).json({ error: "Funnel not found" }); return; }
+
+  const steps = await db.select().from(automationFunnelStepsTable)
+    .where(eq(automationFunnelStepsTable.funnelId, id))
+    .orderBy(asc(automationFunnelStepsTable.stepOrder));
+
+  // Emails sent by this funnel are tagged with type='automation' and automationEvent=triggerType.
+  // Note: if multiple funnels share the same trigger type, their stats overlap.
+  const sendFilter = and(
+    eq(emailSendsTable.type, "automation"),
+    eq(emailSendsTable.automationEvent, funnel.triggerType),
+  );
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const start7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const start30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  const [totalRow] = await db.select({ c: count() }).from(emailSendsTable).where(sendFilter);
+  const [sentRow] = await db.select({ c: count() }).from(emailSendsTable)
+    .where(and(sendFilter, eq(emailSendsTable.status, "sent")));
+  const [failedRow] = await db.select({ c: count() }).from(emailSendsTable)
+    .where(and(sendFilter, eq(emailSendsTable.status, "failed")));
+  const [todayRow] = await db.select({ c: count() }).from(emailSendsTable)
+    .where(and(sendFilter, gte(emailSendsTable.sentAt, startOfToday)));
+  const [last7Row] = await db.select({ c: count() }).from(emailSendsTable)
+    .where(and(sendFilter, gte(emailSendsTable.sentAt, start7d)));
+  const [last30Row] = await db.select({ c: count() }).from(emailSendsTable)
+    .where(and(sendFilter, gte(emailSendsTable.sentAt, start30d)));
+  const [uniqueRow] = await db.select({ c: sql<number>`count(distinct ${emailSendsTable.userId})` }).from(emailSendsTable).where(sendFilter);
+
+  // Last 7 days daily breakdown for the chart
+  const dailyRows = await db.select({
+    day: sql<string>`to_char(${emailSendsTable.sentAt}, 'YYYY-MM-DD')`,
+    sent: sql<number>`count(*) filter (where ${emailSendsTable.status} = 'sent')`,
+    failed: sql<number>`count(*) filter (where ${emailSendsTable.status} = 'failed')`,
+  }).from(emailSendsTable)
+    .where(and(sendFilter, gte(emailSendsTable.sentAt, start7d)))
+    .groupBy(sql`to_char(${emailSendsTable.sentAt}, 'YYYY-MM-DD')`)
+    .orderBy(sql`to_char(${emailSendsTable.sentAt}, 'YYYY-MM-DD')`);
+
+  // Recent sends (last 25)
+  const recent = await db.select({
+    id: emailSendsTable.id,
+    subject: emailSendsTable.subject,
+    email: emailSendsTable.email,
+    status: emailSendsTable.status,
+    failReason: emailSendsTable.failReason,
+    sentAt: emailSendsTable.sentAt,
+    htmlBody: emailSendsTable.htmlBody,
+    userName: usersTable.name,
+  }).from(emailSendsTable)
+    .leftJoin(usersTable, eq(usersTable.id, emailSendsTable.userId))
+    .where(sendFilter)
+    .orderBy(desc(emailSendsTable.sentAt))
+    .limit(25);
+
+  const total = Number(totalRow?.c ?? 0);
+  const sent = Number(sentRow?.c ?? 0);
+  const failed = Number(failedRow?.c ?? 0);
+  const successRate = total > 0 ? Math.round((sent / total) * 1000) / 10 : 0;
+
+  res.json({
+    funnel: { id: funnel.id, name: funnel.name, triggerType: funnel.triggerType, status: funnel.status, isActive: funnel.isActive, createdAt: funnel.createdAt },
+    stats: {
+      total, sent, failed, successRate,
+      today: Number(todayRow?.c ?? 0),
+      last7: Number(last7Row?.c ?? 0),
+      last30: Number(last30Row?.c ?? 0),
+      uniqueRecipients: Number(uniqueRow?.c ?? 0),
+      stepCount: steps.length,
+      emailStepCount: steps.filter(s => s.actionType === "send_email").length,
+    },
+    daily: dailyRows.map(r => ({ day: r.day, sent: Number(r.sent ?? 0), failed: Number(r.failed ?? 0) })),
+    recent,
+    note: "Stats include all emails dispatched for this trigger type. If multiple funnels share the same trigger, their sends are aggregated together.",
+  });
+});
+
 router.post("/funnels/:id/steps", requireAdmin, async (req, res): Promise<void> => {
   const funnelId = parseInt(req.params.id);
   const { actionType, config, insertAfterOrder } = req.body;
