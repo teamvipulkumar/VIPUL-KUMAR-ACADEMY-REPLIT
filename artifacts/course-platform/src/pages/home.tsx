@@ -177,9 +177,9 @@ export default function Home() {
                         )}
                       </div>
                       <div className="p-5 flex flex-col flex-1">
-                        <div className="flex items-center gap-2 mb-2">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold capitalize self-start mb-2 ${levelColors[course.level] ?? ""}`}>{course.level}</span>
+                        <div className="mb-2">
                           <span className="text-[10px] font-semibold tracking-widest uppercase text-primary truncate">{course.category}</span>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold capitalize flex-shrink-0 ${levelColors[course.level] ?? ""}`}>{course.level}</span>
                         </div>
                         <h3 className="font-bold text-base leading-snug group-hover:text-primary transition-colors line-clamp-2 mb-2">{course.title}</h3>
                         <p className="text-xs text-muted-foreground line-clamp-2 flex-1 leading-relaxed">{course.description}</p>
