@@ -222,7 +222,7 @@ export default function BundleDetailPage() {
                         </div>
                       )}
                       {course.tag === "coming_soon" && (
-                        <div className="absolute top-1 left-1 z-10 bg-[#1d4fd7] backdrop-blur-md border border-primary/60 text-[#94a3b8] text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
+                        <div className="absolute top-1 left-1 z-10 bg-[#1d4fd7] backdrop-blur-md border border-primary/60 text-white text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
                           Soon
                         </div>
                       )}
