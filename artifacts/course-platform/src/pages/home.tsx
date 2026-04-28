@@ -368,7 +368,7 @@ export default function Home() {
             <Zap className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0" /> Limited Seats — Enroll Today
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 leading-tight">
-            Stop Consuming.<br />Start Applying.
+            Stop Consuming.<br />Start Executing.
           </h2>
           <p className="text-muted-foreground text-sm sm:text-base mb-7 md:mb-10 max-w-xs sm:max-w-lg mx-auto leading-relaxed">
             The difference between reading about a skill and truly mastering it is practice.
