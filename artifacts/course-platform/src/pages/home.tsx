@@ -171,7 +171,11 @@ export default function Home() {
                           </div>
                         )}
                         {(course as { tag?: string | null }).tag === "coming_soon" && (
-                          <div className="absolute top-2 left-2 z-10 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-lg shadow-pink-500/30">
+                          <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 bg-slate-950/80 backdrop-blur-md border border-primary/60 text-primary text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-lg shadow-primary/30">
+                            <span className="relative flex h-1.5 w-1.5">
+                              <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 animate-ping"></span>
+                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
+                            </span>
                             Coming Soon
                           </div>
                         )}
