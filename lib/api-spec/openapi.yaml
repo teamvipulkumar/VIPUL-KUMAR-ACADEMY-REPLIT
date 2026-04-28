@@ -1291,7 +1291,7 @@ components:
           type: string
         level:
           type: string
-          enum: [beginner, intermediate, advanced]
+          enum: [beginner, intermediate, advanced, coming_soon]
         status:
           type: string
           enum: [draft, published]
@@ -1351,7 +1351,7 @@ components:
           type: string
         level:
           type: string
-          enum: [beginner, intermediate, advanced]
+          enum: [beginner, intermediate, advanced, coming_soon]
         status:
           type: string
           enum: [draft, published]
@@ -1373,7 +1373,7 @@ components:
           type: string
         level:
           type: string
-          enum: [beginner, intermediate, advanced]
+          enum: [beginner, intermediate, advanced, coming_soon]
         status:
           type: string
           enum: [draft, published]

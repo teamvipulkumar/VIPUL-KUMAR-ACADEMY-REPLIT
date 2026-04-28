@@ -13,4 +13,5 @@ export const CreateCourseBodyLevel = {
   beginner: "beginner",
   intermediate: "intermediate",
   advanced: "advanced",
+  coming_soon: "coming_soon",
 } as const;

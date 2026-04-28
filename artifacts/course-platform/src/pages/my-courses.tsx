@@ -32,6 +32,7 @@ const levelColors: Record<string, string> = {
   beginner: "bg-green-500/10 text-green-400 border-green-500/20",
   intermediate: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
   advanced: "bg-red-500/10 text-red-400 border-red-500/20",
+  coming_soon: "bg-gradient-to-r from-orange-500 to-pink-500 text-white border-orange-400 shadow-md shadow-orange-500/40 animate-pulse !font-bold !uppercase tracking-wider",
 };
 
 type BundleCourse = {
@@ -116,8 +117,8 @@ function CourseCard({ e }: { e: any }) {
             </Badge>
           )}
           {e.course?.level && (
-            <Badge variant="outline" className="text-[10px] border-border text-muted-foreground px-1.5 py-0 capitalize">
-              <Star className="w-2.5 h-2.5 mr-1" />{e.course.level}
+            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 capitalize ${levelColors[e.course.level] ?? "border-border text-muted-foreground"}`}>
+              <Star className="w-2.5 h-2.5 mr-1" />{e.course.level === "coming_soon" ? "Coming Soon" : e.course.level}
             </Badge>
           )}
         </div>
@@ -250,7 +251,7 @@ function BundleCard({ bundle, enrollments }: { bundle: MyBundle; enrollments: an
                   <p className="text-sm font-semibold text-foreground truncate">{course.title}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <Badge variant="outline" className={`text-[9px] px-1 py-0 capitalize border ${levelColors[course.level] ?? "border-border text-muted-foreground"}`}>
-                      {course.level}
+                      {course.level === "coming_soon" ? "Coming Soon" : course.level}
                     </Badge>
                     <span className="text-[10px] text-muted-foreground">{Math.round((course.durationMinutes ?? 0) / 60)}h</span>
                   </div>

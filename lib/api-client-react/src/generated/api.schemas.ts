@@ -84,6 +84,7 @@ export const CourseLevel = {
   beginner: "beginner",
   intermediate: "intermediate",
   advanced: "advanced",
+  coming_soon: "coming_soon",
 } as const;
 
 export type CourseStatus = (typeof CourseStatus)[keyof typeof CourseStatus];
@@ -162,6 +163,7 @@ export const CreateCourseBodyLevel = {
   beginner: "beginner",
   intermediate: "intermediate",
   advanced: "advanced",
+  coming_soon: "coming_soon",
 } as const;
 
 export type CreateCourseBodyStatus =
@@ -189,6 +191,7 @@ export const UpdateCourseBodyLevel = {
   beginner: "beginner",
   intermediate: "intermediate",
   advanced: "advanced",
+  coming_soon: "coming_soon",
 } as const;
 
 export type UpdateCourseBodyStatus =

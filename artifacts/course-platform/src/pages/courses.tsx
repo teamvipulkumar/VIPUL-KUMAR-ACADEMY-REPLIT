@@ -29,6 +29,7 @@ export default function CoursesPage() {
     beginner: "bg-green-500/10 text-green-400 border-green-500/20",
     intermediate: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
     advanced: "bg-red-500/10 text-red-400 border-red-500/20",
+    coming_soon: "bg-gradient-to-r from-orange-500 to-pink-500 text-white border-orange-400 shadow-md shadow-orange-500/40 animate-pulse font-bold uppercase tracking-wider",
   };
 
   return (
@@ -80,7 +81,7 @@ export default function CoursesPage() {
                   )}
                   <CardHeader className="pb-2 px-4 pt-4">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${levelColors[course.level] ?? ""}`}>{course.level}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${levelColors[course.level] ?? ""}`}>{course.level === "coming_soon" ? "Coming Soon" : course.level}</span>
                       <span className="text-xs text-muted-foreground truncate">{course.category}</span>
                     </div>
                     <h3 className="font-bold text-foreground group-hover:text-primary transition-colors line-clamp-2 text-sm md:text-base">{course.title}</h3>

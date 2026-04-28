@@ -24,6 +24,7 @@ const levelColors: Record<string, string> = {
   beginner: "bg-green-500/10 text-green-400 border-green-500/20",
   intermediate: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
   advanced: "bg-red-500/10 text-red-400 border-red-500/20",
+  coming_soon: "bg-gradient-to-r from-orange-500 to-pink-500 text-white border-orange-400 shadow-md shadow-orange-500/40 animate-pulse !font-bold !uppercase tracking-wider",
 };
 
 export default function BundleDetailPage() {
@@ -227,7 +228,7 @@ export default function BundleDetailPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1.5">
                         <Badge variant="outline" className={`text-[10px] px-1.5 py-0 capitalize ${levelColors[course.level] ?? ""}`}>
-                          {course.level}
+                          {course.level === "coming_soon" ? "Coming Soon" : course.level}
                         </Badge>
                         <span className="text-xs text-muted-foreground truncate">{course.category}</span>
                         <span className="text-xs text-muted-foreground hidden sm:block">·</span>
