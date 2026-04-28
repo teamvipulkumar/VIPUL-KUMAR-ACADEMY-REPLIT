@@ -69,15 +69,20 @@ export default function CoursesPage() {
             {courses.map(course => (
               <Link href={`/courses/${course.id}`} key={course.id}>
                 <Card className="h-full bg-card border-border hover:border-primary/50 transition-all duration-200 cursor-pointer group">
-                  {course.thumbnailUrl ? (
-                    <div className="w-full aspect-video overflow-hidden rounded-t-lg">
+                  <div className="relative w-full aspect-video overflow-hidden rounded-t-lg">
+                    {course.thumbnailUrl ? (
                       <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className="w-full aspect-video bg-gradient-to-br from-primary/20 to-blue-900/30 rounded-t-lg flex items-center justify-center">
-                      <div className="text-4xl font-black text-primary/30 select-none">{course.category.charAt(0)}</div>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-primary/20 to-blue-900/30 flex items-center justify-center">
+                        <div className="text-4xl font-black text-primary/30 select-none">{course.category.charAt(0)}</div>
+                      </div>
+                    )}
+                    {(course as { tag?: string | null }).tag === "coming_soon" && (
+                      <div className="absolute top-2 left-2 z-10 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-lg shadow-pink-500/30">
+                        Coming Soon
+                      </div>
+                    )}
+                  </div>
                   <CardHeader className="pb-2 px-4 pt-4">
                     <div className="flex items-center gap-2 mb-1">
                       <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${levelColors[course.level] ?? ""}`}>{course.level}</span>

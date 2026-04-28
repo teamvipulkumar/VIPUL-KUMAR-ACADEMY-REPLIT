@@ -67,7 +67,7 @@ export default function AdminCourseEditPage() {
   const updateLesson = useUpdateLesson();
 
   // Course settings state
-  const [courseForm, setCourseForm] = useState({ title: "", description: "", thumbnailUrl: "", price: "", compareAtPrice: "", durationHours: "", category: "", level: "beginner", status: "draft" });
+  const [courseForm, setCourseForm] = useState({ title: "", description: "", thumbnailUrl: "", price: "", compareAtPrice: "", durationHours: "", category: "", level: "beginner", status: "draft", tag: "none" });
   const [courseSaving, setCourseSaving] = useState(false);
 
   // Curriculum state
@@ -96,6 +96,7 @@ export default function AdminCourseEditPage() {
         category: course.category ?? "",
         level: course.level ?? "beginner",
         status: course.status ?? "draft",
+        tag: (course as { tag?: string | null }).tag ?? "none",
       });
     }
   }, [course]);
@@ -112,6 +113,7 @@ export default function AdminCourseEditPage() {
       category: courseForm.category,
       level: courseForm.level as any,
       status: courseForm.status as any,
+      tag: (courseForm.tag === "coming_soon" ? "coming_soon" : null) as any,
       compareAtPrice: courseForm.compareAtPrice ? parseFloat(courseForm.compareAtPrice) : null,
       durationMinutes: courseForm.durationHours ? Math.round(parseFloat(courseForm.durationHours) * 60) : 0,
     };
@@ -314,6 +316,19 @@ export default function AdminCourseEditPage() {
                 <SelectItem value="published">Published</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Tag */}
+          <div className="md:col-span-2">
+            <label className="text-sm font-medium mb-1.5 block">Tag</label>
+            <Select value={courseForm.tag} onValueChange={v => setCourseForm(f => ({ ...f, tag: v }))}>
+              <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="coming_soon">Coming Soon</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">Shows a "Coming Soon" badge on the top-left corner of the course banner.</p>
           </div>
         </div>
         <div className="px-5 py-4 border-t border-border flex justify-end">

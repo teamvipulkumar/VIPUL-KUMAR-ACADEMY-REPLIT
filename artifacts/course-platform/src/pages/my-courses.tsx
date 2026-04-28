@@ -36,7 +36,7 @@ const levelColors: Record<string, string> = {
 
 type BundleCourse = {
   id: number; title: string; description: string | null; thumbnailUrl: string | null;
-  price: number; category: string; level: string; durationMinutes: number;
+  price: number; category: string; level: string; durationMinutes: number; tag?: string | null;
 };
 type MyBundle = {
   id: number; name: string; slug: string; description: string | null;
@@ -83,6 +83,11 @@ function CourseCard({ e }: { e: any }) {
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_#2563eb22_0%,_transparent_60%)]" />
             <GraduationCap className="w-14 h-14 text-primary/30" />
           </>
+        )}
+        {e.course?.tag === "coming_soon" && (
+          <div className="absolute top-3 left-3 z-10 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-lg shadow-pink-500/30">
+            Coming Soon
+          </div>
         )}
         {isDone && (
           <div className="absolute top-3 right-3 bg-green-500/20 border border-green-500/30 text-green-400 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">

@@ -7,6 +7,7 @@
  */
 import type { UpdateCourseBodyLevel } from "./updateCourseBodyLevel";
 import type { UpdateCourseBodyStatus } from "./updateCourseBodyStatus";
+import type { UpdateCourseBodyTag } from "./updateCourseBodyTag";
 
 export interface UpdateCourseBody {
   title?: string;
@@ -16,4 +17,5 @@ export interface UpdateCourseBody {
   category?: string;
   level?: UpdateCourseBodyLevel;
   status?: UpdateCourseBodyStatus;
+  tag?: UpdateCourseBodyTag;
 }

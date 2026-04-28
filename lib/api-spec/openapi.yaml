@@ -1295,6 +1295,10 @@ components:
         status:
           type: string
           enum: [draft, published]
+        tag:
+          type: string
+          enum: [coming_soon]
+          nullable: true
         enrollmentCount:
           type: integer
         moduleCount:
@@ -1355,6 +1359,10 @@ components:
         status:
           type: string
           enum: [draft, published]
+        tag:
+          type: string
+          enum: [coming_soon]
+          nullable: true
       required: [title, description, price, category, level]
 
     UpdateCourseBody:
@@ -1377,6 +1385,10 @@ components:
         status:
           type: string
           enum: [draft, published]
+        tag:
+          type: string
+          enum: [coming_soon]
+          nullable: true
 
     # Module schemas
     Module:

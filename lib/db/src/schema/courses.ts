@@ -11,6 +11,7 @@ export const coursesTable = pgTable("courses", {
   category: text("category").notNull(),
   level: text("level", { enum: ["beginner", "intermediate", "advanced"] }).notNull().default("beginner"),
   status: text("status", { enum: ["draft", "published"] }).notNull().default("draft"),
+  tag: text("tag", { enum: ["coming_soon"] }),
   durationMinutes: integer("duration_minutes").notNull().default(0),
   compareAtPrice: numeric("compare_at_price", { precision: 10, scale: 2 }),
   showOnWebsite: boolean("show_on_website").notNull().default(true),

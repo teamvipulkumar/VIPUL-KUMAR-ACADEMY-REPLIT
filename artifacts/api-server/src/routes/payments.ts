@@ -304,7 +304,7 @@ router.get("/my-bundles", requireAuth, async (req, res): Promise<void> => {
       .select({
         id: coursesTable.id, title: coursesTable.title, description: coursesTable.description,
         thumbnailUrl: coursesTable.thumbnailUrl, price: coursesTable.price,
-        category: coursesTable.category, level: coursesTable.level, durationMinutes: coursesTable.durationMinutes,
+        category: coursesTable.category, level: coursesTable.level, tag: coursesTable.tag, durationMinutes: coursesTable.durationMinutes,
       })
       .from(bundleCoursesTable)
       .leftJoin(coursesTable, eq(bundleCoursesTable.courseId, coursesTable.id))

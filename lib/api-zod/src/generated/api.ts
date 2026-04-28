@@ -118,6 +118,7 @@ export const ListCoursesResponse = zod.object({
       category: zod.string(),
       level: zod.enum(["beginner", "intermediate", "advanced"]),
       status: zod.enum(["draft", "published"]),
+      tag: zod.enum(["coming_soon"]).nullish(),
       enrollmentCount: zod.number(),
       moduleCount: zod.number(),
       lessonCount: zod.number(),
@@ -140,6 +141,7 @@ export const CreateCourseBody = zod.object({
   category: zod.string(),
   level: zod.enum(["beginner", "intermediate", "advanced"]),
   status: zod.enum(["draft", "published"]).optional(),
+  tag: zod.enum(["coming_soon"]).nullish(),
 });
 
 /**
@@ -159,6 +161,7 @@ export const GetCourseResponse = zod
     category: zod.string(),
     level: zod.enum(["beginner", "intermediate", "advanced"]),
     status: zod.enum(["draft", "published"]),
+    tag: zod.enum(["coming_soon"]).nullish(),
     enrollmentCount: zod.number(),
     moduleCount: zod.number(),
     lessonCount: zod.number(),
@@ -223,6 +226,7 @@ export const UpdateCourseBody = zod.object({
   category: zod.string().optional(),
   level: zod.enum(["beginner", "intermediate", "advanced"]).optional(),
   status: zod.enum(["draft", "published"]).optional(),
+  tag: zod.enum(["coming_soon"]).nullish(),
 });
 
 export const UpdateCourseResponse = zod.object({
@@ -234,6 +238,7 @@ export const UpdateCourseResponse = zod.object({
   category: zod.string(),
   level: zod.enum(["beginner", "intermediate", "advanced"]),
   status: zod.enum(["draft", "published"]),
+  tag: zod.enum(["coming_soon"]).nullish(),
   enrollmentCount: zod.number(),
   moduleCount: zod.number(),
   lessonCount: zod.number(),
@@ -500,6 +505,7 @@ export const ListMyEnrollmentsResponseItem = zod.object({
       category: zod.string(),
       level: zod.enum(["beginner", "intermediate", "advanced"]),
       status: zod.enum(["draft", "published"]),
+      tag: zod.enum(["coming_soon"]).nullish(),
       enrollmentCount: zod.number(),
       moduleCount: zod.number(),
       lessonCount: zod.number(),
@@ -583,6 +589,7 @@ export const GetPaymentHistoryResponseItem = zod.object({
       category: zod.string(),
       level: zod.enum(["beginner", "intermediate", "advanced"]),
       status: zod.enum(["draft", "published"]),
+      tag: zod.enum(["coming_soon"]).nullish(),
       enrollmentCount: zod.number(),
       moduleCount: zod.number(),
       lessonCount: zod.number(),
@@ -783,6 +790,7 @@ export const GetAdminAnalyticsResponse = zod.object({
           category: zod.string(),
           level: zod.enum(["beginner", "intermediate", "advanced"]),
           status: zod.enum(["draft", "published"]),
+          tag: zod.enum(["coming_soon"]).nullish(),
           enrollmentCount: zod.number(),
           moduleCount: zod.number(),
           lessonCount: zod.number(),
@@ -935,6 +943,7 @@ export const AdminListEnrollmentsResponseItem = zod.object({
       category: zod.string(),
       level: zod.enum(["beginner", "intermediate", "advanced"]),
       status: zod.enum(["draft", "published"]),
+      tag: zod.enum(["coming_soon"]).nullish(),
       enrollmentCount: zod.number(),
       moduleCount: zod.number(),
       lessonCount: zod.number(),
@@ -960,6 +969,7 @@ export const AdminListCoursesResponseItem = zod.object({
   category: zod.string(),
   level: zod.enum(["beginner", "intermediate", "advanced"]),
   status: zod.enum(["draft", "published"]),
+  tag: zod.enum(["coming_soon"]).nullish(),
   enrollmentCount: zod.number(),
   moduleCount: zod.number(),
   lessonCount: zod.number(),

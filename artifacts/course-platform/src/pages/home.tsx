@@ -162,15 +162,20 @@ export default function Home() {
                 {(coursesData?.courses ?? []).map(course => (
                   <Link href={`/courses/${course.id}`} key={course.id}>
                     <div className="group h-full flex flex-col bg-card border border-border rounded-xl overflow-hidden hover:border-primary/40 hover:-translate-y-0.5 transition-all duration-200 shadow-sm hover:shadow-md hover:shadow-primary/5">
-                      {course.thumbnailUrl ? (
-                        <div className="w-full aspect-video overflow-hidden flex-shrink-0">
+                      <div className="relative w-full aspect-video overflow-hidden flex-shrink-0">
+                        {course.thumbnailUrl ? (
                           <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
-                        </div>
-                      ) : (
-                        <div className="w-full aspect-video bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center flex-shrink-0">
-                          <span className="text-6xl font-black text-primary/15 select-none">{course.category.charAt(0)}</span>
-                        </div>
-                      )}
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center">
+                            <span className="text-6xl font-black text-primary/15 select-none">{course.category.charAt(0)}</span>
+                          </div>
+                        )}
+                        {(course as { tag?: string | null }).tag === "coming_soon" && (
+                          <div className="absolute top-2 left-2 z-10 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-lg shadow-pink-500/30">
+                            Coming Soon
+                          </div>
+                        )}
+                      </div>
                       <div className="p-5 flex flex-col flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-[10px] font-semibold tracking-widest uppercase text-primary truncate">{course.category}</span>

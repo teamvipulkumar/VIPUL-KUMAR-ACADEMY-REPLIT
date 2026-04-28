@@ -93,6 +93,12 @@ export const CourseStatus = {
   published: "published",
 } as const;
 
+export type CourseTag = (typeof CourseTag)[keyof typeof CourseTag] | null;
+
+export const CourseTag = {
+  coming_soon: "coming_soon",
+} as const;
+
 export interface Course {
   id: number;
   title: string;
@@ -102,6 +108,7 @@ export interface Course {
   category: string;
   level: CourseLevel;
   status: CourseStatus;
+  tag?: CourseTag;
   enrollmentCount: number;
   moduleCount: number;
   lessonCount: number;
@@ -172,6 +179,14 @@ export const CreateCourseBodyStatus = {
   published: "published",
 } as const;
 
+export type CreateCourseBodyTag =
+  | (typeof CreateCourseBodyTag)[keyof typeof CreateCourseBodyTag]
+  | null;
+
+export const CreateCourseBodyTag = {
+  coming_soon: "coming_soon",
+} as const;
+
 export interface CreateCourseBody {
   title: string;
   description: string;
@@ -180,6 +195,7 @@ export interface CreateCourseBody {
   category: string;
   level: CreateCourseBodyLevel;
   status?: CreateCourseBodyStatus;
+  tag?: CreateCourseBodyTag;
 }
 
 export type UpdateCourseBodyLevel =
@@ -199,6 +215,14 @@ export const UpdateCourseBodyStatus = {
   published: "published",
 } as const;
 
+export type UpdateCourseBodyTag =
+  | (typeof UpdateCourseBodyTag)[keyof typeof UpdateCourseBodyTag]
+  | null;
+
+export const UpdateCourseBodyTag = {
+  coming_soon: "coming_soon",
+} as const;
+
 export interface UpdateCourseBody {
   title?: string;
   description?: string;
@@ -207,6 +231,7 @@ export interface UpdateCourseBody {
   category?: string;
   level?: UpdateCourseBodyLevel;
   status?: UpdateCourseBodyStatus;
+  tag?: UpdateCourseBodyTag;
 }
 
 export interface CreateModuleBody {

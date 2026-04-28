@@ -32,6 +32,7 @@ async function getBundleWithCourses(bundleId: number) {
       price: coursesTable.price,
       category: coursesTable.category,
       level: coursesTable.level,
+      tag: coursesTable.tag,
       durationMinutes: coursesTable.durationMinutes,
     })
     .from(bundleCoursesTable)

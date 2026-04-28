@@ -19,6 +19,7 @@ const INITIAL_FORM = {
   category: "Affiliate Marketing",
   level: "beginner" as const,
   status: "draft" as const,
+  tag: "none" as "none" | "coming_soon",
 };
 
 export default function AdminCourseNewPage() {
@@ -41,6 +42,7 @@ export default function AdminCourseNewPage() {
       category: form.category,
       level: form.level,
       status: form.status,
+      tag: form.tag === "coming_soon" ? "coming_soon" : null,
       ...(form.compareAtPrice ? { compareAtPrice: parseFloat(form.compareAtPrice) } : {}),
       ...(form.durationHours ? { durationMinutes: Math.round(parseFloat(form.durationHours) * 60) } : {}),
     };
@@ -191,6 +193,17 @@ export default function AdminCourseNewPage() {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium mb-1.5 block">Tag</label>
+            <Select value={form.tag} onValueChange={v => setForm(f => ({ ...f, tag: v as typeof form.tag }))}>
+              <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="coming_soon">Coming Soon</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">Shows a "Coming Soon" badge on the course banner.</p>
           </div>
         </div>
 

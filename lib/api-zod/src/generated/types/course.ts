@@ -7,6 +7,7 @@
  */
 import type { CourseLevel } from "./courseLevel";
 import type { CourseStatus } from "./courseStatus";
+import type { CourseTag } from "./courseTag";
 
 export interface Course {
   id: number;
@@ -17,6 +18,7 @@ export interface Course {
   category: string;
   level: CourseLevel;
   status: CourseStatus;
+  tag?: CourseTag;
   enrollmentCount: number;
   moduleCount: number;
   lessonCount: number;

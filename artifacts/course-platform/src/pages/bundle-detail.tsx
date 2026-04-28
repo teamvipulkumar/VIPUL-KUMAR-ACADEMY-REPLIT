@@ -12,7 +12,7 @@ const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 type BundleCourse = {
   id: number; title: string; price: number; thumbnailUrl: string | null;
-  category: string; level: string; description: string | null; durationMinutes: number;
+  category: string; level: string; description: string | null; durationMinutes: number; tag?: string | null;
 };
 type Bundle = {
   id: number; name: string; slug: string; description: string | null;
@@ -213,12 +213,17 @@ export default function BundleDetailPage() {
                 <div key={course.id} className="bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 transition-colors">
                   <div className="flex gap-4 p-4">
                     {/* Thumbnail */}
-                    <div className="flex-shrink-0 w-28 md:w-36 aspect-video rounded-xl overflow-hidden">
+                    <div className="relative flex-shrink-0 w-28 md:w-36 aspect-video rounded-xl overflow-hidden">
                       {course.thumbnailUrl ? (
                         <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-primary/20 to-blue-900/40 flex items-center justify-center">
                           <span className="text-2xl font-black text-primary/30">{course.category?.charAt(0)}</span>
+                        </div>
+                      )}
+                      {course.tag === "coming_soon" && (
+                        <div className="absolute top-1 left-1 z-10 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shadow-md shadow-pink-500/30">
+                          Coming Soon
                         </div>
                       )}
                     </div>
