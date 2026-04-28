@@ -613,8 +613,9 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
   }
 
   // Paytm v3 Initiate Transaction API flow (modern, currently supported on production).
+  // v3 lives on secure.paytmpayments.com (per official paytm-pg-node-sdk), not securegw.paytm.in.
   const orderId = `BPT_${nanoid(14)}`;
-  const host = gw.isTestMode ? "https://securegw-stage.paytm.in" : "https://securegw.paytm.in";
+  const host = gw.isTestMode ? "https://securestage.paytmpayments.com" : "https://secure.paytmpayments.com";
 
   const forwardedProto = req.get("x-forwarded-proto") || req.protocol;
   const origin = `${forwardedProto}://${req.get("host")}`;
@@ -640,11 +641,17 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
   let txnToken: string;
   try {
     const sig = await PaytmChecksum.generateSignature(JSON.stringify(initBody), merchantKey);
+    const head = {
+      version: "v1",
+      channelId: "WEB",
+      requestTimestamp: Date.now().toString(),
+      signature: sig,
+    };
     const initUrl = `${host}/theia/api/v1/initiateTransaction?mid=${mid}&orderId=${encodeURIComponent(orderId)}`;
     const r = await fetch(initUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: initBody, head: { signature: sig } }),
+      body: JSON.stringify({ body: initBody, head }),
     });
     const data = await r.json() as { body?: { txnToken?: string; resultInfo?: { resultCode?: string; resultMsg?: string; resultStatus?: string } } };
     console.log("[paytm bundle create-order] initiate response:", JSON.stringify(data));
@@ -690,9 +697,10 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
   const token = signToken({ userId: freshUser!.id, email: freshUser!.email, role: freshUser!.role });
   res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
 
+  // Frontend will POST { mid, orderId, txnToken } to showPaymentPage URL
   res.json({
-    paytmParams: { ...paytmParams, CHECKSUMHASH: checksum },
-    actionUrl: `${host}/order/process`,
+    paytmParams: { mid, orderId, txnToken },
+    actionUrl: `${host}/theia/api/v1/showPaymentPage?mid=${mid}&orderId=${encodeURIComponent(orderId)}`,
     orderId,
     amount: parseFloat(amount.toFixed(2)),
     isTestMode: gw.isTestMode,

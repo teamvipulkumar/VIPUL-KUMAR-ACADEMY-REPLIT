@@ -113,10 +113,15 @@ Tables: users, courses, modules, lessons, enrollments, payments, affiliates (ref
 
 ## Paytm Integration Notes (2026-04)
 
-- **Flow**: Classic PG (form-POST to `/order/process`) — same approach as the official WordPress Paytm plugin. Theia/initiateTransaction API is NOT used because most legacy Indian merchant accounts aren't activated for it (returns `501 System Error`).
-- **Backend**: `payments.ts` and `bundles.ts` `/paytm/create-order` endpoints return `{ paytmParams: {...with CHECKSUMHASH}, actionUrl, orderId, ... }`. Frontend builds a hidden HTML form from `paytmParams` and auto-submits to `actionUrl`.
+- **Flow**: Theia v3 Initiate Transaction API. Backend POSTs signed JSON to `/theia/api/v1/initiateTransaction` → receives `txnToken` → frontend POSTs `{mid, orderId, txnToken}` form to `/theia/api/v1/showPaymentPage` (Paytm hosted page).
+- **CRITICAL — Use the new domain `secure.paytmpayments.com`, NOT `securegw.paytm.in`**:
+  - Production: `https://secure.paytmpayments.com`
+  - Staging:    `https://securestage.paytmpayments.com`
+  - The legacy `securegw.paytm.in` domain returns `resultCode 501 "System Error"` for v3 calls even when credentials are perfect. Verified from official `paytm-pg-node-sdk` v1.0.6 (`constants/MerchantProperties.js`).
+- **CRITICAL — Full SecureRequestHeader is mandatory**: head must include `version: "v1"`, `channelId: "WEB"`, `requestTimestamp: Date.now().toString()`, `signature: <checksum>`. Sending only `{ signature }` (which the older docs imply) causes 501 System Error on the new domain.
+- **Backend**: `payments.ts` and `bundles.ts` `/paytm/create-order` endpoints return `{ paytmParams: { mid, orderId, txnToken }, actionUrl, orderId, ... }`. Frontend builds a hidden HTML form generically from `paytmParams` and auto-submits to `actionUrl`.
 - **Callback**: `/paytm/callback` parses Paytm's form-POST response, verifies CHECKSUMHASH via `PaytmChecksum.verifySignature`, calls `completePaytmPayment()` (idempotent enrollment helper), then 303-redirects browser to `${origin}/payment/verify?gateway=paytm&order_id=...`.
-- **Verify endpoint**: `/paytm/verify` first checks DB status (callback may have already completed payment); falls back to `/v3/order/status` server-to-server query for pending payments.
-- **Common pitfall — "Invalid checksum"**: If Paytm returns `RESPMSG=Invalid checksum`, the merchant key is wrong for that environment. Production and staging keys are DIFFERENT for the same MID. Verify by signing the same request for staging — if staging accepts the checksum (returns "technical error" instead of "Invalid checksum"), you have a staging key configured against a production endpoint.
-- **websiteName**: Defaults to `DEFAULT` (production) / `WEBSTAGING` (test). Override per-merchant via Webhook Secret = `WS:<your-website-name>`.
+- **Verify endpoint**: `/paytm/verify` first checks DB status; falls back to `/v3/order/status` (also on `secure.paytmpayments.com`) with the full SecureRequestHeader for pending payments.
+- **websiteName**: Defaults to `DEFAULT` (production) / `WEBSTAGING` (test). Override per-merchant via Webhook Secret = `WS:<your-website-name>`. For most accounts, `DEFAULT` works on production.
 - **Library**: `paytmchecksum` v1.5.1 (NPM). `generateSignature(paramsObj, key)` produces a non-deterministic checksum (uses random IV) and `verifySignature(paramsObj, key, hash)` round-trips correctly.
+- **Diagnostic**: Admin-only endpoint `GET /api/payments/paytm/diag-key-fingerprint` probes both old/new domains, both header formats, and multiple website names — returns SHA256 fingerprint of saved key (no secret leak) plus all probe results. Remove before final deployment if not needed.

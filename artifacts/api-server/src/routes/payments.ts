@@ -814,8 +814,10 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
   // Paytm v3 Initiate Transaction API flow (modern, currently supported on production).
   // Step 1: backend posts signed JSON to /theia/api/v1/initiateTransaction → receives txnToken
   // Step 2: frontend posts mid+orderId+txnToken to /theia/api/v1/showPaymentPage → Paytm hosted page
+  // IMPORTANT: v3 API is hosted on secure.paytmpayments.com (NEW domain), NOT securegw.paytm.in (legacy /order/process only).
+  // Verified from official paytm-pg-node-sdk v1.0.6 source (constants/MerchantProperties.js).
   const orderId = `PT_${nanoid(14)}`;
-  const host = gw.isTestMode ? "https://securegw-stage.paytm.in" : "https://securegw.paytm.in";
+  const host = gw.isTestMode ? "https://securestage.paytmpayments.com" : "https://secure.paytmpayments.com";
 
   const forwardedProto = req.get("x-forwarded-proto") || req.protocol;
   const origin = `${forwardedProto}://${req.get("host")}`;
@@ -841,11 +843,18 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
   let txnToken: string;
   try {
     const sig = await PaytmChecksum.generateSignature(JSON.stringify(initBody), merchantKey);
+    // SecureRequestHeader per official paytm-pg-node-sdk: must include version, channelId, requestTimestamp, signature
+    const head = {
+      version: "v1",
+      channelId: "WEB",
+      requestTimestamp: Date.now().toString(),
+      signature: sig,
+    };
     const initUrl = `${host}/theia/api/v1/initiateTransaction?mid=${mid}&orderId=${encodeURIComponent(orderId)}`;
     const r = await fetch(initUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: initBody, head: { signature: sig } }),
+      body: JSON.stringify({ body: initBody, head }),
     });
     const data = await r.json() as { body?: { txnToken?: string; resultInfo?: { resultCode?: string; resultMsg?: string; resultStatus?: string } } };
     console.log("[paytm create-order] initiate response:", JSON.stringify(data));
@@ -962,7 +971,8 @@ router.get("/paytm/diag-key-fingerprint", requireAuth, requireAdmin, async (_req
     return (j as any)?.body?.resultInfo || j;
   };
 
-  // v3 Initiate Transaction API — the modern flow Paytm pushes
+  // v3 Initiate Transaction API — the modern flow Paytm pushes.
+  // Uses the FULL SecureRequestHeader (matching production code + official paytm-pg-node-sdk).
   const initiateTxnProbe = async (host: string, websiteName: string) => {
     const orderId = `DIAG_INIT_${Date.now()}_${Math.floor(Math.random() * 9999)}`;
     const body = {
@@ -975,16 +985,22 @@ router.get("/paytm/diag-key-fingerprint", requireAuth, requireAdmin, async (_req
       callbackUrl: "https://example.com/cb",
     };
     const sig = await PaytmChecksum.generateSignature(JSON.stringify(body), key);
+    const head = {
+      version: "v1",
+      channelId: "WEB",
+      requestTimestamp: Date.now().toString(),
+      signature: sig,
+    };
     const url = `${host}/theia/api/v1/initiateTransaction?mid=${gw.apiKey}&orderId=${orderId}`;
     const r = await fetch(url, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body, head: { signature: sig } }),
+      body: JSON.stringify({ body, head }),
     });
     const j = await r.json().catch(() => ({}));
     return { status: r.status, ...((j as any)?.body?.resultInfo || j) };
   };
 
-  const [stgMsg, prodDefault, prodWebProd, prodRetail, prodCustom, statusProd, statusStg, initProdDefault, initStgWebStaging, initProdAlt] = await Promise.all([
+  const [stgMsg, prodDefault, prodWebProd, prodRetail, prodCustom, statusProd, statusStg, initProdDefault, initStgWebStaging, initProdAlt, initNewProdDefault, initNewProdAlt, initNewStgWebstaging] = await Promise.all([
     probeStg(),
     probeProdWithWebsite("DEFAULT"),
     probeProdWithWebsite("WEBPROD"),
@@ -995,6 +1011,10 @@ router.get("/paytm/diag-key-fingerprint", requireAuth, requireAdmin, async (_req
     initiateTxnProbe("https://securegw.paytm.in", "DEFAULT"),
     initiateTxnProbe("https://securegw-stage.paytm.in", "WEBSTAGING"),
     initiateTxnProbe("https://securegw.paytm.in", "Default"),
+    // NEW: secure.paytmpayments.com — the domain used by official paytm-pg-node-sdk
+    initiateTxnProbe("https://secure.paytmpayments.com", "DEFAULT"),
+    initiateTxnProbe("https://secure.paytmpayments.com", "Default"),
+    initiateTxnProbe("https://securestage.paytmpayments.com", "WEBSTAGING"),
   ]);
   const prodMsg = prodDefault;
 
@@ -1109,7 +1129,7 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
 
   const mid = gw.apiKey;
   const merchantKey = gw.secretKey;
-  const host = gw.isTestMode ? "https://securegw-stage.paytm.in" : "https://securegw.paytm.in";
+  const host = gw.isTestMode ? "https://securestage.paytmpayments.com" : "https://secure.paytmpayments.com";
 
   const statusBody = { mid, orderId };
   const statusSignature = await PaytmChecksum.generateSignature(JSON.stringify(statusBody), merchantKey);
@@ -1118,7 +1138,15 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
     const r = await fetch(`${host}/v3/order/status`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ head: { version: "v1", signature: statusSignature }, body: statusBody }),
+      body: JSON.stringify({
+        head: {
+          version: "v1",
+          channelId: "WEB",
+          requestTimestamp: Date.now().toString(),
+          signature: statusSignature,
+        },
+        body: statusBody,
+      }),
     });
     const result = await r.json();
     const resultStatus: string = result.body?.resultInfo?.resultStatus ?? result.body?.status ?? "";
