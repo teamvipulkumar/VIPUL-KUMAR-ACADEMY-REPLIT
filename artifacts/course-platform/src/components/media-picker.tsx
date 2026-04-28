@@ -29,7 +29,7 @@ function FileThumb({ file }: { file: MediaFile }) {
   if (file.type === "image") {
     return (
       <img
-        src={`${API_BASE}${file.url}`}
+        src={/^https?:\/\//i.test(file.url) ? file.url : `${API_BASE}${file.url}`}
         alt={file.filename}
         className="w-full h-full object-cover"
         loading="lazy"
@@ -88,7 +88,7 @@ export function MediaPicker({
 
   const handleSelect = () => {
     if (!selected) return;
-    onSelect(`${API_BASE}${selected}`);
+    onSelect(/^https?:\/\//i.test(selected) ? selected : `${API_BASE}${selected}`);
     setSelected(null);
     onClose();
   };
@@ -110,7 +110,8 @@ export function MediaPicker({
       }
       const data = await res.json();
       queryClient.invalidateQueries({ queryKey: ["admin-files"] });
-      onSelect(`${API_BASE}${data.url}`);
+      const url: string = data.url ?? "";
+      onSelect(/^https?:\/\//i.test(url) ? url : `${API_BASE}${url}`);
       setSelected(null);
       onClose();
     } catch (err: any) {
@@ -240,7 +241,7 @@ export function MediaPicker({
                     <p className="font-medium text-foreground text-sm">
                       {uploadDrag ? "Drop to upload" : "Click or drag & drop to upload"}
                     </p>
-                    <p className="text-xs mt-1">Images, Videos, PDFs, Documents · Max 500 MB</p>
+                    <p className="text-xs mt-1">Images, Videos, PDFs, Documents · Max 50 MB</p>
                   </div>
                 </>
               )}

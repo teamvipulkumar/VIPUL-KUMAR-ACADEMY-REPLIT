@@ -1,28 +1,18 @@
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
-import fs from "fs";
 import crypto from "crypto";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
+import { uploadFile, deleteFile, listFiles } from "../lib/supabase-storage";
 
 const router = Router();
 
-const UPLOADS_DIR = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase() || ".bin";
-    const name = crypto.randomBytes(12).toString("hex");
-    cb(null, `${name}${ext}`);
-  },
-});
+// Files are buffered in memory and streamed to Supabase Storage. We never
+// touch local disk. Multer's memory storage keeps the file on `req.file.buffer`.
+const memoryStorage = multer.memoryStorage();
 
 const imageUpload = multer({
-  storage,
+  storage: memoryStorage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
@@ -31,9 +21,12 @@ const imageUpload = multer({
   },
 });
 
+// Files are buffered in memory before streaming to Supabase, so the limit must
+// be conservative to avoid OOM/DoS on the API process. Heavy assets (long
+// videos, etc.) should be hosted externally and referenced by URL.
 const mediaUpload = multer({
-  storage,
-  limits: { fileSize: 500 * 1024 * 1024 },
+  storage: memoryStorage,
+  limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = [
       "image/jpeg", "image/png", "image/webp", "image/gif", "image/avif", "image/svg+xml",
@@ -51,21 +44,39 @@ const mediaUpload = multer({
   },
 });
 
-function getMimeFromExt(ext: string): string {
-  const map: Record<string, string> = {
-    jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
-    gif: "image/gif", avif: "image/avif", svg: "image/svg+xml",
-    mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime", avi: "video/x-msvideo",
-    pdf: "application/pdf",
-    doc: "application/msword",
-    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ppt: "application/vnd.ms-powerpoint",
-    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    xls: "application/vnd.ms-excel",
-    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  };
-  return map[ext] ?? "application/octet-stream";
+function generateFilename(originalName: string): string {
+  const ext = path.extname(originalName).toLowerCase() || ".bin";
+  const name = crypto.randomBytes(12).toString("hex");
+  return `${name}${ext}`;
 }
+
+router.post("/image", requireAuth, imageUpload.single("image"), async (req, res) => {
+  if (!req.file) { res.status(400).json({ error: "No image file provided" }); return; }
+  try {
+    const filename = generateFilename(req.file.originalname);
+    const url = await uploadFile(filename, req.file.buffer, req.file.mimetype);
+    res.json({ url, filename });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : "Upload failed" });
+  }
+});
+
+router.post("/file", requireAdmin, mediaUpload.single("file"), async (req, res) => {
+  if (!req.file) { res.status(400).json({ error: "No file provided" }); return; }
+  try {
+    const filename = generateFilename(req.file.originalname);
+    const url = await uploadFile(filename, req.file.buffer, req.file.mimetype);
+    res.json({
+      url,
+      filename,
+      originalName: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : "Upload failed" });
+  }
+});
 
 function fileTypeCategory(mime: string): "image" | "video" | "document" | "other" {
   if (mime.startsWith("image/")) return "image";
@@ -74,54 +85,27 @@ function fileTypeCategory(mime: string): "image" | "video" | "document" | "other
   return "other";
 }
 
-router.post("/image", requireAuth, imageUpload.single("image"), (req, res) => {
-  if (!req.file) { res.status(400).json({ error: "No image file provided" }); return; }
-  const url = `/api/files/${req.file.filename}`;
-  res.json({ url, filename: req.file.filename });
-});
-
-router.post("/file", requireAdmin, mediaUpload.single("file"), (req, res) => {
-  if (!req.file) { res.status(400).json({ error: "No file provided" }); return; }
-  const url = `/api/files/${req.file.filename}`;
-  res.json({ url, filename: req.file.filename, originalName: req.file.originalname, size: req.file.size, mimetype: req.file.mimetype });
-});
-
-router.get("/admin/files", requireAdmin, (_req, res) => {
+router.get("/admin/files", requireAdmin, async (_req, res) => {
   try {
-    const files = fs.readdirSync(UPLOADS_DIR);
-    const result = files
-      .map(filename => {
-        const filepath = path.join(UPLOADS_DIR, filename);
-        const stat = fs.statSync(filepath);
-        const ext = path.extname(filename).toLowerCase().slice(1);
-        const mime = getMimeFromExt(ext);
-        return {
-          filename,
-          url: `/api/files/${filename}`,
-          size: stat.size,
-          uploadedAt: stat.mtime.toISOString(),
-          mimetype: mime,
-          type: fileTypeCategory(mime),
-        };
-      })
-      .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
-    res.json(result);
-  } catch {
+    const files = await listFiles();
+    res.json(files.map(f => ({ ...f, type: fileTypeCategory(f.mimetype) })));
+  } catch (err) {
+    console.warn("[upload] list failed:", err);
     res.json([]);
   }
 });
 
-router.delete("/admin/files/:filename", requireAdmin, (req, res) => {
-  const { filename } = req.params;
+router.delete("/admin/files/:filename", requireAdmin, async (req, res) => {
+  const filename = String(req.params.filename ?? "");
   if (!filename || filename.includes("..") || filename.includes("/")) {
     res.status(400).json({ error: "Invalid filename" }); return;
   }
-  const filepath = path.join(UPLOADS_DIR, filename);
-  if (!fs.existsSync(filepath)) {
-    res.status(404).json({ error: "File not found" }); return;
+  try {
+    await deleteFile(filename);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(404).json({ error: err instanceof Error ? err.message : "Delete failed" });
   }
-  fs.unlinkSync(filepath);
-  res.json({ success: true });
 });
 
 export default router;

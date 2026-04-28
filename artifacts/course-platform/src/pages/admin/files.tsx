@@ -72,7 +72,7 @@ export default function AdminFilesPage() {
   });
 
   const copyUrl = useCallback((file: MediaFile) => {
-    const fullUrl = `${API_BASE}${file.url}`;
+    const fullUrl = /^https?:\/\//i.test(file.url) ? file.url : `${API_BASE}${file.url}`;
     navigator.clipboard.writeText(fullUrl).then(() => {
       setCopiedFile(file.filename);
       setTimeout(() => setCopiedFile(null), 2000);
@@ -184,7 +184,7 @@ export default function AdminFilesPage() {
         >
           <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground/40" />
           <p className="font-medium text-foreground mb-1">Drop files here or click to upload</p>
-          <p className="text-sm">Images, Videos, PDFs, Documents — up to 500 MB per file</p>
+          <p className="text-sm">Images, Videos, PDFs, Documents — up to 50 MB per file</p>
         </div>
       )}
 
@@ -237,7 +237,7 @@ export default function AdminFilesPage() {
                   <div className="aspect-square bg-card/50 flex items-center justify-center overflow-hidden">
                     {file.type === "image" ? (
                       <img
-                        src={`${API_BASE}${file.url}`}
+                        src={/^https?:\/\//i.test(file.url) ? file.url : `${API_BASE}${file.url}`}
                         alt={file.filename}
                         className="w-full h-full object-cover"
                         loading="lazy"
@@ -352,7 +352,7 @@ export default function AdminFilesPage() {
               onClick={e => e.stopPropagation()}
             >
               <img
-                src={`${API_BASE}${previewFile.url}`}
+                src={/^https?:\/\//i.test(previewFile.url) ? previewFile.url : `${API_BASE}${previewFile.url}`}
                 alt={previewFile.filename}
                 className="rounded-xl shadow-2xl"
                 style={{
@@ -371,7 +371,7 @@ export default function AdminFilesPage() {
                   <p className="text-xs text-white/50">{formatBytes(previewFile.size)} · {formatDate(previewFile.uploadedAt)}</p>
                 </div>
                 <a
-                  href={`${API_BASE}${previewFile.url}`}
+                  href={/^https?:\/\//i.test(previewFile.url) ? previewFile.url : `${API_BASE}${previewFile.url}`}
                   download={previewFile.filename}
                   target="_blank"
                   rel="noopener noreferrer"

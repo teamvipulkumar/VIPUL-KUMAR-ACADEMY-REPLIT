@@ -2,7 +2,6 @@ import express, { type Express } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
-import path from "path";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
@@ -38,9 +37,20 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
-// Serve uploaded files via /api/files/* so they work through the Replit proxy
-const uploadsDir = path.join(process.cwd(), "uploads");
-app.use("/api/files", express.static(uploadsDir));
+// Uploaded files now live in Supabase Storage (public bucket "uploads"). New
+// uploads return absolute Supabase URLs directly, so no /api/files/* proxy is
+// needed. Legacy DB rows pointing at /api/files/<name> are redirected here so
+// any cached HTML keeps working until those rows are rewritten.
+const SUPABASE_URL = process.env.SUPABASE_URL;
+if (SUPABASE_URL) {
+  app.get("/api/files/:filename", (req, res) => {
+    const fn = String(req.params.filename ?? "");
+    if (!fn || fn.includes("..") || fn.includes("/")) {
+      res.status(400).send("Invalid filename"); return;
+    }
+    res.redirect(302, `${SUPABASE_URL}/storage/v1/object/public/uploads/${encodeURIComponent(fn)}`);
+  });
+}
 
 app.use("/api", router);
 

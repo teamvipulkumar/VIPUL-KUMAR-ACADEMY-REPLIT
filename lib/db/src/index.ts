@@ -4,19 +4,19 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
-const connectionString = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
+// We deliberately use ONLY Supabase as our database. Any built-in DATABASE_URL
+// (e.g. a provisioned Replit Postgres) is ignored to keep storage centralised.
+const connectionString = process.env.SUPABASE_DATABASE_URL;
 
 if (!connectionString) {
   throw new Error(
-    "DATABASE_URL or SUPABASE_DATABASE_URL must be set. Did you forget to provision a database?",
+    "SUPABASE_DATABASE_URL must be set. This app uses Supabase as its only database.",
   );
 }
 
-const isSupabase = !!process.env.SUPABASE_DATABASE_URL;
-
 export const pool = new Pool({
   connectionString,
-  ssl: isSupabase ? { rejectUnauthorized: false } : undefined,
+  ssl: { rejectUnauthorized: false },
 });
 export const db = drizzle(pool, { schema });
 

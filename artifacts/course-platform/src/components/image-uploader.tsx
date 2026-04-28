@@ -52,7 +52,10 @@ export function ImageUploader({
       }
 
       const data = await res.json();
-      onChange(`${API_BASE}${data.url}`);
+      // Backend now returns absolute Supabase Storage URLs, so we use them as-is.
+      // Fall back to API_BASE prefix for any legacy `/api/files/...` response.
+      const url: string = data.url ?? "";
+      onChange(/^https?:\/\//i.test(url) ? url : `${API_BASE}${url}`);
     } catch (err: any) {
       setError(err.message ?? "Upload failed. Please try again.");
     } finally {

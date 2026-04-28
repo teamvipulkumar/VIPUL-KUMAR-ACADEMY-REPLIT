@@ -352,8 +352,8 @@ export default function OrderPage() {
           </div>
           <div className="grid-proof">
             {[
-              `${API_BASE}/api/files/3034c6d598a19edf3010ef49.png`,
-              `${API_BASE}/api/files/037ff30eaf8f7b280256e0ca.png`,
+              `https://shjwpdgcdeuvtaohtrok.supabase.co/storage/v1/object/public/uploads/3034c6d598a19edf3010ef49.png`,
+              `https://shjwpdgcdeuvtaohtrok.supabase.co/storage/v1/object/public/uploads/037ff30eaf8f7b280256e0ca.png`,
             ].map((src, i) => (
               <img key={i} src={src} alt={`Proof screenshot ${i + 1}`} style={{
                 display: "block", width: "100%", height: "auto", borderRadius: 12,
@@ -371,10 +371,10 @@ export default function OrderPage() {
             </SectionHeading>
             <div className="grid-students">
               {[
-                { src: `${API_BASE}/api/files/4d432b070d2d411e24a4d77c.jpg`, label: "STUDENT #1" },
-                { src: `${API_BASE}/api/files/964249bf75f7602bc339ad4a.jpg`, label: "STUDENT #2" },
-                { src: `${API_BASE}/api/files/6fe2de6bae918f8dd531bb90.jpg`, label: "STUDENT #3" },
-                { src: `${API_BASE}/api/files/e49830a459f19fb7933d649b.jpg`, label: "STUDENT #4" },
+                { src: `https://shjwpdgcdeuvtaohtrok.supabase.co/storage/v1/object/public/uploads/4d432b070d2d411e24a4d77c.jpg`, label: "STUDENT #1" },
+                { src: `https://shjwpdgcdeuvtaohtrok.supabase.co/storage/v1/object/public/uploads/964249bf75f7602bc339ad4a.jpg`, label: "STUDENT #2" },
+                { src: `https://shjwpdgcdeuvtaohtrok.supabase.co/storage/v1/object/public/uploads/6fe2de6bae918f8dd531bb90.jpg`, label: "STUDENT #3" },
+                { src: `https://shjwpdgcdeuvtaohtrok.supabase.co/storage/v1/object/public/uploads/e49830a459f19fb7933d649b.jpg`, label: "STUDENT #4" },
               ].map(({ src, label }, i) => (
                 <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
                   <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: 13, color: "#94a3b8", letterSpacing: "0.05em", textTransform: "uppercase" }}>{label}</span>
