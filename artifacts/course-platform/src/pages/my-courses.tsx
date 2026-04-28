@@ -85,7 +85,7 @@ function CourseCard({ e }: { e: any }) {
           </>
         )}
         {e.course?.tag === "coming_soon" && (
-          <div className="absolute top-3 left-3 z-10 bg-slate-950/80 backdrop-blur-md border border-primary/60 text-[#94a3b8] text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md">
+          <div className="absolute top-3 left-3 z-10 bg-[#1d4fd7] backdrop-blur-md border border-primary/60 text-[#94a3b8] text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md">
             Coming Soon
           </div>
         )}
