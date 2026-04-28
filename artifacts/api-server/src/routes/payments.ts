@@ -11,7 +11,7 @@ import {
 } from "@workspace/db";
 import { eq, and, desc, isNull, or } from "drizzle-orm";
 import { bundlesTable, bundleCoursesTable } from "@workspace/db";
-import { requireAuth, signToken, verifyToken, type JwtPayload } from "../middlewares/auth";
+import { requireAuth, requireAdmin, signToken, verifyToken, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import { triggerAutomation, triggerFunnel } from "./crm";
 import { sendFbEvent } from "../lib/facebook-pixel";
@@ -875,6 +875,75 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
     userId,
     courseId: parseInt(courseId),
     courseTitle: course.title,
+  });
+});
+
+// ── DIAGNOSTIC: Verify what credentials are saved (admin only, no secrets exposed)
+router.get("/paytm/diag-key-fingerprint", requireAuth, requireAdmin, async (_req, res): Promise<void> => {
+  const [gw] = await db.select().from(paymentGatewaysTable).where(eq(paymentGatewaysTable.name, "paytm")).limit(1);
+  if (!gw) { res.status(404).json({ error: "Paytm not configured" }); return; }
+
+  const key = gw.secretKey || "";
+  const sha = crypto.createHash("sha256").update(key).digest("hex");
+  const bytes = Array.from(key).map(c => c.charCodeAt(0));
+
+  // Test the key against both Paytm staging and production with a minimal valid request
+  const testParams = {
+    MID: gw.apiKey, ORDER_ID: `DIAG_${Date.now()}`, CUST_ID: "diag",
+    INDUSTRY_TYPE_ID: "Retail", CHANNEL_ID: "WEB", TXN_AMOUNT: "1.00",
+    WEBSITE: (gw.webhookSecret || "").startsWith("WS:") ? gw.webhookSecret!.slice(3).trim() : "DEFAULT",
+    CALLBACK_URL: "https://example.com/cb",
+  };
+  const cs = await PaytmChecksum.generateSignature(testParams, key);
+  const probe = async (url: string) => {
+    const r = await fetch(url, {
+      method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ ...testParams, CHECKSUMHASH: cs }).toString(), redirect: "manual",
+    });
+    const t = await r.text();
+    return (t.match(/name='RESPMSG' value='([^']+)'/) || [])[1] || "(none)";
+  };
+
+  const stagingParams = { ...testParams, ORDER_ID: `DIAG2_${Date.now()}`, WEBSITE: "WEBSTAGING" };
+  const csStg = await PaytmChecksum.generateSignature(stagingParams, key);
+  const probeStg = async () => {
+    const r = await fetch("https://securegw-stage.paytm.in/order/process", {
+      method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ ...stagingParams, CHECKSUMHASH: csStg }).toString(), redirect: "manual",
+    });
+    const t = await r.text();
+    return (t.match(/name='RESPMSG' value='([^']+)'/) || [])[1] || "(none)";
+  };
+
+  const [prodMsg, stgMsg] = await Promise.all([
+    probe("https://securegw.paytm.in/order/process"),
+    probeStg(),
+  ]);
+
+  res.json({
+    mid: gw.apiKey,
+    midLength: gw.apiKey.length,
+    keyLength: key.length,
+    keySha256First16: sha.slice(0, 16), // identifies the key without revealing it
+    keyFirstChar: key.charAt(0),
+    keyLastChar: key.slice(-1),
+    hasWhitespace: bytes.some(b => b === 32 || b === 9 || b === 10 || b === 13),
+    isAllPrintableAscii: bytes.every(b => b >= 32 && b <= 126),
+    isTestMode: gw.isTestMode,
+    websiteName: (gw.webhookSecret || "").startsWith("WS:") ? gw.webhookSecret!.slice(3).trim() : "DEFAULT",
+    diagnosis: {
+      productionResp: prodMsg,
+      stagingResp: stgMsg,
+      verdict:
+        prodMsg === "Invalid checksum" && stgMsg !== "Invalid checksum"
+          ? "❌ This is a STAGING/SANDBOX key — Paytm production rejects it. Get the LIVE production merchant key."
+          : prodMsg !== "Invalid checksum"
+            ? "✅ Key is accepted by production — checksum validates correctly."
+            : prodMsg === "Invalid checksum" && stgMsg === "Invalid checksum"
+              ? "❌ Key is invalid for BOTH environments. Wrong key entirely."
+              : `Production says: ${prodMsg}`,
+    },
+    updatedAt: gw.updatedAt,
   });
 });
 

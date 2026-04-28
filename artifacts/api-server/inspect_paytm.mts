@@ -1,0 +1,14 @@
+import postgres from "postgres";
+const sql = postgres(process.env.SUPABASE_DATABASE_URL!, { prepare: false });
+const rows = await sql`SELECT api_key, secret_key, is_test_mode, COALESCE(webhook_secret, '') as webhook_secret, updated_at FROM payment_gateways WHERE name='paytm'`;
+await sql.end();
+const gw = rows[0] as any;
+console.log("MID:", gw.api_key);
+console.log("Key length:", gw.secret_key.length);
+console.log("Key first 4 + last 2:", gw.secret_key.slice(0, 4) + "..." + gw.secret_key.slice(-2));
+console.log("Test Mode:", gw.is_test_mode);
+console.log("Webhook Secret:", gw.webhook_secret || "(empty)");
+console.log("Last updated:", gw.updated_at);
+const bytes = Array.from(gw.secret_key as string).map((c: string) => c.charCodeAt(0));
+console.log("Has whitespace:", bytes.some((b: number) => b === 32 || b === 9 || b === 10 || b === 13));
+console.log("Hex:", bytes.map((n: number) => n.toString(16).padStart(2, "0")).join(""));
