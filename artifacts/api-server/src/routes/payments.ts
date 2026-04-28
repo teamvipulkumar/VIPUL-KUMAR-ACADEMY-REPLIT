@@ -994,7 +994,7 @@ router.get("/paytm/diag-key-fingerprint", requireAuth, requireAdmin, async (_req
     orderStatusProbe("https://securegw-stage.paytm.in"),
     initiateTxnProbe("https://securegw.paytm.in", "DEFAULT"),
     initiateTxnProbe("https://securegw-stage.paytm.in", "WEBSTAGING"),
-    initiateTxnProbe("https://securegw.paytm.in", "WEBPROD"),
+    initiateTxnProbe("https://securegw.paytm.in", "Default"),
   ]);
   const prodMsg = prodDefault;
 
