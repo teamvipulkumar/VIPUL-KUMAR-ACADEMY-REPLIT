@@ -8,7 +8,7 @@ import {
   paymentGatewaysTable, bundlesTable, bundleCoursesTable
 } from "@workspace/db";
 import { eq, count, sum, gte, and, ilike, or, sql, desc, ne, inArray, isNotNull } from "drizzle-orm";
-import { requireAdmin, type JwtPayload } from "../middlewares/auth";
+import { requireAdmin, verifyToken, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import { triggerAutomation } from "./crm";
 
@@ -975,14 +975,35 @@ router.get("/payment-gateways/:name/test", requireAdmin, async (req, res): Promi
   }
 });
 
-/* ── Public: maintenance status (no auth required) ── */
-router.get("/public/maintenance", async (_req, res): Promise<void> => {
+/* ── Public: maintenance status (no auth required) ──
+ * Admins/staff bypass maintenance even when it's enabled — they can still
+ * access the site to fix things. Bypass is decided server-side (via the auth
+ * cookie) so the inline maintenance gate in index.html can act on the result
+ * without any client-side flash.
+ */
+router.get("/public/maintenance", async (req, res): Promise<void> => {
+  let isAdmin = false;
+  try {
+    const token = (req as Request & { cookies?: { token?: string } }).cookies?.token;
+    if (token) {
+      const payload = verifyToken(token);
+      if (payload?.role === "admin" || payload?.role === "staff") isAdmin = true;
+    }
+  } catch { /* invalid token → treat as anonymous */ }
+
   const settings = await db.select({
     maintenanceMode: platformSettingsTable.maintenanceMode,
     maintenanceMessage: platformSettingsTable.maintenanceMessage,
   }).from(platformSettingsTable).limit(1);
-  if (settings.length === 0) { res.json({ maintenanceMode: false, maintenanceMessage: null }); return; }
-  res.json(settings[0]);
+
+  // Cache-bust: maintenance status must be fresh on every check
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+
+  if (settings.length === 0) {
+    res.json({ maintenanceMode: false, maintenanceMessage: null, isAdmin });
+    return;
+  }
+  res.json({ ...settings[0], isAdmin });
 });
 
 /* ── Public: homepage section visibility (no auth required) ── */

@@ -2,9 +2,6 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-// Suppress harmless AbortError / "signal is aborted without reason" that fires
-// whenever React Query cancels an in-flight fetch on navigation. These are not
-// real errors — the Vite runtime-error overlay would show them as crashes.
 window.addEventListener("unhandledrejection", (event) => {
   const r = event.reason;
   if (
@@ -15,4 +12,23 @@ window.addEventListener("unhandledrejection", (event) => {
   }
 });
 
-createRoot(document.getElementById("root")!).render(<App />);
+type MaintenanceGateResult = { blocked: boolean; isAdmin?: boolean; error?: boolean };
+const maintenancePromise: Promise<MaintenanceGateResult> | undefined =
+  (window as unknown as { __vkaMaintenance?: Promise<MaintenanceGateResult> }).__vkaMaintenance;
+
+async function bootstrap() {
+  if (maintenancePromise) {
+    try {
+      const result = await maintenancePromise;
+      if (result.blocked) {
+        return;
+      }
+    } catch {
+    }
+  }
+  const rootEl = document.getElementById("root");
+  if (!rootEl) return;
+  createRoot(rootEl).render(<App />);
+}
+
+bootstrap();

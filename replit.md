@@ -125,3 +125,22 @@ Tables: users, courses, modules, lessons, enrollments, payments, affiliates (ref
 - **websiteName**: Defaults to `DEFAULT` (production) / `WEBSTAGING` (test). Override per-merchant via Webhook Secret = `WS:<your-website-name>`. For most accounts, `DEFAULT` works on production.
 - **Library**: `paytmchecksum` v1.5.1 (NPM). `generateSignature(paramsObj, key)` produces a non-deterministic checksum (uses random IV) and `verifySignature(paramsObj, key, hash)` round-trips correctly.
 - **Diagnostic**: Admin-only endpoint `GET /api/payments/paytm/diag-key-fingerprint` probes both old/new domains, both header formats, and multiple website names — returns SHA256 fingerprint of saved key (no secret leak) plus all probe results. Remove before final deployment if not needed.
+
+## Maintenance Mode (2026-04)
+
+- **Architecture**: Production-grade gate that blocks the page BEFORE React boots — no flash on load/refresh.
+  - **`artifacts/course-platform/index.html`** has an inline `<script>` in `<head>` that:
+    1. Adds class `vka-maintenance-checking` to `<html>` (CSS hides `#root`)
+    2. Fires `fetch('%BASE_URL%api/admin/public/maintenance', { credentials: 'include', cache: 'no-store' })` immediately
+    3. Exposes `window.__vkaMaintenance` Promise for `main.tsx` to await
+    4. If `maintenanceMode && !isAdmin` → removes `#root` from DOM and renders static `.vka-maintenance-page` div (Tailwind-free, inline CSS, theme-aware)
+    5. Else → un-hides `#root` and lets React mount normally
+    6. Hard 4s timeout + try/catch fallback render → can never get stuck or fail-open silently
+  - **`src/main.tsx`** awaits `window.__vkaMaintenance` before calling `createRoot().render(<App />)`. If `blocked: true`, React never mounts.
+  - **`/api/admin/public/maintenance`** (admin.ts) reads the auth cookie via `verifyToken`, returns `{ maintenanceMode, maintenanceMessage, isAdmin }`. Admin/staff bypass server-side. `Cache-Control: no-store`.
+  - **`MaintenanceWatcher`** component (in App.tsx) polls every 30s + on tab visibility — if maintenance turns ON for an already-active session, triggers `window.location.reload()` so the inline gate takes over (no flash).
+- **Edge cases**:
+  - API down / timeout → fail OPEN (boot the app) so a backend hiccup doesn't lock everyone out.
+  - DOM render error → falls back to a minimal hard-coded `<h1>Under Maintenance</h1>` block (still does NOT fail open).
+  - JS disabled → SPA wouldn't work anyway; non-issue for this app.
+- **Removed**: legacy `MaintenanceOverlay` React component (was the source of the flash bug because it mounted via React after the rest of the page paint).

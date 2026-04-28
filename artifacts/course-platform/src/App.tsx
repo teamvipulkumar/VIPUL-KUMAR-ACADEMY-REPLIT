@@ -7,6 +7,7 @@ import { AuthProvider, ProtectedRoute } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import { BrandingProvider } from "@/lib/branding-context";
 import { AppLayout } from "@/components/layout/app-layout";
+import { MaintenanceWatcher } from "@/components/maintenance-watcher";
 import { AdminLayout } from "@/components/layout/admin-layout";
 import NotFound from "@/pages/not-found";
 import { initPixel, injectBaseCode, fbPageView } from "@/lib/facebook-pixel";
@@ -132,8 +133,6 @@ import AboutUsPage from "@/pages/about-us";
 import CareersPage from "@/pages/careers";
 import ContactUsPage from "@/pages/contact-us";
 import HelpCenterPage from "@/pages/help-center";
-import { MaintenanceOverlay } from "@/components/maintenance-overlay";
-
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
 function Router() {
@@ -207,7 +206,7 @@ function App() {
         <TooltipProvider>
           <RefTracker />
           <PixelTracker />
-          <MaintenanceOverlay />
+          <MaintenanceWatcher />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Router />
           </WouterRouter>

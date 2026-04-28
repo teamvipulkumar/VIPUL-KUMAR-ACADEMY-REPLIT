@@ -18,6 +18,159 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+      /* Maintenance gate — keep #root invisible until the gate decides whether
+         to mount React or render the static maintenance page. Prevents the
+         "site flashes for a moment then maintenance overlay covers it" bug. */
+      html.vka-maintenance-checking #root { visibility: hidden; }
+      .vka-maintenance-page {
+        position: fixed; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; padding: 1.5rem;
+        text-align: center; z-index: 2147483647;
+        background: #0b0d12; color: #e5e7eb;
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+        animation: vka-fade-in .25s ease-out both;
+      }
+      html.light .vka-maintenance-page { background: #ffffff; color: #1f2937; }
+      .vka-maintenance-page .vka-icon {
+        width: 5rem; height: 5rem; border-radius: 1rem;
+        background: rgba(251, 191, 36, 0.1);
+        border: 1px solid rgba(251, 191, 36, 0.2);
+        display: flex; align-items: center; justify-content: center;
+        margin-bottom: 1.5rem;
+      }
+      .vka-maintenance-page .vka-icon svg { width: 2.5rem; height: 2.5rem; color: #fbbf24; }
+      .vka-maintenance-page h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.5rem; }
+      .vka-maintenance-page p {
+        font-size: 0.875rem; line-height: 1.6;
+        max-width: 28rem; margin: 0 0 1rem;
+        color: #9ca3af;
+      }
+      html.light .vka-maintenance-page p { color: #6b7280; }
+      .vka-maintenance-page .vka-note {
+        margin-top: 1rem; padding: 1rem; max-width: 28rem;
+        background: rgba(251, 191, 36, 0.05);
+        border: 1px solid rgba(251, 191, 36, 0.2);
+        border-radius: 0.75rem;
+      }
+      .vka-maintenance-page .vka-note small { color: #fcd34d; font-size: 0.75rem; }
+      @keyframes vka-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    </style>
+    <script>
+      /* Production-grade maintenance gate.
+       * Runs synchronously in <head>, BEFORE React boots. Fires the maintenance
+       * status fetch immediately, and exposes a Promise that main.tsx awaits.
+       * Result:
+       *   - Non-admins during maintenance → see static maintenance page only,
+       *     React never mounts. No "flash of site, then overlay" bug.
+       *   - Admins/staff → site loads normally (server-side bypass via cookie).
+       *   - API failure → fail open (boot the app) so a backend hiccup doesn't
+       *     lock everyone out.
+       */
+      (function() {
+        document.documentElement.classList.add('vka-maintenance-checking');
+
+        // %BASE_URL% is replaced by Vite at build/serve time (e.g. "/")
+        var apiUrl = '%BASE_URL%' + 'api/admin/public/maintenance';
+
+        // Hard timeout — never block the page longer than 4s waiting on backend.
+        var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+        var timeoutId = setTimeout(function() { if (ctrl) ctrl.abort(); }, 4000);
+
+        function escapeHtml(s) {
+          return String(s).replace(/[&<>"']/g, function(c) {
+            return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+          });
+        }
+
+        function renderMaintenanceNow(message) {
+          var safe = escapeHtml(message || "We're currently performing scheduled maintenance. We'll be back online shortly!");
+          var node = document.createElement('div');
+          node.className = 'vka-maintenance-page';
+          node.setAttribute('role', 'alert');
+          node.setAttribute('aria-live', 'polite');
+          node.innerHTML =
+            '<div class="vka-icon">' +
+              '<svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">' +
+                '<rect x="2" y="6" width="20" height="8" rx="1"/>' +
+                '<path d="M17 14v7"/><path d="M7 14v7"/>' +
+                '<path d="M17 3v3"/><path d="M7 3v3"/>' +
+                '<path d="M10 14 2.3 6.3"/><path d="m14 6 7.7 7.7"/><path d="m8 6 8 8"/>' +
+              '</svg>' +
+            '</div>' +
+            '<h1>Under Maintenance</h1>' +
+            '<p>' + safe + '</p>' +
+            '<div class="vka-note"><small>We apologize for the inconvenience. Please check back soon.</small></div>';
+          // Remove the React root so the bundle (which is parse-deferred) cannot
+          // mount on top of the maintenance page even after it downloads.
+          var root = document.getElementById('root');
+          if (root && root.parentNode) root.parentNode.removeChild(root);
+          document.body.appendChild(node);
+          document.documentElement.classList.remove('vka-maintenance-checking');
+        }
+
+        function showMaintenance(message) {
+          // Render must succeed; if it throws (e.g. unexpected DOM state) we
+          // STILL must not fail-open. Defer until <body> exists, then surface
+          // a minimal hard-coded fallback if the rich render fails.
+          function attempt() {
+            try {
+              renderMaintenanceNow(message);
+            } catch (e) {
+              try {
+                document.documentElement.classList.remove('vka-maintenance-checking');
+                document.body.innerHTML =
+                  '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;' +
+                  'background:#0b0d12;color:#e5e7eb;font-family:system-ui,sans-serif;text-align:center;padding:1rem;">' +
+                  '<div><h1 style="margin:0 0 .5rem">Under Maintenance</h1>' +
+                  '<p style="opacity:.7;margin:0">Please check back soon.</p></div></div>';
+              } catch (_e) { /* nothing more we can do */ }
+            }
+          }
+          if (document.body) {
+            attempt();
+          } else {
+            document.addEventListener('DOMContentLoaded', attempt, { once: true });
+          }
+        }
+
+        function bootApp() {
+          document.documentElement.classList.remove('vka-maintenance-checking');
+        }
+
+        var fetchOpts = { credentials: 'include', cache: 'no-store' };
+        if (ctrl) fetchOpts.signal = ctrl.signal;
+
+        var resolve, reject;
+        window.__vkaMaintenance = new Promise(function(res, rej) { resolve = res; reject = rej; });
+
+        try {
+          fetch(apiUrl, fetchOpts)
+            .then(function(r) {
+              clearTimeout(timeoutId);
+              return r.ok ? r.json() : { maintenanceMode: false };
+            })
+            .then(function(data) {
+              if (data && data.maintenanceMode && !data.isAdmin) {
+                showMaintenance(data.maintenanceMessage);
+                resolve({ blocked: true });
+              } else {
+                bootApp();
+                resolve({ blocked: false, isAdmin: !!(data && data.isAdmin) });
+              }
+            })
+            .catch(function() {
+              clearTimeout(timeoutId);
+              bootApp();
+              resolve({ blocked: false, error: true });
+            });
+        } catch (e) {
+          clearTimeout(timeoutId);
+          bootApp();
+          resolve({ blocked: false, error: true });
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
