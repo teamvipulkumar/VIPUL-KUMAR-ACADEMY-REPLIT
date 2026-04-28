@@ -939,7 +939,29 @@ router.get("/paytm/diag-key-fingerprint", requireAuth, requireAdmin, async (_req
     return (j as any)?.body?.resultInfo || j;
   };
 
-  const [stgMsg, prodDefault, prodWebProd, prodRetail, prodCustom, statusProd, statusStg] = await Promise.all([
+  // v3 Initiate Transaction API — the modern flow Paytm pushes
+  const initiateTxnProbe = async (host: string, websiteName: string) => {
+    const orderId = `DIAG_INIT_${Date.now()}_${Math.floor(Math.random() * 9999)}`;
+    const body = {
+      requestType: "Payment",
+      mid: gw.apiKey,
+      websiteName,
+      orderId,
+      txnAmount: { value: "1.00", currency: "INR" },
+      userInfo: { custId: "diag_user" },
+      callbackUrl: "https://example.com/cb",
+    };
+    const sig = await PaytmChecksum.generateSignature(JSON.stringify(body), key);
+    const url = `${host}/theia/api/v1/initiateTransaction?mid=${gw.apiKey}&orderId=${orderId}`;
+    const r = await fetch(url, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body, head: { signature: sig } }),
+    });
+    const j = await r.json().catch(() => ({}));
+    return { status: r.status, ...((j as any)?.body?.resultInfo || j) };
+  };
+
+  const [stgMsg, prodDefault, prodWebProd, prodRetail, prodCustom, statusProd, statusStg, initProdDefault, initStgWebStaging, initProdAlt] = await Promise.all([
     probeStg(),
     probeProdWithWebsite("DEFAULT"),
     probeProdWithWebsite("WEBPROD"),
@@ -947,6 +969,9 @@ router.get("/paytm/diag-key-fingerprint", requireAuth, requireAdmin, async (_req
     probeProdWithWebsite("vipulkumaracademy"),
     orderStatusProbe("https://securegw.paytm.in"),
     orderStatusProbe("https://securegw-stage.paytm.in"),
+    initiateTxnProbe("https://securegw.paytm.in", "DEFAULT"),
+    initiateTxnProbe("https://securegw-stage.paytm.in", "WEBSTAGING"),
+    initiateTxnProbe("https://securegw.paytm.in", "WEBPROD"),
   ]);
   const prodMsg = prodDefault;
 
@@ -969,6 +994,9 @@ router.get("/paytm/diag-key-fingerprint", requireAuth, requireAdmin, async (_req
       stagingResp_WEBSTAGING: stgMsg,
       orderStatus_production: statusProd,
       orderStatus_staging: statusStg,
+      initiateTxn_production_DEFAULT: initProdDefault,
+      initiateTxn_staging_WEBSTAGING: initStgWebStaging,
+      initiateTxn_production_WEBPROD: initProdAlt,
       verdict:
         prodMsg === "Invalid checksum" && stgMsg !== "Invalid checksum"
           ? "❌ Key/MID NOT activated on Paytm production server. Either WEBSITE name is wrong, or merchant account is staging-only. Check 'orderStatus_production' — if it also says 'Invalid Checksum', the MID itself isn't on production."
