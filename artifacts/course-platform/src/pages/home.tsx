@@ -98,8 +98,8 @@ export default function Home() {
         </div>
 
         <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.08] mb-5 md:mb-6">
-          Master the Skills
-          <span className="block text-primary">That Build Online Businesses.</span>
+          Master the Skills That
+          <span className="block text-primary">Build Online Businesses.</span>
         </h1>
 
         <p className="text-sm sm:text-base md:text-xl text-muted-foreground mb-7 md:mb-10 max-w-xs sm:max-w-xl leading-relaxed">
