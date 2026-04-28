@@ -13,14 +13,14 @@ const STATS = [
   { label: "Active Students", value: "2,400+", icon: Users },
   { label: "Average Rating",  value: "4.9 / 5", icon: Star },
   { label: "Courses Available", value: "15+",  icon: BookOpen },
-  { label: "Avg. Student ROI", value: "640%",  icon: TrendingUp },
+  { label: "Hours of Content", value: "200+",  icon: BookOpen },
 ];
 
 const FEATURES = [
-  { icon: Zap,      title: "Action-First Curriculum", desc: "No fluff. Every module is built around one executable action that moves your business forward." },
-  { icon: Shield,   title: "Proven by Operators",     desc: "All content is created and vetted by people who actively run the businesses they teach." },
-  { icon: Award,    title: "Lifetime Access",          desc: "Buy once, access forever. Get all future updates at no additional cost." },
-  { icon: TrendingUp, title: "50% Affiliate Commission", desc: "Earn on every referral. Share your link and build a passive income stream alongside your skills." },
+  { icon: Zap,      title: "Action-First Curriculum", desc: "Every module is built around one practical action you can apply to your own work." },
+  { icon: Shield,   title: "Taught by Practitioners", desc: "All content is created and reviewed by experienced industry practitioners." },
+  { icon: Award,    title: "Lifetime Access",         desc: "Buy once, access forever. Includes all future course updates at no additional cost." },
+  { icon: TrendingUp, title: "Affiliate Program",     desc: "Share courses you genuinely love and receive referral rewards on successful referrals." },
 ];
 
 const TESTIMONIALS = [
@@ -32,7 +32,7 @@ const TESTIMONIALS = [
 const STEPS = [
   { num: "01", Icon: BookOpen, title: "Browse & Choose", desc: "Explore our curated collection of premium courses and find the perfect fit for your goals." },
   { num: "02", Icon: Play,     title: "Enroll & Learn",  desc: "Get instant access to video lectures and hands-on projects. Learn at your own pace." },
-  { num: "03", Icon: Trophy,   title: "Earn & Grow",     desc: "Complete courses, earn certificates, and build in-demand skills that generate real income." },
+  { num: "03", Icon: Trophy,   title: "Apply & Grow",    desc: "Complete courses, earn certificates, and build in-demand digital skills you can apply in your career." },
 ] as const;
 
 const levelColors: Record<string, string> = {
@@ -98,13 +98,13 @@ export default function Home() {
         </div>
 
         <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.08] mb-5 md:mb-6">
-          Master the Systems
-          <span className="block text-primary">That Print Revenue.</span>
+          Master the Skills
+          <span className="block text-primary">That Build Online Businesses.</span>
         </h1>
 
         <p className="text-sm sm:text-base md:text-xl text-muted-foreground mb-7 md:mb-10 max-w-xs sm:max-w-xl leading-relaxed">
-          Actionable courses on Affiliate Marketing, E-commerce, and Dropshipping —
-          built by operators, for operators.
+          Practical, skill-based courses in Affiliate Marketing, E-commerce, and Dropshipping —
+          taught by experienced industry practitioners.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs sm:max-w-none sm:w-auto">
@@ -117,7 +117,7 @@ export default function Home() {
         </div>
 
         <div className="mt-8 flex flex-col sm:flex-row sm:flex-wrap justify-center gap-y-2 sm:gap-y-3 gap-x-8 text-xs sm:text-sm text-muted-foreground">
-          {["No fluff. Just execution", "30-day money-back guarantee", "Lifetime access & free updates"].map(t => (
+          {["Practical, action-oriented lessons", "30-day money-back guarantee", "Lifetime access & free updates"].map(t => (
             <div key={t} className="flex items-center justify-center gap-1.5 sm:gap-2">
               <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 flex-shrink-0" />
               <span>{t}</span>
@@ -368,11 +368,11 @@ export default function Home() {
             <Zap className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0" /> Limited Seats — Enroll Today
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 leading-tight">
-            Stop Consuming.<br />Start Executing.
+            Stop Consuming.<br />Start Applying.
           </h2>
           <p className="text-muted-foreground text-sm sm:text-base mb-7 md:mb-10 max-w-xs sm:max-w-lg mx-auto leading-relaxed">
-            The difference between reading about revenue and actually earning it is execution.
-            Get the exact blueprints used by real operators — starting today.
+            The difference between reading about a skill and truly mastering it is practice.
+            Get the practical playbooks used by experienced practitioners — starting today.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center w-full max-w-xs sm:max-w-none mx-auto">
             <Button size="lg" className="h-11 sm:h-12 px-8 sm:px-10 text-sm font-semibold shadow-lg shadow-primary/25 w-full sm:w-auto" asChild>
