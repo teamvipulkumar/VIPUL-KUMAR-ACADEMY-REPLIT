@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useBranding } from "@/lib/branding-context";
+import { playNotificationSound } from "@/lib/notification-sound";
 import { Button } from "@/components/ui/button";
 import { useLogout, useListNotifications, getListNotificationsQueryKey, getGetMeQueryKey, useMarkNotificationRead, useMarkAllNotificationsRead } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -50,6 +51,16 @@ function NotificationPopup({ iconSize = "w-4 h-4" }: { iconSize?: string }) {
   const markRead = useMarkNotificationRead();
   const markAll = useMarkAllNotificationsRead();
   const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;
+
+  const prevUnreadRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (notifications === undefined) return;
+    const prev = prevUnreadRef.current;
+    if (prev !== null && unreadCount > prev) {
+      playNotificationSound();
+    }
+    prevUnreadRef.current = unreadCount;
+  }, [unreadCount, notifications]);
 
   const handleMarkRead = (id: number) => {
     markRead.mutate({ notificationId: id }, {
