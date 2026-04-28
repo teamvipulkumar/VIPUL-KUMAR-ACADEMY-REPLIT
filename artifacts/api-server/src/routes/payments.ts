@@ -855,7 +855,10 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
       const msg = paytmResp.body?.resultInfo?.resultMsg ?? "Failed to initiate Paytm transaction";
       // Surface a clearer hint for the most common credential / website-name mismatch (501 System Error)
       const hint = code === "501"
-        ? ` (Hint: Paytm "System Error" usually means MID/Merchant Key are wrong, the account isn't activated for ${gw.isTestMode ? "staging" : "production"}, or the websiteName "${websiteName}" doesn't match what's set in your Paytm dashboard. Try setting Webhook Secret to "WS:DEFAULT" or "WS:<your-website-name>".)`
+        ? ` (Hint: Paytm "System Error" most often means: ` +
+          `(1) you're using ${gw.isTestMode ? "PRODUCTION credentials with Test Mode ON — turn OFF Test Mode in admin" : "TEST credentials with Test Mode OFF — turn ON Test Mode"}, ` +
+          `(2) the MID/Merchant Key pair is wrong, or ` +
+          `(3) websiteName "${websiteName}" doesn't match your Paytm dashboard — try Webhook Secret = "WS:<your-website-name>" (e.g. "WS:DEFAULT").)`
         : "";
       res.status(400).json({ error: `${msg}${hint}` }); return;
     }
