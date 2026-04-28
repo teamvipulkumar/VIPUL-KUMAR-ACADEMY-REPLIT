@@ -617,7 +617,9 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
 
   const forwardedProto = req.get("x-forwarded-proto") || req.protocol;
   const origin = `${forwardedProto}://${req.get("host")}`;
-  const websiteName = gw.isTestMode ? "WEBSTAGING" : (gw.webhookSecret?.startsWith("WS:") ? gw.webhookSecret.slice(3) : "DEFAULT");
+  // websiteName is set in Paytm dashboard. Allow admin override via webhookSecret prefix `WS:<name>`.
+  const wsOverride = gw.webhookSecret?.startsWith("WS:") ? gw.webhookSecret.slice(3).trim() : "";
+  const websiteName = wsOverride || (gw.isTestMode ? "WEBSTAGING" : "DEFAULT");
   const txnBody: Record<string, unknown> = {
     requestType: "Payment",
     mid,
@@ -633,16 +635,24 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
   let txnToken: string;
   try {
     const reqPayload = { head: { version: "v1", signature }, body: txnBody };
+    console.log("[paytm bundle create-order] host:", host, "mid:", mid, "orderId:", orderId, "websiteName:", websiteName);
     const r = await fetch(
       `${host}/theia/api/v1/initiateTransaction?mid=${encodeURIComponent(mid)}&orderId=${encodeURIComponent(orderId)}`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(reqPayload) }
     );
     const paytmResp = await r.json();
+    console.log("[paytm bundle create-order] response:", JSON.stringify(paytmResp));
     if (paytmResp.body?.resultInfo?.resultStatus !== "S") {
-      res.status(400).json({ error: paytmResp.body?.resultInfo?.resultMsg ?? "Failed to initiate Paytm transaction" }); return;
+      const code = paytmResp.body?.resultInfo?.resultCode ?? "";
+      const msg = paytmResp.body?.resultInfo?.resultMsg ?? "Failed to initiate Paytm transaction";
+      const hint = code === "501"
+        ? ` (Hint: Paytm "System Error" usually means MID/Merchant Key are wrong, the account isn't activated for ${gw.isTestMode ? "staging" : "production"}, or the websiteName "${websiteName}" doesn't match your Paytm dashboard. Try Webhook Secret = "WS:DEFAULT" or "WS:<your-website-name>".)`
+        : "";
+      res.status(400).json({ error: `${msg}${hint}` }); return;
     }
     txnToken = paytmResp.body.txnToken;
   } catch (err: unknown) {
+    console.error("[paytm bundle create-order] error:", err);
     res.status(500).json({ error: (err as Error).message }); return;
   }
 

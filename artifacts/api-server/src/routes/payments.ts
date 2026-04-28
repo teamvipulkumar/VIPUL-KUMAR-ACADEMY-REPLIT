@@ -817,7 +817,10 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
 
   const forwardedProto = req.get("x-forwarded-proto") || req.protocol;
   const origin = `${forwardedProto}://${req.get("host")}`;
-  const websiteName = gw.isTestMode ? "WEBSTAGING" : (gw.webhookSecret?.startsWith("WS:") ? gw.webhookSecret.slice(3) : "DEFAULT");
+  // websiteName is set in Paytm dashboard. Allow admin override via webhookSecret prefix `WS:<name>`.
+  // Defaults: WEBSTAGING (Paytm public sandbox) / DEFAULT (live). Most own merchant sandbox accounts use DEFAULT.
+  const wsOverride = gw.webhookSecret?.startsWith("WS:") ? gw.webhookSecret.slice(3).trim() : "";
+  const websiteName = wsOverride || (gw.isTestMode ? "WEBSTAGING" : "DEFAULT");
   const txnBody: Record<string, unknown> = {
     requestType: "Payment",
     mid,
@@ -848,7 +851,13 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
     const paytmResp = await r.json();
     console.log("[paytm create-order] response:", JSON.stringify(paytmResp));
     if (paytmResp.body?.resultInfo?.resultStatus !== "S") {
-      res.status(400).json({ error: paytmResp.body?.resultInfo?.resultMsg ?? "Failed to initiate Paytm transaction" }); return;
+      const code = paytmResp.body?.resultInfo?.resultCode ?? "";
+      const msg = paytmResp.body?.resultInfo?.resultMsg ?? "Failed to initiate Paytm transaction";
+      // Surface a clearer hint for the most common credential / website-name mismatch (501 System Error)
+      const hint = code === "501"
+        ? ` (Hint: Paytm "System Error" usually means MID/Merchant Key are wrong, the account isn't activated for ${gw.isTestMode ? "staging" : "production"}, or the websiteName "${websiteName}" doesn't match what's set in your Paytm dashboard. Try setting Webhook Secret to "WS:DEFAULT" or "WS:<your-website-name>".)`
+        : "";
+      res.status(400).json({ error: `${msg}${hint}` }); return;
     }
     txnToken = paytmResp.body.txnToken;
   } catch (err: unknown) {

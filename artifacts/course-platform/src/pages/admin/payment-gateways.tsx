@@ -74,7 +74,7 @@ const GATEWAY_META: Record<string, { icon: string; logo?: string; imgClass?: str
     border: "border-sky-400/30",
     description: "India's largest payment network. Accept Paytm Wallet, UPI & Cards.",
     docsUrl: "https://business.paytm.com/account/settings",
-    webhookNote: "Configure webhook at Paytm Business Dashboard",
+    webhookNote: 'Use "WS:<your-website-name>" to override Paytm Website Name (e.g. "WS:DEFAULT"). Leave blank to use WEBSTAGING (test) / DEFAULT (live).',
   },
   payu: {
     icon: "U",
