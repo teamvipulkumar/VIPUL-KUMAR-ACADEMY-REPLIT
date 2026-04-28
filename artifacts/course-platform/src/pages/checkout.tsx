@@ -762,12 +762,12 @@ export default function CheckoutPage() {
     // Note: setProcessing(false) is intentionally NOT called on success — page redirects away
   };
 
-  // ── Real Paytm Payment (All-in-One JS SDK) ────────────────────────────────
+  // ── Real Paytm Payment (Classic PG — form POST to Paytm hosted checkout) ───
   const handlePaytmPayment = async () => {
     setProcessing(true);
     const affiliateRef = getStoredRef() || undefined;
     try {
-      // Step 1: Create order on backend (registers user if needed, gets txnToken)
+      // Step 1: Create order on backend (registers user if needed, returns signed form params)
       const res = await fetch(`${API_BASE}/api/payments/paytm/create-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -785,9 +785,13 @@ export default function CheckoutPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to initiate Paytm payment");
 
-      const { txnToken, orderId, mid, amount, isTestMode } = data;
+      const { paytmParams, actionUrl, orderId } = data as {
+        paytmParams: Record<string, string>;
+        actionUrl: string;
+        orderId: string;
+      };
 
-      // Save new-user creds before SDK takes over (same key as Cashfree for verify page)
+      // Save new-user creds before redirecting to Paytm (same key as Cashfree for verify page)
       if (data.isNewUser && data.tempPassword) {
         sessionStorage.setItem("cf_new_user_creds", JSON.stringify({
           email: form.email.trim(),
@@ -796,62 +800,22 @@ export default function CheckoutPage() {
         }));
       }
 
-      // Step 2: Load the Paytm All-in-One Checkout SDK (MID-specific URL)
-      const sdkId = "paytm-checkout-sdk";
-      const existingScript = document.getElementById(sdkId);
-      if (existingScript) existingScript.remove(); // always load fresh (MID may differ)
-
-      const sdkHost = isTestMode ? "securegw-stage.paytm.in" : "securegw.paytm.in";
-      await new Promise<void>((resolve, reject) => {
-        const script = document.createElement("script");
-        script.id = sdkId;
-        script.src = `https://${sdkHost}/merchantpgpui/checkoutjs/merchants/${encodeURIComponent(mid)}.js`;
-        script.crossOrigin = "anonymous";
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error("Failed to load Paytm SDK. Check your Merchant ID."));
-        document.head.appendChild(script);
-      });
-
-      // Step 3: Initialise and invoke the Paytm checkout overlay
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const Paytm = (window as any).Paytm;
-      if (!Paytm?.CheckoutJS) throw new Error("Paytm SDK not initialised");
-
-      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-
-      await Paytm.CheckoutJS.init({
-        merchant: {
-          mid,
-          name: "Vipul Kumar Academy",
-          logo: "",
-          redirect: false,
-        },
-        order: {
-          id: orderId,
-          token: txnToken,
-          amount: String(amount.toFixed ? amount.toFixed(2) : amount),
-          userEmail: form.email.trim(),
-          userContact: form.mobile.trim() || "9999999999",
-        },
-        flow: "DEFAULT",
-        handler: {
-          transactionStatus: (_status: unknown) => {
-            // Always verify server-side — never trust client-side status
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (window as any).Paytm?.CheckoutJS?.close?.();
-            navigate(`${base}/payment/verify?order_id=${encodeURIComponent(orderId)}&gateway=paytm`);
-          },
-          notifyMerchant: (eventName: string, _data: unknown) => {
-            if (eventName === "SESSION_EXPIRED") {
-              toast({ title: "Payment session expired", description: "Please try again.", variant: "destructive" });
-              setProcessing(false);
-            }
-          },
-        },
-      });
-
-      Paytm.CheckoutJS.invoke();
-      setProcessing(false); // Overlay is visible — restore page interactivity
+      // Step 2: Build hidden HTML form and auto-submit to Paytm hosted checkout
+      // (same approach used by the official WordPress Paytm plugin)
+      const paytmForm = document.createElement("form");
+      paytmForm.method = "POST";
+      paytmForm.action = actionUrl;
+      paytmForm.style.display = "none";
+      for (const [name, value] of Object.entries(paytmParams)) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = name;
+        input.value = String(value ?? "");
+        paytmForm.appendChild(input);
+      }
+      document.body.appendChild(paytmForm);
+      paytmForm.submit();
+      // Page is navigating to Paytm — leave processing=true so UI stays disabled
 
     } catch (err: unknown) {
       toast({ title: "Paytm payment failed", description: (err as Error).message, variant: "destructive" });

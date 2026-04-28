@@ -617,42 +617,28 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
 
   const forwardedProto = req.get("x-forwarded-proto") || req.protocol;
   const origin = `${forwardedProto}://${req.get("host")}`;
-  // websiteName is set in Paytm dashboard. Allow admin override via webhookSecret prefix `WS:<name>`.
   const wsOverride = gw.webhookSecret?.startsWith("WS:") ? gw.webhookSecret.slice(3).trim() : "";
   const websiteName = wsOverride || (gw.isTestMode ? "WEBSTAGING" : "DEFAULT");
-  const txnBody: Record<string, unknown> = {
-    requestType: "Payment",
-    mid,
-    websiteName,
-    orderId,
-    callbackUrl: `${origin}/api/payments/paytm/callback`,
-    txnAmount: { value: amount.toFixed(2), currency: "INR" },
-    userInfo: { custId: `uid_${userId}` },
+
+  const paytmParams: Record<string, string> = {
+    MID: mid,
+    ORDER_ID: orderId,
+    CUST_ID: `uid_${userId}`,
+    INDUSTRY_TYPE_ID: "Retail",
+    CHANNEL_ID: "WEB",
+    TXN_AMOUNT: amount.toFixed(2),
+    WEBSITE: websiteName,
+    CALLBACK_URL: `${origin}/api/payments/paytm/callback`,
+    EMAIL: email.toLowerCase().trim(),
+    MOBILE_NO: mobile?.trim() || "",
   };
 
-  const signature = await PaytmChecksum.generateSignature(JSON.stringify(txnBody), merchantKey);
-
-  let txnToken: string;
+  let checksum: string;
   try {
-    const reqPayload = { head: { version: "v1", signature }, body: txnBody };
-    console.log("[paytm bundle create-order] host:", host, "mid:", mid, "orderId:", orderId, "websiteName:", websiteName);
-    const r = await fetch(
-      `${host}/theia/api/v1/initiateTransaction?mid=${encodeURIComponent(mid)}&orderId=${encodeURIComponent(orderId)}`,
-      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(reqPayload) }
-    );
-    const paytmResp = await r.json();
-    console.log("[paytm bundle create-order] response:", JSON.stringify(paytmResp));
-    if (paytmResp.body?.resultInfo?.resultStatus !== "S") {
-      const code = paytmResp.body?.resultInfo?.resultCode ?? "";
-      const msg = paytmResp.body?.resultInfo?.resultMsg ?? "Failed to initiate Paytm transaction";
-      const hint = code === "501"
-        ? ` (Hint: Paytm "System Error" usually means MID/Merchant Key are wrong, the account isn't activated for ${gw.isTestMode ? "staging" : "production"}, or the websiteName "${websiteName}" doesn't match your Paytm dashboard. Try Webhook Secret = "WS:DEFAULT" or "WS:<your-website-name>".)`
-        : "";
-      res.status(400).json({ error: `${msg}${hint}` }); return;
-    }
-    txnToken = paytmResp.body.txnToken;
+    checksum = await PaytmChecksum.generateSignature(paytmParams, merchantKey);
+    console.log("[paytm bundle create-order] host:", host, "mid:", mid, "orderId:", orderId, "websiteName:", websiteName, "amount:", paytmParams.TXN_AMOUNT);
   } catch (err: unknown) {
-    console.error("[paytm bundle create-order] error:", err);
+    console.error("[paytm bundle create-order] checksum error:", err);
     res.status(500).json({ error: (err as Error).message }); return;
   }
 
@@ -682,7 +668,9 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
   res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
 
   res.json({
-    txnToken, orderId, mid,
+    paytmParams: { ...paytmParams, CHECKSUMHASH: checksum },
+    actionUrl: `${host}/order/process`,
+    orderId,
     amount: parseFloat(amount.toFixed(2)),
     isTestMode: gw.isTestMode,
     isNewUser, tempPassword,

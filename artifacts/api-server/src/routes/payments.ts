@@ -811,60 +811,36 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
     }
   }
 
-  // Build Paytm initiateTransaction request body
+  // Build Paytm classic PG (form-based) request — same flow used by WordPress Paytm plugin
   const orderId = `PT_${nanoid(14)}`;
   const host = gw.isTestMode ? "https://securegw-stage.paytm.in" : "https://securegw.paytm.in";
 
   const forwardedProto = req.get("x-forwarded-proto") || req.protocol;
   const origin = `${forwardedProto}://${req.get("host")}`;
   // websiteName is set in Paytm dashboard. Allow admin override via webhookSecret prefix `WS:<name>`.
-  // Defaults: WEBSTAGING (Paytm public sandbox) / DEFAULT (live). Most own merchant sandbox accounts use DEFAULT.
+  // Defaults: WEBSTAGING (Paytm public sandbox) / DEFAULT (live).
   const wsOverride = gw.webhookSecret?.startsWith("WS:") ? gw.webhookSecret.slice(3).trim() : "";
   const websiteName = wsOverride || (gw.isTestMode ? "WEBSTAGING" : "DEFAULT");
-  const txnBody: Record<string, unknown> = {
-    requestType: "Payment",
-    mid,
-    websiteName,
-    orderId,
-    callbackUrl: `${origin}/api/payments/paytm/callback`,
-    txnAmount: { value: amount.toFixed(2), currency: "INR" },
-    userInfo: { custId: `uid_${userId}` },
+
+  const paytmParams: Record<string, string> = {
+    MID: mid,
+    ORDER_ID: orderId,
+    CUST_ID: `uid_${userId}`,
+    INDUSTRY_TYPE_ID: "Retail",
+    CHANNEL_ID: "WEB",
+    TXN_AMOUNT: amount.toFixed(2),
+    WEBSITE: websiteName,
+    CALLBACK_URL: `${origin}/api/payments/paytm/callback`,
+    EMAIL: email.toLowerCase().trim(),
+    MOBILE_NO: mobile?.trim() || "",
   };
 
-  const signature = await PaytmChecksum.generateSignature(JSON.stringify(txnBody), merchantKey);
-
-  let txnToken: string;
+  let checksum: string;
   try {
-    const reqPayload = {
-      head: { version: "v1", signature },
-      body: txnBody,
-    };
-    console.log("[paytm create-order] host:", host, "mid:", mid, "orderId:", orderId, "merchantKeyLen:", merchantKey.length, "websiteName:", websiteName, "callbackUrl:", txnBody.callbackUrl);
-    const r = await fetch(
-      `${host}/theia/api/v1/initiateTransaction?mid=${encodeURIComponent(mid)}&orderId=${encodeURIComponent(orderId)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(reqPayload),
-      }
-    );
-    const paytmResp = await r.json();
-    console.log("[paytm create-order] response:", JSON.stringify(paytmResp));
-    if (paytmResp.body?.resultInfo?.resultStatus !== "S") {
-      const code = paytmResp.body?.resultInfo?.resultCode ?? "";
-      const msg = paytmResp.body?.resultInfo?.resultMsg ?? "Failed to initiate Paytm transaction";
-      // Surface a clearer hint for the most common credential / website-name mismatch (501 System Error)
-      const hint = code === "501"
-        ? ` (Hint: Paytm "System Error" most often means: ` +
-          `(1) you're using ${gw.isTestMode ? "PRODUCTION credentials with Test Mode ON — turn OFF Test Mode in admin" : "TEST credentials with Test Mode OFF — turn ON Test Mode"}, ` +
-          `(2) the MID/Merchant Key pair is wrong, or ` +
-          `(3) websiteName "${websiteName}" doesn't match your Paytm dashboard — try Webhook Secret = "WS:<your-website-name>" (e.g. "WS:DEFAULT").)`
-        : "";
-      res.status(400).json({ error: `${msg}${hint}` }); return;
-    }
-    txnToken = paytmResp.body.txnToken;
+    checksum = await PaytmChecksum.generateSignature(paytmParams, merchantKey);
+    console.log("[paytm create-order] host:", host, "mid:", mid, "orderId:", orderId, "websiteName:", websiteName, "amount:", paytmParams.TXN_AMOUNT, "callback:", paytmParams.CALLBACK_URL);
   } catch (err: unknown) {
-    console.error("[paytm create-order] error:", err);
+    console.error("[paytm create-order] checksum error:", err);
     res.status(500).json({ error: (err as Error).message }); return;
   }
 
@@ -889,9 +865,9 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
   res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
 
   res.json({
-    txnToken,
+    paytmParams: { ...paytmParams, CHECKSUMHASH: checksum },
+    actionUrl: `${host}/order/process`,
     orderId,
-    mid,
     amount: parseFloat(amount.toFixed(2)),
     isTestMode: gw.isTestMode,
     isNewUser,
@@ -902,19 +878,77 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
   });
 });
 
-// ── Paytm: Verify Payment & Complete Enrollment ────────────────────────────────
+// ── Paytm: Complete payment + enrollment (idempotent helper) ──────────────────
+async function completePaytmPayment(payment: typeof paymentsTable.$inferSelect, txnId: string): Promise<void> {
+  await db.update(paymentsTable).set({ status: "completed", paymentId: txnId }).where(eq(paymentsTable.id, payment.id));
+  generateGstInvoice(payment.id).catch(() => {});
+
+  // Bundle payment
+  if (payment.bundleId && !payment.courseId) {
+    const [bundle] = await db.select().from(bundlesTable).where(eq(bundlesTable.id, payment.bundleId)).limit(1);
+    const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
+    for (const { courseId } of bundleCourses) {
+      if (!courseId) continue;
+      const [ex] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, courseId))).limit(1);
+      if (!ex) await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId });
+    }
+    await db.insert(notificationsTable).values({ userId: payment.userId, title: "Package Enrolled! 🎉", message: `You now have access to all courses in "${bundle?.name ?? "the package"}".`, type: "success" });
+    triggerFunnel("new_purchase", payment.userId, { course_name: bundle?.name ?? "", amount: String(parseFloat(String(payment.amount)).toFixed(2)), site_url: process.env.SITE_URL || "" }).catch(() => {});
+    if (payment.couponCode) {
+      const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
+      if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
+    }
+    await recordAffiliateCommission(payment.affiliateRef, payment.userId, null, parseFloat(String(payment.amount)));
+    return;
+  }
+
+  // Single course payment
+  const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
+  if (!existing) {
+    await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId: payment.courseId });
+    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+    await db.insert(notificationsTable).values({ userId: payment.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success" });
+    if (payment.couponCode) {
+      const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
+      if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
+    }
+    const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+    if (buyer && course) {
+      triggerAutomation("purchase", buyer.id, buyer.email, { name: buyer.name, email: buyer.email, course_name: course.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
+      triggerFunnel("new_purchase", buyer.id, { course_name: course.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)), site_url: process.env.SITE_URL || "" }).catch(() => {});
+    }
+    await recordAffiliateCommission(payment.affiliateRef, payment.userId, payment.courseId, parseFloat(String(payment.amount)));
+  }
+}
+
+// ── Paytm: Verify Payment status (called by frontend after redirect) ──────────
 router.post("/paytm/verify", async (req, res): Promise<void> => {
   const { orderId } = req.body;
   if (!orderId) { res.status(400).json({ error: "orderId is required" }); return; }
 
   const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.gatewayOrderId, orderId)).limit(1);
   if (!payment) { res.status(404).json({ error: "Payment record not found" }); return; }
+
+  // If already marked complete by callback handler, return success immediately
   if (payment.status === "completed") {
+    if (payment.bundleId && !payment.courseId) {
+      const [bundle] = await db.select().from(bundlesTable).where(eq(bundlesTable.id, payment.bundleId)).limit(1);
+      const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
+      res.json({ success: true, enrolled: true, bundleId: payment.bundleId, bundleName: bundle?.name, courseCount: bundleCourses.length, amount: parseFloat(String(payment.amount)), currency: "INR" });
+      return;
+    }
     const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
     res.json({ success: true, enrolled: true, courseId: payment.courseId, courseTitle: course?.title, amount: parseFloat(String(payment.amount)), currency: "INR" });
     return;
   }
 
+  if (payment.status === "failed") {
+    res.json({ success: false, failed: true, message: "Payment failed. Please try again." });
+    return;
+  }
+
+  // Pending — Paytm callback may not have arrived yet OR it failed checksum verification.
+  // Fall back to the server-to-server status check API.
   const [gw] = await db.select().from(paymentGatewaysTable).where(eq(paymentGatewaysTable.name, "paytm")).limit(1);
   if (!gw) { res.status(400).json({ error: "Paytm not configured" }); return; }
 
@@ -929,58 +963,20 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
     const r = await fetch(`${host}/v3/order/status`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        head: { version: "v1", signature: statusSignature },
-        body: statusBody,
-      }),
+      body: JSON.stringify({ head: { version: "v1", signature: statusSignature }, body: statusBody }),
     });
     const result = await r.json();
     const resultStatus: string = result.body?.resultInfo?.resultStatus ?? result.body?.status ?? "";
 
     if (resultStatus === "TXN_SUCCESS") {
       const txnId: string = result.body?.txnId ?? `ptm_${nanoid(12)}`;
-      await db.update(paymentsTable).set({ status: "completed", paymentId: txnId }).where(eq(paymentsTable.id, payment.id));
-      generateGstInvoice(payment.id).catch(() => {});
-
-      // Bundle payment
+      await completePaytmPayment(payment, txnId);
       if (payment.bundleId && !payment.courseId) {
         const [bundle] = await db.select().from(bundlesTable).where(eq(bundlesTable.id, payment.bundleId)).limit(1);
         const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
-        for (const { courseId } of bundleCourses) {
-          if (!courseId) continue;
-          const [ex] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, courseId))).limit(1);
-          if (!ex) await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId });
-        }
-        await db.insert(notificationsTable).values({ userId: payment.userId, title: "Package Enrolled! 🎉", message: `You now have access to all courses in "${bundle?.name ?? "the package"}".`, type: "success" });
-        triggerFunnel("new_purchase", payment.userId, { course_name: bundle?.name ?? "", amount: String(parseFloat(String(payment.amount)).toFixed(2)), site_url: process.env.SITE_URL || "" }).catch(() => {});
-        if (payment.couponCode) {
-          const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
-          if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
-        }
-        await recordAffiliateCommission(payment.affiliateRef, payment.userId, null, parseFloat(String(payment.amount)));
         res.json({ success: true, enrolled: true, bundleId: payment.bundleId, bundleName: bundle?.name, courseCount: bundleCourses.length, amount: parseFloat(String(payment.amount)), currency: "INR" });
         return;
       }
-
-      // Single course payment
-      const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
-      if (!existing) {
-        await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId: payment.courseId });
-        const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
-        await db.insert(notificationsTable).values({ userId: payment.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success" });
-        if (payment.couponCode) {
-          const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
-          if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
-        }
-        const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
-        const [course2] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
-        if (buyer && course2) {
-          triggerAutomation("purchase", buyer.id, buyer.email, { name: buyer.name, email: buyer.email, course_name: course2.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
-          triggerFunnel("new_purchase", buyer.id, { course_name: course2.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)), site_url: process.env.SITE_URL || "" }).catch(() => {});
-        }
-        await recordAffiliateCommission(payment.affiliateRef, payment.userId, payment.courseId, parseFloat(String(payment.amount)));
-      }
-
       const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
       res.json({ success: true, enrolled: true, courseId: payment.courseId, courseTitle: course?.title, amount: parseFloat(String(payment.amount)), currency: "INR" });
     } else if (resultStatus === "PENDING") {
@@ -994,10 +990,53 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
   }
 });
 
-// ── Paytm: Callback (redirect after payment on Paytm page) ───────────────────
+// ── Paytm: Callback (Paytm POSTs back here after payment on hosted page) ─────
+// Verifies CHECKSUMHASH, marks payment complete + enrolls user, then redirects
+// the browser to the frontend verify page.
 router.post("/paytm/callback", async (req, res): Promise<void> => {
-  const orderId = req.body?.ORDERID;
-  res.redirect(`/payment-verify?gateway=paytm&order_id=${encodeURIComponent(orderId || "")}`);
+  const params: Record<string, string> = {};
+  for (const [k, v] of Object.entries(req.body || {})) {
+    params[k] = String(v ?? "");
+  }
+  const receivedChecksum = params.CHECKSUMHASH || "";
+  delete params.CHECKSUMHASH;
+
+  const orderId = params.ORDERID || "";
+  const status = params.STATUS || "";
+  const txnId = params.TXNID || `ptm_${nanoid(10)}`;
+  const respMsg = params.RESPMSG || "";
+
+  const forwardedProto = req.get("x-forwarded-proto") || req.protocol;
+  const origin = `${forwardedProto}://${req.get("host")}`;
+  const redirectTo = `${origin}/payment/verify?gateway=paytm&order_id=${encodeURIComponent(orderId)}`;
+
+  console.log("[paytm callback] orderId:", orderId, "status:", status, "txnId:", txnId, "respMsg:", respMsg);
+
+  try {
+    const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.gatewayOrderId, orderId)).limit(1);
+    const [gw] = await db.select().from(paymentGatewaysTable).where(eq(paymentGatewaysTable.name, "paytm")).limit(1);
+
+    if (!payment || !gw) {
+      console.warn("[paytm callback] payment or gateway missing — redirecting anyway");
+      res.redirect(303, redirectTo); return;
+    }
+
+    const isVerified: boolean = receivedChecksum
+      ? PaytmChecksum.verifySignature(params, gw.secretKey, receivedChecksum)
+      : false;
+    console.log("[paytm callback] checksum verified:", isVerified);
+
+    if (isVerified && status === "TXN_SUCCESS" && payment.status !== "completed") {
+      await completePaytmPayment(payment, txnId);
+    } else if (isVerified && status !== "TXN_SUCCESS" && payment.status === "pending") {
+      await db.update(paymentsTable).set({ status: "failed" }).where(eq(paymentsTable.id, payment.id));
+    }
+  } catch (err) {
+    console.error("[paytm callback] error:", err);
+  }
+
+  // 303 ensures the browser switches POST → GET when redirecting
+  res.redirect(303, redirectTo);
 });
 
 // ── Paytm: Webhook (server-to-server payment notification) ────────────────────

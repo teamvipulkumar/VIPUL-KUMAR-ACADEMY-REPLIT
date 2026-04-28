@@ -110,3 +110,13 @@ Tables: users, courses, modules, lessons, enrollments, payments, affiliates (ref
   - Execution engine: `triggerFunnel()` in crm.ts for programmatic firing
   - **`user_signup` trigger fired from**: auth.ts /register, auth.ts Google OAuth, payments.ts simulated /checkout/guest, bundles.ts simulated /checkout/guest, **and all 6 live-gateway create-order routes** (Cashfree/Paytm/Stripe × course/bundle). Fires at user-creation time, not at payment success — so welcome email lands even if checkout is abandoned.
   - Known limitation: `wait` steps use `setTimeout` in-process — long delays do NOT survive API restart (needs DB-backed scheduler in a future PR).
+
+## Paytm Integration Notes (2026-04)
+
+- **Flow**: Classic PG (form-POST to `/order/process`) — same approach as the official WordPress Paytm plugin. Theia/initiateTransaction API is NOT used because most legacy Indian merchant accounts aren't activated for it (returns `501 System Error`).
+- **Backend**: `payments.ts` and `bundles.ts` `/paytm/create-order` endpoints return `{ paytmParams: {...with CHECKSUMHASH}, actionUrl, orderId, ... }`. Frontend builds a hidden HTML form from `paytmParams` and auto-submits to `actionUrl`.
+- **Callback**: `/paytm/callback` parses Paytm's form-POST response, verifies CHECKSUMHASH via `PaytmChecksum.verifySignature`, calls `completePaytmPayment()` (idempotent enrollment helper), then 303-redirects browser to `${origin}/payment/verify?gateway=paytm&order_id=...`.
+- **Verify endpoint**: `/paytm/verify` first checks DB status (callback may have already completed payment); falls back to `/v3/order/status` server-to-server query for pending payments.
+- **Common pitfall — "Invalid checksum"**: If Paytm returns `RESPMSG=Invalid checksum`, the merchant key is wrong for that environment. Production and staging keys are DIFFERENT for the same MID. Verify by signing the same request for staging — if staging accepts the checksum (returns "technical error" instead of "Invalid checksum"), you have a staging key configured against a production endpoint.
+- **websiteName**: Defaults to `DEFAULT` (production) / `WEBSTAGING` (test). Override per-merchant via Webhook Secret = `WS:<your-website-name>`.
+- **Library**: `paytmchecksum` v1.5.1 (NPM). `generateSignature(paramsObj, key)` produces a non-deterministic checksum (uses random IV) and `verifySignature(paramsObj, key, hash)` round-trips correctly.

@@ -678,7 +678,7 @@ export default function BundleCheckoutPage() {
     }
   };
 
-  // ── Real Paytm Payment ────────────────────────────────────────────────────
+  // ── Real Paytm Payment (Classic PG — form POST to Paytm hosted checkout) ───
   const handlePaytmPayment = async () => {
     setProcessing(true);
     const affiliateRef = getStoredRef() || undefined;
@@ -700,7 +700,11 @@ export default function BundleCheckoutPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to initiate Paytm payment");
 
-      const { txnToken, orderId, mid, amount: paytmAmount, isTestMode } = data;
+      const { paytmParams, actionUrl, orderId } = data as {
+        paytmParams: Record<string, string>;
+        actionUrl: string;
+        orderId: string;
+      };
 
       if (data.isNewUser && data.tempPassword) {
         sessionStorage.setItem("cf_new_user_creds", JSON.stringify({
@@ -710,54 +714,21 @@ export default function BundleCheckoutPage() {
         }));
       }
 
-      const sdkId = "paytm-checkout-sdk";
-      const existingScript = document.getElementById(sdkId);
-      if (existingScript) existingScript.remove();
-
-      const sdkHost = isTestMode ? "securegw-stage.paytm.in" : "securegw.paytm.in";
-      await new Promise<void>((resolve, reject) => {
-        const script = document.createElement("script");
-        script.id = sdkId;
-        script.src = `https://${sdkHost}/merchantpgpui/checkoutjs/merchants/${encodeURIComponent(mid)}.js`;
-        script.crossOrigin = "anonymous";
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error("Failed to load Paytm SDK. Check your Merchant ID."));
-        document.head.appendChild(script);
-      });
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const Paytm = (window as any).Paytm;
-      if (!Paytm?.CheckoutJS) throw new Error("Paytm SDK not initialised");
-
-      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-
-      await Paytm.CheckoutJS.init({
-        merchant: { mid, name: "EduPro Academy", logo: "", redirect: false },
-        order: {
-          id: orderId,
-          token: txnToken,
-          amount: String(paytmAmount.toFixed ? paytmAmount.toFixed(2) : paytmAmount),
-          userEmail: form.email.trim(),
-          userContact: form.mobile.trim() || "9999999999",
-        },
-        flow: "DEFAULT",
-        handler: {
-          transactionStatus: (_status: unknown) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (window as any).Paytm?.CheckoutJS?.close?.();
-            navigate(`${base}/payment/verify?order_id=${encodeURIComponent(orderId)}&gateway=paytm`);
-          },
-          notifyMerchant: (eventName: string, _data: unknown) => {
-            if (eventName === "SESSION_EXPIRED") {
-              toast({ title: "Payment session expired", description: "Please try again.", variant: "destructive" });
-              setProcessing(false);
-            }
-          },
-        },
-      });
-
-      Paytm.CheckoutJS.invoke();
-      setProcessing(false);
+      // Auto-submit hidden HTML form to Paytm hosted checkout
+      const paytmForm = document.createElement("form");
+      paytmForm.method = "POST";
+      paytmForm.action = actionUrl;
+      paytmForm.style.display = "none";
+      for (const [name, value] of Object.entries(paytmParams)) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = name;
+        input.value = String(value ?? "");
+        paytmForm.appendChild(input);
+      }
+      document.body.appendChild(paytmForm);
+      paytmForm.submit();
+      // Page navigates away to Paytm — keep processing=true
     } catch (err: unknown) {
       toast({ title: "Paytm payment failed", description: (err as Error).message, variant: "destructive" });
       setProcessing(false);
