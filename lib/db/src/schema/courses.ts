@@ -9,7 +9,7 @@ export const coursesTable = pgTable("courses", {
   thumbnailUrl: text("thumbnail_url"),
   price: numeric("price", { precision: 10, scale: 2 }).notNull().default("0"),
   category: text("category").notNull(),
-  level: text("level", { enum: ["beginner", "intermediate", "advanced", "coming_soon"] }).notNull().default("beginner"),
+  level: text("level", { enum: ["beginner", "intermediate", "advanced"] }).notNull().default("beginner"),
   status: text("status", { enum: ["draft", "published"] }).notNull().default("draft"),
   durationMinutes: integer("duration_minutes").notNull().default(0),
   compareAtPrice: numeric("compare_at_price", { precision: 10, scale: 2 }),

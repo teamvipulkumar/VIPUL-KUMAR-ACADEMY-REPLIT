@@ -13,5 +13,4 @@ export const UpdateCourseBodyLevel = {
   beginner: "beginner",
   intermediate: "intermediate",
   advanced: "advanced",
-  coming_soon: "coming_soon",
 } as const;

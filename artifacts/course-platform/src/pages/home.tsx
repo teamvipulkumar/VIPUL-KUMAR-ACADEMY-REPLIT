@@ -39,7 +39,6 @@ const levelColors: Record<string, string> = {
   beginner:     "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   intermediate: "bg-amber-500/10  text-amber-400  border-amber-500/20",
   advanced:     "bg-rose-500/10   text-rose-400   border-rose-500/20",
-  coming_soon:  "bg-gradient-to-r from-orange-500 to-pink-500 text-white border-orange-400 shadow-md shadow-orange-500/40 animate-pulse !font-bold !uppercase tracking-wider",
 };
 
 type BundleCourse = { id: number; title: string };
@@ -175,7 +174,7 @@ export default function Home() {
                       <div className="p-5 flex flex-col flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-[10px] font-semibold tracking-widest uppercase text-primary truncate">{course.category}</span>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold capitalize flex-shrink-0 ${levelColors[course.level] ?? ""}`}>{course.level === "coming_soon" ? "Coming Soon" : course.level}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold capitalize flex-shrink-0 ${levelColors[course.level] ?? ""}`}>{course.level}</span>
                         </div>
                         <h3 className="font-bold text-base leading-snug group-hover:text-primary transition-colors line-clamp-2 mb-2">{course.title}</h3>
                         <p className="text-xs text-muted-foreground line-clamp-2 flex-1 leading-relaxed">{course.description}</p>

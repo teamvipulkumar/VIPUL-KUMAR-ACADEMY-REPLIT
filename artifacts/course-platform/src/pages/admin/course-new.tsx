@@ -129,7 +129,6 @@ export default function AdminCourseNewPage() {
                   <SelectItem value="beginner">Beginner</SelectItem>
                   <SelectItem value="intermediate">Intermediate</SelectItem>
                   <SelectItem value="advanced">Advanced</SelectItem>
-                  <SelectItem value="coming_soon">Coming Soon</SelectItem>
                 </SelectContent>
               </Select>
             </div>
