@@ -915,10 +915,40 @@ router.get("/paytm/diag-key-fingerprint", requireAuth, requireAdmin, async (_req
     return (t.match(/name='RESPMSG' value='([^']+)'/) || [])[1] || "(none)";
   };
 
-  const [prodMsg, stgMsg] = await Promise.all([
-    probe("https://securegw.paytm.in/order/process"),
+  // Probe production with multiple common WEBSITE values
+  const probeProdWithWebsite = async (website: string) => {
+    const p = { ...testParams, ORDER_ID: `DIAG_${website}_${Date.now()}`, WEBSITE: website };
+    const c = await PaytmChecksum.generateSignature(p, key);
+    const r = await fetch("https://securegw.paytm.in/order/process", {
+      method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ ...p, CHECKSUMHASH: c }).toString(), redirect: "manual",
+    });
+    const t = await r.text();
+    return (t.match(/name='RESPMSG' value='([^']+)'/) || [])[1] || "(none)";
+  };
+
+  // Also call the v3 order status API on production — if checksum passes, MID exists on production
+  const orderStatusProbe = async (host: string) => {
+    const body = { mid: gw.apiKey, orderId: `DIAG_NONEXISTENT_${Date.now()}` };
+    const sig = await PaytmChecksum.generateSignature(JSON.stringify(body), key);
+    const r = await fetch(`${host}/v3/order/status`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body, head: { signature: sig } }),
+    });
+    const j = await r.json().catch(() => ({}));
+    return (j as any)?.body?.resultInfo || j;
+  };
+
+  const [stgMsg, prodDefault, prodWebProd, prodRetail, prodCustom, statusProd, statusStg] = await Promise.all([
     probeStg(),
+    probeProdWithWebsite("DEFAULT"),
+    probeProdWithWebsite("WEBPROD"),
+    probeProdWithWebsite("Retail"),
+    probeProdWithWebsite("vipulkumaracademy"),
+    orderStatusProbe("https://securegw.paytm.in"),
+    orderStatusProbe("https://securegw-stage.paytm.in"),
   ]);
+  const prodMsg = prodDefault;
 
   res.json({
     mid: gw.apiKey,
@@ -932,11 +962,16 @@ router.get("/paytm/diag-key-fingerprint", requireAuth, requireAdmin, async (_req
     isTestMode: gw.isTestMode,
     websiteName: (gw.webhookSecret || "").startsWith("WS:") ? gw.webhookSecret!.slice(3).trim() : "DEFAULT",
     diagnosis: {
-      productionResp: prodMsg,
-      stagingResp: stgMsg,
+      productionResp_DEFAULT: prodDefault,
+      productionResp_WEBPROD: prodWebProd,
+      productionResp_Retail: prodRetail,
+      productionResp_vipulkumaracademy: prodCustom,
+      stagingResp_WEBSTAGING: stgMsg,
+      orderStatus_production: statusProd,
+      orderStatus_staging: statusStg,
       verdict:
         prodMsg === "Invalid checksum" && stgMsg !== "Invalid checksum"
-          ? "❌ This is a STAGING/SANDBOX key — Paytm production rejects it. Get the LIVE production merchant key."
+          ? "❌ Key/MID NOT activated on Paytm production server. Either WEBSITE name is wrong, or merchant account is staging-only. Check 'orderStatus_production' — if it also says 'Invalid Checksum', the MID itself isn't on production."
           : prodMsg !== "Invalid checksum"
             ? "✅ Key is accepted by production — checksum validates correctly."
             : prodMsg === "Invalid checksum" && stgMsg === "Invalid checksum"
