@@ -430,16 +430,36 @@ router.post("/smtp/accounts/:id/test", requireAdmin, async (req, res): Promise<v
 });
 
 /* ── Template test-send ── */
-const SAMPLE_VARIABLES: Record<string, string> = {
+// Static sample values that don't depend on the request/site URL.
+const SAMPLE_VARIABLES_STATIC: Record<string, string> = {
   name: "Rahul Sharma",
   email: "rahul.sharma@example.com",
   course_name: "Advanced React Masterclass",
   amount: "4,999.00",
-  reset_link: "https://vkacademy.com/reset-password?token=sample_abc123",
   commission_amount: "999.80",
   payout_amount: "4,998.00",
   site_name: "VK Academy",
 };
+
+/**
+ * Resolves the public site URL for sample/test emails. Same precedence as
+ * auth.ts → resolvePublicSiteUrl: admin-configured siteUrl from
+ * platform_settings, then SITE_URL env, then reconstruct from request
+ * (honors X-Forwarded-Proto/Host because trust proxy=1 is set in app.ts).
+ * This keeps test-send buttons in sync with the live domain so admins never
+ * see stale sample URLs (e.g. vkacademy.com) leaking into the preview.
+ */
+async function resolveSampleSiteUrl(req: import("express").Request): Promise<string> {
+  try {
+    const [ps] = await db.select({ siteUrl: platformSettingsTable.siteUrl })
+      .from(platformSettingsTable).limit(1);
+    const fromDb = ps?.siteUrl?.trim();
+    if (fromDb) return fromDb.replace(/\/+$/, "");
+  } catch { /* fall through */ }
+  const fromEnv = process.env.SITE_URL?.trim();
+  if (fromEnv) return fromEnv.replace(/\/+$/, "");
+  return `${req.protocol}://${req.hostname}`;
+}
 
 router.post("/templates/test-send", requireAdmin, async (req, res): Promise<void> => {
   const smtp = await getSmtp();
@@ -450,10 +470,19 @@ router.post("/templates/test-send", requireAdmin, async (req, res): Promise<void
   if (!subject) { res.status(400).json({ error: "Subject required" }); return; }
   if (!htmlBody) { res.status(400).json({ error: "Email body required" }); return; }
   try {
+    // Build sample variables: static values + URL-derived values resolved from
+    // the live site URL so test-send previews match what real recipients will get.
+    const siteUrl = await resolveSampleSiteUrl(req);
+    const sampleVariables: Record<string, string> = {
+      ...SAMPLE_VARIABLES_STATIC,
+      site_url: siteUrl,
+      reset_link: `${siteUrl}/reset-password?token=sample_abc123`,
+      verify_link: `${siteUrl}/verify-email?token=sample_abc123`,
+    };
     // Replace all variables with sample values so preview looks realistic
     let processedHtml = htmlBody;
     let processedSubject = subject;
-    for (const [key, val] of Object.entries(SAMPLE_VARIABLES)) {
+    for (const [key, val] of Object.entries(sampleVariables)) {
       processedHtml = processedHtml.replaceAll(`{{${key}}}`, val);
       processedSubject = processedSubject.replaceAll(`{{${key}}}`, val);
     }
