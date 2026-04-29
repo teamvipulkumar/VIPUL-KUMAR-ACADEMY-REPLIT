@@ -699,7 +699,7 @@ const DEFAULT_TEMPLATES = [
       <p style="margin:0 0 18px;font-size:14px;color:#374151;line-height:1.7;">Your course is now available in your dashboard. Start learning immediately!</p>
       <table cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
         <tr><td style="background:#16a34a;border-radius:8px;padding:13px 30px;">
-          <a href="{{site_url}}/my-courses" style="color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;font-family:Arial,Helvetica,sans-serif;">Start Learning &rarr;</a>
+          <a href="{{site_url}}/my-courses" data-no-track="1" style="color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;font-family:Arial,Helvetica,sans-serif;">Start Learning &rarr;</a>
         </td></tr>
       </table>
       <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0 16px;" />
