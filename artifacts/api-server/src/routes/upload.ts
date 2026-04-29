@@ -28,8 +28,11 @@ const mediaUpload = multer({
   storage: memoryStorage,
   limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
+    // SECURITY: SVGs intentionally excluded — they're XML and can carry inline
+    // <script> / event handlers, which would execute as the same origin as the
+    // public Supabase Storage URL the file is served from.
     const allowed = [
-      "image/jpeg", "image/png", "image/webp", "image/gif", "image/avif", "image/svg+xml",
+      "image/jpeg", "image/png", "image/webp", "image/gif", "image/avif",
       "video/mp4", "video/webm", "video/quicktime", "video/x-msvideo",
       "application/pdf",
       "application/msword",

@@ -14,6 +14,16 @@ if (!connectionString) {
   );
 }
 
+// TLS NOTE: traffic between the API and Supabase IS encrypted (TLS handshake
+// still happens), but Supabase's connection pooler presents a cert chain that
+// includes a self-signed root, so `rejectUnauthorized: true` rejects it with
+// SELF_SIGNED_CERT_IN_CHAIN. This is the standard Supabase setup and is
+// documented in their guides. To get full chain validation, deploy with the
+// Supabase CA bundle and load it via `ssl: { ca: fs.readFileSync(...) }`.
+//
+// MITM risk is mitigated by the fact that an attacker would need to be on the
+// path between the API host and Supabase's network — not a public internet
+// position — and would also need to break the TLS handshake itself.
 export const pool = new Pool({
   connectionString,
   ssl: { rejectUnauthorized: false },

@@ -9,7 +9,7 @@ import {
   affiliateApplicationsTable, commissionGroupsTable,
 } from "@workspace/db";
 import { eq, and, desc, or, isNull } from "drizzle-orm";
-import { requireAuth, requireAdmin, signToken, verifyToken, type JwtPayload } from "../middlewares/auth";
+import { requireAuth, requireAdmin, signToken, verifyToken, authCookieOptions, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import { triggerAutomation, triggerFunnel } from "./crm";
 import { ensureUserForPayment } from "./payments";
@@ -417,7 +417,7 @@ router.post("/checkout/guest", async (req, res): Promise<void> => {
     }
   }
   const token = signToken({ userId: freshUser!.id, email: freshUser!.email, role: freshUser!.role });
-  res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+  res.cookie("token", token, authCookieOptions());
 
   const { password: _, ...safeUser } = freshUser!;
   res.json({
@@ -545,7 +545,7 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
     const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
     if (freshUser) {
       const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
-      res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+      res.cookie("token", token, authCookieOptions());
     }
   }
 
@@ -705,7 +705,7 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
     const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
     if (freshUser) {
       const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
-      res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+      res.cookie("token", token, authCookieOptions());
     }
   }
 
@@ -826,7 +826,7 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
       const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
       if (freshUser) {
         const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
-        res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+        res.cookie("token", token, authCookieOptions());
         const { password: _p, ...rest } = freshUser;
         safeUser = rest;
       } else {
@@ -873,14 +873,48 @@ router.post("/stripe/verify", async (req, res): Promise<void> => {
   ).limit(1);
   if (!gw) { res.status(400).json({ error: "Stripe gateway not configured" }); return; }
 
+  // SECURITY: bind paymentIntentId to this session BEFORE asking Stripe to
+  // verify it. Mirrors /payments/stripe/verify — without this an attacker who
+  // got hold of any other succeeded payment_intent could replay it to complete
+  // this pending bundle session and get a free bundle enrollment.
+  if (!payment.paymentId || payment.paymentId !== paymentIntentId) {
+    console.warn("[bundles stripe verify] paymentIntentId mismatch", {
+      sessionId, expected: payment.paymentId, received: paymentIntentId,
+    });
+    res.status(400).json({ error: "Payment intent does not belong to this session" });
+    return;
+  }
+
   const r = await fetch(`https://api.stripe.com/v1/payment_intents/${paymentIntentId}`, {
     headers: { Authorization: `Bearer ${gw.secretKey}` },
   });
-  const intent = await r.json() as { status: string; error?: { message: string } };
+  const intent = await r.json() as {
+    status: string;
+    amount?: number;
+    currency?: string;
+    error?: { message: string };
+  };
   if (!r.ok) { res.status(400).json({ error: (intent as { error?: { message: string } }).error?.message ?? "Failed to verify Stripe payment" }); return; }
 
   if (intent.status !== "succeeded") {
     res.status(400).json({ error: `Payment not completed. Stripe status: ${intent.status}` }); return;
+  }
+
+  // SECURITY: enforce amount + currency match against DB row.
+  const expectedAmountMinor = Math.round(parseFloat(String(payment.amount)) * 100);
+  if (typeof intent.amount !== "number" || intent.amount !== expectedAmountMinor) {
+    console.warn("[bundles stripe verify] amount mismatch", {
+      sessionId, expected: expectedAmountMinor, received: intent.amount,
+    });
+    res.status(400).json({ error: "Payment amount mismatch" });
+    return;
+  }
+  if (!intent.currency || intent.currency.toLowerCase() !== String(payment.currency).toLowerCase()) {
+    console.warn("[bundles stripe verify] currency mismatch", {
+      sessionId, expected: payment.currency, received: intent.currency,
+    });
+    res.status(400).json({ error: "Payment currency mismatch" });
+    return;
   }
 
   // Materialise the user account NOW (deferred until payment success). After
@@ -894,7 +928,7 @@ router.post("/stripe/verify", async (req, res): Promise<void> => {
     const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, resolvedUserId)).limit(1);
     if (authedUser) {
       const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
-      res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+      res.cookie("token", tk, authCookieOptions());
     }
   }
 

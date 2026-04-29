@@ -4,7 +4,7 @@ import { nanoid } from "nanoid";
 import { db } from "@workspace/db";
 import { usersTable, platformSettingsTable, adminStaffTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
-import { signToken, requireAuth, type JwtPayload } from "../middlewares/auth";
+import { signToken, requireAuth, authCookieOptions, clearAuthCookieOptions, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import { triggerAutomation, triggerFunnel, sendTransactionalEmail } from "./crm";
 import { OAuth2Client } from "google-auth-library";
@@ -71,7 +71,7 @@ router.post("/register", async (req, res): Promise<void> => {
   }).returning();
 
   const token = signToken({ userId: user.id, email: user.email, role: user.role });
-  res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+  res.cookie("token", token, authCookieOptions());
   const { password: _, emailVerifyToken: _vt, emailVerifyTokenExpiresAt: _vte, resetToken: _rt, resetTokenExpiresAt: _rte, ...safeUser } = user;
   res.status(201).json({ user: safeUser, message: "Registered successfully" });
 
@@ -108,7 +108,7 @@ router.post("/login", async (req, res): Promise<void> => {
   const isStaff = !!staffRecord;
   const staffPermissions = staffRecord?.permissions ?? null;
   const token = signToken({ userId: user.id, email: user.email, role: user.role, isStaff, staffPermissions });
-  res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+  res.cookie("token", token, authCookieOptions());
   const { password: _, emailVerifyToken: _vt, emailVerifyTokenExpiresAt: _vte, resetToken: _rt, resetTokenExpiresAt: _rte, ...safeUser } = user;
   res.json({ user: { ...safeUser, isStaff, staffPermissions }, message: "Login successful" });
   const loginOrigin = (req.headers.origin as string) || process.env.SITE_URL || "";
@@ -116,7 +116,7 @@ router.post("/login", async (req, res): Promise<void> => {
 });
 
 router.post("/logout", (req, res): void => {
-  res.clearCookie("token");
+  res.clearCookie("token", clearAuthCookieOptions());
   res.json({ message: "Logged out successfully" });
 });
 
@@ -305,7 +305,7 @@ router.post("/google-login", async (req, res): Promise<void> => {
   }
 
   const jwtToken = signToken({ userId: user.id, email: user.email, role: user.role });
-  res.cookie("token", jwtToken, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+  res.cookie("token", jwtToken, authCookieOptions());
   const { password: _, emailVerifyToken: _vt, emailVerifyTokenExpiresAt: _vte, resetToken: _rt, resetTokenExpiresAt: _rte, ...safeUser } = user;
   res.json({ user: safeUser, isNewUser, message: "Signed in with Google" });
 });

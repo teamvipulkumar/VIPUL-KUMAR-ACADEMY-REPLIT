@@ -170,3 +170,66 @@ Tables: users, courses, modules, lessons, enrollments, payments, affiliates (ref
 - **Data-leak fix (Stripe responses)**: When the request is unauthenticated, both Stripe create-order endpoints now return a display-only `safeUser` synthesised from the form (`{ id: null, name, email, role: "student" }`) instead of the existing user's real DB row.
 - **Behaviour preserved**: Already-logged-in users still get a cookie refresh during create-order. Brand-new emails still defer account creation per the prior fix. Verify/webhook auto-login on capture is unchanged.
 - **Out of scope**: The legacy `/checkout/guest` simulated endpoints (payments.ts ~line 516, bundles.ts ~line 420) still set the cookie unconditionally — but those mark `status: "completed"` immediately (no real gateway), so the cookie set is appropriate there.
+
+## Security Hardening (2026-04-29)
+
+Comprehensive security pass that closes critical/high/medium findings from a full audit (dependency audit + SAST + 3 deep code reviews).
+
+### Critical fixes
+
+- **CORS lockdown** (`api-server/src/app.ts`) — replaced `cors({ origin: true })` (which reflected ANY origin and enabled cross-site authenticated requests) with an env-driven allowlist (`ALLOWED_ORIGINS`, `SITE_URL`, plus auto-allow of the active `REPLIT_DEV_DOMAIN` and any `*.replit.dev`/`*.repl.co` host). Disallowed origins now get no CORS headers at all (clean `cb(null, false)`, not a thrown error).
+- **CSRF defense** — new Origin/Referer validation middleware on every state-changing request (POST/PUT/PATCH/DELETE). Webhook endpoints (gateway server-to-server) and the Paytm browser-form callback are explicitly exempted because they verify themselves via signature. Combined with `SameSite=lax` cookies, this blocks both XHR and form-POST CSRF.
+- **JWT fallback secret removed** (`api-server/src/middlewares/auth.ts`) — previously `process.env.SESSION_SECRET || "dev-secret-change-in-production"`. Now throws at startup in production if `SESSION_SECRET` is missing/short; in dev falls back to a per-process random secret (so tokens never persist a hardcoded value). `crm.ts:signClickTarget` HMAC also now throws if `SESSION_SECRET` is unset.
+
+### High fixes
+
+- **Rate limiting** (`api-server/src/middlewares/rate-limit.ts`) — `express-rate-limit` applied to `/auth/login`, `/auth/register`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/google-login` (20/15min); `/payments/*`, `/bundles/*` (60/5min); `/coupons/validate`, `/affiliate/track` (60/min). `app.set("trust proxy", 1)` so the limiter keys on the real client IP behind Replit's proxy.
+- **`/api/analytics/recent-activity`** — added `requireAdmin`. Was previously public and leaked user names + course enrollment / payment activity.
+- **SVG uploads blocked** (`api-server/src/routes/upload.ts`) — removed `image/svg+xml` from the media allowlist. SVGs can carry inline `<script>` and would execute on the public Supabase Storage origin.
+- **Debug script deleted** — `artifacts/api-server/inspect_paytm.mts` printed Paytm secret_key + webhook_secret to stdout. Removed from disk so it can't ship in builds.
+- **`sql.raw` SQL-injection footgun fixed** (`crm.ts:879`) — replaced `sql.raw(\`ARRAY[${enrolledIds.join(",")}]\`)` with Drizzle's parameterized `inArray()`.
+
+### Medium fixes
+
+- **Helmet** (`api-server/src/app.ts`) — adds HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, X-Permitted-Cross-Domain-Policies, COOP, etc. CSP intentionally disabled because the API only emits JSON + small unsubscribe HTML; the SPA serves its own CSP.
+- **Single cookie helper** (`auth.ts:authCookieOptions`) — every `res.cookie("token", …)` site (22 total across `auth.ts`, `payments.ts`, `bundles.ts`) now flows through one helper that sets `httpOnly: true`, `sameSite: "lax"`, `path: "/"`, and crucially `secure: NODE_ENV === "production"` so the JWT can never travel over plaintext HTTP in prod.
+
+### Documented (intentionally not patched)
+
+- **DB TLS** (`lib/db/src/index.ts`) — Supabase pooler presents a self-signed cert chain, so `rejectUnauthorized: true` rejects with `SELF_SIGNED_CERT_IN_CHAIN`. We keep `rejectUnauthorized: false` (traffic is still encrypted, only chain validation is skipped) with a documented escape route to load the Supabase CA bundle later.
+- **SMTP TLS** (`crm.ts:34, 50`) — admin-configured SMTP relays often have legitimate cert-chain quirks; we keep `rejectUnauthorized: false`. Admin trust model already required to set up SMTP.
+- **Facebook Pixel base code injection** (`facebook-pixel.ts`) — admin-authored HTML rendered via `innerHTML`. This is the standard "trusted CMS" pattern (same as Google Tag Manager); only admins can write the field, and admin compromise is out of scope for this hardening pass.
+
+### Dependency fixes
+
+- `pnpm update vite postcss --recursive --latest` reduced known vulns from **15 → 7** (vite pinned to `^7.3.2` to keep `@tailwindcss/vite` and `@vitejs/plugin-react` peer deps happy). Remaining 7 are deep transitives in frontend dev deps (recharts → lodash, etc.) with no upstream patch yet.
+
+### Verified end-to-end
+
+- Helmet response headers present on every API response.
+- CORS rejects unknown origin with no `Access-Control-Allow-Origin` header (browser blocks); state-changing POST from disallowed origin → 403 `CSRF: origin not allowed`.
+- Rate limit returns 429 after 20 auth attempts in 15 min (real client IP via trust-proxy).
+- `/api/analytics/recent-activity` → 401 unauthenticated.
+- Same-origin frontend (vite proxy → 8080) continues to work; `/api/pixel-config`, `/api/courses`, `/api/auth/me` all 200.
+- `inspect_paytm.mts` no longer present.
+
+### Critical Payment-Integrity Fixes (round 2)
+
+A second architect pass found two payment-fraud vectors that the first round missed; both are now patched:
+
+- **Paytm webhook signature verification** (`payments.ts:/paytm/webhook`) — the S2S handler previously trusted `{ORDERID, STATUS}` from the request body and called `completePaytmPayment()` with no auth. Anyone could `POST` against any pending order and complete a free enrollment. Now verifies `CHECKSUMHASH` via `PaytmChecksum.verifySignature(params, gw.secretKey, …)` exactly like `/paytm/callback` and returns 401 on mismatch / missing signature.
+- **Stripe `paymentIntentId` binding** (`payments.ts:/stripe/verify`) — the verify handler loaded the payment row by `sessionId` and then independently asked Stripe whether the attacker-supplied `paymentIntentId` had succeeded. Any other succeeded intent could be replayed against any pending session. Now requires `payment.paymentId === paymentIntentId` (the intent we created at `/create-order` time) AND validates `intent.amount === amount * 100` and `intent.currency === payment.currency`.
+
+### CSRF middleware hardening (round 2)
+
+- URL parsing for `Origin`/`Referer` is now wrapped in try/catch (a malformed header used to throw 500).
+- Webhook bypass switched from substring/suffix match to an exact route allowlist (`/api/payments/{cashfree,razorpay,stripe,paytm}/webhook`, `/api/payments/paytm/callback`) so a future state-changing route accidentally containing the word "webhook" in its path can never inherit the bypass.
+
+### Critical Payment-Integrity Fixes (round 3)
+
+A third architect pass found two more endpoints with the same class of issue; both patched:
+
+- **`/api/bundles/stripe/verify`** — same paymentIntentId substitution / amount-replay vulnerability as `/api/payments/stripe/verify`. Now enforces `payment.paymentId === paymentIntentId` BEFORE the Stripe fetch, plus `intent.amount` and `intent.currency` validation against the DB row.
+- **`/api/payments/cashfree/webhook`** — signature verification was conditional (`if (timestamp && signature) { verify }`), so an attacker could omit headers and forge a paid event. Now signature headers + a configured Cashfree gateway are MANDATORY; missing → 401, missing gateway → 503, mismatch → 401.
+
+All payment completion paths (Cashfree create-order verify, Cashfree webhook, Razorpay verify, Stripe verify (course + bundle), Paytm callback, Paytm webhook) now require cryptographic proof of payment from the gateway.

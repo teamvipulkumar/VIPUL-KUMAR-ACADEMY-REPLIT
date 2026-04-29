@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { enrollmentsTable, paymentsTable, referralsTable, notificationsTable, usersTable, coursesTable } from "@workspace/db";
 import { eq, and, count, sum } from "drizzle-orm";
-import { requireAuth, type JwtPayload } from "../middlewares/auth";
+import { requireAuth, requireAdmin, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 
 const router = Router();
@@ -37,7 +37,9 @@ router.get("/summary", requireAuth, async (req, res): Promise<void> => {
   });
 });
 
-router.get("/recent-activity", async (req, res): Promise<void> => {
+// SECURITY: previously public; leaked user names + course enrollment / payment
+// activity to anonymous visitors. Now admin-only.
+router.get("/recent-activity", requireAdmin, async (req, res): Promise<void> => {
   const { limit = "10" } = req.query as Record<string, string>;
   const recentEnrollments = await db.select().from(enrollmentsTable).orderBy(enrollmentsTable.enrolledAt).limit(5);
   const recentPayments = await db.select().from(paymentsTable).where(eq(paymentsTable.status, "completed")).orderBy(paymentsTable.createdAt).limit(5);

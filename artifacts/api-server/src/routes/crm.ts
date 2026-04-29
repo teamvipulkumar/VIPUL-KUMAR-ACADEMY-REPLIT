@@ -109,7 +109,10 @@ export function newTrackingToken(): string {
 
 /** Sign a click target so the click endpoint can refuse tampered `to` params. */
 export function signClickTarget(token: string, target: string): string {
-  const secret = process.env.SESSION_SECRET || "dev-secret-change-in-production";
+  // SECURITY: no fallback secret — auth middleware throws at startup if SESSION_SECRET
+  // is missing in production, so by the time this runs the env var is guaranteed.
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) throw new Error("SESSION_SECRET required for HMAC signing");
   return createHmac("sha256", secret).update(`${token}:${target}`).digest("hex").slice(0, 16);
 }
 
@@ -874,9 +877,12 @@ router.post("/campaigns/:id/send", requireAdmin, async (req, res): Promise<void>
         const enrolled = await db.select({ userId: enrollmentsTable.userId }).from(enrollmentsTable);
         const enrolledIds = enrolled.map(e => e.userId);
         if (enrolledIds.length > 0) {
+          // SECURITY: previously used sql.raw(`ARRAY[${enrolledIds.join(",")}]`) which is
+          // a SQL-injection footgun even though enrolledIds are DB-derived integers.
+          // Switched to Drizzle's inArray() which parameterises everything safely.
           users = await db.select({ id: usersTable.id, email: usersTable.email, name: usersTable.name })
             .from(usersTable)
-            .where(and(eq(usersTable.isBanned, false), sql`${usersTable.id} = ANY(${sql.raw(`ARRAY[${enrolledIds.join(",")}]`)})`));
+            .where(and(eq(usersTable.isBanned, false), inArray(usersTable.id, enrolledIds)));
         }
       } else if (campaign.recipientFilter === "not_enrolled") {
         const enrolled = await db.select({ userId: enrollmentsTable.userId }).from(enrollmentsTable);

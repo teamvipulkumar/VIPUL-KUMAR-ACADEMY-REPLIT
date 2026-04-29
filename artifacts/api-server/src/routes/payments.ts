@@ -11,7 +11,7 @@ import {
 } from "@workspace/db";
 import { eq, and, desc, isNull, or } from "drizzle-orm";
 import { bundlesTable, bundleCoursesTable } from "@workspace/db";
-import { requireAuth, requireAdmin, signToken, verifyToken, type JwtPayload } from "../middlewares/auth";
+import { requireAuth, requireAdmin, signToken, verifyToken, authCookieOptions, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import { triggerAutomation, triggerFunnel } from "./crm";
 import { sendFbEvent } from "../lib/facebook-pixel";
@@ -513,7 +513,7 @@ router.post("/checkout/guest", async (req, res): Promise<void> => {
     }
   }
   const token = signToken({ userId: freshUser!.id, email: freshUser!.email, role: freshUser!.role });
-  res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+  res.cookie("token", token, authCookieOptions());
 
   const { password: _, ...safeUser } = freshUser!;
   res.json({ success: true, isNewUser, tempPassword, user: safeUser, courseId: parseInt(courseId), courseTitle: course.title });
@@ -642,7 +642,7 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
     const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
     if (freshUser) {
       const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
-      res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+      res.cookie("token", token, authCookieOptions());
     }
   }
 
@@ -675,7 +675,7 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
       const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
       if (authedUser) {
         const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
-        res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+        res.cookie("token", tk, authCookieOptions());
       }
     }
     if (payment.bundleId && !payment.courseId) {
@@ -715,7 +715,7 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
         const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, resolvedUserId)).limit(1);
         if (authedUser) {
           const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
-          res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+          res.cookie("token", tk, authCookieOptions());
         }
       }
       void isNewUser; // (frontend already has tempPassword from create-order time)
@@ -786,23 +786,34 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
 
 // ── Cashfree: Webhook ─────────────────────────────────────────────────────────
 router.post("/cashfree/webhook", async (req, res): Promise<void> => {
-  // 1. Verify Cashfree webhook signature
+  // SECURITY: signature verification is MANDATORY. Cashfree always sends
+  // x-webhook-timestamp + x-webhook-signature on real S2S calls; missing
+  // headers or a misconfigured gateway means we cannot trust the payload, so
+  // we reject. The previous "if both headers present, verify" pattern let an
+  // attacker forge paid events simply by omitting the headers.
   const timestamp = req.headers["x-webhook-timestamp"] as string | undefined;
   const signature = req.headers["x-webhook-signature"] as string | undefined;
   const rawBody = (req as { rawBody?: string }).rawBody ?? "";
 
-  if (timestamp && signature) {
-    const [gw] = await db.select().from(paymentGatewaysTable).where(eq(paymentGatewaysTable.name, "cashfree")).limit(1);
-    if (gw?.secretKey) {
-      const computed = crypto
-        .createHmac("sha256", gw.secretKey)
-        .update(timestamp + rawBody)
-        .digest("base64");
-      if (computed !== signature) {
-        res.status(401).json({ error: "Invalid webhook signature" });
-        return;
-      }
-    }
+  if (!timestamp || !signature) {
+    res.status(401).json({ error: "Missing webhook signature headers" });
+    return;
+  }
+
+  const [gw] = await db.select().from(paymentGatewaysTable).where(eq(paymentGatewaysTable.name, "cashfree")).limit(1);
+  if (!gw?.secretKey) {
+    res.status(503).json({ error: "Cashfree gateway not configured" });
+    return;
+  }
+
+  const computed = crypto
+    .createHmac("sha256", gw.secretKey)
+    .update(timestamp + rawBody)
+    .digest("base64");
+  if (computed !== signature) {
+    console.warn("[cashfree webhook] signature mismatch");
+    res.status(401).json({ error: "Invalid webhook signature" });
+    return;
   }
 
   // 2. Process event
@@ -1025,7 +1036,7 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
     const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
     if (freshUser) {
       const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
-      res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+      res.cookie("token", token, authCookieOptions());
     }
   }
 
@@ -1253,7 +1264,7 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
       const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
       if (authedUser) {
         const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
-        res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+        res.cookie("token", tk, authCookieOptions());
       }
     }
     if (payment.bundleId && !payment.courseId) {
@@ -1311,7 +1322,7 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
         const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
         if (authedUser) {
           const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
-          res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+          res.cookie("token", tk, authCookieOptions());
         }
       }
       if (payment.bundleId && !payment.courseId) {
@@ -1377,7 +1388,7 @@ router.post("/paytm/callback", async (req, res): Promise<void> => {
         const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId!)).limit(1);
         if (authedUser) {
           const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
-          res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+          res.cookie("token", tk, authCookieOptions());
         }
       }
     } else if (isVerified && status !== "TXN_SUCCESS" && payment.status === "pending") {
@@ -1392,17 +1403,42 @@ router.post("/paytm/callback", async (req, res): Promise<void> => {
 });
 
 // ── Paytm: Webhook (server-to-server payment notification) ────────────────────
+// SECURITY: Paytm S2S webhooks include CHECKSUMHASH signed with the merchant
+// secret key. Without verification ANY caller could POST {ORDERID, STATUS:
+// "TXN_SUCCESS"} and complete a pending payment for free. We compute and
+// compare the signature exactly like the /paytm/callback handler before any
+// state change.
 router.post("/paytm/webhook", async (req, res): Promise<void> => {
-  const event = req.body;
-  const orderId: string | undefined = event?.ORDERID;
-  const txnStatus: string | undefined = event?.STATUS;
+  const params: Record<string, string> = {};
+  for (const [k, v] of Object.entries(req.body || {})) {
+    params[k] = String(v ?? "");
+  }
+  const receivedChecksum = params.CHECKSUMHASH || "";
+  delete params.CHECKSUMHASH;
 
-  if (!orderId || txnStatus !== "TXN_SUCCESS") { res.json({ received: true }); return; }
+  const orderId = params.ORDERID || "";
+  const txnStatus = params.STATUS || "";
+
+  if (!orderId) { res.status(400).json({ error: "ORDERID required" }); return; }
+
+  const [gw] = await db.select().from(paymentGatewaysTable).where(eq(paymentGatewaysTable.name, "paytm")).limit(1);
+  if (!gw) { res.status(503).json({ error: "Paytm gateway not configured" }); return; }
+
+  const isVerified: boolean = receivedChecksum
+    ? PaytmChecksum.verifySignature(params, gw.secretKey, receivedChecksum)
+    : false;
+  if (!isVerified) {
+    console.warn("[paytm webhook] signature verification FAILED for orderId:", orderId);
+    res.status(401).json({ error: "Invalid signature" });
+    return;
+  }
+
+  if (txnStatus !== "TXN_SUCCESS") { res.json({ received: true }); return; }
 
   const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.gatewayOrderId, orderId)).limit(1);
   if (!payment || payment.status === "completed") { res.json({ received: true }); return; }
 
-  const txnId: string = event?.TXNID ?? `ptm_wh_${nanoid(10)}`;
+  const txnId: string = params.TXNID || `ptm_wh_${nanoid(10)}`;
   // Delegate to the shared completion helper so user materialisation, enrollment,
   // notification, automation, funnel and affiliate-commission logic stay in sync
   // with the callback / verify paths and avoid the prior null-userId hazard.
@@ -1595,7 +1631,7 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
       const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
       if (freshUser) {
         const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
-        res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+        res.cookie("token", token, authCookieOptions());
         safeUser = { name: freshUser.name, email: freshUser.email };
       } else {
         safeUser = { name: fullName.trim(), email: email.toLowerCase().trim() };
@@ -1632,14 +1668,51 @@ router.post("/stripe/verify", async (req, res): Promise<void> => {
   ).limit(1);
   if (!gw) { res.status(400).json({ error: "Stripe gateway not configured" }); return; }
 
+  // SECURITY: bind paymentIntentId to this session BEFORE asking Stripe to
+  // verify it. Without this check an attacker who got hold of any other
+  // succeeded payment_intent (their own from a different session, or one
+  // observed elsewhere) could replay it to complete this pending session and
+  // get a free enrollment. paymentId was set at create-order time to the
+  // intent.id we generated, so the only valid value is that one.
+  if (!payment.paymentId || payment.paymentId !== paymentIntentId) {
+    console.warn("[stripe verify] paymentIntentId mismatch", {
+      sessionId, expected: payment.paymentId, received: paymentIntentId,
+    });
+    res.status(400).json({ error: "Payment intent does not belong to this session" });
+    return;
+  }
+
   const r = await fetch(`https://api.stripe.com/v1/payment_intents/${paymentIntentId}`, {
     headers: { Authorization: `Bearer ${gw.secretKey}` },
   });
-  const intent = await r.json() as { status: string; error?: { message: string } };
+  const intent = await r.json() as {
+    status: string;
+    amount?: number;
+    currency?: string;
+    error?: { message: string };
+  };
   if (!r.ok) { res.status(400).json({ error: (intent as { error?: { message: string } }).error?.message ?? "Failed to verify Stripe payment" }); return; }
 
   if (intent.status !== "succeeded") {
     res.status(400).json({ error: `Payment not completed. Stripe status: ${intent.status}` }); return;
+  }
+
+  // SECURITY: enforce amount + currency match. Stripe amounts are in the
+  // smallest currency unit (paise / cents); our DB stores a decimal string.
+  const expectedAmountMinor = Math.round(parseFloat(String(payment.amount)) * 100);
+  if (typeof intent.amount !== "number" || intent.amount !== expectedAmountMinor) {
+    console.warn("[stripe verify] amount mismatch", {
+      sessionId, expected: expectedAmountMinor, received: intent.amount,
+    });
+    res.status(400).json({ error: "Payment amount mismatch" });
+    return;
+  }
+  if (!intent.currency || intent.currency.toLowerCase() !== String(payment.currency).toLowerCase()) {
+    console.warn("[stripe verify] currency mismatch", {
+      sessionId, expected: payment.currency, received: intent.currency,
+    });
+    res.status(400).json({ error: "Payment currency mismatch" });
+    return;
   }
 
   // Materialise the user account NOW (deferred until payment success) and
@@ -1654,7 +1727,7 @@ router.post("/stripe/verify", async (req, res): Promise<void> => {
     // See /cashfree/create-order for full rationale.
     if (payment.allowAutoLogin && freshUser) {
       const tk = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
-      res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+      res.cookie("token", tk, authCookieOptions());
     }
     // Only return DB user fields when auto-login is allowed; otherwise hand back a
     // display-only object so we don't leak the existing user's name/role to a guest.
@@ -1671,7 +1744,7 @@ router.post("/stripe/verify", async (req, res): Promise<void> => {
     const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, resolvedUserId)).limit(1);
     if (authedUser) {
       const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
-      res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+      res.cookie("token", tk, authCookieOptions());
     }
   }
 
