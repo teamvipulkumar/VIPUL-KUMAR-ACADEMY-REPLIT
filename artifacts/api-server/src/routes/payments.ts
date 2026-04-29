@@ -592,6 +592,10 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
     billingMobile: mobile?.trim() || null,
     billingState: state || null,
     pendingPasswordHash,
+    // SECURITY: auto-login is allowed only for already-logged-in customers and
+    // for brand-new emails (where we own the temp password). Guests using an
+    // existing user's email get the course/bundle but never the cookie.
+    allowAutoLogin: wasAlreadyLoggedIn || isNewUser,
   }).returning();
 
   // Build the Cashfree order ID from the DB payment id so they match
@@ -663,9 +667,11 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
   if (!payment) { res.status(404).json({ error: "Payment record not found" }); return; }
   if (payment.status === "completed") {
     // Payment was already processed (by webhook or previous verify call) — show success.
-    // Set the auto-login cookie if not already set so the frontend success page can
-    // navigate the new user straight into their dashboard.
-    if (payment.userId) {
+    // SECURITY: only set the auto-login cookie when the payment was tagged
+    // `allowAutoLogin` at create-order time (logged-in customer OR brand-new
+    // email). Guests using an existing user's email get the success page but
+    // never the cookie — see /cashfree/create-order for full rationale.
+    if (payment.allowAutoLogin && payment.userId) {
       const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
       if (authedUser) {
         const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
@@ -702,11 +708,15 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
       const { userId: resolvedUserId, isNewUser } = await ensureUserForPayment(payment);
       payment.userId = resolvedUserId;
 
-      // Set auto-login cookie now that we know the user exists.
-      const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, resolvedUserId)).limit(1);
-      if (authedUser) {
-        const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
-        res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+      // SECURITY: only set the auto-login cookie when the payment was tagged
+      // `allowAutoLogin` at create-order time. Guests who paid using an
+      // existing user's email get the course but never the cookie.
+      if (payment.allowAutoLogin) {
+        const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, resolvedUserId)).limit(1);
+        if (authedUser) {
+          const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
+          res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+        }
       }
       void isNewUser; // (frontend already has tempPassword from create-order time)
 
@@ -1005,6 +1015,8 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
     billingMobile: mobile?.trim() || null,
     billingState: state || null,
     pendingPasswordHash,
+    // SECURITY: see /cashfree/create-order for rationale.
+    allowAutoLogin: wasAlreadyLoggedIn || isNewUser,
   });
 
   // SECURITY: only refresh the auth cookie for users who were already logged in
@@ -1232,11 +1244,12 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
   if (!payment) { res.status(404).json({ error: "Payment record not found" }); return; }
 
   // If already marked complete by callback / webhook, return success immediately.
-  // Set the auto-login cookie so the success page can navigate the new user
-  // straight into their dashboard (covers the webhook-first scenario where the
-  // browser-side callback never set a cookie).
+  // SECURITY: only set the auto-login cookie when the payment was tagged
+  // `allowAutoLogin` at create-order time. Guests who paid using an existing
+  // user's email get the success response but never the cookie — see
+  // /cashfree/create-order for full rationale.
   if (payment.status === "completed") {
-    if (payment.userId) {
+    if (payment.allowAutoLogin && payment.userId) {
       const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
       if (authedUser) {
         const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
@@ -1292,7 +1305,9 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
       const txnId: string = result.body?.txnId ?? `ptm_${nanoid(12)}`;
       await completePaytmPayment(payment, txnId);
       // payment.userId is guaranteed non-null after completePaytmPayment().
-      if (payment.userId) {
+      // SECURITY: only set the auto-login cookie when allowAutoLogin is true.
+      // See /cashfree/create-order for full rationale.
+      if (payment.allowAutoLogin && payment.userId) {
         const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
         if (authedUser) {
           const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
@@ -1356,12 +1371,14 @@ router.post("/paytm/callback", async (req, res): Promise<void> => {
 
     if (isVerified && status === "TXN_SUCCESS" && payment.status !== "completed") {
       await completePaytmPayment(payment, txnId);
-      // Set auto-login cookie now that the user has been materialised.
+      // SECURITY: only set the auto-login cookie when allowAutoLogin is true.
       // payment.userId is guaranteed non-null after completePaytmPayment().
-      const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId!)).limit(1);
-      if (authedUser) {
-        const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
-        res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+      if (payment.allowAutoLogin) {
+        const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId!)).limit(1);
+        if (authedUser) {
+          const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
+          res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+        }
       }
     } else if (isVerified && status !== "TXN_SUCCESS" && payment.status === "pending") {
       await db.update(paymentsTable).set({ status: "failed" }).where(eq(paymentsTable.id, payment.id));
@@ -1565,6 +1582,8 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
       billingName: fullName?.trim() || null, billingEmail: email?.toLowerCase().trim() || null,
       billingMobile: mobile?.trim() || null, billingState: state || null,
       pendingPasswordHash,
+      // SECURITY: see /cashfree/create-order for rationale.
+      allowAutoLogin: wasAlreadyLoggedIn || isNewUser,
     });
 
     // SECURITY: only refresh the auth cookie for users who were already logged
@@ -1631,17 +1650,24 @@ router.post("/stripe/verify", async (req, res): Promise<void> => {
   if (payment.status === "completed") {
     const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
     const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, resolvedUserId)).limit(1);
-    if (freshUser) {
+    // SECURITY: only set the auto-login cookie when allowAutoLogin is true.
+    // See /cashfree/create-order for full rationale.
+    if (payment.allowAutoLogin && freshUser) {
       const tk = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
       res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
     }
-    const { password: _p2, ...safeUser } = freshUser!;
+    // Only return DB user fields when auto-login is allowed; otherwise hand back a
+    // display-only object so we don't leak the existing user's name/role to a guest.
+    const safeUser = (payment.allowAutoLogin && freshUser)
+      ? (() => { const { password: _p2, ...rest } = freshUser; return rest; })()
+      : { id: null, email: payment.billingEmail ?? "", name: payment.billingName ?? "", role: "student" };
     res.json({ success: true, alreadyEnrolled: true, courseId: payment.courseId, courseTitle: course?.title, user: safeUser });
     return;
   }
 
-  // Set auto-login cookie now (covers the brand-new-user case).
-  {
+  // SECURITY: only set the auto-login cookie when allowAutoLogin is true.
+  // See /cashfree/create-order for full rationale.
+  if (payment.allowAutoLogin) {
     const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, resolvedUserId)).limit(1);
     if (authedUser) {
       const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
@@ -1685,7 +1711,12 @@ router.post("/stripe/verify", async (req, res): Promise<void> => {
 
   const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
   const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
-  const { password: _p3, ...safeUser } = freshUser!;
+  // SECURITY: only return DB user fields when allowAutoLogin is true; otherwise
+  // hand back a display-only object so we don't leak the existing user's
+  // name/role to a guest using their email.
+  const safeUser = (payment.allowAutoLogin && freshUser)
+    ? (() => { const { password: _p3, ...rest } = freshUser; return rest; })()
+    : { id: null, email: payment.billingEmail ?? "", name: payment.billingName ?? "", role: "student" };
   res.json({ success: true, courseId: payment.courseId, courseTitle: course?.title, user: safeUser });
 });
 

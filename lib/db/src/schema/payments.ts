@@ -1,4 +1,4 @@
-import { pgTable, serial, timestamp, integer, numeric, text } from "drizzle-orm/pg-core";
+import { pgTable, serial, timestamp, integer, numeric, text, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -30,6 +30,18 @@ export const paymentsTable = pgTable("payments", {
   // where userId is null (i.e. user has not yet been created). Cleared when
   // ensureUserForPayment() materialises the user at payment-success time.
   pendingPasswordHash: text("pending_password_hash"),
+  // SECURITY: tracks whether the requester is allowed to be auto-logged-in
+  // when this payment captures. Set at create-order time:
+  //   • true  → requester was already authenticated as the resolved user, OR
+  //              the email was brand-new and we're creating the account from
+  //              this checkout's pendingPasswordHash (so the requester has the
+  //              temp password from sessionStorage).
+  //   • false → guest checkout where the typed email matched an EXISTING user
+  //              account that the requester did not authenticate as. They get
+  //              the course / bundle they paid for, but MUST NOT be logged
+  //              into the existing account without verifying ownership.
+  // All post-capture cookie sets must gate on this column.
+  allowAutoLogin: boolean("allow_auto_login").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

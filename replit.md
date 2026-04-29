@@ -91,6 +91,13 @@ Tables: users, courses, modules, lessons, enrollments, payments, affiliates (ref
 - `/funnels/:id/report` stats now expose `opened`, `openRate`, `clicked`, `clickRate`, `unsubscribed` (1-decimal rates, sent-as-denominator). Frontend `automation-report.tsx` reads these directly.
 - Security: open-redirect closed by token+HMAC double check. Note: `signClickTarget` (and `auth.ts` JWT) fall back to `"dev-secret-change-in-production"` if `SESSION_SECRET` is unset — production must enforce a real secret (currently set to a strong 88-char value).
 
+### Post-Capture Auto-Login Hardening (2026-04)
+- **Threat**: A guest checkout that uses an *existing* user's email (e.g. `admin@edupro.com`) must NEVER cause the requester's browser to be auto-logged into that account. Bug #1 fixed the create-order branch; Bug #2 closes the verify/callback/webhook branches across all 6 endpoints (Cashfree/Paytm/Stripe × course/bundle).
+- **Mechanism**: New column `payments.allow_auto_login boolean NOT NULL DEFAULT false` (Drizzle: `allowAutoLogin` in `lib/db/src/schema/payments.ts`; applied via raw `ALTER TABLE` against `SUPABASE_DATABASE_URL`). At create-order time, all 6 endpoints persist `allowAutoLogin: wasAlreadyLoggedIn || isNewUser`. Set to `false` when a logged-out request matches an existing user by email.
+- **Cookie gating**: All 7 post-capture `res.cookie("token", …)` sites now require `payment.allowAutoLogin` to be true: `payments.ts` Cashfree-verify (already-completed + fresh-PAID), Paytm-verify, Paytm-callback, Stripe-verify (already-completed + fresh-success); `bundles.ts` Stripe-verify. The Stripe `already-completed` branch additionally returns a synthesised `safeUser` from billing fields when auto-login is denied so we don't leak the existing account's name/role.
+- **Webhooks**: Server-to-server (no requester) — they call `completePaytmPayment()`/equivalent for enrollment but never set cookies, so they're inherently safe.
+- **Architect review**: PASS for Bug #1 and Bug #2 (cookie + profile-leak hardening). All 6 endpoints × 7 cookie sites + 4 user-payload sites verified.
+
 ## Features
 
 - JWT auth via httpOnly cookies

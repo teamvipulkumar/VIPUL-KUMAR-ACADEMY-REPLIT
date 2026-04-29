@@ -501,6 +501,8 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
     billingMobile: mobile?.trim() || null,
     billingState: state || null,
     pendingPasswordHash,
+    // SECURITY: see /payments/cashfree/create-order for rationale.
+    allowAutoLogin: wasAlreadyLoggedIn || isNewUser,
   }).returning();
 
   // Build the Cashfree order ID from the DB payment id so they match
@@ -693,6 +695,8 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
     billingMobile: mobile?.trim() || null,
     billingState: state || null,
     pendingPasswordHash,
+    // SECURITY: see /payments/cashfree/create-order for rationale.
+    allowAutoLogin: wasAlreadyLoggedIn || isNewUser,
   });
 
   // SECURITY: only refresh the auth cookie for users who were already logged
@@ -809,6 +813,8 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
       billingMobile: mobile?.trim() || null,
       billingState: state || null,
       pendingPasswordHash,
+      // SECURITY: see /payments/cashfree/create-order for rationale.
+      allowAutoLogin: wasAlreadyLoggedIn || isNewUser,
     });
 
     // SECURITY: only refresh the auth cookie + return real DB user fields when
@@ -882,8 +888,9 @@ router.post("/stripe/verify", async (req, res): Promise<void> => {
   const { userId: resolvedUserId } = await ensureUserForPayment(payment);
   payment.userId = resolvedUserId;
 
-  // Set auto-login cookie now (covers brand-new-user case).
-  {
+  // SECURITY: only set the auto-login cookie when allowAutoLogin is true.
+  // See /payments/cashfree/create-order for full rationale.
+  if (payment.allowAutoLogin) {
     const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, resolvedUserId)).limit(1);
     if (authedUser) {
       const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
@@ -894,7 +901,12 @@ router.post("/stripe/verify", async (req, res): Promise<void> => {
   if (payment.status === "completed") {
     const bundle = await getBundleWithCourses(payment.bundleId);
     const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, resolvedUserId)).limit(1);
-    const { password: _p2, ...safeUser } = freshUser!;
+    // SECURITY: only return DB user fields when allowAutoLogin is true; otherwise
+    // hand back a display-only object built from billing info so we don't leak
+    // the existing user's name/role to a guest using their email.
+    const safeUser = (payment.allowAutoLogin && freshUser)
+      ? (() => { const { password: _p2, ...rest } = freshUser; return rest; })()
+      : { id: null, email: payment.billingEmail ?? "", name: payment.billingName ?? "", role: "student" };
     res.json({ success: true, alreadyEnrolled: true, bundleId: payment.bundleId, bundleName: bundle?.name, user: safeUser, enrolledCount: bundle?.courses.length ?? 0 });
     return;
   }
@@ -910,7 +922,10 @@ router.post("/stripe/verify", async (req, res): Promise<void> => {
   }
 
   const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, resolvedUserId)).limit(1);
-  const { password: _p3, ...safeUser } = freshUser!;
+  // SECURITY: see above — same rationale.
+  const safeUser = (payment.allowAutoLogin && freshUser)
+    ? (() => { const { password: _p3, ...rest } = freshUser; return rest; })()
+    : { id: null, email: payment.billingEmail ?? "", name: payment.billingName ?? "", role: "student" };
   res.json({
     success: true,
     bundleId: payment.bundleId,
