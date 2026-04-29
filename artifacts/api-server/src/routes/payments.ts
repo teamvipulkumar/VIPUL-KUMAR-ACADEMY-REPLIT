@@ -535,14 +535,19 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
   }
 
   // Resolve user — defer creation for brand-new emails until payment success.
+  // SECURITY: `wasAlreadyLoggedIn` is true ONLY when the request arrived with a
+  // valid auth cookie. Matching an existing user by email alone does NOT count
+  // as authenticated — otherwise anyone could enter a known email at checkout
+  // and silently get logged in as that user without paying.
   let userId: number | null = null;
+  let wasAlreadyLoggedIn = false;
   let pendingPasswordHash: string | null = null;
   let isNewUser = false;
   let tempPassword: string | undefined;
 
   const existingToken = req.cookies?.token;
   if (existingToken) {
-    try { const payload = verifyToken(existingToken); userId = payload.userId; }
+    try { const payload = verifyToken(existingToken); userId = payload.userId; wasAlreadyLoggedIn = true; }
     catch { /* invalid token — treat as guest */ }
   }
 
@@ -624,9 +629,12 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
   // Update the payment record with the real gatewayOrderId
   await db.update(paymentsTable).set({ gatewayOrderId: cfOrderId }).where(eq(paymentsTable.id, pendingPayment.id));
 
-  // Auto-login only when we have a real user (logged-in or existing customer).
-  // For brand-new emails, the user row is materialised at payment-success time.
-  if (userId) {
+  // SECURITY: only refresh the auth cookie for users who were already logged in
+  // when they submitted checkout. Guests (including ones whose typed-in email
+  // happens to match an existing account) MUST NOT be auto-logged-in here —
+  // the cookie is set later by the verify/webhook handlers, after the gateway
+  // confirms the payment was actually captured.
+  if (wasAlreadyLoggedIn && userId) {
     const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
     if (freshUser) {
       const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
@@ -881,14 +889,16 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
   const merchantKey = gw.secretKey; // Merchant Key
 
   // Resolve user — defer creation for brand-new emails until payment success.
+  // SECURITY: see /cashfree/create-order for rationale on `wasAlreadyLoggedIn`.
   let userId: number | null = null;
+  let wasAlreadyLoggedIn = false;
   let pendingPasswordHash: string | null = null;
   let isNewUser = false;
   let tempPassword: string | undefined;
 
   const existingToken = req.cookies?.token;
   if (existingToken) {
-    try { const payload = verifyToken(existingToken); userId = payload.userId; }
+    try { const payload = verifyToken(existingToken); userId = payload.userId; wasAlreadyLoggedIn = true; }
     catch { /* invalid token — treat as guest */ }
   }
 
@@ -997,8 +1007,9 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
     pendingPasswordHash,
   });
 
-  // Auto-login only when we already have a real user (logged-in or existing).
-  if (userId) {
+  // SECURITY: only refresh the auth cookie for users who were already logged in
+  // when they submitted checkout. See /cashfree/create-order for full rationale.
+  if (wasAlreadyLoggedIn && userId) {
     const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
     if (freshUser) {
       const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
@@ -1479,14 +1490,16 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
   if (!gw) { res.status(400).json({ error: "Stripe is not configured or inactive" }); return; }
 
   // Resolve user — defer creation for brand-new emails until payment success.
+  // SECURITY: see /cashfree/create-order for rationale on `wasAlreadyLoggedIn`.
   let userId: number | null = null;
+  let wasAlreadyLoggedIn = false;
   let pendingPasswordHash: string | null = null;
   let isNewUser = false;
   let tempPassword: string | undefined;
 
   const existingToken = req.cookies?.token;
   if (existingToken) {
-    try { const payload = verifyToken(existingToken); userId = payload.userId; }
+    try { const payload = verifyToken(existingToken); userId = payload.userId; wasAlreadyLoggedIn = true; }
     catch { /* invalid token — treat as guest */ }
   }
 
@@ -1554,10 +1567,12 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
       pendingPasswordHash,
     });
 
-    // Auto-login only when we already have a real user (logged-in or existing).
-    // For brand-new emails, the user row is materialised at payment-success time.
+    // SECURITY: only refresh the auth cookie for users who were already logged
+    // in when they submitted checkout. See /cashfree/create-order for full
+    // rationale. Guests get a display-only `safeUser` synthesised from the form
+    // — never the existing user's DB row — to avoid leaking name/role.
     let safeUser: { name: string; email: string };
-    if (userId) {
+    if (wasAlreadyLoggedIn && userId) {
       const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
       if (freshUser) {
         const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
@@ -1567,7 +1582,7 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
         safeUser = { name: fullName.trim(), email: email.toLowerCase().trim() };
       }
     } else {
-      // Guest: synthesise a display-only user from the form data.
+      // Guest (incl. existing-email-by-guest): synthesise from form data.
       safeUser = { name: fullName.trim(), email: email.toLowerCase().trim() };
     }
 

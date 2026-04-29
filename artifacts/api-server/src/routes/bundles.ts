@@ -447,14 +447,16 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
   if (!bundle || !bundle.isActive) { res.status(404).json({ error: "Bundle not found" }); return; }
 
   // Resolve user — defer creation for brand-new emails until payment success.
+  // SECURITY: see /payments/cashfree/create-order for rationale on `wasAlreadyLoggedIn`.
   let userId: number | null = null;
+  let wasAlreadyLoggedIn = false;
   let pendingPasswordHash: string | null = null;
   let isNewUser = false;
   let tempPassword: string | undefined;
 
   const existingToken = req.cookies?.token;
   if (existingToken) {
-    try { const payload = verifyToken(existingToken); userId = payload.userId; }
+    try { const payload = verifyToken(existingToken); userId = payload.userId; wasAlreadyLoggedIn = true; }
     catch { /* invalid token — treat as guest */ }
   }
 
@@ -535,8 +537,9 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
   // Update the payment record with the real gatewayOrderId
   await db.update(paymentsTable).set({ gatewayOrderId: cfOrderId }).where(eq(paymentsTable.id, pendingPayment.id));
 
-  // Auto-login only when we already have a real user (logged-in or existing).
-  if (userId) {
+  // SECURITY: only refresh the auth cookie for users who were already logged
+  // in when they submitted checkout. See /payments/cashfree/create-order.
+  if (wasAlreadyLoggedIn && userId) {
     const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
     if (freshUser) {
       const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
@@ -576,14 +579,16 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
   if (!bundle || !bundle.isActive) { res.status(404).json({ error: "Bundle not found" }); return; }
 
   // Resolve user — defer creation for brand-new emails until payment success.
+  // SECURITY: see /payments/cashfree/create-order for rationale on `wasAlreadyLoggedIn`.
   let userId: number | null = null;
+  let wasAlreadyLoggedIn = false;
   let pendingPasswordHash: string | null = null;
   let isNewUser = false;
   let tempPassword: string | undefined;
 
   const existingToken = req.cookies?.token;
   if (existingToken) {
-    try { const payload = verifyToken(existingToken); userId = payload.userId; }
+    try { const payload = verifyToken(existingToken); userId = payload.userId; wasAlreadyLoggedIn = true; }
     catch { /* invalid token — treat as guest */ }
   }
 
@@ -690,8 +695,9 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
     pendingPasswordHash,
   });
 
-  // Auto-login only when we already have a real user (logged-in or existing).
-  if (userId) {
+  // SECURITY: only refresh the auth cookie for users who were already logged
+  // in when they submitted checkout. See /payments/cashfree/create-order.
+  if (wasAlreadyLoggedIn && userId) {
     const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
     if (freshUser) {
       const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
@@ -731,14 +737,16 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
   if (!bundle || !bundle.isActive) { res.status(404).json({ error: "Bundle not found" }); return; }
 
   // Resolve user — defer creation for brand-new emails until payment success.
+  // SECURITY: see /payments/cashfree/create-order for rationale on `wasAlreadyLoggedIn`.
   let userId: number | null = null;
+  let wasAlreadyLoggedIn = false;
   let pendingPasswordHash: string | null = null;
   let isNewUser = false;
   let tempPassword: string | undefined;
 
   const existingToken = req.cookies?.token;
   if (existingToken) {
-    try { const payload = verifyToken(existingToken); userId = payload.userId; }
+    try { const payload = verifyToken(existingToken); userId = payload.userId; wasAlreadyLoggedIn = true; }
     catch { /* invalid token — treat as guest */ }
   }
 
@@ -803,16 +811,26 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
       pendingPasswordHash,
     });
 
-    // Build response user — synthesise from form data when guest (account not yet created).
+    // SECURITY: only refresh the auth cookie + return real DB user fields when
+    // the request was already authenticated. Guests (including matched-by-email)
+    // get a display-only `safeUser` from the form so we don't leak the existing
+    // user's name/role. See /payments/cashfree/create-order for full rationale.
     let safeUser: Record<string, unknown>;
-    if (userId) {
+    if (wasAlreadyLoggedIn && userId) {
       const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
       if (freshUser) {
         const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
         res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+        const { password: _p, ...rest } = freshUser;
+        safeUser = rest;
+      } else {
+        safeUser = {
+          id: null,
+          email: email.toLowerCase().trim(),
+          name: fullName.trim(),
+          role: "student",
+        };
       }
-      const { password: _p, ...rest } = freshUser!;
-      safeUser = rest;
     } else {
       safeUser = {
         id: null,
