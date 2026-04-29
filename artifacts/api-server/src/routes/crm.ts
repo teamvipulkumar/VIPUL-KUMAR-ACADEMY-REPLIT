@@ -235,10 +235,18 @@ export async function injectEmailTracking(html: string, token: string): Promise<
 
   // Pass 2: rewrite all other anchor hrefs through the click endpoint. The
   // destination is HMAC-signed so the click endpoint can refuse tampered links.
+  // Security-critical, short-lived tokenized URLs (email verification, password
+  // reset, magic-link login) are EXCLUDED from click tracking so users always
+  // see a clean, direct URL on hover and never get blocked by a tracking-layer
+  // failure (e.g. expired sig, downtime). Authors can also opt any anchor out
+  // by adding `data-no-track` or `data-notrack` to it.
+  const NO_TRACK_PATH_RE = /\/(verify-email|reset-password|magic-link|magic-login)(\?|#|$)/i;
   out = out.replace(/<a\b([^>]*?)\shref=(["'])([^"']+)\2([^>]*)>/gi, (m, before, q, url, after) => {
     if (!url) return m;
     if (/^(mailto:|tel:|sms:|#|javascript:)/i.test(url)) return m;
     if (url.includes("/api/email/track/") || url.includes("/api/email/unsubscribe/")) return m;
+    if (NO_TRACK_PATH_RE.test(url)) return m;
+    if (/\bdata-no-?track\b/i.test(before + after)) return m;
     const sig = signClickTarget(token, url);
     const tracked = `${base}/api/email/track/click/${token}?to=${encodeURIComponent(url)}&sig=${sig}`;
     return `<a${before} href=${q}${escapeHtmlAttr(tracked)}${q}${after}>`;
