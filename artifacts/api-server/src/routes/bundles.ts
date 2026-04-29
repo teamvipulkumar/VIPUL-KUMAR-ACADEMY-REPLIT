@@ -12,7 +12,7 @@ import { eq, and, desc, or, isNull } from "drizzle-orm";
 import { requireAuth, requireAdmin, signToken, verifyToken, authCookieOptions, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import { triggerAutomation, triggerFunnel, getPublicBaseUrl } from "./crm";
-import { ensureUserForPayment, getOrCreateWelcomeVerifyLink } from "./payments";
+import { ensureUserForPayment, getOrCreateWelcomeVerifyLink, gatewayFetch } from "./payments";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PaytmChecksum = require("paytmchecksum");
@@ -524,7 +524,7 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
 
   let cfResp: { order_id?: string; payment_session_id?: string; message?: string };
   try {
-    const r = await fetch(`${host}/pg/orders`, {
+    const r = await gatewayFetch(`${host}/pg/orders`, {
       method: "POST",
       headers: { "x-api-version": "2023-08-01", "x-client-id": gw.apiKey, "x-client-secret": gw.secretKey, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -672,7 +672,7 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
       signature: sig,
     };
     const initUrl = `${host}/theia/api/v1/initiateTransaction?mid=${mid}&orderId=${encodeURIComponent(orderId)}`;
-    const r = await fetch(initUrl, {
+    const r = await gatewayFetch(initUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ body: initBody, head }),
@@ -813,7 +813,7 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
       "metadata[customer_email]": email.toLowerCase().trim(),
       "metadata[customer_name]": fullName.trim(),
     });
-    const r = await fetch("https://api.stripe.com/v1/payment_intents", {
+    const r = await gatewayFetch("https://api.stripe.com/v1/payment_intents", {
       method: "POST",
       headers: { Authorization: `Bearer ${gw.secretKey}`, "Content-Type": "application/x-www-form-urlencoded" },
       body: body.toString(),
@@ -911,7 +911,7 @@ router.post("/stripe/verify", async (req, res): Promise<void> => {
     return;
   }
 
-  const r = await fetch(`https://api.stripe.com/v1/payment_intents/${paymentIntentId}`, {
+  const r = await gatewayFetch(`https://api.stripe.com/v1/payment_intents/${paymentIntentId}`, {
     headers: { Authorization: `Bearer ${gw.secretKey}` },
   });
   const intent = await r.json() as {

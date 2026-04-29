@@ -20,6 +20,31 @@ import { generateGstInvoice } from "./gst";
 const router = Router();
 type AuthedRequest = Request & { user: JwtPayload };
 
+// Wraps `fetch` with a 15s timeout AND a graceful non-JSON error guard.
+// Two real-world failure modes this handles:
+//   1. Slow/hung gateway → user used to wait 30+s for a cryptic error.
+//      Now they get a clear message fast and can simply retry.
+//   2. Gateway returns an HTML error page (e.g., Cashfree sandbox 504 Gateway
+//      Time-out) → downstream `r.json()` used to throw "Unexpected token '<'"
+//      which leaked to the user's browser as a confusing JSON-parse error.
+//      Now we detect non-JSON error responses here and throw a clean message.
+export async function gatewayFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  let r: Response;
+  try {
+    r = await fetch(url, { ...init, signal: AbortSignal.timeout(15000) });
+  } catch (e) {
+    const err = e as Error;
+    if (err.name === "TimeoutError" || err.name === "AbortError") {
+      throw new Error("Payment gateway is taking too long to respond. Please try a different payment method or try again in a moment.");
+    }
+    throw err;
+  }
+  if (!r.ok && !(r.headers.get("content-type") || "").includes("json")) {
+    throw new Error(`Payment gateway is temporarily unavailable (status ${r.status}). Please try a different payment method or try again in a moment.`);
+  }
+  return r;
+}
+
 /* ── Affiliate Commission Helper ─────────────────────────────────────────── */
 async function recordAffiliateCommission(
   affiliateRef: string | null | undefined,
@@ -660,7 +685,7 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
 
   let cfResp: { order_id?: string; payment_session_id?: string; message?: string };
   try {
-    const r = await fetch(`${host}/pg/orders`, {
+    const r = await gatewayFetch(`${host}/pg/orders`, {
       method: "POST",
       headers: { "x-api-version": "2023-08-01", "x-client-id": gw.apiKey, "x-client-secret": gw.secretKey, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -753,7 +778,7 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
   // Verify with Cashfree API
   const host = gw.isTestMode ? "https://sandbox.cashfree.com" : "https://api.cashfree.com";
   try {
-    const r = await fetch(`${host}/pg/orders/${orderId}`, {
+    const r = await gatewayFetch(`${host}/pg/orders/${orderId}`, {
       headers: { "x-api-version": "2023-08-01", "x-client-id": gw.apiKey, "x-client-secret": gw.secretKey },
     });
     const order = await r.json();
@@ -780,7 +805,7 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
       // Fetch the actual Cashfree transaction ID (cf_payment_id) from the payments list
       let cfTxnId: string = order.cf_order_id ? String(order.cf_order_id) : `cf_${nanoid(12)}`;
       try {
-        const pr = await fetch(`${host}/pg/orders/${orderId}/payments`, {
+        const pr = await gatewayFetch(`${host}/pg/orders/${orderId}/payments`, {
           headers: { "x-api-version": "2023-08-01", "x-client-id": gw.apiKey, "x-client-secret": gw.secretKey },
         });
         const pList = await pr.json();
@@ -1051,7 +1076,7 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
       signature: sig,
     };
     const initUrl = `${host}/theia/api/v1/initiateTransaction?mid=${mid}&orderId=${encodeURIComponent(orderId)}`;
-    const r = await fetch(initUrl, {
+    const r = await gatewayFetch(initUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ body: initBody, head }),
@@ -1136,7 +1161,7 @@ router.get("/paytm/diag-key-fingerprint", requireAuth, requireAdmin, async (_req
   };
   const cs = await PaytmChecksum.generateSignature(testParams, key);
   const probe = async (url: string) => {
-    const r = await fetch(url, {
+    const r = await gatewayFetch(url, {
       method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ ...testParams, CHECKSUMHASH: cs }).toString(), redirect: "manual",
     });
@@ -1147,7 +1172,7 @@ router.get("/paytm/diag-key-fingerprint", requireAuth, requireAdmin, async (_req
   const stagingParams = { ...testParams, ORDER_ID: `DIAG2_${Date.now()}`, WEBSITE: "WEBSTAGING" };
   const csStg = await PaytmChecksum.generateSignature(stagingParams, key);
   const probeStg = async () => {
-    const r = await fetch("https://securegw-stage.paytm.in/order/process", {
+    const r = await gatewayFetch("https://securegw-stage.paytm.in/order/process", {
       method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ ...stagingParams, CHECKSUMHASH: csStg }).toString(), redirect: "manual",
     });
@@ -1159,7 +1184,7 @@ router.get("/paytm/diag-key-fingerprint", requireAuth, requireAdmin, async (_req
   const probeProdWithWebsite = async (website: string) => {
     const p = { ...testParams, ORDER_ID: `DIAG_${website}_${Date.now()}`, WEBSITE: website };
     const c = await PaytmChecksum.generateSignature(p, key);
-    const r = await fetch("https://securegw.paytm.in/order/process", {
+    const r = await gatewayFetch("https://securegw.paytm.in/order/process", {
       method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ ...p, CHECKSUMHASH: c }).toString(), redirect: "manual",
     });
@@ -1171,7 +1196,7 @@ router.get("/paytm/diag-key-fingerprint", requireAuth, requireAdmin, async (_req
   const orderStatusProbe = async (host: string) => {
     const body = { mid: gw.apiKey, orderId: `DIAG_NONEXISTENT_${Date.now()}` };
     const sig = await PaytmChecksum.generateSignature(JSON.stringify(body), key);
-    const r = await fetch(`${host}/v3/order/status`, {
+    const r = await gatewayFetch(`${host}/v3/order/status`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ body, head: { signature: sig } }),
     });
@@ -1200,7 +1225,7 @@ router.get("/paytm/diag-key-fingerprint", requireAuth, requireAdmin, async (_req
       signature: sig,
     };
     const url = `${host}/theia/api/v1/initiateTransaction?mid=${gw.apiKey}&orderId=${orderId}`;
-    const r = await fetch(url, {
+    const r = await gatewayFetch(url, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ body, head }),
     });
@@ -1359,7 +1384,7 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
   const statusSignature = await PaytmChecksum.generateSignature(JSON.stringify(statusBody), merchantKey);
 
   try {
-    const r = await fetch(`${host}/v3/order/status`, {
+    const r = await gatewayFetch(`${host}/v3/order/status`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1552,7 +1577,7 @@ router.post("/initiate", async (req, res): Promise<void> => {
   try {
     if (gatewayName === "razorpay") {
       const creds = Buffer.from(`${gw.apiKey}:${gw.secretKey}`).toString("base64");
-      const r = await fetch("https://api.razorpay.com/v1/orders", {
+      const r = await gatewayFetch("https://api.razorpay.com/v1/orders", {
         method: "POST",
         headers: { Authorization: `Basic ${creds}`, "Content-Type": "application/json" },
         body: JSON.stringify({ amount: amountInPaise, currency: "INR", receipt: `rcpt_${nanoid(8)}` }),
@@ -1563,7 +1588,7 @@ router.post("/initiate", async (req, res): Promise<void> => {
 
     } else if (gatewayName === "stripe") {
       const body = new URLSearchParams({ amount: String(amountInPaise), currency: "usd", "payment_method_types[]": "card" });
-      const r = await fetch("https://api.stripe.com/v1/payment_intents", {
+      const r = await gatewayFetch("https://api.stripe.com/v1/payment_intents", {
         method: "POST",
         headers: { Authorization: `Bearer ${gw.secretKey}`, "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
@@ -1574,7 +1599,7 @@ router.post("/initiate", async (req, res): Promise<void> => {
 
     } else if (gatewayName === "cashfree") {
       const host = gw.isTestMode ? "https://sandbox.cashfree.com" : "https://api.cashfree.com";
-      const r = await fetch(`${host}/pg/orders`, {
+      const r = await gatewayFetch(`${host}/pg/orders`, {
         method: "POST",
         headers: { "x-api-version": "2023-08-01", "x-client-id": gw.apiKey, "x-client-secret": gw.secretKey, "Content-Type": "application/json" },
         body: JSON.stringify({ order_id: `ord_${nanoid(12)}`, order_amount: amount, order_currency: "INR", customer_details: { customer_id: "cust_01", customer_email: "buyer@example.com", customer_phone: "9999999999" } }),
@@ -1669,7 +1694,7 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
       "metadata[customer_email]": email.toLowerCase().trim(),
       "metadata[customer_name]": fullName.trim(),
     });
-    const r = await fetch("https://api.stripe.com/v1/payment_intents", {
+    const r = await gatewayFetch("https://api.stripe.com/v1/payment_intents", {
       method: "POST",
       headers: { Authorization: `Bearer ${gw.secretKey}`, "Content-Type": "application/x-www-form-urlencoded" },
       body: body.toString(),
@@ -1751,7 +1776,7 @@ router.post("/stripe/verify", async (req, res): Promise<void> => {
     return;
   }
 
-  const r = await fetch(`https://api.stripe.com/v1/payment_intents/${paymentIntentId}`, {
+  const r = await gatewayFetch(`https://api.stripe.com/v1/payment_intents/${paymentIntentId}`, {
     headers: { Authorization: `Bearer ${gw.secretKey}` },
   });
   const intent = await r.json() as {
