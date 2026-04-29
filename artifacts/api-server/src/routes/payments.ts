@@ -476,15 +476,17 @@ router.post("/checkout/guest", async (req, res): Promise<void> => {
   let tempPassword: string | undefined;
 
   const existingToken = req.cookies?.token;
+  userId = 0;
   if (existingToken) {
     try {
       const payload = verifyToken(existingToken);
-      userId = payload.userId;
+      // SECURITY: stale JWTs may reference deleted users (e.g., after a DB
+      // restore). Verify the user actually exists before trusting the id.
+      const [u] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, payload.userId)).limit(1);
+      if (u) userId = payload.userId;
     } catch {
-      userId = 0;
+      /* invalid token — treat as guest */
     }
-  } else {
-    userId = 0;
   }
 
   if (!userId) {
@@ -596,8 +598,14 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
 
   const existingToken = req.cookies?.token;
   if (existingToken) {
-    try { const payload = verifyToken(existingToken); userId = payload.userId; wasAlreadyLoggedIn = true; }
-    catch { /* invalid token — treat as guest */ }
+    try {
+      const payload = verifyToken(existingToken);
+      // SECURITY: stale JWTs may reference deleted users (e.g., after a DB
+      // restore). Verify the user actually exists before trusting the id as
+      // a foreign key — otherwise the payment INSERT fails with FK violation.
+      const [u] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, payload.userId)).limit(1);
+      if (u) { userId = payload.userId; wasAlreadyLoggedIn = true; }
+    } catch { /* invalid token — treat as guest */ }
   }
 
   if (!userId) {
@@ -968,8 +976,14 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
 
   const existingToken = req.cookies?.token;
   if (existingToken) {
-    try { const payload = verifyToken(existingToken); userId = payload.userId; wasAlreadyLoggedIn = true; }
-    catch { /* invalid token — treat as guest */ }
+    try {
+      const payload = verifyToken(existingToken);
+      // SECURITY: stale JWTs may reference deleted users (e.g., after a DB
+      // restore). Verify the user actually exists before trusting the id as
+      // a foreign key — otherwise the payment INSERT fails with FK violation.
+      const [u] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, payload.userId)).limit(1);
+      if (u) { userId = payload.userId; wasAlreadyLoggedIn = true; }
+    } catch { /* invalid token — treat as guest */ }
   }
 
   if (!userId) {
@@ -1601,8 +1615,14 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
 
   const existingToken = req.cookies?.token;
   if (existingToken) {
-    try { const payload = verifyToken(existingToken); userId = payload.userId; wasAlreadyLoggedIn = true; }
-    catch { /* invalid token — treat as guest */ }
+    try {
+      const payload = verifyToken(existingToken);
+      // SECURITY: stale JWTs may reference deleted users (e.g., after a DB
+      // restore). Verify the user actually exists before trusting the id as
+      // a foreign key — otherwise the payment INSERT fails with FK violation.
+      const [u] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, payload.userId)).limit(1);
+      if (u) { userId = payload.userId; wasAlreadyLoggedIn = true; }
+    } catch { /* invalid token — treat as guest */ }
   }
 
   if (!userId) {
