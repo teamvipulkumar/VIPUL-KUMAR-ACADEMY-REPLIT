@@ -13,7 +13,7 @@ import { eq, and, desc, isNull, or } from "drizzle-orm";
 import { bundlesTable, bundleCoursesTable } from "@workspace/db";
 import { requireAuth, requireAdmin, signToken, verifyToken, authCookieOptions, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
-import { triggerAutomation, triggerFunnel } from "./crm";
+import { triggerAutomation, triggerFunnel, getPublicBaseUrl } from "./crm";
 import { sendFbEvent } from "../lib/facebook-pixel";
 import { generateGstInvoice } from "./gst";
 
@@ -208,6 +208,47 @@ async function recordAffiliateCommission(
  * The payment row is updated in-place (userId set, pendingPasswordHash
  * cleared) so callers can safely re-read it after this returns.
  */
+/**
+ * Ensure a purchase-created user has an active emailVerifyToken and return the
+ * full {{verify_link}} for use in welcome / signup emails. If a token already
+ * exists (and isn't expired) we keep it; otherwise we mint a new 7-day token
+ * so the "Verify My Email" button in the Welcome template always works.
+ *
+ * Returns "" only if everything fails (helper is non-throwing — purchase flows
+ * should never fail because of an email-link side effect).
+ */
+export async function getOrCreateWelcomeVerifyLink(userId: number): Promise<string> {
+  try {
+    const baseUrl = await getPublicBaseUrl();
+    if (!baseUrl) return "";
+    const [u] = await db
+      .select({
+        token: usersTable.emailVerifyToken,
+        expiresAt: usersTable.emailVerifyTokenExpiresAt,
+        verified: usersTable.emailVerified,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
+    if (!u) return "";
+    let token = u.token;
+    const stillValid =
+      !!token && !!u.expiresAt && new Date(u.expiresAt).getTime() > Date.now();
+    if (!stillValid) {
+      token = nanoid(40);
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      await db
+        .update(usersTable)
+        .set({ emailVerifyToken: token, emailVerifyTokenExpiresAt: expiresAt })
+        .where(eq(usersTable.id, userId));
+    }
+    return `${baseUrl}/verify-email?token=${token}`;
+  } catch (e) {
+    console.error("[getOrCreateWelcomeVerifyLink] error:", e);
+    return "";
+  }
+}
+
 export async function ensureUserForPayment(
   payment: typeof paymentsTable.$inferSelect,
 ): Promise<{ userId: number; isNewUser: boolean }> {
@@ -247,10 +288,16 @@ export async function ensureUserForPayment(
       userId = u.id;
     }
     if (isNewUser) {
-      triggerAutomation("welcome", userId, email, { name, email }).catch(() => {});
+      const verifyLink = await getOrCreateWelcomeVerifyLink(userId);
+      const baseUrl = await getPublicBaseUrl();
+      triggerAutomation("welcome", userId, email, {
+        name,
+        email,
+        verify_link: verifyLink,
+      }).catch(() => {});
       triggerFunnel("user_signup", userId, {
-        verify_link: "",
-        site_url: process.env.SITE_URL || "",
+        verify_link: verifyLink,
+        site_url: baseUrl || process.env.SITE_URL || "",
         name,
         email,
       }).catch(e => console.error("[ensureUserForPayment] triggerFunnel error:", e));
@@ -504,8 +551,10 @@ router.post("/checkout/guest", async (req, res): Promise<void> => {
   const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (freshUser) {
     if (isNewUser) {
-      triggerAutomation("welcome", freshUser.id, freshUser.email, { name: freshUser.name, email: freshUser.email }).catch(() => {});
-      triggerFunnel("user_signup", freshUser.id, { verify_link: "", site_url: process.env.SITE_URL || "", name: freshUser.name, email: freshUser.email }).catch(e => console.error("[course payment new user] triggerFunnel error:", e));
+      const verifyLink = await getOrCreateWelcomeVerifyLink(freshUser.id);
+      const baseUrl = await getPublicBaseUrl();
+      triggerAutomation("welcome", freshUser.id, freshUser.email, { name: freshUser.name, email: freshUser.email, verify_link: verifyLink }).catch(() => {});
+      triggerFunnel("user_signup", freshUser.id, { verify_link: verifyLink, site_url: baseUrl || process.env.SITE_URL || "", name: freshUser.name, email: freshUser.email }).catch(e => console.error("[course payment new user] triggerFunnel error:", e));
     }
     if (!existing) {
       triggerAutomation("purchase", freshUser.id, freshUser.email, { name: freshUser.name, email: freshUser.email, course_name: course.title, amount: String(amount.toFixed(2)) }).catch(() => {});

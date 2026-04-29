@@ -11,8 +11,8 @@ import {
 import { eq, and, desc, or, isNull } from "drizzle-orm";
 import { requireAuth, requireAdmin, signToken, verifyToken, authCookieOptions, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
-import { triggerAutomation, triggerFunnel } from "./crm";
-import { ensureUserForPayment } from "./payments";
+import { triggerAutomation, triggerFunnel, getPublicBaseUrl } from "./crm";
+import { ensureUserForPayment, getOrCreateWelcomeVerifyLink } from "./payments";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PaytmChecksum = require("paytmchecksum");
@@ -412,8 +412,10 @@ router.post("/checkout/guest", async (req, res): Promise<void> => {
   const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (freshUser) {
     if (isNewUser) {
-      triggerAutomation("welcome", freshUser.id, freshUser.email, { name: freshUser.name, email: freshUser.email }).catch(() => {});
-      triggerFunnel("user_signup", freshUser.id, { verify_link: "", site_url: process.env.SITE_URL || "", name: freshUser.name, email: freshUser.email }).catch(e => console.error("[bundle payment new user] triggerFunnel error:", e));
+      const verifyLink = await getOrCreateWelcomeVerifyLink(freshUser.id);
+      const baseUrl = await getPublicBaseUrl();
+      triggerAutomation("welcome", freshUser.id, freshUser.email, { name: freshUser.name, email: freshUser.email, verify_link: verifyLink }).catch(() => {});
+      triggerFunnel("user_signup", freshUser.id, { verify_link: verifyLink, site_url: baseUrl || process.env.SITE_URL || "", name: freshUser.name, email: freshUser.email }).catch(e => console.error("[bundle payment new user] triggerFunnel error:", e));
     }
   }
   const token = signToken({ userId: freshUser!.id, email: freshUser!.email, role: freshUser!.role });
