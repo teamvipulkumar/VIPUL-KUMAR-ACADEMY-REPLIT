@@ -11,6 +11,36 @@ import { OAuth2Client } from "google-auth-library";
 
 const router = Router();
 
+/**
+ * Resolves the public site URL used in outgoing emails (verify, reset, etc.)
+ * and external redirects. Precedence (highest first):
+ *
+ *   1. Admin-configured siteUrl from platform_settings (Admin → Settings).
+ *      This is intentionally first so the live/custom domain in emails stays
+ *      consistent regardless of where the email was triggered from — e.g. an
+ *      admin testing registration on the dev preview shouldn't leak the
+ *      preview URL into emails sent to real users.
+ *   2. SITE_URL environment variable (deployment-time fallback).
+ *   3. Reconstruction from the incoming request. With `trust proxy = 1`
+ *      enabled in app.ts, req.protocol + req.hostname honor X-Forwarded-Proto
+ *      and X-Forwarded-Host so this gives the live public URL in production.
+ *
+ * Tip for the user: set the public site URL once under Admin → Settings →
+ * Site URL after publishing/connecting a custom domain, and every email link
+ * will point there forever.
+ */
+async function resolvePublicSiteUrl(req: Request): Promise<string> {
+  try {
+    const [ps] = await db.select({ siteUrl: platformSettingsTable.siteUrl })
+      .from(platformSettingsTable).limit(1);
+    const fromDb = ps?.siteUrl?.trim();
+    if (fromDb) return fromDb.replace(/\/+$/, "");
+  } catch { /* fall through */ }
+  const fromEnv = process.env.SITE_URL?.trim();
+  if (fromEnv) return fromEnv.replace(/\/+$/, "");
+  return `${req.protocol}://${req.hostname}`;
+}
+
 /* ── Build the HTML body for verification emails ── */
 function buildVerificationEmailHtml(name: string, verifyLink: string): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -76,7 +106,7 @@ router.post("/register", async (req, res): Promise<void> => {
   res.status(201).json({ user: safeUser, message: "Registered successfully" });
 
   // Fire off both welcome automation and verification email (don't block response)
-  const origin = (req.headers.origin as string) || process.env.SITE_URL || "";
+  const origin = await resolvePublicSiteUrl(req);
   const verifyLink = `${origin}/verify-email?token=${verifyToken}`;
   triggerAutomation("welcome", user.id, user.email, { name: user.name, email: user.email, verify_link: verifyLink }).catch(e => console.error("[register] triggerAutomation error:", e));
   triggerFunnel("user_signup", user.id, { verify_link: verifyLink, site_url: origin, name: user.name, email: user.email }).catch(e => console.error("[register] triggerFunnel error:", e));
@@ -111,7 +141,7 @@ router.post("/login", async (req, res): Promise<void> => {
   res.cookie("token", token, authCookieOptions());
   const { password: _, emailVerifyToken: _vt, emailVerifyTokenExpiresAt: _vte, resetToken: _rt, resetTokenExpiresAt: _rte, ...safeUser } = user;
   res.json({ user: { ...safeUser, isStaff, staffPermissions }, message: "Login successful" });
-  const loginOrigin = (req.headers.origin as string) || process.env.SITE_URL || "";
+  const loginOrigin = await resolvePublicSiteUrl(req);
   triggerFunnel("user_login", user.id, { site_url: loginOrigin }).catch(() => {});
 });
 
@@ -180,7 +210,7 @@ router.post("/resend-verify-email", requireAuth, async (req, res): Promise<void>
   const verifyExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
   await db.update(usersTable).set({ emailVerifyToken: verifyToken, emailVerifyTokenExpiresAt: verifyExpiresAt }).where(eq(usersTable.id, user.id));
 
-  const origin = (req.headers.origin as string) || process.env.SITE_URL || "";
+  const origin = await resolvePublicSiteUrl(req);
   const verifyLink = `${origin}/verify-email?token=${verifyToken}`;
   sendTransactionalEmail(
     user.email,
@@ -201,7 +231,7 @@ router.post("/forgot-password", async (req, res): Promise<void> => {
     const token = nanoid(32);
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
     await db.update(usersTable).set({ resetToken: token, resetTokenExpiresAt: expiresAt }).where(eq(usersTable.id, user.id));
-    const origin = (req.headers.origin as string) || process.env.SITE_URL || "";
+    const origin = await resolvePublicSiteUrl(req);
     const resetLink = `${origin}/reset-password?token=${token}`;
     triggerAutomation("forgot_password", user.id, user.email, { name: user.name, email: user.email, reset_link: resetLink }).catch(() => {});
     triggerFunnel("forgot_password", user.id, { reset_link: resetLink, name: user.name, email: user.email }).catch(() => {});
@@ -296,7 +326,7 @@ router.post("/google-login", async (req, res): Promise<void> => {
       emailVerified: true,
     }).returning();
     user = created;
-    const googleOrigin = (req.headers.origin as string) || process.env.SITE_URL || "";
+    const googleOrigin = await resolvePublicSiteUrl(req);
     triggerAutomation("welcome", user.id, user.email, { name: user.name, email: user.email, verify_link: "" }).catch(() => {});
     triggerFunnel("user_signup", user.id, { verify_link: "", site_url: googleOrigin, name: user.name, email: user.email }).catch(e => console.error("[google signup] triggerFunnel error:", e));
   } else if (user.isBanned) {
