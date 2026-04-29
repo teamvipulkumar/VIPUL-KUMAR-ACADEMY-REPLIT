@@ -12,6 +12,7 @@ import { eq, and, desc, or, isNull } from "drizzle-orm";
 import { requireAuth, requireAdmin, signToken, verifyToken, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 import { triggerAutomation, triggerFunnel } from "./crm";
+import { ensureUserForPayment } from "./payments";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PaytmChecksum = require("paytmchecksum");
@@ -445,16 +446,17 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
   const bundle = await getBundleWithCourses(parseInt(bundleId));
   if (!bundle || !bundle.isActive) { res.status(404).json({ error: "Bundle not found" }); return; }
 
-  // Find or create user
-  let userId: number;
+  // Resolve user — defer creation for brand-new emails until payment success.
+  let userId: number | null = null;
+  let pendingPasswordHash: string | null = null;
   let isNewUser = false;
   let tempPassword: string | undefined;
 
   const existingToken = req.cookies?.token;
   if (existingToken) {
     try { const payload = verifyToken(existingToken); userId = payload.userId; }
-    catch { userId = 0; }
-  } else { userId = 0; }
+    catch { /* invalid token — treat as guest */ }
+  }
 
   if (!userId) {
     const [existingUser] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase().trim())).limit(1);
@@ -462,14 +464,8 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
       userId = existingUser.id;
     } else {
       tempPassword = nanoid(10);
-      const hashed = await bcrypt.hash(tempPassword, 10);
-      const [newUser] = await db.insert(usersTable).values({
-        email: email.toLowerCase().trim(), password: hashed, name: fullName.trim(),
-        referralCode: nanoid(8).toUpperCase(), role: "student",
-      }).returning();
-      userId = newUser.id;
+      pendingPasswordHash = await bcrypt.hash(tempPassword, 10);
       isNewUser = true;
-      triggerFunnel("user_signup", userId, { verify_link: "", site_url: process.env.SITE_URL || "", name: newUser.name, email: newUser.email }).catch(err => console.error("[cashfree bundle new user] triggerFunnel error:", err));
     }
   }
 
@@ -502,6 +498,7 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
     billingEmail: email?.toLowerCase().trim() || null,
     billingMobile: mobile?.trim() || null,
     billingState: state || null,
+    pendingPasswordHash,
   }).returning();
 
   // Build the Cashfree order ID from the DB payment id so they match
@@ -517,7 +514,7 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
         order_amount: parseFloat(amount.toFixed(2)),
         order_currency: "INR",
         customer_details: {
-          customer_id: `uid_${userId}`,
+          customer_id: userId ? `uid_${userId}` : `guest_${pendingPayment.id}`,
           customer_email: email.toLowerCase().trim(),
           customer_phone: mobile?.trim() || "9999999999",
           customer_name: fullName.trim(),
@@ -538,10 +535,14 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
   // Update the payment record with the real gatewayOrderId
   await db.update(paymentsTable).set({ gatewayOrderId: cfOrderId }).where(eq(paymentsTable.id, pendingPayment.id));
 
-  // Auto-login
-  const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-  const token = signToken({ userId: freshUser!.id, email: freshUser!.email, role: freshUser!.role });
-  res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+  // Auto-login only when we already have a real user (logged-in or existing).
+  if (userId) {
+    const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (freshUser) {
+      const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
+      res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+    }
+  }
 
   res.json({
     paymentSessionId: cfResp.payment_session_id,
@@ -574,16 +575,17 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
   const bundle = await getBundleWithCourses(parseInt(bundleId));
   if (!bundle || !bundle.isActive) { res.status(404).json({ error: "Bundle not found" }); return; }
 
-  // Find or create user
-  let userId: number;
+  // Resolve user — defer creation for brand-new emails until payment success.
+  let userId: number | null = null;
+  let pendingPasswordHash: string | null = null;
   let isNewUser = false;
   let tempPassword: string | undefined;
 
   const existingToken = req.cookies?.token;
   if (existingToken) {
     try { const payload = verifyToken(existingToken); userId = payload.userId; }
-    catch { userId = 0; }
-  } else { userId = 0; }
+    catch { /* invalid token — treat as guest */ }
+  }
 
   if (!userId) {
     const [existingUser] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase().trim())).limit(1);
@@ -591,14 +593,8 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
       userId = existingUser.id;
     } else {
       tempPassword = nanoid(10);
-      const hashed = await bcrypt.hash(tempPassword, 10);
-      const [newUser] = await db.insert(usersTable).values({
-        email: email.toLowerCase().trim(), password: hashed, name: fullName.trim(),
-        referralCode: nanoid(8).toUpperCase(), role: "student",
-      }).returning();
-      userId = newUser.id;
+      pendingPasswordHash = await bcrypt.hash(tempPassword, 10);
       isNewUser = true;
-      triggerFunnel("user_signup", userId, { verify_link: "", site_url: process.env.SITE_URL || "", name: newUser.name, email: newUser.email }).catch(err => console.error("[paytm bundle new user] triggerFunnel error:", err));
     }
   }
 
@@ -630,7 +626,8 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
     orderId,
     txnAmount: { value: amount.toFixed(2), currency: "INR" },
     userInfo: {
-      custId: `uid_${userId}`,
+      // userId may be null for guests — fall back to a stable per-order id.
+      custId: userId ? `uid_${userId}` : `guest_${orderId}`,
       email: email.toLowerCase().trim(),
       ...(mobile?.trim() ? { mobile: mobile.trim() } : {}),
       firstName: fullName?.trim() || "",
@@ -690,12 +687,17 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
     billingEmail: email?.toLowerCase().trim() || null,
     billingMobile: mobile?.trim() || null,
     billingState: state || null,
+    pendingPasswordHash,
   });
 
-  // Auto-login
-  const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-  const token = signToken({ userId: freshUser!.id, email: freshUser!.email, role: freshUser!.role });
-  res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+  // Auto-login only when we already have a real user (logged-in or existing).
+  if (userId) {
+    const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (freshUser) {
+      const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
+      res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+    }
+  }
 
   // Frontend will POST { mid, orderId, txnToken } to showPaymentPage URL
   res.json({
@@ -728,15 +730,17 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
   const bundle = await getBundleWithCourses(parseInt(bundleId));
   if (!bundle || !bundle.isActive) { res.status(404).json({ error: "Bundle not found" }); return; }
 
-  let userId: number;
+  // Resolve user — defer creation for brand-new emails until payment success.
+  let userId: number | null = null;
+  let pendingPasswordHash: string | null = null;
   let isNewUser = false;
   let tempPassword: string | undefined;
 
   const existingToken = req.cookies?.token;
   if (existingToken) {
     try { const payload = verifyToken(existingToken); userId = payload.userId; }
-    catch { userId = 0; }
-  } else { userId = 0; }
+    catch { /* invalid token — treat as guest */ }
+  }
 
   if (!userId) {
     const [existingUser] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase().trim())).limit(1);
@@ -744,14 +748,8 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
       userId = existingUser.id;
     } else {
       tempPassword = nanoid(10);
-      const hashed = await bcrypt.hash(tempPassword, 10);
-      const [newUser] = await db.insert(usersTable).values({
-        email: email.toLowerCase().trim(), password: hashed, name: fullName.trim(),
-        referralCode: nanoid(8).toUpperCase(), role: "student",
-      }).returning();
-      userId = newUser.id;
+      pendingPasswordHash = await bcrypt.hash(tempPassword, 10);
       isNewUser = true;
-      triggerFunnel("user_signup", userId, { verify_link: "", site_url: process.env.SITE_URL || "", name: newUser.name, email: newUser.email }).catch(err => console.error("[stripe bundle new user] triggerFunnel error:", err));
     }
   }
 
@@ -802,13 +800,28 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
       billingEmail: email?.toLowerCase().trim() || null,
       billingMobile: mobile?.trim() || null,
       billingState: state || null,
+      pendingPasswordHash,
     });
 
-    const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-    const token = signToken({ userId: freshUser!.id, email: freshUser!.email, role: freshUser!.role });
-    res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+    // Build response user — synthesise from form data when guest (account not yet created).
+    let safeUser: Record<string, unknown>;
+    if (userId) {
+      const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+      if (freshUser) {
+        const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
+        res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+      }
+      const { password: _p, ...rest } = freshUser!;
+      safeUser = rest;
+    } else {
+      safeUser = {
+        id: null,
+        email: email.toLowerCase().trim(),
+        name: fullName.trim(),
+        role: "student",
+      };
+    }
 
-    const { password: _p, ...safeUser } = freshUser!;
     res.json({
       clientSecret: intent.client_secret, publishableKey: gw.apiKey,
       sessionId, paymentIntentId: intent.id, amount,
@@ -846,9 +859,23 @@ router.post("/stripe/verify", async (req, res): Promise<void> => {
     res.status(400).json({ error: `Payment not completed. Stripe status: ${intent.status}` }); return;
   }
 
+  // Materialise the user account NOW (deferred until payment success). After
+  // this returns, payment.userId is non-null and we can safely enroll.
+  const { userId: resolvedUserId } = await ensureUserForPayment(payment);
+  payment.userId = resolvedUserId;
+
+  // Set auto-login cookie now (covers brand-new-user case).
+  {
+    const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, resolvedUserId)).limit(1);
+    if (authedUser) {
+      const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
+      res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+    }
+  }
+
   if (payment.status === "completed") {
     const bundle = await getBundleWithCourses(payment.bundleId);
-    const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+    const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, resolvedUserId)).limit(1);
     const { password: _p2, ...safeUser } = freshUser!;
     res.json({ success: true, alreadyEnrolled: true, bundleId: payment.bundleId, bundleName: bundle?.name, user: safeUser, enrolledCount: bundle?.courses.length ?? 0 });
     return;
@@ -857,14 +884,14 @@ router.post("/stripe/verify", async (req, res): Promise<void> => {
   await db.update(paymentsTable).set({ status: "completed", paymentId: paymentIntentId })
     .where(eq(paymentsTable.id, payment.id));
 
-  const { enrolledCourses, bundleName } = await enrollInBundle(payment.bundleId, payment.userId, payment.affiliateRef);
+  const { enrolledCourses, bundleName } = await enrollInBundle(payment.bundleId, resolvedUserId, payment.affiliateRef);
 
   if (payment.couponCode) {
     const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
     if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
   }
 
-  const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+  const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, resolvedUserId)).limit(1);
   const { password: _p3, ...safeUser } = freshUser!;
   res.json({
     success: true,

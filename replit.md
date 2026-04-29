@@ -144,3 +144,14 @@ Tables: users, courses, modules, lessons, enrollments, payments, affiliates (ref
   - DOM render error → falls back to a minimal hard-coded `<h1>Under Maintenance</h1>` block (still does NOT fail open).
   - JS disabled → SPA wouldn't work anyway; non-issue for this app.
 - **Removed**: legacy `MaintenanceOverlay` React component (was the source of the flash bug because it mounted via React after the rest of the page paint).
+
+## Deferred Account Creation at Checkout (2026-04)
+
+- **Problem**: Clicking "Proceed to Pay" used to immediately INSERT a user row (with a temp password) into `users` — even if the customer abandoned checkout — across all 3 gateways × (course | bundle).
+- **Fix**: User accounts are now materialised only after the gateway confirms a successful capture.
+  - **Schema**: `payments.user_id` is nullable; new column `payments.pending_password_hash text` stores the bcrypt hash for the would-be account.
+  - **Helper**: `ensureUserForPayment(payment)` (exported from `payments.ts`) — finds user by `billingEmail`, else creates one from `pendingPasswordHash`. Race-tolerant. Triggers `user_signup` funnel + welcome automation, binds `userId` to the payment row, clears the hash.
+  - **Create-order endpoints** (course `payments.ts` cashfree/paytm/stripe + bundle `bundles.ts` cashfree/paytm/stripe): for brand-new emails, persist `userId=null` + `pendingPasswordHash`. No user insert. No auto-login cookie. Existing-user / logged-in path unchanged. Stripe response synthesises a guest `safeUser` from form data so the frontend contract stays intact.
+  - **Completion paths** (cashfree verify+webhook, paytm verify+callback+webhook, stripe verify for both course and bundle) all call `ensureUserForPayment` first, then set the auto-login cookie, then enroll. `completePaytmPayment()` is the shared helper for paytm; the webhook now delegates to it instead of duplicating logic.
+  - **Auto-login cookie** is also set on already-completed branches so the success page works even when the webhook beats the browser.
+  - **Gateway customer_id** falls back to `guest_${id}` when no `userId` exists yet.

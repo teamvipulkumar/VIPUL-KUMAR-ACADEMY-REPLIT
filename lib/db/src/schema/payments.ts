@@ -7,7 +7,10 @@ import { bundlesTable } from "./bundles";
 
 export const paymentsTable = pgTable("payments", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  // Nullable on purpose: for guest checkouts (new email, not logged in) we
+  // defer user-account creation until the gateway confirms the payment.
+  // The user row is created in `ensureUserForPayment()` at success time.
+  userId: integer("user_id").references(() => usersTable.id, { onDelete: "cascade" }),
   courseId: integer("course_id").references(() => coursesTable.id, { onDelete: "set null" }),
   bundleId: integer("bundle_id").references(() => bundlesTable.id, { onDelete: "set null" }),
   amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
@@ -23,6 +26,10 @@ export const paymentsTable = pgTable("payments", {
   billingEmail: text("billing_email"),
   billingMobile: text("billing_mobile"),
   billingState: text("billing_state"),
+  // bcrypt hash of the auto-generated guest password. Only present on rows
+  // where userId is null (i.e. user has not yet been created). Cleared when
+  // ensureUserForPayment() materialises the user at payment-success time.
+  pendingPasswordHash: text("pending_password_hash"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

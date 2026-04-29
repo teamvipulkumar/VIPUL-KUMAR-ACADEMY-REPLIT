@@ -191,6 +191,79 @@ async function recordAffiliateCommission(
   } catch (err) { console.error("[affiliate commission] ERROR:", err); }
 }
 
+/* ── Deferred-User Helper ─────────────────────────────────────────────────
+ * For guest checkouts where the customer is NOT logged in and the email is
+ * not yet in `users`, we now defer creating the user row until the gateway
+ * confirms the payment. The payment row is inserted with `userId = null` and
+ * a bcrypt hash of the auto-generated password in `pendingPasswordHash`.
+ *
+ * Every payment-completion path (verify / webhook / callback) MUST call
+ * `ensureUserForPayment(payment)` BEFORE accessing `payment.userId` so that:
+ *   • If userId is already set → return it as-is.
+ *   • Else find the user by billingEmail (race-safe). If found → bind to the
+ *     payment row and return it.
+ *   • Else create the user using the stored pendingPasswordHash, fire the
+ *     `user_signup` funnel, bind to the payment row and return the new id.
+ *
+ * The payment row is updated in-place (userId set, pendingPasswordHash
+ * cleared) so callers can safely re-read it after this returns.
+ */
+export async function ensureUserForPayment(
+  payment: typeof paymentsTable.$inferSelect,
+): Promise<{ userId: number; isNewUser: boolean }> {
+  if (payment.userId) {
+    return { userId: payment.userId, isNewUser: false };
+  }
+  const email = payment.billingEmail?.toLowerCase().trim();
+  if (!email) {
+    throw new Error(`ensureUserForPayment: payment ${payment.id} has no billingEmail`);
+  }
+  const name = payment.billingName?.trim() || "Customer";
+
+  // Try to find existing user by email first (handles repeat customers + races).
+  const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+
+  let userId: number;
+  let isNewUser = false;
+
+  if (existing) {
+    userId = existing.id;
+  } else {
+    const passwordHash = payment.pendingPasswordHash || (await bcrypt.hash(nanoid(10), 10));
+    try {
+      const [created] = await db.insert(usersTable).values({
+        email,
+        password: passwordHash,
+        name,
+        referralCode: nanoid(8).toUpperCase(),
+        role: "student",
+      }).returning();
+      userId = created.id;
+      isNewUser = true;
+    } catch (err) {
+      // Likely a unique-violation race — re-read by email.
+      const [u] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+      if (!u) throw err;
+      userId = u.id;
+    }
+    if (isNewUser) {
+      triggerAutomation("welcome", userId, email, { name, email }).catch(() => {});
+      triggerFunnel("user_signup", userId, {
+        verify_link: "",
+        site_url: process.env.SITE_URL || "",
+        name,
+        email,
+      }).catch(e => console.error("[ensureUserForPayment] triggerFunnel error:", e));
+    }
+  }
+
+  // Bind user to payment row + clear the now-redundant hash.
+  await db.update(paymentsTable).set({ userId, pendingPasswordHash: null })
+    .where(eq(paymentsTable.id, payment.id));
+
+  return { userId, isNewUser };
+}
+
 router.post("/checkout", requireAuth, async (req, res): Promise<void> => {
   const authedReq = req as AuthedRequest;
   const { courseId, couponCode, gateway, affiliateRef, state, mobile } = req.body;
@@ -461,31 +534,28 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Cashfree is not configured or inactive" }); return;
   }
 
-  // Find or create user
-  let userId: number;
+  // Resolve user — defer creation for brand-new emails until payment success.
+  let userId: number | null = null;
+  let pendingPasswordHash: string | null = null;
   let isNewUser = false;
   let tempPassword: string | undefined;
 
   const existingToken = req.cookies?.token;
   if (existingToken) {
     try { const payload = verifyToken(existingToken); userId = payload.userId; }
-    catch { userId = 0; }
-  } else { userId = 0; }
+    catch { /* invalid token — treat as guest */ }
+  }
 
   if (!userId) {
     const [existingUser] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase().trim())).limit(1);
     if (existingUser) {
       userId = existingUser.id;
     } else {
+      // NEW email → don't create the user yet; only stash a hashed password
+      // for ensureUserForPayment() to use after the gateway confirms payment.
       tempPassword = nanoid(10);
-      const hashed = await bcrypt.hash(tempPassword, 10);
-      const [newUser] = await db.insert(usersTable).values({
-        email: email.toLowerCase().trim(), password: hashed, name: fullName.trim(),
-        referralCode: nanoid(8).toUpperCase(), role: "student",
-      }).returning();
-      userId = newUser.id;
+      pendingPasswordHash = await bcrypt.hash(tempPassword, 10);
       isNewUser = true;
-      triggerFunnel("user_signup", userId, { verify_link: "", site_url: process.env.SITE_URL || "", name: newUser.name, email: newUser.email }).catch(err => console.error("[cashfree course new user] triggerFunnel error:", err));
     }
   }
 
@@ -516,6 +586,7 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
     billingEmail: email?.toLowerCase().trim() || null,
     billingMobile: mobile?.trim() || null,
     billingState: state || null,
+    pendingPasswordHash,
   }).returning();
 
   // Build the Cashfree order ID from the DB payment id so they match
@@ -531,7 +602,8 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
         order_amount: parseFloat(amount.toFixed(2)),
         order_currency: "INR",
         customer_details: {
-          customer_id: `uid_${userId}`,
+          // userId may be null for guests — fall back to the payment row id.
+          customer_id: userId ? `uid_${userId}` : `guest_${pendingPayment.id}`,
           customer_email: email.toLowerCase().trim(),
           customer_phone: mobile?.trim() || "9999999999",
           customer_name: fullName.trim(),
@@ -552,10 +624,15 @@ router.post("/cashfree/create-order", async (req, res): Promise<void> => {
   // Update the payment record with the real gatewayOrderId
   await db.update(paymentsTable).set({ gatewayOrderId: cfOrderId }).where(eq(paymentsTable.id, pendingPayment.id));
 
-  // Auto-login
-  const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-  const token = signToken({ userId: freshUser!.id, email: freshUser!.email, role: freshUser!.role });
-  res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+  // Auto-login only when we have a real user (logged-in or existing customer).
+  // For brand-new emails, the user row is materialised at payment-success time.
+  if (userId) {
+    const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (freshUser) {
+      const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
+      res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+    }
+  }
 
   res.json({
     paymentSessionId: cfResp.payment_session_id,
@@ -577,7 +654,16 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
   const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.gatewayOrderId, orderId)).limit(1);
   if (!payment) { res.status(404).json({ error: "Payment record not found" }); return; }
   if (payment.status === "completed") {
-    // Payment was already processed (by webhook or previous verify call) — show success
+    // Payment was already processed (by webhook or previous verify call) — show success.
+    // Set the auto-login cookie if not already set so the frontend success page can
+    // navigate the new user straight into their dashboard.
+    if (payment.userId) {
+      const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+      if (authedUser) {
+        const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
+        res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+      }
+    }
     if (payment.bundleId && !payment.courseId) {
       const [bundle] = await db.select().from(bundlesTable).where(eq(bundlesTable.id, payment.bundleId)).limit(1);
       const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
@@ -603,6 +689,19 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
 
     const status: string = order.order_status ?? "";
     if (status === "PAID") {
+      // Materialise the user account NOW (deferred until payment success).
+      // After this returns, `userId` is guaranteed non-null and bound to the payment.
+      const { userId: resolvedUserId, isNewUser } = await ensureUserForPayment(payment);
+      payment.userId = resolvedUserId;
+
+      // Set auto-login cookie now that we know the user exists.
+      const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, resolvedUserId)).limit(1);
+      if (authedUser) {
+        const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
+        res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+      }
+      void isNewUser; // (frontend already has tempPassword from create-order time)
+
       // Fetch the actual Cashfree transaction ID (cf_payment_id) from the payments list
       let cfTxnId: string = order.cf_order_id ? String(order.cf_order_id) : `cf_${nanoid(12)}`;
       try {
@@ -707,6 +806,17 @@ router.post("/cashfree/webhook", async (req, res): Promise<void> => {
   const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.gatewayOrderId, orderId)).limit(1);
   if (!payment || payment.status === "completed") { res.json({ received: true }); return; }
 
+  // Materialise the user account NOW (deferred until payment success).
+  // After this returns, payment.userId is guaranteed non-null.
+  try {
+    const { userId: resolvedUserId } = await ensureUserForPayment(payment);
+    payment.userId = resolvedUserId;
+  } catch (err) {
+    console.error("[cashfree webhook] ensureUserForPayment failed:", err);
+    res.json({ received: true });
+    return;
+  }
+
   const cfPaymentId: string = event?.data?.payment?.cf_payment_id
     ? String(event.data.payment.cf_payment_id)
     : `cf_wh_${nanoid(10)}`;
@@ -770,16 +880,17 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
   const mid = gw.apiKey;           // Merchant ID
   const merchantKey = gw.secretKey; // Merchant Key
 
-  // Find or create user
-  let userId: number;
+  // Resolve user — defer creation for brand-new emails until payment success.
+  let userId: number | null = null;
+  let pendingPasswordHash: string | null = null;
   let isNewUser = false;
   let tempPassword: string | undefined;
 
   const existingToken = req.cookies?.token;
   if (existingToken) {
     try { const payload = verifyToken(existingToken); userId = payload.userId; }
-    catch { userId = 0; }
-  } else { userId = 0; }
+    catch { /* invalid token — treat as guest */ }
+  }
 
   if (!userId) {
     const [existingUser] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase().trim())).limit(1);
@@ -787,14 +898,8 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
       userId = existingUser.id;
     } else {
       tempPassword = nanoid(10);
-      const hashed = await bcrypt.hash(tempPassword, 10);
-      const [newUser] = await db.insert(usersTable).values({
-        email: email.toLowerCase().trim(), password: hashed, name: fullName.trim(),
-        referralCode: nanoid(8).toUpperCase(), role: "student",
-      }).returning();
-      userId = newUser.id;
+      pendingPasswordHash = await bcrypt.hash(tempPassword, 10);
       isNewUser = true;
-      triggerFunnel("user_signup", userId, { verify_link: "", site_url: process.env.SITE_URL || "", name: newUser.name, email: newUser.email }).catch(err => console.error("[paytm course new user] triggerFunnel error:", err));
     }
   }
 
@@ -832,7 +937,8 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
     orderId,
     txnAmount: { value: amount.toFixed(2), currency: "INR" },
     userInfo: {
-      custId: `uid_${userId}`,
+      // userId may be null for guests — fall back to a stable per-order id.
+      custId: userId ? `uid_${userId}` : `guest_${orderId}`,
       email: email.toLowerCase().trim(),
       ...(mobile?.trim() ? { mobile: mobile.trim() } : {}),
       firstName: fullName?.trim() || "",
@@ -888,12 +994,17 @@ router.post("/paytm/create-order", async (req, res): Promise<void> => {
     billingEmail: email?.toLowerCase().trim() || null,
     billingMobile: mobile?.trim() || null,
     billingState: state || null,
+    pendingPasswordHash,
   });
 
-  // Auto-login
-  const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-  const token = signToken({ userId: freshUser!.id, email: freshUser!.email, role: freshUser!.role });
-  res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+  // Auto-login only when we already have a real user (logged-in or existing).
+  if (userId) {
+    const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (freshUser) {
+      const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
+      res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+    }
+  }
 
   // Frontend will POST { mid, orderId, txnToken } to showPaymentPage URL
   res.json({
@@ -1055,6 +1166,11 @@ router.get("/paytm/diag-key-fingerprint", requireAuth, requireAdmin, async (_req
 
 // ── Paytm: Complete payment + enrollment (idempotent helper) ──────────────────
 async function completePaytmPayment(payment: typeof paymentsTable.$inferSelect, txnId: string): Promise<void> {
+  // Materialise the user account NOW (deferred until payment success).
+  // After this returns, payment.userId is guaranteed non-null and bound to row.
+  const { userId: resolvedUserId } = await ensureUserForPayment(payment);
+  payment.userId = resolvedUserId;
+
   await db.update(paymentsTable).set({ status: "completed", paymentId: txnId }).where(eq(paymentsTable.id, payment.id));
   generateGstInvoice(payment.id).catch(() => {});
 
@@ -1104,8 +1220,18 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
   const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.gatewayOrderId, orderId)).limit(1);
   if (!payment) { res.status(404).json({ error: "Payment record not found" }); return; }
 
-  // If already marked complete by callback handler, return success immediately
+  // If already marked complete by callback / webhook, return success immediately.
+  // Set the auto-login cookie so the success page can navigate the new user
+  // straight into their dashboard (covers the webhook-first scenario where the
+  // browser-side callback never set a cookie).
   if (payment.status === "completed") {
+    if (payment.userId) {
+      const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+      if (authedUser) {
+        const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
+        res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+      }
+    }
     if (payment.bundleId && !payment.courseId) {
       const [bundle] = await db.select().from(bundlesTable).where(eq(bundlesTable.id, payment.bundleId)).limit(1);
       const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
@@ -1154,6 +1280,14 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
     if (resultStatus === "TXN_SUCCESS") {
       const txnId: string = result.body?.txnId ?? `ptm_${nanoid(12)}`;
       await completePaytmPayment(payment, txnId);
+      // payment.userId is guaranteed non-null after completePaytmPayment().
+      if (payment.userId) {
+        const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+        if (authedUser) {
+          const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
+          res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+        }
+      }
       if (payment.bundleId && !payment.courseId) {
         const [bundle] = await db.select().from(bundlesTable).where(eq(bundlesTable.id, payment.bundleId)).limit(1);
         const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
@@ -1211,6 +1345,13 @@ router.post("/paytm/callback", async (req, res): Promise<void> => {
 
     if (isVerified && status === "TXN_SUCCESS" && payment.status !== "completed") {
       await completePaytmPayment(payment, txnId);
+      // Set auto-login cookie now that the user has been materialised.
+      // payment.userId is guaranteed non-null after completePaytmPayment().
+      const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId!)).limit(1);
+      if (authedUser) {
+        const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
+        res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+      }
     } else if (isVerified && status !== "TXN_SUCCESS" && payment.status === "pending") {
       await db.update(paymentsTable).set({ status: "failed" }).where(eq(paymentsTable.id, payment.id));
     }
@@ -1234,33 +1375,13 @@ router.post("/paytm/webhook", async (req, res): Promise<void> => {
   if (!payment || payment.status === "completed") { res.json({ received: true }); return; }
 
   const txnId: string = event?.TXNID ?? `ptm_wh_${nanoid(10)}`;
-  await db.update(paymentsTable).set({ status: "completed", paymentId: txnId }).where(eq(paymentsTable.id, payment.id));
-  generateGstInvoice(payment.id).catch(() => {});
-
-  if (payment.bundleId && !payment.courseId) {
-    const [bundle] = await db.select().from(bundlesTable).where(eq(bundlesTable.id, payment.bundleId)).limit(1);
-    const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
-    for (const { courseId } of bundleCourses) {
-      if (!courseId) continue;
-      const [ex] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, courseId))).limit(1);
-      if (!ex) await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId });
-    }
-    await db.insert(notificationsTable).values({ userId: payment.userId, title: "Package Enrolled! 🎉", message: `You now have access to all courses in "${bundle?.name ?? "the package"}".`, type: "success" });
-    triggerFunnel("new_purchase", payment.userId, { course_name: bundle?.name ?? "", amount: String(parseFloat(String(payment.amount)).toFixed(2)), site_url: process.env.SITE_URL || "" }).catch(() => {});
-    await recordAffiliateCommission(payment.affiliateRef, payment.userId, null, parseFloat(String(payment.amount)));
-  } else {
-    const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
-    if (!existing) {
-      await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId: payment.courseId });
-      const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
-      await db.insert(notificationsTable).values({ userId: payment.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success" });
-      const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
-      if (buyer && course) {
-        triggerAutomation("purchase", buyer.id, buyer.email, { name: buyer.name, email: buyer.email, course_name: course.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
-        triggerFunnel("new_purchase", buyer.id, { course_name: course.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)), site_url: process.env.SITE_URL || "" }).catch(() => {});
-      }
-      await recordAffiliateCommission(payment.affiliateRef, payment.userId, payment.courseId, parseFloat(String(payment.amount)));
-    }
+  // Delegate to the shared completion helper so user materialisation, enrollment,
+  // notification, automation, funnel and affiliate-commission logic stay in sync
+  // with the callback / verify paths and avoid the prior null-userId hazard.
+  try {
+    await completePaytmPayment(payment, txnId);
+  } catch (err) {
+    console.error("[paytm webhook] completePaytmPayment failed:", err);
   }
   res.json({ received: true });
 });
@@ -1357,15 +1478,17 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
   ).limit(1);
   if (!gw) { res.status(400).json({ error: "Stripe is not configured or inactive" }); return; }
 
-  let userId: number;
+  // Resolve user — defer creation for brand-new emails until payment success.
+  let userId: number | null = null;
+  let pendingPasswordHash: string | null = null;
   let isNewUser = false;
   let tempPassword: string | undefined;
 
   const existingToken = req.cookies?.token;
   if (existingToken) {
     try { const payload = verifyToken(existingToken); userId = payload.userId; }
-    catch { userId = 0; }
-  } else { userId = 0; }
+    catch { /* invalid token — treat as guest */ }
+  }
 
   if (!userId) {
     const [existingUser] = await db.select().from(usersTable)
@@ -1374,15 +1497,8 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
       userId = existingUser.id;
     } else {
       tempPassword = nanoid(10);
-      const hashed = await bcrypt.hash(tempPassword, 10);
-      const referralCode = nanoid(8).toUpperCase();
-      const [newUser] = await db.insert(usersTable).values({
-        email: email.toLowerCase().trim(), password: hashed,
-        name: fullName.trim(), referralCode, role: "student",
-      }).returning();
-      userId = newUser.id;
+      pendingPasswordHash = await bcrypt.hash(tempPassword, 10);
       isNewUser = true;
-      triggerFunnel("user_signup", userId, { verify_link: "", site_url: process.env.SITE_URL || "", name: newUser.name, email: newUser.email }).catch(err => console.error("[stripe course new user] triggerFunnel error:", err));
     }
   }
 
@@ -1435,15 +1551,26 @@ router.post("/stripe/create-order", async (req, res): Promise<void> => {
       couponCode: couponCode || null, affiliateRef: affiliateRef || null,
       billingName: fullName?.trim() || null, billingEmail: email?.toLowerCase().trim() || null,
       billingMobile: mobile?.trim() || null, billingState: state || null,
+      pendingPasswordHash,
     });
 
-    const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-    if (freshUser) {
-      const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
-      res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+    // Auto-login only when we already have a real user (logged-in or existing).
+    // For brand-new emails, the user row is materialised at payment-success time.
+    let safeUser: { name: string; email: string };
+    if (userId) {
+      const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+      if (freshUser) {
+        const token = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
+        res.cookie("token", token, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+        safeUser = { name: freshUser.name, email: freshUser.email };
+      } else {
+        safeUser = { name: fullName.trim(), email: email.toLowerCase().trim() };
+      }
+    } else {
+      // Guest: synthesise a display-only user from the form data.
+      safeUser = { name: fullName.trim(), email: email.toLowerCase().trim() };
     }
 
-    const { password: _p, ...safeUser } = freshUser!;
     res.json({
       clientSecret: intent.client_secret, publishableKey: gw.apiKey,
       sessionId, paymentIntentId: intent.id, amount,
@@ -1481,12 +1608,30 @@ router.post("/stripe/verify", async (req, res): Promise<void> => {
     res.status(400).json({ error: `Payment not completed. Stripe status: ${intent.status}` }); return;
   }
 
+  // Materialise the user account NOW (deferred until payment success) and
+  // set auto-login cookie. After this returns, payment.userId is non-null.
+  const { userId: resolvedUserId } = await ensureUserForPayment(payment);
+  payment.userId = resolvedUserId;
+
   if (payment.status === "completed") {
     const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
-    const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+    const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, resolvedUserId)).limit(1);
+    if (freshUser) {
+      const tk = signToken({ userId: freshUser.id, email: freshUser.email, role: freshUser.role });
+      res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+    }
     const { password: _p2, ...safeUser } = freshUser!;
     res.json({ success: true, alreadyEnrolled: true, courseId: payment.courseId, courseTitle: course?.title, user: safeUser });
     return;
+  }
+
+  // Set auto-login cookie now (covers the brand-new-user case).
+  {
+    const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, resolvedUserId)).limit(1);
+    if (authedUser) {
+      const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
+      res.cookie("token", tk, { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+    }
   }
 
   await db.update(paymentsTable).set({ status: "completed", paymentId: paymentIntentId })
