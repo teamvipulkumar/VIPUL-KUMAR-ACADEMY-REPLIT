@@ -10,7 +10,7 @@ import {
 import { eq, count, sum, gte, and, ilike, or, sql, desc, ne, inArray, isNotNull } from "drizzle-orm";
 import { requireAdmin, verifyToken, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
-import { triggerAutomation } from "./crm";
+import { triggerAutomation, invalidatePublicBaseUrlCache } from "./crm";
 
 const router = Router();
 type AuthedRequest = Request & { user: JwtPayload };
@@ -566,6 +566,10 @@ router.put("/settings", requireAdmin, async (req, res): Promise<void> => {
     await db.insert(platformSettingsTable).values({});
   }
   const [updated] = await db.update(platformSettingsTable).set(updates).returning();
+  // Drop the cached site URL so changes (e.g. switching to a custom domain)
+  // take effect immediately for outgoing email links instead of waiting up to
+  // 60s for the in-process cache TTL to expire.
+  if (updates.siteUrl !== undefined) invalidatePublicBaseUrlCache();
   res.json({ ...updated, commissionRate: updated.commissionRate / 100 });
 });
 

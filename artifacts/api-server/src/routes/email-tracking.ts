@@ -3,7 +3,7 @@ import { timingSafeEqual } from "crypto";
 import { db } from "@workspace/db";
 import { emailSendsTable, usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
-import { signClickTarget } from "./crm";
+import { signClickTarget, getPublicBaseUrl } from "./crm";
 
 const router: IRouter = Router();
 
@@ -83,11 +83,13 @@ router.get("/track/click/:token", async (req, res): Promise<void> => {
 
   // Resolve safe target URL.
   // - http(s) absolute URLs: allowed.
-  // - root-relative paths ("/foo"): allowed; resolved against PUBLIC_BASE_URL.
+  // - root-relative paths ("/foo"): allowed; resolved against the public base.
   // - everything else (protocol-relative "//host", "javascript:", relative
   //   "foo/bar", empty): falls back to "/" on our domain.
-  const base = process.env.PUBLIC_BASE_URL?.replace(/\/+$/, "")
-    || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "");
+  // Use the shared getPublicBaseUrl() so the click endpoint resolves to the
+  // same domain (Admin Site URL → PUBLIC_BASE_URL → SITE_URL → REPLIT_DEV_DOMAIN)
+  // that injectEmailTracking used when wrapping the link.
+  const base = await getPublicBaseUrl();
   let target = base ? `${base}/` : "/";
   try {
     if (to.startsWith("/") && !to.startsWith("//")) {

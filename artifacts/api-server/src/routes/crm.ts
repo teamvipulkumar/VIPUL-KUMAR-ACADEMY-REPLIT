@@ -95,12 +95,107 @@ export async function sendTransactionalEmail(to: string, subject: string, html: 
  * footer into the HTML body, then store the token alongside the send.
  * Public tracking endpoints live in routes/email-tracking.ts.
  * ──────────────────────────────────────────────────────────────────── */
-export function getPublicBaseUrl(): string {
-  const explicit = process.env.PUBLIC_BASE_URL?.replace(/\/+$/, "");
+/**
+ * Resolves the public base URL for tracking links (open pixels, click rewrites,
+ * unsubscribe URLs) injected into outgoing emails. Precedence (highest first):
+ *   1. Admin-configured siteUrl from platform_settings (Admin → Settings).
+ *      Highest priority so emails always carry the live/custom domain even if
+ *      env vars still point at an older preview URL.
+ *   2. PUBLIC_BASE_URL env (deployment-time override).
+ *   3. SITE_URL env (same value used by auth.ts for verify/reset links).
+ *   4. REPLIT_DEV_DOMAIN (development fallback only).
+ *
+ * Returns "" when nothing is configured — callers must treat this as a no-op
+ * (injectEmailTracking already short-circuits when base is empty).
+ *
+ * Cached for 60 seconds in-process to avoid an N+1 DB lookup during large
+ * campaign/sequence sends. Admin Site-URL changes propagate after the TTL.
+ */
+let _siteUrlCache: { value: string; expiresAt: number; gen: number } | null = null;
+let _siteUrlCacheGen = 0;
+let _siteUrlInflight: { promise: Promise<string>; gen: number } | null = null;
+const SITE_URL_CACHE_TTL_MS = 60_000;
+
+async function resolvePublicBaseUrlUncached(): Promise<string> {
+  try {
+    const [ps] = await db.select({ siteUrl: platformSettingsTable.siteUrl })
+      .from(platformSettingsTable).limit(1);
+    const fromDb = ps?.siteUrl?.trim();
+    if (fromDb) return fromDb.replace(/\/+$/, "");
+  } catch { /* fall through */ }
+  const explicit = process.env.PUBLIC_BASE_URL?.trim().replace(/\/+$/, "");
   if (explicit) return explicit;
+  const fromSite = process.env.SITE_URL?.trim().replace(/\/+$/, "");
+  if (fromSite) return fromSite;
   const dev = process.env.REPLIT_DEV_DOMAIN;
   if (dev) return `https://${dev}`;
   return "";
+}
+
+export async function getPublicBaseUrl(): Promise<string> {
+  // Fresh cache hit: return immediately.
+  if (_siteUrlCache && _siteUrlCache.expiresAt > Date.now()) {
+    return _siteUrlCache.value;
+  }
+  // Single-flight, generation-aware: coalesce concurrent callers onto one DB
+  // read so a burst of emails doesn't fan out into N queries when the cache
+  // is cold. We only reuse an in-flight promise that was started under the
+  // current generation; if invalidatePublicBaseUrlCache() ticked the gen
+  // forward, post-invalidate callers must start a fresh resolve so they
+  // don't observe the stale pre-invalidate value.
+  if (_siteUrlInflight && _siteUrlInflight.gen === _siteUrlCacheGen) {
+    return _siteUrlInflight.promise;
+  }
+
+  // Capture the generation BEFORE the await. If invalidatePublicBaseUrlCache()
+  // is called while we're awaiting the DB, the generation will tick forward
+  // and we will refuse to write a stale value back into the cache.
+  const startGen = _siteUrlCacheGen;
+  const promise = (async () => {
+    try {
+      const value = await resolvePublicBaseUrlUncached();
+      if (_siteUrlCacheGen === startGen) {
+        _siteUrlCache = { value, expiresAt: Date.now() + SITE_URL_CACHE_TTL_MS, gen: startGen };
+      }
+      return value;
+    } finally {
+      // Only clear the inflight slot if it's still ours; a concurrent
+      // invalidation may have already replaced it with a fresh-gen entry.
+      if (_siteUrlInflight && _siteUrlInflight.gen === startGen) {
+        _siteUrlInflight = null;
+      }
+    }
+  })();
+  _siteUrlInflight = { promise, gen: startGen };
+  return promise;
+}
+
+/**
+ * Drop the cached public base URL. Call this from admin routes that update
+ * platform_settings.siteUrl so changes propagate immediately instead of
+ * waiting for the TTL. Bumping the generation counter (a) causes any
+ * in-flight resolve to be discarded rather than written into the cache, and
+ * (b) prevents post-invalidate callers from being attached to a pre-invalidate
+ * in-flight promise (whose value would be stale).
+ */
+export function invalidatePublicBaseUrlCache(): void {
+  _siteUrlCache = null;
+  _siteUrlInflight = null;
+  _siteUrlCacheGen++;
+}
+
+/**
+ * Substitute the universal {{site_url}} placeholder in subject + body with the
+ * resolved public base URL. Use this in every send path BEFORE
+ * `injectEmailTracking()` so click-tracking never wraps a literal `{{site_url}}`.
+ * Returns the substituted [subject, html] tuple.
+ */
+export async function substituteSiteUrl(subject: string, html: string): Promise<[string, string]> {
+  const siteUrl = await getPublicBaseUrl();
+  return [
+    subject.replaceAll("{{site_url}}", siteUrl),
+    html.replaceAll("{{site_url}}", siteUrl),
+  ];
 }
 
 export function newTrackingToken(): string {
@@ -118,8 +213,8 @@ export function signClickTarget(token: string, target: string): string {
 
 const escapeHtmlAttr = (s: string) => s.replace(/"/g, "&quot;");
 
-export function injectEmailTracking(html: string, token: string): string {
-  const base = getPublicBaseUrl();
+export async function injectEmailTracking(html: string, token: string): Promise<string> {
+  const base = await getPublicBaseUrl();
   if (!base || !token || !html) return html;
   const unsubUrl = `${base}/api/email/unsubscribe/${token}`;
 
@@ -200,11 +295,14 @@ export async function triggerAutomation(
       html = html.replaceAll(`{{${key}}}`, val);
       subject = subject.replaceAll(`{{${key}}}`, val);
     }
+    // Always substitute {{site_url}} so it never reaches the click rewriter as
+    // a literal placeholder, even when the caller didn't pass site_url explicitly.
+    [subject, html] = await substituteSiteUrl(subject, html);
 
     const send = async () => {
       if (await isUserUnsubscribed(userId)) return;
       const token = newTrackingToken();
-      const trackedHtml = injectEmailTracking(html, token);
+      const trackedHtml = await injectEmailTracking(html, token);
       try {
         await sendEmailWithFallback(email, subject, trackedHtml);
         await db.insert(emailSendsTable).values({ type: "automation", automationEvent: event, userId, email, subject, htmlBody: trackedHtml, status: "sent", trackingToken: token });
@@ -502,20 +600,25 @@ router.get("/templates", requireAdmin, async (_req, res): Promise<void> => {
 
 /* ── Shared email wrapper ── */
 function emailWrap(body: string): string {
+  // NOTE: Social icons and the Unsubscribe link below intentionally use
+  // {{site_url}} (instead of dead "#" hrefs) so clicks land on the brand
+  // homepage. The Unsubscribe anchor is automatically rewritten to a
+  // per-send tracked unsubscribe URL by injectEmailTracking() at send time
+  // (Pass 1 detects "Unsubscribe" in the inner text).
   const footer = `
   <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:28px 0 8px;font-family:Arial,Helvetica,sans-serif;">
     <table cellpadding="0" cellspacing="0" style="margin-bottom:14px;"><tr>
-      <td style="padding:0 5px;"><a href="#" style="text-decoration:none;display:inline-block;width:30px;height:30px;background:#e2e8f0;border-radius:5px;text-align:center;line-height:30px;font-size:13px;color:#475569;">𝕏</a></td>
-      <td style="padding:0 5px;"><a href="#" style="text-decoration:none;display:inline-block;width:30px;height:30px;background:#e2e8f0;border-radius:5px;text-align:center;line-height:30px;font-size:12px;color:#475569;font-weight:700;">in</a></td>
-      <td style="padding:0 5px;"><a href="#" style="text-decoration:none;display:inline-block;width:30px;height:30px;background:#e2e8f0;border-radius:5px;text-align:center;line-height:30px;font-size:13px;color:#475569;">▶</a></td>
-      <td style="padding:0 5px;"><a href="#" style="text-decoration:none;display:inline-block;width:30px;height:30px;background:#e2e8f0;border-radius:5px;text-align:center;line-height:30px;font-size:13px;color:#475569;">◎</a></td>
+      <td style="padding:0 5px;"><a href="{{site_url}}" style="text-decoration:none;display:inline-block;width:30px;height:30px;background:#e2e8f0;border-radius:5px;text-align:center;line-height:30px;font-size:13px;color:#475569;">𝕏</a></td>
+      <td style="padding:0 5px;"><a href="{{site_url}}" style="text-decoration:none;display:inline-block;width:30px;height:30px;background:#e2e8f0;border-radius:5px;text-align:center;line-height:30px;font-size:12px;color:#475569;font-weight:700;">in</a></td>
+      <td style="padding:0 5px;"><a href="{{site_url}}" style="text-decoration:none;display:inline-block;width:30px;height:30px;background:#e2e8f0;border-radius:5px;text-align:center;line-height:30px;font-size:13px;color:#475569;">▶</a></td>
+      <td style="padding:0 5px;"><a href="{{site_url}}" style="text-decoration:none;display:inline-block;width:30px;height:30px;background:#e2e8f0;border-radius:5px;text-align:center;line-height:30px;font-size:13px;color:#475569;">◎</a></td>
     </tr></table>
     <p style="margin:0 0 3px;font-size:12px;color:#94a3b8;font-family:Arial,Helvetica,sans-serif;">Sent by <strong>Vipul Kumar Academy</strong></p>
     <p style="margin:0 0 10px;font-size:11px;color:#94a3b8;font-family:Arial,Helvetica,sans-serif;">
       <a href="mailto:support@vipulkumaracademy.com" style="color:#94a3b8;text-decoration:none;">support@vipulkumaracademy.com</a>
       &nbsp;·&nbsp; WhatsApp: <a href="https://wa.me/15557485582" style="color:#94a3b8;text-decoration:none;">+15557485582</a>
     </p>
-    <a href="#" style="font-size:11px;color:#ef4444;text-decoration:none;">Unsubscribe</a>
+    <a href="{{site_url}}/unsubscribe" style="font-size:11px;color:#ef4444;text-decoration:none;">Unsubscribe</a>
   </td></tr></table>`;
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -946,14 +1049,17 @@ router.post("/campaigns/:id/send", requireAdmin, async (req, res): Promise<void>
       for (const user of users) {
         if (await isUserUnsubscribed(user.id)) continue;
         let html = campaign.htmlBody.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
+        // Substitute {{site_url}} so click-tracking never wraps a literal placeholder.
+        let _subject = campaign.subject;
+        [_subject, html] = await substituteSiteUrl(_subject, html);
         const token = newTrackingToken();
-        const trackedHtml = injectEmailTracking(html, token);
+        const trackedHtml = await injectEmailTracking(html, token);
         try {
-          await sendEmailWithFallback(user.email, campaign.subject, trackedHtml);
-          await db.insert(emailSendsTable).values({ type: "campaign", campaignId: id, userId: user.id, email: user.email, subject: campaign.subject, htmlBody: trackedHtml, status: "sent", trackingToken: token });
+          await sendEmailWithFallback(user.email, _subject, trackedHtml);
+          await db.insert(emailSendsTable).values({ type: "campaign", campaignId: id, userId: user.id, email: user.email, subject: _subject, htmlBody: trackedHtml, status: "sent", trackingToken: token });
           sentCount++;
         } catch (err: any) {
-          await db.insert(emailSendsTable).values({ type: "campaign", campaignId: id, userId: user.id, email: user.email, subject: campaign.subject, htmlBody: trackedHtml, status: "failed", failReason: String(err?.message ?? err), trackingToken: token });
+          await db.insert(emailSendsTable).values({ type: "campaign", campaignId: id, userId: user.id, email: user.email, subject: _subject, htmlBody: trackedHtml, status: "failed", failReason: String(err?.message ?? err), trackingToken: token });
           failedCount++;
         }
         await new Promise(r => setTimeout(r, 100));
@@ -1130,14 +1236,19 @@ router.post("/sends/:id/resend", requireAdmin, async (req, res): Promise<void> =
     }
   }
 
+  // Substitute {{site_url}} so click-tracking never wraps a literal placeholder,
+  // and so the resent email points to the current live domain (in case the
+  // original send used an older Site URL).
+  let _subject = send.subject;
+  [_subject, html] = await substituteSiteUrl(_subject, html);
   const token = newTrackingToken();
-  const trackedHtml = injectEmailTracking(html, token);
+  const trackedHtml = await injectEmailTracking(html, token);
   try {
-    await sendEmailWithFallback(send.email, send.subject, trackedHtml);
-    const [newSend] = await db.insert(emailSendsTable).values({ type: send.type, campaignId: send.campaignId, automationEvent: send.automationEvent, userId: send.userId, email: send.email, subject: send.subject, htmlBody: trackedHtml, status: "sent", trackingToken: token }).returning();
+    await sendEmailWithFallback(send.email, _subject, trackedHtml);
+    const [newSend] = await db.insert(emailSendsTable).values({ type: send.type, campaignId: send.campaignId, automationEvent: send.automationEvent, userId: send.userId, email: send.email, subject: _subject, htmlBody: trackedHtml, status: "sent", trackingToken: token }).returning();
     res.json({ ok: true, send: newSend });
   } catch (err: any) {
-    await db.insert(emailSendsTable).values({ type: send.type, campaignId: send.campaignId, automationEvent: send.automationEvent, userId: send.userId, email: send.email, subject: send.subject, htmlBody: trackedHtml, status: "failed", failReason: err.message, trackingToken: token });
+    await db.insert(emailSendsTable).values({ type: send.type, campaignId: send.campaignId, automationEvent: send.automationEvent, userId: send.userId, email: send.email, subject: _subject, htmlBody: trackedHtml, status: "failed", failReason: err.message, trackingToken: token });
     res.status(500).json({ error: err.message });
   }
 });
@@ -1561,12 +1672,14 @@ export async function processSequences(): Promise<void> {
 
       let html = currentStepData.htmlBody.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
       let subject = currentStepData.subject.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
+      // Substitute {{site_url}} so click-tracking never wraps a literal placeholder.
+      [subject, html] = await substituteSiteUrl(subject, html);
 
       if (await isUserUnsubscribed(user.id)) {
         // Skip silently — user has opted out of emails
       } else {
         const token = newTrackingToken();
-        const trackedHtml = injectEmailTracking(html, token);
+        const trackedHtml = await injectEmailTracking(html, token);
         try {
           await sendEmailWithFallback(user.email, subject, trackedHtml);
           await db.insert(emailSendsTable).values({ type: "sequence", userId: user.id, email: user.email, subject, htmlBody: trackedHtml, status: "sent", trackingToken: token });
@@ -1611,15 +1724,18 @@ export async function processScheduledCampaigns(): Promise<void> {
           let sentCount = 0; let failedCount = 0;
           for (const user of users) {
             if (await isUserUnsubscribed(user.id)) continue;
-            const html = campaign.htmlBody.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
+            let html = campaign.htmlBody.replaceAll("{{name}}", user.name).replaceAll("{{email}}", user.email);
+            // Substitute {{site_url}} so click-tracking never wraps a literal placeholder.
+            let _subject = campaign.subject;
+            [_subject, html] = await substituteSiteUrl(_subject, html);
             const token = newTrackingToken();
-            const trackedHtml = injectEmailTracking(html, token);
+            const trackedHtml = await injectEmailTracking(html, token);
             try {
-              await sendEmailWithFallback(user.email, campaign.subject, trackedHtml);
-              await db.insert(emailSendsTable).values({ type: "campaign", campaignId: campaign.id, userId: user.id, email: user.email, subject: campaign.subject, htmlBody: trackedHtml, status: "sent", trackingToken: token });
+              await sendEmailWithFallback(user.email, _subject, trackedHtml);
+              await db.insert(emailSendsTable).values({ type: "campaign", campaignId: campaign.id, userId: user.id, email: user.email, subject: _subject, htmlBody: trackedHtml, status: "sent", trackingToken: token });
               sentCount++;
             } catch (err: any) {
-              await db.insert(emailSendsTable).values({ type: "campaign", campaignId: campaign.id, userId: user.id, email: user.email, subject: campaign.subject, htmlBody: trackedHtml, status: "failed", failReason: String(err?.message ?? err), trackingToken: token });
+              await db.insert(emailSendsTable).values({ type: "campaign", campaignId: campaign.id, userId: user.id, email: user.email, subject: _subject, htmlBody: trackedHtml, status: "failed", failReason: String(err?.message ?? err), trackingToken: token });
               failedCount++;
             }
             await new Promise(r => setTimeout(r, 100));
@@ -2220,7 +2336,7 @@ export async function triggerFunnel(triggerType: string, userId: number, trigger
             // Skip silently — recipient has opted out
           } else {
             const token = newTrackingToken();
-            const trackedHtml = injectEmailTracking(html, token);
+            const trackedHtml = await injectEmailTracking(html, token);
             try {
               await sendEmailWithFallback(user.email, subject, trackedHtml);
               await db.insert(emailSendsTable).values({ type: "automation", automationEvent: triggerType, userId, email: user.email, subject, htmlBody: trackedHtml, status: "sent", trackingToken: token });
