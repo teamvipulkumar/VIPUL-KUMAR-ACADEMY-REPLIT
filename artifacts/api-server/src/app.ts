@@ -77,6 +77,24 @@ function isOriginAllowed(origin: string | undefined | null): boolean {
   return false;
 }
 
+// SECURITY: CORS middleware must reflect the request's own origin (with
+// credentials:true the wildcard "*" is forbidden). We let the browser through
+// when the request is same-origin (Origin's hostname matches the public host
+// on which the request arrived). An attacker site cannot forge the public
+// host — that's set by the proxy based on the hostname the user typed in —
+// so this is a robust trust signal that works on any deployment domain
+// (custom domain, *.replit.app, *.replit.dev) without requiring env config.
+function isSameOrigin(req: Request, origin: string): boolean {
+  try {
+    const originHost = new URL(origin).hostname.toLowerCase();
+    // req.hostname honors X-Forwarded-Host because we set trust proxy=1 above.
+    const reqHost = String(req.hostname || "").toLowerCase();
+    return Boolean(originHost && reqHost && originHost === reqHost);
+  } catch {
+    return false;
+  }
+}
+
 app.use(
   cors({
     credentials: true,
@@ -84,6 +102,11 @@ app.use(
       // cb(null, false) → no CORS headers emitted; browser will block the
       // response. We avoid `cb(error)` because Express converts it into a 500
       // and the request still runs through subsequent middleware.
+      // Same-origin check happens in the CSRF middleware below; here cors only
+      // sees the Origin header, so we accept the explicit allowlist + the
+      // *.replit.{dev,app,co} fallback. Same-origin requests would normally
+      // not need CORS headers at all (browsers don't enforce CORS on same-
+      // origin), so a missed allow here is harmless for the page itself.
       cb(null, isOriginAllowed(origin));
     },
   }),
@@ -139,6 +162,14 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   // We let these through; they need a valid JWT cookie anyway, and a CSRF
   // attack requires a victim browser.
   if (!origin) return next();
+
+  // Same-origin: Origin's host matches the public host this request arrived
+  // on. An attacker site cannot control the request's public Host header
+  // (the proxy sets it from the URL the user typed), so a matching Origin
+  // header is strong proof the request originated from our own page.
+  // This makes CSRF protection work on ANY deployment domain (custom domain,
+  // *.replit.app, *.replit.dev) without requiring ALLOWED_ORIGINS env config.
+  if (isSameOrigin(req, origin)) return next();
 
   if (ALLOWED_ORIGINS.has(origin)) return next();
   const host = safeHostnameFromOrigin(origin);
