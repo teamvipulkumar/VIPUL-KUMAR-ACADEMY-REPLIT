@@ -874,11 +874,12 @@ const DEFAULT_TEMPLATES = [
           <p style="margin:0;font-size:13px;color:#1e40af;font-family:Arial,Helvetica,sans-serif;">💡 <strong>Tip:</strong> While you wait, explore our courses to better understand what you'll be promoting — informed affiliates earn the most!</p>
         </td></tr>
       </table>
-      <table cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      <table cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
         <tr><td style="background:#2563eb;border-radius:8px;padding:13px 30px;">
-          <a href="{{site_url}}/courses" style="color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;font-family:Arial,Helvetica,sans-serif;">Browse Courses &rarr;</a>
+          <a href="{{site_url}}/affiliate" style="color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;font-family:Arial,Helvetica,sans-serif;">Check Application Status &rarr;</a>
         </td></tr>
       </table>
+      <p style="margin:0 0 22px;font-size:13px;color:#6b7280;line-height:1.7;">Or browse our <a href="{{site_url}}/courses" style="color:#2563eb;text-decoration:none;">course catalog</a> while you wait.</p>
       <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0 16px;" />
       <p style="margin:0;font-size:13px;color:#6b7280;">Questions? Email <a href="mailto:support@vipulkumaracademy.com" style="color:#2563eb;text-decoration:none;">support@vipulkumaracademy.com</a> or WhatsApp: <a href="https://wa.me/15557485582" style="color:#2563eb;text-decoration:none;">+15557485582</a></p>
     `),
@@ -956,11 +957,12 @@ const DEFAULT_TEMPLATES = [
         <li>Demonstrate engagement — testimonials, content samples or follower stats</li>
       </ul>
       <p style="margin:0 0 16px;font-size:14px;color:#374151;line-height:1.7;">You're welcome to <strong>reapply at any time</strong> — we'd love to see how you've grown.</p>
-      <table cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      <table cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
         <tr><td style="background:#2563eb;border-radius:8px;padding:13px 30px;">
-          <a href="{{site_url}}/courses" style="color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;font-family:Arial,Helvetica,sans-serif;">Explore Our Courses &rarr;</a>
+          <a href="{{site_url}}/affiliate" style="color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;font-family:Arial,Helvetica,sans-serif;">Reapply Now &rarr;</a>
         </td></tr>
       </table>
+      <p style="margin:0 0 22px;font-size:13px;color:#6b7280;line-height:1.7;">Want to learn more first? Check out our <a href="{{site_url}}/courses" style="color:#2563eb;text-decoration:none;">course catalog</a> to find what fits your audience.</p>
       <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0 16px;" />
       <p style="margin:0;font-size:13px;color:#6b7280;">Questions about this decision? We're happy to help — email <a href="mailto:support@vipulkumaracademy.com" style="color:#2563eb;text-decoration:none;">support@vipulkumaracademy.com</a> or WhatsApp: <a href="https://wa.me/15557485582" style="color:#2563eb;text-decoration:none;">+15557485582</a></p>
       <p style="margin:8px 0 0;font-size:13px;color:#6b7280;">Wishing you all the best,<br><strong style="color:#374151;">The VKA Team</strong></p>
