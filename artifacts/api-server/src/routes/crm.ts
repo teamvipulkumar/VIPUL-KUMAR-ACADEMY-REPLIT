@@ -278,7 +278,7 @@ export async function isUserUnsubscribed(userId: number | null | undefined): Pro
 
 /** Public function called from other routes to fire automation emails */
 export async function triggerAutomation(
-  event: "welcome" | "purchase" | "refund" | "forgot_password" | "completion" | "affiliate_commission",
+  event: "welcome" | "purchase" | "refund" | "forgot_password" | "completion" | "affiliate_commission" | "affiliate_application_submitted" | "affiliate_application_approved" | "affiliate_application_rejected",
   userId: number,
   email: string,
   variables: Record<string, string> = {},
@@ -1023,6 +1023,9 @@ const AUTOMATION_EVENTS = [
   { event: "forgot_password", label: "Password Reset", description: "Sent when a user requests a password reset" },
   { event: "completion", label: "Course Completion", description: "Sent when a student completes a course" },
   { event: "affiliate_commission", label: "Affiliate Commission", description: "Sent when affiliate earns a commission" },
+  { event: "affiliate_application_submitted", label: "Affiliate Application Submitted", description: "Sent when a user submits an affiliate application" },
+  { event: "affiliate_application_approved", label: "Affiliate Application Approved", description: "Sent when an admin approves an affiliate application" },
+  { event: "affiliate_application_rejected", label: "Affiliate Application Rejected", description: "Sent when an admin rejects an affiliate application" },
 ];
 
 router.get("/automation", requireAdmin, async (_req, res): Promise<void> => {

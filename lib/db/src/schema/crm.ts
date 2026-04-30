@@ -69,7 +69,10 @@ export const emailCampaignsTable = pgTable("email_campaigns", {
 export const emailAutomationRulesTable = pgTable("email_automation_rules", {
   id: serial("id").primaryKey(),
   event: text("event", {
-    enum: ["welcome", "purchase", "refund", "forgot_password", "remarketing", "completion", "affiliate_commission"],
+    enum: [
+      "welcome", "purchase", "refund", "forgot_password", "remarketing", "completion", "affiliate_commission",
+      "affiliate_application_submitted", "affiliate_application_approved", "affiliate_application_rejected",
+    ],
   }).notNull().unique(),
   templateId: integer("template_id").references(() => emailTemplatesTable.id, { onDelete: "set null" }),
   isEnabled: boolean("is_enabled").notNull().default(false),

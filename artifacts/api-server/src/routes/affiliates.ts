@@ -11,6 +11,7 @@ import { requireAuth, requireAdmin, type JwtPayload } from "../middlewares/auth"
 import type { Request } from "express";
 import crypto from "crypto";
 import { sendFbEvent, sendFbTestEvent } from "../lib/facebook-pixel";
+import { triggerAutomation, triggerFunnel, getPublicBaseUrl } from "./crm";
 
 const router = Router();
 type AuthedRequest = Request & { user: JwtPayload };
@@ -47,12 +48,26 @@ router.post("/apply", requireAuth, async (req, res): Promise<void> => {
   }
   const existing = await db.select().from(affiliateApplicationsTable)
     .where(eq(affiliateApplicationsTable.userId, authedReq.user.userId)).limit(1);
+  const fireSubmittedEvents = async (userIdForEvent: number, emailForEvent: string, nameForEvent: string) => {
+    try {
+      const siteUrl = await getPublicBaseUrl();
+      const vars = { name: nameForEvent, email: emailForEvent, site_url: siteUrl };
+      triggerAutomation("affiliate_application_submitted", userIdForEvent, emailForEvent, vars).catch(e =>
+        console.error("[affiliate apply] triggerAutomation error:", e));
+      triggerFunnel("affiliate_application_submitted", userIdForEvent, vars).catch(e =>
+        console.error("[affiliate apply] triggerFunnel error:", e));
+    } catch (e) {
+      console.error("[affiliate apply] event dispatch error:", e);
+    }
+  };
+
   if (existing.length > 0) {
     if (existing[0].status === "rejected") {
       const [updated] = await db.update(affiliateApplicationsTable)
         .set({ fullName, email, promoteDescription, status: "pending", adminNote: null, updatedAt: new Date() })
         .where(eq(affiliateApplicationsTable.userId, authedReq.user.userId))
         .returning();
+      void fireSubmittedEvents(authedReq.user.userId, email, fullName);
       res.json(updated); return;
     }
     res.status(409).json({ error: "You have already applied", status: existing[0].status }); return;
@@ -60,6 +75,7 @@ router.post("/apply", requireAuth, async (req, res): Promise<void> => {
   const [app] = await db.insert(affiliateApplicationsTable).values({
     userId: authedReq.user.userId, fullName, email, promoteDescription, status: "pending",
   }).returning();
+  void fireSubmittedEvents(authedReq.user.userId, email, fullName);
   res.json(app);
 });
 
@@ -655,8 +671,36 @@ router.post("/admin/applications/:id/approve", requireAdmin, async (req, res): P
     }
   }
 
-  await db.update(affiliateApplicationsTable).set(updatePayload).where(eq(affiliateApplicationsTable.id, id));
+  // Idempotency guard: only update + fire events when the application is not already approved.
+  // The conditional WHERE prevents double-firing on duplicate admin clicks or concurrent requests.
+  const updated = await db.update(affiliateApplicationsTable)
+    .set(updatePayload)
+    .where(and(eq(affiliateApplicationsTable.id, id), ne(affiliateApplicationsTable.status, "approved")))
+    .returning({ id: affiliateApplicationsTable.id });
+
+  if (updated.length === 0) {
+    res.json({ message: "Application is already approved" }); return;
+  }
+
   await db.update(usersTable).set({ role: "affiliate" }).where(eq(usersTable.id, app.userId));
+
+  // Fire automation events for approval (only on actual state transition)
+  void (async () => {
+    try {
+      const siteUrl = await getPublicBaseUrl();
+      const vars = { name: app.fullName, email: app.email, site_url: siteUrl };
+      triggerAutomation("affiliate_application_approved", app.userId, app.email, vars).catch(e =>
+        console.error("[affiliate approve] triggerAutomation error:", e));
+      triggerFunnel("affiliate_application_approved", app.userId, vars).catch(e =>
+        console.error("[affiliate approve] triggerFunnel error:", e));
+      // Backwards-compat: also fire the existing affiliate_joined trigger so any
+      // previously configured funnels keep working.
+      triggerFunnel("affiliate_joined", app.userId, vars).catch(() => {});
+    } catch (e) {
+      console.error("[affiliate approve] event dispatch error:", e);
+    }
+  })();
+
   res.json({ message: "Application approved, user promoted to affiliate" });
 });
 
@@ -666,10 +710,31 @@ router.post("/admin/applications/:id/reject", requireAdmin, async (req, res): Pr
   if (!adminNote) { res.status(400).json({ error: "adminNote is required when rejecting" }); return; }
   const [app] = await db.select().from(affiliateApplicationsTable).where(eq(affiliateApplicationsTable.id, id)).limit(1);
   if (!app) { res.status(404).json({ error: "Application not found" }); return; }
+
+  // Idempotency guard: only fire the event on actual state transition (not when re-rejecting).
+  // Allow updating adminNote on already-rejected apps without re-firing the email.
+  const wasAlreadyRejected = app.status === "rejected";
   await db.update(affiliateApplicationsTable)
     .set({ status: "rejected", adminNote, reviewedAt: new Date() })
     .where(eq(affiliateApplicationsTable.id, id));
-  res.json({ message: "Application rejected" });
+
+  if (!wasAlreadyRejected) {
+    // Fire automation events for rejection (with rejection_reason from admin note)
+    void (async () => {
+      try {
+        const siteUrl = await getPublicBaseUrl();
+        const vars = { name: app.fullName, email: app.email, site_url: siteUrl, rejection_reason: adminNote };
+        triggerAutomation("affiliate_application_rejected", app.userId, app.email, vars).catch(e =>
+          console.error("[affiliate reject] triggerAutomation error:", e));
+        triggerFunnel("affiliate_application_rejected", app.userId, vars).catch(e =>
+          console.error("[affiliate reject] triggerFunnel error:", e));
+      } catch (e) {
+        console.error("[affiliate reject] event dispatch error:", e);
+      }
+    })();
+  }
+
+  res.json({ message: wasAlreadyRejected ? "Application note updated" : "Application rejected" });
 });
 
 /* ── Admin: creatives CRUD ── */

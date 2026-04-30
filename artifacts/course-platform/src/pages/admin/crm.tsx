@@ -1162,8 +1162,11 @@ const FUNNEL_TRIGGERS = [
   { type: "tag_applied",        label: "Tag Applied",            icon: Tag,                color: "text-violet-400",  bg: "bg-violet-500/10",  border: "border-violet-500/20",  desc: "Fires when a specific tag is applied to a contact" },
   { type: "list_added",         label: "Added to List",          icon: List,               color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20",   desc: "Fires when a contact is added to a list" },
   /* ── Affiliate ── */
-  { type: "affiliate_joined",     label: "Affiliate Joined",       icon: UserCheck,    color: "text-purple-400",  bg: "bg-purple-500/10",  border: "border-purple-500/20",  desc: "Fires when a user is approved as an affiliate" },
-  { type: "affiliate_commission", label: "Commission Earned",      icon: TrendingUp,   color: "text-yellow-400",  bg: "bg-yellow-500/10",  border: "border-yellow-500/20",  desc: "Fires when an affiliate earns a commission from a referral purchase" },
+  { type: "affiliate_joined",                  label: "Affiliate Joined",       icon: UserCheck,    color: "text-purple-400",  bg: "bg-purple-500/10",  border: "border-purple-500/20",  desc: "Fires when a user is approved as an affiliate" },
+  { type: "affiliate_commission",              label: "Commission Earned",      icon: TrendingUp,   color: "text-yellow-400",  bg: "bg-yellow-500/10",  border: "border-yellow-500/20",  desc: "Fires when an affiliate earns a commission from a referral purchase" },
+  { type: "affiliate_application_submitted",   label: "Application Submitted",  icon: Mail,         color: "text-blue-400",    bg: "bg-blue-500/10",    border: "border-blue-500/20",    desc: "Fires when a user submits an affiliate application" },
+  { type: "affiliate_application_approved",    label: "Application Approved",   icon: CheckCircle2, color: "text-green-400",   bg: "bg-green-500/10",   border: "border-green-500/20",   desc: "Fires when an admin approves an affiliate application" },
+  { type: "affiliate_application_rejected",    label: "Application Rejected",   icon: XCircle,      color: "text-red-400",     bg: "bg-red-500/10",     border: "border-red-500/20",     desc: "Fires when an admin rejects an affiliate application" },
   /* ── Engagement ── */
   { type: "link_clicked",       label: "Email Link Clicked",     icon: MousePointerClick,  color: "text-orange-400",  bg: "bg-orange-500/10",  border: "border-orange-500/20",  desc: "Fires when a contact clicks a tracked link in an email" },
 ];
@@ -1505,8 +1508,14 @@ function AutomationTab({ initialFunnelId = null }: { initialFunnelId?: number | 
                       <option value="tag_applied">Tag Applied</option>
                       <option value="list_added">Added to List</option>
                     </optgroup>
-                    <optgroup label="Other">
+                    <optgroup label="Affiliate">
                       <option value="affiliate_joined">Affiliate Joined</option>
+                      <option value="affiliate_commission">Commission Earned</option>
+                      <option value="affiliate_application_submitted">Application Submitted</option>
+                      <option value="affiliate_application_approved">Application Approved</option>
+                      <option value="affiliate_application_rejected">Application Rejected</option>
+                    </optgroup>
+                    <optgroup label="Other">
                       <option value="link_clicked">Email Link Clicked</option>
                     </optgroup>
                   </select>
@@ -1757,6 +1766,7 @@ function AutomationTab({ initialFunnelId = null }: { initialFunnelId?: number | 
                     course_enrolled: "courses", course_completed: "courses", lesson_completed: "courses",
                     tag_applied: "crm", list_added: "crm",
                     affiliate_joined: "affiliate", affiliate_commission: "affiliate",
+                    affiliate_application_submitted: "affiliate", affiliate_application_approved: "affiliate", affiliate_application_rejected: "affiliate",
                     link_clicked: "engagement",
                   };
                   return newTriggerCategory === "all" || catMap[t.type] === newTriggerCategory;
