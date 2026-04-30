@@ -41,7 +41,7 @@ Includes a responsive design with specific layouts for admin dashboards and repo
 ### Feature Specifications
 **Course Management**: CRUD operations for courses, modules, and lessons.
 **Enrollment & Progress**: Tracking of enrolled courses and lesson completion.
-**Affiliate Program**: Referral tracking, click counting, commission calculation, and payout request workflow. Approved affiliates see a one-time welcome popup + 6-step interactive dashboard tour on their first visit, persisted via `affiliate_applications.welcomed_at` and a `POST /api/affiliate/welcome-complete` endpoint.
+**Affiliate Program**: Referral tracking, click counting, commission calculation, and payout request workflow. Approved affiliates see a one-time welcome popup + 6-step interactive dashboard tour on their first visit, persisted via `affiliate_applications.welcomed_at` and a `POST /api/affiliate/welcome-complete` endpoint. The stamp fires automatically on popup mount (not on Skip/Finish only) so refreshing mid-popup never re-triggers it; the affiliate page also uses a sticky `showWelcomeForSession` state so the tour isn't unmounted by 45s background polling once the server has stamped `welcomedAt`.
 **Analytics**: Admin dashboard with revenue charts and user management.
 **Notification System**: In-app notifications.
 **Platform Settings**: Configuration for commission rates and enabled payment gateways.

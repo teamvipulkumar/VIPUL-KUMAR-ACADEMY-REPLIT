@@ -90,6 +90,23 @@ export default function WelcomeOnboarding({
   onTourStepChange?: (info: { index: number; isNavTarget: boolean }) => void;
 }) {
   const [phase, setPhase] = useState<Phase>("welcome");
+  const stampedRef = useRef(false);
+
+  // Stamp `welcomedAt` on the server as soon as the popup is shown to the user.
+  // This guarantees the popup appears at most once per affiliate, even if the
+  // user reloads the page mid-popup or mid-tour without ever clicking Skip/Finish.
+  useEffect(() => {
+    if (stampedRef.current) return;
+    stampedRef.current = true;
+    void (async () => {
+      try {
+        await fetch(`${API_BASE}/api/affiliate/welcome-complete`, {
+          method: "POST",
+          credentials: "include",
+        });
+      } catch { /* non-fatal — finish() will retry on dismiss */ }
+    })();
+  }, []);
 
   const finish = useCallback(async () => {
     let ok = false;
@@ -200,7 +217,7 @@ function WelcomeModal({
               Congratulations, {firstName}! 🎉
             </h2>
             <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
-              Aapka affiliate account approve ho gaya hai. Ab aap VKA ke courses promote karke commission earn kar sakte ho.
+              Your affiliate account has been approved. You can now promote VKA courses and earn commission on every sale.
             </p>
           </div>
         </div>

@@ -314,6 +314,10 @@ function AffiliateDashboard({ user }: { user: any }) {
   const [tourActive, setTourActive] = useState(false);
   const [tourSidebarOpen, setTourSidebarOpen] = useState(false);
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
+  // Sticky flag: decided ONCE from the first successful dashboard load. We don't
+  // want background polling refreshes (every 45s) to unmount the modal/tour
+  // mid-flow once the auto-stamp has set welcomedAt server-side.
+  const [showWelcomeForSession, setShowWelcomeForSession] = useState<boolean | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -341,6 +345,10 @@ function AffiliateDashboard({ user }: { user: any }) {
     setPayouts(Array.isArray(p) ? p : []);
     setUpcomingPayout(up);
     setCreatives(Array.isArray(cr) ? cr : []); setKyc(k); setBank(b); setPixel(px);
+    // Decide once on the FIRST dashboard load whether to show the welcome onboarding.
+    // Subsequent polling refreshes won't flip this back to false even after the
+    // server stamps welcomedAt, so the modal/tour stays mounted until the user dismisses it.
+    setShowWelcomeForSession((prev) => prev === null ? !d?.welcomedAt : prev);
     setLoading(false);
     setRefreshing(false);
   };
@@ -784,7 +792,7 @@ function AffiliateDashboard({ user }: { user: any }) {
       </main>
 
       {/* First-time welcome popup + interactive dashboard tour */}
-      {!loading && dashboard && !dashboard.welcomedAt && !welcomeDismissed && (
+      {!loading && dashboard && showWelcomeForSession && !welcomeDismissed && (
         <WelcomeOnboarding
           userName={user?.name ?? ""}
           commissionRate={dashboard?.commissionRate ?? 20}
