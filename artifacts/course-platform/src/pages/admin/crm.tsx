@@ -82,6 +82,9 @@ const VARIABLES_BY_TYPE: Record<string, { var: string; desc: string }[]> = {
   forgot_password:      [{ var: "{{name}}", desc: "User's full name" }, { var: "{{email}}", desc: "User's email" }, { var: "{{reset_link}}", desc: "Password reset URL" }],
   completion:           [{ var: "{{name}}", desc: "Student's full name" }, { var: "{{email}}", desc: "Student's email" }, { var: "{{course_name}}", desc: "Completed course title" }],
   affiliate_commission: [{ var: "{{name}}", desc: "Affiliate's full name" }, { var: "{{email}}", desc: "Affiliate's email" }, { var: "{{payout_amount}}", desc: "Payout amount (₹)" }, { var: "{{commission_amount}}", desc: "Commission amount (₹)" }],
+  affiliate_application_submitted: [{ var: "{{name}}", desc: "Applicant's full name" }, { var: "{{email}}", desc: "Applicant's email" }, { var: "{{site_url}}", desc: "Site URL" }],
+  affiliate_application_approved:  [{ var: "{{name}}", desc: "Applicant's full name" }, { var: "{{email}}", desc: "Applicant's email" }, { var: "{{site_url}}", desc: "Site URL" }],
+  affiliate_application_rejected:  [{ var: "{{name}}", desc: "Applicant's full name" }, { var: "{{email}}", desc: "Applicant's email" }, { var: "{{rejection_reason}}", desc: "Reason from admin note" }, { var: "{{site_url}}", desc: "Site URL" }],
   campaign:             [{ var: "{{name}}", desc: "Subscriber's full name" }, { var: "{{email}}", desc: "Subscriber's email" }],
   custom:               [{ var: "{{name}}", desc: "User's full name" }, { var: "{{email}}", desc: "User's email" }, { var: "{{course_name}}", desc: "Course title" }, { var: "{{amount}}", desc: "Amount (₹)" }, { var: "{{reset_link}}", desc: "Password reset URL" }, { var: "{{verify_link}}", desc: "Email verification URL" }, { var: "{{payout_amount}}", desc: "Payout amount (₹)" }, { var: "{{commission_amount}}", desc: "Commission amount (₹)" }],
 };
@@ -1003,6 +1006,9 @@ function TemplatesTab() {
                 <option value="forgot_password">Forgot Password</option>
                 <option value="completion">Course Completion</option>
                 <option value="affiliate_commission">Affiliate Commission</option>
+                <option value="affiliate_application_submitted">Affiliate Application — Submitted</option>
+                <option value="affiliate_application_approved">Affiliate Application — Approved</option>
+                <option value="affiliate_application_rejected">Affiliate Application — Rejected</option>
               </select>
             </div>
             <div className="space-y-1.5">

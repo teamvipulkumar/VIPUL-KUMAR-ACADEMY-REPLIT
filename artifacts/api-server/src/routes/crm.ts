@@ -545,6 +545,7 @@ const SAMPLE_VARIABLES_STATIC: Record<string, string> = {
   commission_amount: "999.80",
   payout_amount: "4,998.00",
   site_name: "VK Academy",
+  rejection_reason: "We weren't able to verify an active audience or content channel. Please share your social media or YouTube link when you reapply.",
 };
 
 /**
@@ -833,6 +834,136 @@ const DEFAULT_TEMPLATES = [
       </table>
       <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0 16px;" />
       <p style="margin:0;font-size:13px;color:#6b7280;">Questions? Email <a href="mailto:support@vipulkumaracademy.com" style="color:#2563eb;text-decoration:none;">support@vipulkumaracademy.com</a> or WhatsApp: <a href="https://wa.me/15557485582" style="color:#2563eb;text-decoration:none;">+15557485582</a></p>
+    `),
+  },
+  {
+    name: "Affiliate Application Submitted",
+    type: "affiliate_application_submitted" as const,
+    subject: "✅ We've received your affiliate application, {{name}}",
+    htmlBody: emailWrap(`
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:24px;">
+        <tr><td align="center" style="background:#eff6ff;border-radius:12px;padding:24px 20px;">
+          <p style="margin:0 0 6px;font-size:48px;line-height:1;">📨</p>
+          <h1 style="margin:8px 0 4px;font-size:22px;font-weight:700;color:#1d4ed8;font-family:Arial,Helvetica,sans-serif;">Application Received</h1>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 14px;font-size:15px;color:#374151;line-height:1.7;">Hi <strong>{{name}}</strong>,</p>
+      <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.7;">Thank you for applying to the <strong>Vipul Kumar Academy Affiliate Program</strong>! 🎉 We've successfully received your application and our team will review it shortly.</p>
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:22px;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;font-size:14px;font-family:Arial,Helvetica,sans-serif;">
+        <tr style="background:#f9fafb;">
+          <td style="padding:11px 16px;color:#6b7280;border-bottom:1px solid #e5e7eb;">Applicant Name</td>
+          <td style="padding:11px 16px;color:#111827;font-weight:600;text-align:right;border-bottom:1px solid #e5e7eb;">{{name}}</td>
+        </tr>
+        <tr>
+          <td style="padding:11px 16px;color:#6b7280;border-bottom:1px solid #e5e7eb;">Email</td>
+          <td style="padding:11px 16px;color:#374151;text-align:right;border-bottom:1px solid #e5e7eb;">{{email}}</td>
+        </tr>
+        <tr style="background:#f9fafb;">
+          <td style="padding:11px 16px;color:#6b7280;">Status</td>
+          <td style="padding:11px 16px;color:#1d4ed8;font-weight:700;text-align:right;">Under Review</td>
+        </tr>
+      </table>
+      <p style="margin:0 0 14px;font-size:15px;color:#374151;line-height:1.7;"><strong>What happens next?</strong></p>
+      <ul style="margin:0 0 22px;padding-left:20px;color:#374151;font-size:14px;line-height:2.1;">
+        <li>Our team typically reviews applications within <strong>24–48 hours</strong></li>
+        <li>You'll receive an email once a decision has been made</li>
+        <li>If approved, you'll get access to your affiliate dashboard, unique referral link and marketing creatives</li>
+      </ul>
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:22px;">
+        <tr><td style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 16px;">
+          <p style="margin:0;font-size:13px;color:#1e40af;font-family:Arial,Helvetica,sans-serif;">💡 <strong>Tip:</strong> While you wait, explore our courses to better understand what you'll be promoting — informed affiliates earn the most!</p>
+        </td></tr>
+      </table>
+      <table cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+        <tr><td style="background:#2563eb;border-radius:8px;padding:13px 30px;">
+          <a href="{{site_url}}/courses" style="color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;font-family:Arial,Helvetica,sans-serif;">Browse Courses &rarr;</a>
+        </td></tr>
+      </table>
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0 16px;" />
+      <p style="margin:0;font-size:13px;color:#6b7280;">Questions? Email <a href="mailto:support@vipulkumaracademy.com" style="color:#2563eb;text-decoration:none;">support@vipulkumaracademy.com</a> or WhatsApp: <a href="https://wa.me/15557485582" style="color:#2563eb;text-decoration:none;">+15557485582</a></p>
+    `),
+  },
+  {
+    name: "Affiliate Application Approved",
+    type: "affiliate_application_approved" as const,
+    subject: "🎉 You're approved! Welcome to the VKA Affiliate Program",
+    htmlBody: emailWrap(`
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:24px;">
+        <tr><td align="center" style="background:#f0fdf4;border-radius:12px;padding:24px 20px;">
+          <p style="margin:0 0 6px;font-size:48px;line-height:1;">🎉</p>
+          <h1 style="margin:8px 0 4px;font-size:22px;font-weight:700;color:#15803d;font-family:Arial,Helvetica,sans-serif;">Application Approved!</h1>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 14px;font-size:15px;color:#374151;line-height:1.7;">Hi <strong>{{name}}</strong>,</p>
+      <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.7;">Congratulations! 🚀 Your application to the <strong>Vipul Kumar Academy Affiliate Program</strong> has been <strong style="color:#15803d;">approved</strong>. You're now an official VKA affiliate and can start earning commissions right away.</p>
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:22px;border:1px solid #bbf7d0;border-radius:10px;overflow:hidden;font-size:14px;font-family:Arial,Helvetica,sans-serif;">
+        <tr style="background:#f0fdf4;">
+          <td style="padding:11px 16px;color:#15803d;font-weight:600;border-bottom:1px solid #bbf7d0;">✅ Status</td>
+          <td style="padding:11px 16px;color:#15803d;font-weight:700;text-align:right;border-bottom:1px solid #bbf7d0;">Active Affiliate</td>
+        </tr>
+        <tr>
+          <td style="padding:11px 16px;color:#6b7280;">Affiliate Email</td>
+          <td style="padding:11px 16px;color:#374151;text-align:right;">{{email}}</td>
+        </tr>
+      </table>
+      <p style="margin:0 0 14px;font-size:15px;color:#374151;line-height:1.7;"><strong>Here's what you get:</strong></p>
+      <ul style="margin:0 0 22px;padding-left:20px;color:#374151;font-size:14px;line-height:2.1;">
+        <li>A unique <strong>referral link</strong> to share with your audience</li>
+        <li>Access to <strong>marketing creatives</strong> — banners, copy, social media content</li>
+        <li>Real-time <strong>tracking dashboard</strong> for clicks, conversions and earnings</li>
+        <li>Fast <strong>commission payouts</strong> directly to your bank account</li>
+      </ul>
+      <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
+        <tr><td style="background:#16a34a;border-radius:8px;padding:13px 30px;">
+          <a href="{{site_url}}/affiliate" style="color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;font-family:Arial,Helvetica,sans-serif;">Open Affiliate Dashboard &rarr;</a>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 16px;font-size:14px;color:#374151;line-height:1.7;">Log in to grab your referral link, download creatives, and start sharing today. The sooner you start, the sooner you earn!</p>
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:22px;">
+        <tr><td style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 16px;">
+          <p style="margin:0;font-size:13px;color:#92400e;font-family:Arial,Helvetica,sans-serif;">💡 <strong>Pro tip:</strong> Complete your <strong>KYC and bank details</strong> in the dashboard so we can process your payouts without delay.</p>
+        </td></tr>
+      </table>
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0 16px;" />
+      <p style="margin:0;font-size:13px;color:#6b7280;">Welcome aboard! 🤝<br><strong style="color:#374151;">The VKA Affiliate Team</strong></p>
+      <p style="margin:8px 0 0;font-size:13px;color:#6b7280;">Need help getting started? Email <a href="mailto:support@vipulkumaracademy.com" style="color:#2563eb;text-decoration:none;">support@vipulkumaracademy.com</a> or WhatsApp: <a href="https://wa.me/15557485582" style="color:#2563eb;text-decoration:none;">+15557485582</a></p>
+    `),
+  },
+  {
+    name: "Affiliate Application Rejected",
+    type: "affiliate_application_rejected" as const,
+    subject: "Update on your VKA affiliate application",
+    htmlBody: emailWrap(`
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:24px;">
+        <tr><td align="center" style="background:#fef2f2;border-radius:12px;padding:20px;">
+          <p style="margin:0 0 6px;font-size:36px;line-height:1;">📋</p>
+          <h1 style="margin:0;font-size:22px;font-weight:700;color:#b91c1c;font-family:Arial,Helvetica,sans-serif;">Application Update</h1>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 14px;font-size:15px;color:#374151;line-height:1.7;">Hi <strong>{{name}}</strong>,</p>
+      <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.7;">Thank you for your interest in the <strong>Vipul Kumar Academy Affiliate Program</strong>. After careful review, we're unable to approve your application at this time.</p>
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:22px;">
+        <tr><td style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:16px;">
+          <p style="margin:0 0 6px;font-size:12px;color:#991b1b;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;font-family:Arial,Helvetica,sans-serif;">Reason from our team</p>
+          <p style="margin:0;font-size:14px;color:#7f1d1d;line-height:1.6;font-family:Arial,Helvetica,sans-serif;">{{rejection_reason}}</p>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 14px;font-size:15px;color:#374151;line-height:1.7;"><strong>This isn't the end of the road.</strong> Many of our top affiliates were approved on a second or third application after strengthening their profile. Here's how you can improve your chances:</p>
+      <ul style="margin:0 0 22px;padding-left:20px;color:#374151;font-size:14px;line-height:2.1;">
+        <li>Build an active audience on social media, YouTube or your blog</li>
+        <li>Enroll in one of our courses so you can speak about it authentically</li>
+        <li>Share more details about your promotion plan when you reapply</li>
+        <li>Demonstrate engagement — testimonials, content samples or follower stats</li>
+      </ul>
+      <p style="margin:0 0 16px;font-size:14px;color:#374151;line-height:1.7;">You're welcome to <strong>reapply at any time</strong> — we'd love to see how you've grown.</p>
+      <table cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+        <tr><td style="background:#2563eb;border-radius:8px;padding:13px 30px;">
+          <a href="{{site_url}}/courses" style="color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;font-family:Arial,Helvetica,sans-serif;">Explore Our Courses &rarr;</a>
+        </td></tr>
+      </table>
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0 16px;" />
+      <p style="margin:0;font-size:13px;color:#6b7280;">Questions about this decision? We're happy to help — email <a href="mailto:support@vipulkumaracademy.com" style="color:#2563eb;text-decoration:none;">support@vipulkumaracademy.com</a> or WhatsApp: <a href="https://wa.me/15557485582" style="color:#2563eb;text-decoration:none;">+15557485582</a></p>
+      <p style="margin:8px 0 0;font-size:13px;color:#6b7280;">Wishing you all the best,<br><strong style="color:#374151;">The VKA Team</strong></p>
     `),
   },
 ];
