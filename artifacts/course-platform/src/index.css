@@ -140,37 +140,40 @@ html, body {
 
 /* ── Light mode ── */
 .light {
-  --button-outline: rgba(0,0,0, .10);
-  --badge-outline: rgba(0,0,0, .05);
+  --button-outline: rgba(15,23,42, .10);
+  --badge-outline: rgba(15,23,42, .06);
   --opaque-button-border-intensity: 9;
-  --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .06);
+  --elevate-1: rgba(15,23,42, .03);
+  --elevate-2: rgba(15,23,42, .06);
 
+  /* Header / dropdown / drawer */
   --nav-bg: #ffffff;
-  --nav-border: rgba(0,0,0,0.08);
+  --nav-border: rgba(15,23,42, 0.10);
   --dropdown-bg: #ffffff;
-  --dropdown-border: rgba(0,0,0,0.10);
+  --dropdown-border: rgba(15,23,42, 0.10);
   --footer-bg: #f1f5f9;
   --mobile-drawer-bg: #ffffff;
 
-  --background: 0 0% 98%;
+  /* Soft warm-white background (less stark than pure 98% gray) */
+  --background: 210 40% 98%;
   --foreground: 222 47% 11%;
 
-  --border: 214 31.8% 88%;
-  --input: 214 31.8% 88%;
+  /* Borders / dividers — softer than original 88% L so they don't read as black bars */
+  --border: 220 14% 91%;
+  --input: 220 14% 88%;
   --ring: 224 76% 48%;
 
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
-  --card-border: 214 31.8% 88%;
+  --card-border: 220 14% 91%;
 
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
-  --popover-border: 214 31.8% 88%;
+  --popover-border: 220 14% 91%;
 
-  --sidebar: 210 40% 96%;
+  --sidebar: 210 40% 97%;
   --sidebar-foreground: 222 47% 11%;
-  --sidebar-border: 214 31.8% 88%;
+  --sidebar-border: 220 14% 91%;
   --sidebar-primary: 224 76% 48%;
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 210 40% 94%;
@@ -180,13 +183,13 @@ html, body {
   --primary: 224 76% 48%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 210 40% 93%;
+  --secondary: 210 40% 96%;
   --secondary-foreground: 222 47% 11%;
 
-  --muted: 210 40% 93%;
-  --muted-foreground: 215 16% 47%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 42%;
 
-  --accent: 210 40% 93%;
+  --accent: 210 40% 96%;
   --accent-foreground: 222 47% 11%;
 
   --destructive: 0 72% 51%;
@@ -198,10 +201,10 @@ html, body {
   --chart-4: 210 40% 93%;
   --chart-5: 0 0% 100%;
 
-  --shadow-sm: 0px 2px 4px 0px rgba(0,0,0,0.08);
-  --shadow: 0px 4px 8px 0px rgba(0,0,0,0.08);
-  --shadow-md: 0px 8px 16px 0px rgba(0,0,0,0.08);
-  --shadow-lg: 0px 16px 32px 0px rgba(0,0,0,0.08);
+  --shadow-sm: 0px 1px 2px 0px rgba(15,23,42,0.06);
+  --shadow: 0px 2px 6px 0px rgba(15,23,42,0.07);
+  --shadow-md: 0px 6px 14px -2px rgba(15,23,42,0.08);
+  --shadow-lg: 0px 14px 30px -8px rgba(15,23,42,0.10);
 
   color-scheme: light;
 }
@@ -290,26 +293,297 @@ html, body {
   color-scheme: dark;
 }
 
-/* ── Light mode: darken neon palette classes so they remain readable ── */
+/* ──────────────────────────────────────────────────────────────────
+   Light-mode overrides for hardcoded dark/neon Tailwind classes.
+   Many components were authored against the dark default and use
+   classes like `bg-slate-900`, `text-white`, `border-white/10`,
+   `text-gray-400`, etc. In light mode these would produce dark
+   panels with white text on white background, harsh "black bar"
+   dividers, or neon-on-white text. The rules below remap them to
+   the active light theme tokens so every page feels native.
+   ────────────────────────────────────────────────────────────── */
+
+/* Neon text palette → darker, accessible equivalents on white */
+.light .text-green-300  { color: #16a34a; }
 .light .text-green-400  { color: #16a34a; }
 .light .text-green-500  { color: #15803d; }
+.light .text-emerald-300 { color: #059669; }
+.light .text-emerald-400 { color: #059669; }
+.light .text-emerald-500 { color: #047857; }
+.light .text-yellow-300 { color: #ca8a04; }
 .light .text-yellow-400 { color: #ca8a04; }
 .light .text-yellow-500 { color: #a16207; }
+.light .text-red-300    { color: #dc2626; }
 .light .text-red-400    { color: #dc2626; }
+.light .text-red-500    { color: #b91c1c; }
+.light .text-rose-400   { color: #e11d48; }
+.light .text-amber-300  { color: #d97706; }
 .light .text-amber-400  { color: #d97706; }
+.light .text-amber-500  { color: #b45309; }
+.light .text-blue-300   { color: #2563eb; }
 .light .text-blue-400   { color: #2563eb; }
+.light .text-blue-500   { color: #1d4ed8; }
+.light .text-sky-300    { color: #0284c7; }
 .light .text-sky-400    { color: #0284c7; }
+.light .text-sky-500    { color: #0369a1; }
+.light .text-cyan-300   { color: #0891b2; }
 .light .text-cyan-400   { color: #0891b2; }
+.light .text-cyan-500   { color: #0e7490; }
+.light .text-indigo-300 { color: #4f46e5; }
 .light .text-indigo-400 { color: #4f46e5; }
+.light .text-indigo-500 { color: #4338ca; }
+.light .text-violet-300 { color: #7c3aed; }
 .light .text-violet-400 { color: #7c3aed; }
+.light .text-violet-500 { color: #6d28d9; }
+.light .text-purple-300 { color: #9333ea; }
 .light .text-purple-400 { color: #9333ea; }
+.light .text-purple-500 { color: #7e22ce; }
+.light .text-pink-300   { color: #db2777; }
 .light .text-pink-400   { color: #db2777; }
+.light .text-pink-500   { color: #be185d; }
+.light .text-fuchsia-400 { color: #c026d3; }
+.light .text-orange-300 { color: #ea580c; }
+.light .text-orange-400 { color: #ea580c; }
+.light .text-orange-500 { color: #c2410c; }
+.light .text-teal-300   { color: #0d9488; }
+.light .text-teal-400   { color: #0d9488; }
+.light .text-teal-500   { color: #0f766e; }
 
-/* ── Light mode: fix white-opacity borders/backgrounds used in dark panels ── */
-.light .border-white\/10  { border-color: var(--border) !important; }
-.light .border-white\/5   { border-color: var(--border) !important; }
-.light .border-l-green-500 { border-left-color: #16a34a !important; }
-.light .border-l-blue-500  { border-left-color: #2563eb !important; }
-.light .border-l-amber-500 { border-left-color: #d97706 !important; }
-.light .border-l-red-500   { border-left-color: #dc2626 !important; }
+/* Light-grey body text used inside dark cards → muted-foreground */
+.light .text-white\/90,
+.light .text-white\/80,
+.light .text-white\/70,
+.light .text-white\/60,
+.light .text-white\/50,
+.light .text-slate-100,
+.light .text-slate-200,
+.light .text-slate-300,
+.light .text-slate-400,
+.light .text-gray-100,
+.light .text-gray-200,
+.light .text-gray-300,
+.light .text-gray-400,
+.light .text-zinc-200,
+.light .text-zinc-300,
+.light .text-zinc-400,
+.light .text-neutral-300,
+.light .text-neutral-400 {
+  color: hsl(var(--muted-foreground)) !important;
+}
 
+/* Mid-greys that act as headings on dark cards → use foreground */
+.light .text-slate-50,
+.light .text-gray-50,
+.light .text-zinc-50,
+.light .text-neutral-50 {
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Hardcoded dark surfaces → light card / muted */
+.light .bg-slate-950,
+.light .bg-slate-900,
+.light .bg-gray-950,
+.light .bg-gray-900,
+.light .bg-zinc-950,
+.light .bg-zinc-900,
+.light .bg-neutral-950,
+.light .bg-neutral-900,
+.light .bg-black {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--card-foreground));
+}
+
+.light .bg-slate-800,
+.light .bg-gray-800,
+.light .bg-zinc-800,
+.light .bg-neutral-800 {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground));
+}
+
+.light .bg-slate-700,
+.light .bg-gray-700,
+.light .bg-zinc-700 {
+  background-color: hsl(var(--secondary)) !important;
+  color: hsl(var(--secondary-foreground));
+}
+
+/* White-opacity overlays that simulate elevation on dark bg → use black-opacity */
+.light .bg-white\/5    { background-color: rgba(15,23,42,0.04) !important; }
+.light .bg-white\/10   { background-color: rgba(15,23,42,0.05) !important; }
+.light .bg-white\/15   { background-color: rgba(15,23,42,0.06) !important; }
+.light .bg-white\/20   { background-color: rgba(15,23,42,0.07) !important; }
+
+/* Hover states */
+.light .hover\:bg-white\/5:hover    { background-color: rgba(15,23,42,0.05) !important; }
+.light .hover\:bg-white\/10:hover   { background-color: rgba(15,23,42,0.07) !important; }
+.light .hover\:bg-slate-800:hover,
+.light .hover\:bg-gray-800:hover,
+.light .hover\:bg-zinc-800:hover    { background-color: hsl(var(--accent)) !important; }
+.light .hover\:bg-slate-900:hover,
+.light .hover\:bg-gray-900:hover    { background-color: hsl(var(--muted)) !important; }
+
+/* Borders — fix white-opacity AND hardcoded dark borders so dividers
+   never look like solid black bars in light mode */
+.light .border-white\/5,
+.light .border-white\/10,
+.light .border-white\/15,
+.light .border-white\/20,
+.light .border-slate-700,
+.light .border-slate-800,
+.light .border-slate-900,
+.light .border-gray-700,
+.light .border-gray-800,
+.light .border-gray-900,
+.light .border-zinc-700,
+.light .border-zinc-800,
+.light .border-zinc-900,
+.light .border-neutral-700,
+.light .border-neutral-800 {
+  border-color: hsl(var(--border)) !important;
+}
+
+/* Directional borders (top/bottom/left/right) used as dividers */
+.light .border-t-white\/5,
+.light .border-t-white\/10,
+.light .border-t-slate-800,
+.light .border-t-gray-800,
+.light .border-b-white\/5,
+.light .border-b-white\/10,
+.light .border-b-slate-800,
+.light .border-b-gray-800 {
+  border-color: hsl(var(--border)) !important;
+}
+
+/* Coloured left-border accents that need stronger contrast on white */
+.light .border-l-green-500  { border-left-color: #16a34a !important; }
+.light .border-l-emerald-500 { border-left-color: #059669 !important; }
+.light .border-l-blue-500   { border-left-color: #2563eb !important; }
+.light .border-l-sky-500    { border-left-color: #0284c7 !important; }
+.light .border-l-amber-500  { border-left-color: #d97706 !important; }
+.light .border-l-orange-500 { border-left-color: #ea580c !important; }
+.light .border-l-red-500    { border-left-color: #dc2626 !important; }
+.light .border-l-purple-500 { border-left-color: #9333ea !important; }
+.light .border-l-pink-500   { border-left-color: #db2777 !important; }
+
+/* Gradient backgrounds that fade between dark slate/gray stops */
+.light .from-slate-950, .light .from-slate-900, .light .from-gray-950, .light .from-gray-900,
+.light .from-zinc-950, .light .from-zinc-900, .light .from-neutral-950, .light .from-neutral-900,
+.light .from-black {
+  --tw-gradient-from: hsl(var(--card)) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, transparent) !important;
+}
+.light .via-slate-900, .light .via-gray-900, .light .via-zinc-900, .light .via-black {
+  --tw-gradient-via: hsl(var(--muted)) !important;
+}
+.light .to-slate-950, .light .to-slate-900, .light .to-gray-950, .light .to-gray-900,
+.light .to-zinc-950, .light .to-zinc-900, .light .to-neutral-950, .light .to-neutral-900,
+.light .to-black {
+  --tw-gradient-to: hsl(var(--card)) !important;
+}
+
+/* Subtle gradient overlays (e.g. from-slate-800 to-slate-900) → muted */
+.light .from-slate-800, .light .from-gray-800, .light .from-zinc-800 {
+  --tw-gradient-from: hsl(var(--muted)) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, transparent) !important;
+}
+.light .to-slate-800, .light .to-gray-800, .light .to-zinc-800 {
+  --tw-gradient-to: hsl(var(--muted)) !important;
+}
+
+/* Ring colours used for focus rings on dark inputs */
+.light .ring-white\/10  { --tw-ring-color: hsl(var(--border)) !important; }
+.light .ring-white\/20  { --tw-ring-color: hsl(var(--border)) !important; }
+
+/* Placeholder text on inputs that hardcoded a light-grey */
+.light .placeholder\:text-slate-400::placeholder,
+.light .placeholder\:text-gray-400::placeholder,
+.light .placeholder\:text-zinc-400::placeholder,
+.light .placeholder\:text-white\/50::placeholder,
+.light .placeholder\:text-white\/40::placeholder {
+  color: hsl(var(--muted-foreground)) !important;
+  opacity: 0.7;
+}
+
+/* Divider <hr> elements — keep them subtle, never black */
+.light hr { border-color: hsl(var(--border)); }
+
+/* ── Light-mode header refinements ─────────────────────────────────
+   The header reads as a flat white slab in light mode. Add a soft
+   1px bottom border (always-on, not just on scroll) and a softer
+   shadow when scrolled so the chrome feels grounded against page
+   content without becoming heavy.
+   ────────────────────────────────────────────────────────────── */
+.light header[style*="--nav-bg"],
+.light header[class*="fixed"][class*="z-50"] {
+  border-bottom: 1px solid hsl(var(--border));
+}
+.light header.shadow-\[0_2px_20px_0_rgba\(0\,0\,0\,0\.15\)\] {
+  box-shadow: 0 1px 12px 0 rgba(15,23,42,0.06) !important;
+}
+
+/* Sidebar dividers in admin/affiliate panels */
+.light aside, .light [data-sidebar] {
+  border-color: hsl(var(--border)) !important;
+}
+
+/* Subtle hover for ghost/link buttons in light mode (avoid the dark
+   `hover:bg-accent` looking like an unintended dark patch) */
+.light .hover\:bg-accent:hover { background-color: hsl(var(--accent)) !important; }
+
+/* Headings: ensure dark/dim explicit colours map to the foreground
+   token so they aren't washed-out blue-greys on white */
+.light h1, .light h2, .light h3, .light h4, .light h5, .light h6 {
+  color: hsl(var(--foreground));
+}
+
+
+/* ── Arbitrary-value hex overrides ─────────────────────────────────
+   Several admin pages use hard-coded GitHub-style dark hex backgrounds
+   (#0d1424, #161b22, #0d1117) and one neon green text (#05df72) on the
+   affiliate page. These bypass the colour token system entirely, so
+   they must be remapped explicitly for light mode.
+   ────────────────────────────────────────────────────────────── */
+.light .bg-\[\#0d1424\],
+.light .bg-\[\#0d1117\] {
+  background-color: hsl(var(--card)) !important;
+}
+.light .bg-\[\#161b22\] {
+  background-color: hsl(var(--muted)) !important;
+}
+.light .text-\[\#05df72\] {
+  color: hsl(142 71% 35%) !important; /* darker readable green */
+}
+
+/* ── Hover/focus white-text remaps ─────────────────────────────────
+   A few pages use `hover:text-white` / `group-hover:text-white` on
+   normally-dim labels. In light mode the base colour is fine but the
+   hover→white state is invisible on white. Remap to foreground.
+   ────────────────────────────────────────────────────────────── */
+.light .hover\:text-white:hover,
+.light .group:hover .group-hover\:text-white,
+.light .focus\:text-white:focus,
+.light .focus-visible\:text-white:focus-visible {
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Focus ring offset on dark colors → use background token so the
+   visible ring offset matches the page surface */
+.light .ring-offset-slate-900,
+.light .ring-offset-gray-900,
+.light .ring-offset-zinc-900,
+.light .ring-offset-black {
+  --tw-ring-offset-color: hsl(var(--background)) !important;
+}
+
+/* Divide colour utilities (used as inter-row borders in tables) */
+.light .divide-slate-700 > * + *,
+.light .divide-slate-800 > * + *,
+.light .divide-gray-700 > * + *,
+.light .divide-gray-800 > * + *,
+.light .divide-zinc-700 > * + *,
+.light .divide-zinc-800 > * + *,
+.light .divide-white\/10 > * + *,
+.light .divide-white\/5 > * + * {
+  border-color: hsl(var(--border)) !important;
+}

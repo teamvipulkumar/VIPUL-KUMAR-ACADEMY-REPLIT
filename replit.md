@@ -11,7 +11,7 @@ Ask before making major changes.
 ## System Architecture
 
 ### UI/UX Decisions
-The platform features a dark/blue premium theme.
+The platform offers three themes (`dark`, `light`, `forest`) selected via `ThemeProvider` in `lib/theme-context.tsx`. Default is `dark`. The theme context honours an optional `?theme=` URL query (read before localStorage) so designers can preview a theme on a single page without flipping it globally — useful for screenshot QA. The `light` theme is fully supported across home, courses, auth, help-center, affiliate panel, and admin panel via comprehensive `.light .*` overrides in `src/index.css` (~490 lines): warm-white background tokens, softer borders/shadows, neon palette darkening (300–500 weights of 16+ colours), `text-white/X` and dark slate/gray/zinc/neutral text mapped to `--muted-foreground`, `bg-slate-900`/`bg-black` mapped to `--card`, `bg-white/X` overlays inverted to black opacities, gradient `from-/via-/to-` slate/gray/zinc/black remapped, header gets always-on bottom border, sidebar dividers softened, and arbitrary hex values used in admin pages (`bg-[#0d1424]`, `bg-[#161b22]`, `bg-[#0d1117]`, `text-[#05df72]`) explicitly remapped. VSL, order-confirmation, and page-builder editor previews intentionally remain dark for design reasons.
 Frontend is built with React, Vite, Wouter router, TanStack Query, Tailwind CSS, and shadcn/ui.
 Includes a responsive design with specific layouts for admin dashboards and reports.
 
