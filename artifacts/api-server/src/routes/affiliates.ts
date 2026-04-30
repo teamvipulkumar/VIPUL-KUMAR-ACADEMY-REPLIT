@@ -101,6 +101,7 @@ router.get("/dashboard", requireAuth, async (req, res): Promise<void> => {
   const [application] = await db.select({
     commissionOverride: affiliateApplicationsTable.commissionOverride,
     commissionGroupId: affiliateApplicationsTable.commissionGroupId,
+    welcomedAt: affiliateApplicationsTable.welcomedAt,
   }).from(affiliateApplicationsTable).where(eq(affiliateApplicationsTable.userId, authedReq.user.userId)).limit(1);
 
   let commissionRate = platformDefault;
@@ -171,7 +172,22 @@ router.get("/dashboard", requireAuth, async (req, res): Promise<void> => {
     last7Earnings,
     last30Earnings,
     dailyChart,
+    welcomedAt: application?.welcomedAt ?? null,
   });
+});
+
+/* Mark welcome onboarding (popup + tour) as completed for the current user.
+   Idempotent: only stamps welcomedAt the first time. */
+router.post("/welcome-complete", requireAuth, async (req, res): Promise<void> => {
+  const authedReq = req as AuthedRequest;
+  await db.update(affiliateApplicationsTable)
+    .set({ welcomedAt: new Date() })
+    .where(and(
+      eq(affiliateApplicationsTable.userId, authedReq.user.userId),
+      eq(affiliateApplicationsTable.status, "approved"),
+      isNull(affiliateApplicationsTable.welcomedAt),
+    ));
+  res.json({ ok: true });
 });
 
 router.get("/referrals", requireAuth, async (req, res): Promise<void> => {

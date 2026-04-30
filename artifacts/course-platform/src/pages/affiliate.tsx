@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import WelcomeOnboarding from "@/components/affiliate/WelcomeOnboarding";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ComposedChart, Line,
@@ -310,6 +311,9 @@ function AffiliateDashboard({ user }: { user: any }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 1024);
+  const [tourActive, setTourActive] = useState(false);
+  const [tourSidebarOpen, setTourSidebarOpen] = useState(false);
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -361,6 +365,7 @@ function AffiliateDashboard({ user }: { user: any }) {
         {TABS.map(t => (
           <button
             key={t.id}
+            data-tour={`nav-${t.id === "earnings" ? "earnings" : t.id}`}
             onClick={() => navClick(t.id)}
             className={`w-full flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-all text-left cursor-pointer ${
               tab === t.id
@@ -397,12 +402,12 @@ function AffiliateDashboard({ user }: { user: any }) {
       {sidebarOpen && (
         <div className="fixed top-16 inset-x-0 bottom-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
-      {/* Sidebar — fixed on desktop, slide-over on mobile */}
+      {/* Sidebar — fixed on desktop, slide-over on mobile (force-open during tour) */}
       <aside className={`
         fixed lg:sticky top-16 h-[calc(100vh-4rem)] z-50 lg:z-auto
         w-56 flex-shrink-0 bg-card border-r border-border flex flex-col overflow-hidden
         transition-transform duration-200
-        ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+        ${sidebarOpen || tourSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
       `}>
         <SidebarContent />
       </aside>
@@ -474,7 +479,7 @@ function AffiliateDashboard({ user }: { user: any }) {
               </div>
 
               {/* Overview stats */}
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+              <div data-tour="earnings-stats" className="grid grid-cols-1 lg:grid-cols-4 gap-3">
                 {[
                   { label: "Today", value: `₹${(dashboard?.todayEarnings ?? 0).toLocaleString("en-IN")}`, icon: <BadgeIndianRupee className="w-4 h-4 text-green-400" />, color: "text-green-400" },
                   { label: "Yesterday", value: `₹${(dashboard?.yesterdayEarnings ?? 0).toLocaleString("en-IN")}`, icon: <Calendar className="w-4 h-4 text-blue-400" />, color: "text-blue-400" },
@@ -484,7 +489,7 @@ function AffiliateDashboard({ user }: { user: any }) {
               </div>
 
               {/* Daily chart */}
-              <div className="bg-card border border-border rounded-2xl p-4 sm:p-5">
+              <div data-tour="earnings-chart" className="bg-card border border-border rounded-2xl p-4 sm:p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-semibold text-foreground">Daily Earnings</h3>
                   <div className="flex items-center gap-1 bg-background border border-border rounded-lg p-0.5">
@@ -777,6 +782,34 @@ function AffiliateDashboard({ user }: { user: any }) {
 
         </div>
       </main>
+
+      {/* First-time welcome popup + interactive dashboard tour */}
+      {!loading && dashboard && !dashboard.welcomedAt && !welcomeDismissed && (
+        <WelcomeOnboarding
+          userName={user?.name ?? ""}
+          commissionRate={dashboard?.commissionRate ?? 20}
+          cookieDays={dashboard?.cookieDays ?? 30}
+          referralCode={dashboard?.referralCode ?? ""}
+          onTourStart={() => {
+            setTourActive(true);
+            // Always start on the earnings tab so the first two tour steps have valid targets.
+            setTab("earnings");
+          }}
+          onTourEnd={() => {
+            setTourActive(false);
+            setTourSidebarOpen(false);
+          }}
+          onTourStepChange={({ isNavTarget }) => {
+            // Only force-open the sidebar (which on mobile is a slide-over) for nav steps.
+            // For earnings-content steps, leave it closed so the highlighted area is visible.
+            setTourSidebarOpen(isNavTarget);
+          }}
+          onComplete={() => {
+            setWelcomeDismissed(true);
+            setDashboard((d: any) => d ? { ...d, welcomedAt: new Date().toISOString() } : d);
+          }}
+        />
+      )}
     </div>
   );
 }

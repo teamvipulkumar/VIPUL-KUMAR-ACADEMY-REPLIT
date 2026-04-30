@@ -1,235 +1,77 @@
 # EduPro — Online Course Platform
 
 ## Overview
+EduPro is a full-stack SaaS online course selling platform designed to offer a robust and engaging learning experience. It features a dark/blue premium theme and is built as a pnpm monorepo. The platform aims to provide a comprehensive solution for course creators and students, incorporating advanced features like a visual automation funnel builder, affiliate programs, and secure payment integrations.
 
-A full-stack SaaS course-selling platform with dark/blue premium theme. Built on a pnpm monorepo.
+## User Preferences
+I prefer detailed explanations.
+I want iterative development.
+Ask before making major changes.
 
-## Stack
+## System Architecture
 
-- **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
-- **Package manager**: pnpm
-- **Frontend**: React + Vite (artifacts/course-platform) — Wouter router, TanStack Query, Tailwind CSS, shadcn/ui
-- **API**: Express 5 (artifacts/api-server) — JWT auth via httpOnly cookies, Pino logging
-- **Database**: Supabase PostgreSQL + Drizzle ORM (lib/db) — uses `SUPABASE_DATABASE_URL` only. Built-in Replit Postgres (`DATABASE_URL`) is intentionally **not** used; the code throws if `SUPABASE_DATABASE_URL` is missing.
-- **File storage**: Supabase Storage public bucket `uploads` — uploads stream straight from memory (no local disk). Requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Helper at `artifacts/api-server/src/lib/supabase-storage.ts`.
-- **API codegen**: Orval — generates React Query hooks from OpenAPI spec (lib/api-spec → lib/api-client-react)
-- **Validation**: Zod (zod/v4), drizzle-zod
+### UI/UX Decisions
+The platform features a dark/blue premium theme.
+Frontend is built with React, Vite, Wouter router, TanStack Query, Tailwind CSS, and shadcn/ui.
+Includes a responsive design with specific layouts for admin dashboards and reports.
 
-## Key Commands
+### Technical Implementations
+**Monorepo Structure**: Uses pnpm workspaces to manage `course-platform` (frontend), `api-server` (backend), `api-spec` (API codegen), and `db` (database schema).
+**Authentication**: JWT authentication managed via httpOnly cookies. Includes login, registration with referral support, password reset, and Google OAuth.
+**API Layer**: Express.js 5 for the API server, with Pino for logging.
+**Database & ORM**: PostgreSQL via Supabase, with Drizzle ORM for schema management. `SUPABASE_DATABASE_URL` is mandatory.
+**File Storage**: Supabase Storage for public uploads, streaming directly from memory.
+**API Codegen**: Orval generates React Query hooks from an OpenAPI specification.
+**Validation**: Zod and drizzle-zod for data validation.
+**Payment Gateways**: Simulated Stripe and Razorpay integrations. Paytm integration with specific domain and header requirements, including secure transaction initiation and callback verification. Cashfree integration with robust webhook signature verification.
+**Security**:
+    - **CORS Lockdown**: Strict origin allowlist based on environment variables and Replit domains.
+    - **CSRF Defense**: Origin/Referer validation middleware on all state-changing requests, with exemptions for authenticated webhooks. `SameSite=lax` cookies are used.
+    - **JWT Secret**: Enforces strong `SESSION_SECRET` in production, with per-process random secrets in development.
+    - **Rate Limiting**: Implemented on authentication, payment, and coupon endpoints.
+    - **Access Control**: `/api/analytics/recent-activity` now requires admin privileges.
+    - **Upload Security**: SVG uploads are blocked to prevent XSS.
+    - **SQL Injection Prevention**: Replaced `sql.raw` with Drizzle's parameterized `inArray()`.
+    - **Helmet**: Integration for various HTTP security headers (HSTS, X-Content-Type-Options, etc.).
+    - **Cookie Security**: All JWT cookies are `httpOnly`, `sameSite: "lax"`, `path: "/"`, and `secure` in production.
+**Maintenance Mode**: Production-grade gate in `index.html` that blocks the page before React boots, showing a static maintenance message if activated and the user is not an admin.
+**Deferred Account Creation**: User accounts are only materialized after payment confirmation, making `payments.user_id` nullable and storing `pending_password_hash`.
+**Guest Checkout Impersonation Fix**: Prevents auto-login for existing users during guest checkout if not already authenticated, and synthesizes `safeUser` data to prevent profile leaks.
 
-- `pnpm --filter @workspace/api-server run dev` — run API server (port 8080)
-- `pnpm --filter @workspace/course-platform run dev` — run frontend (port auto via $PORT)
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks from OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes
+### Feature Specifications
+**Course Management**: CRUD operations for courses, modules, and lessons.
+**Enrollment & Progress**: Tracking of enrolled courses and lesson completion.
+**Affiliate Program**: Referral tracking, click counting, commission calculation, and payout request workflow. Approved affiliates see a one-time welcome popup + 6-step interactive dashboard tour on their first visit, persisted via `affiliate_applications.welcomed_at` and a `POST /api/affiliate/welcome-complete` endpoint.
+**Analytics**: Admin dashboard with revenue charts and user management.
+**Notification System**: In-app notifications.
+**Platform Settings**: Configuration for commission rates and enabled payment gateways.
+**CRM**: Features for email lists, tags, campaigns, sequences, and multi-account SMTP.
+**Visual Automation Funnel Builder (FluentCRM-style)**:
+    - Allows creation of multi-step automation funnels with triggers and actions.
+    - Trigger Types: `user_signup`, `new_purchase`, `tag_applied`, `list_added`.
+    - Action Types: `wait`, `apply_list`, `remove_list`, `apply_tag`, `remove_tag`, `send_email`, `end`.
+    - Supports draft/published states and inline editing via a visual UI.
+    - `user_signup` trigger fires at user creation time (e.g., registration, guest checkout).
+**Email Tracking**: Open, click, and unsubscribe tracking for emails, with secure link rewriting and HMAC-SHA256 signature verification.
 
-## Credentials (Dev/Seed)
+## External Dependencies
 
-- Admin: admin@edupro.com / Admin@12345
-- Student: alice@edupro.com / Student@12345
-- Affiliate: bob@edupro.com / Student@12345
-
-## Frontend Pages
-
-| Route | Description | Auth |
-|---|---|---|
-| `/` | Landing page (hero, stats, courses, features, testimonials) | Public |
-| `/login` | Login form | Public |
-| `/register` | Register with referral code support | Public |
-| `/forgot-password` | Password reset request | Public |
-| `/courses` | Course catalog with search & category filter | Public |
-| `/courses/:id` | Course detail — curriculum, Stripe/Razorpay gateway, coupon codes | Public |
-| `/dashboard` | Student overview — stats, enrolled courses, referral code | Auth |
-| `/my-courses` | All enrolled courses with progress | Auth |
-| `/learn/:courseId` | Lesson player — sidebar navigation, mark complete, prev/next | Auth |
-| `/affiliate` | Affiliate dashboard — referral link, earnings, payout request | Auth |
-| `/payments` | Payment history | Auth |
-| `/notifications` | Notification center | Auth |
-| `/admin` | Admin analytics dashboard with revenue chart | Admin |
-| `/admin/courses` | Course CRUD | Admin |
-| `/admin/courses/:id/edit` | Module & lesson editor | Admin |
-| `/admin/users` | User management with ban/unban | Admin |
-| `/admin/affiliates` | Affiliate overview | Admin |
-| `/admin/payouts` | Payout request approval | Admin |
-| `/admin/coupons` | Coupon code management | Admin |
-| `/admin/settings` | Platform settings (commission rate, gateways, notifications) | Admin |
-
-## API Routes (api-server port 8080)
-
-- `/api/auth/*` — login, register, logout, me, forgot-password, reset-password
-- `/api/courses/*` — CRUD, modules, lessons, lesson completion
-- `/api/enrollments/*` — my enrollments, course progress
-- `/api/payments/*` — checkout, verify
-- `/api/affiliates/*` — dashboard, referrals, payout requests, tracking
-- `/api/admin/*` — users, analytics, revenue, affiliates, payouts, courses, settings
-- `/api/coupons/*` — list, create, validate, delete
-- `/api/notifications/*` — list, mark read, mark all read
-- `/api/analytics/*` — summary, recent activity
-
-## DB Schema (lib/db/src/schema/)
-
-Tables: users, courses, modules, lessons, enrollments, payments, affiliates (referrals + payouts), coupons, notifications, platform_settings, smtp_settings, smtp_accounts, email_lists, email_list_members, contact_tags, contact_tag_assignments, email_campaigns, email_automation_rules, email_sequences, email_sequence_steps, email_sequence_enrollments, email_sends, email_templates, **automation_funnels, automation_funnel_steps, funnel_executions, funnel_execution_steps**
-
-### Funnel Step "Internal Label"
-- Each step in `automation_funnel_steps` has an optional `label text` column (nullable). Set per-step via the funnel builder's edit form (top input, "Internal Label").
-- API: `POST /api/admin/crm/funnels/:id/steps` and `PUT /api/admin/crm/funnels/:id/steps/:stepId` accept `label` (trimmed string; empty/whitespace → null). `config` jsonb is unaffected — frontend uses `__label` key in stepDraft and destructures it before sending.
-- Display priority across UI/API: `step.label` (custom Internal Label) → email subject (for send_email steps) → `actionType`. Used by funnel builder card heading, `/step-report` (`label` + `customLabel` fields), and `/executions` timeline labels.
-
-### Automation Report Page (FluentCRM-style)
-- Route: `/admin/crm/automation/:id/report` → `artifacts/course-platform/src/pages/admin/automation-report.tsx`
-- Desktop-optimized layout: `max-w-[1600px]` wrapper, hero card (breadcrumb → Zap-icon title row + status pill → Trigger/Steps/Created/ID meta → 5-col KPI strip: Subscribers, Avg Completion, Emails Sent, Delivery Success, Today)
-- Three tabs in a single card: Chart Report (12-col grid: bar+line chart 8 cols + Step Overview sidebar with mini progress bars 4 cols), Step Report (table with inline gradient progress bars in Completion column), Email Analytics (8 stat cards in 2 rows + 7-day chart + recent table)
-- Individual Reporting table: gradient-avatar rows, expand-to-vertical-timeline (color-coded dots per step status), delete action, pagination with "showing X of Y" counter
-- Backend endpoints (admin only): `GET/DELETE /api/admin/crm/funnels/:id/{report,step-report,executions,executions/:executionId}`
-- `triggerFunnel()` records each execution + per-step row lazily on attempt (so step-report metrics reflect real drop-off)
-- Known limitation: in-flight `wait` steps are scheduled with `setTimeout`, so an API restart will leave executions stuck in `running` until manually cleaned up — replace with a persistent scheduler before high-volume use
-
-### Email Open / Click / Unsubscribe Tracking
-- Schema additions on `email_sends`: `tracking_token` (unique), `opened_at`, `open_count`, `clicked_at`, `click_count`, `unsubscribed_at`. Plus `email_unsubscribed_at` on `users`. Applied via direct SQL ALTER (drizzle-kit push had unrelated interactive prompt).
-- `crm.ts` helpers: `newTrackingToken()` (16-byte hex), `getPublicBaseUrl()` (uses `REPLIT_DEV_DOMAIN`), `signClickTarget(token, target)` (HMAC-SHA256 of `${token}:${target}` keyed on `SESSION_SECRET`, truncated to 16 hex chars), `injectEmailTracking(html, token)` (Pass 1 rewrites href on any anchor whose text/attrs contain "unsubscribe"; Pass 2 rewrites all other hrefs through the click endpoint with `&sig=`; appends footer only when Pass 1 missed; appends 1×1 open-pixel), `isUserUnsubscribed(email)`. All 6 real send call sites skip-if-unsubscribed → inject tracking → store token.
-- Public routes mounted at `/api/email/`: `GET /track/open/:token` (returns 1×1 GIF + COALESCE openedAt + bumps open_count); `GET /track/click/:token?to=&sig=` (looks up token → 404 if unknown; verifies HMAC sig with `timingSafeEqual` → 400 if mismatch/missing; only http(s) absolute or root-relative `/foo` targets allowed, else falls back to `/`; bumps click_count, COALESCEs clickedAt, also sets openedAt if null; 302); `GET /unsubscribe/:token` (HTML confirmation, marks send + user). Lives in `artifacts/api-server/src/routes/email-tracking.ts`.
-- `/funnels/:id/report` stats now expose `opened`, `openRate`, `clicked`, `clickRate`, `unsubscribed` (1-decimal rates, sent-as-denominator). Frontend `automation-report.tsx` reads these directly.
-- Security: open-redirect closed by token+HMAC double check. Note: `signClickTarget` (and `auth.ts` JWT) fall back to `"dev-secret-change-in-production"` if `SESSION_SECRET` is unset — production must enforce a real secret (currently set to a strong 88-char value).
-
-### Post-Capture Auto-Login Hardening (2026-04)
-- **Threat**: A guest checkout that uses an *existing* user's email (e.g. `admin@edupro.com`) must NEVER cause the requester's browser to be auto-logged into that account. Bug #1 fixed the create-order branch; Bug #2 closes the verify/callback/webhook branches across all 6 endpoints (Cashfree/Paytm/Stripe × course/bundle).
-- **Mechanism**: New column `payments.allow_auto_login boolean NOT NULL DEFAULT false` (Drizzle: `allowAutoLogin` in `lib/db/src/schema/payments.ts`; applied via raw `ALTER TABLE` against `SUPABASE_DATABASE_URL`). At create-order time, all 6 endpoints persist `allowAutoLogin: wasAlreadyLoggedIn || isNewUser`. Set to `false` when a logged-out request matches an existing user by email.
-- **Cookie gating**: All 7 post-capture `res.cookie("token", …)` sites now require `payment.allowAutoLogin` to be true: `payments.ts` Cashfree-verify (already-completed + fresh-PAID), Paytm-verify, Paytm-callback, Stripe-verify (already-completed + fresh-success); `bundles.ts` Stripe-verify. The Stripe `already-completed` branch additionally returns a synthesised `safeUser` from billing fields when auto-login is denied so we don't leak the existing account's name/role.
-- **Webhooks**: Server-to-server (no requester) — they call `completePaytmPayment()`/equivalent for enrollment but never set cookies, so they're inherently safe.
-- **Architect review**: PASS for Bug #1 and Bug #2 (cookie + profile-leak hardening). All 6 endpoints × 7 cookie sites + 4 user-payload sites verified.
-
-## Features
-
-- JWT auth via httpOnly cookies
-- Simulated checkout (Stripe + Razorpay gateways — no real keys needed)
-- Coupon codes with percentage/fixed discount support
-- Affiliate program with referral tracking, click counting, commission calculation
-- Payout request → admin approval workflow
-- Progress tracking per lesson
-- Admin analytics with revenue chart (recharts)
-- Notification system
-- Platform settings (commission rate, enabled gateways)
-- CRM: email lists, tags, campaigns, sequences, SMTP with multi-account fallback
-- **Visual Automation Funnel Builder** (FluentCRM-style): create funnels with trigger → action steps flow
-  - Trigger types: user_signup, new_purchase, tag_applied, list_added
-  - Action types: wait (X days/hours), apply_list, remove_list, apply_tag, remove_tag, send_email, end
-  - Draft/Published toggle; steps added/edited/deleted inline via visual flow UI
-  - Execution engine: `triggerFunnel()` in crm.ts for programmatic firing
-  - **`user_signup` trigger fired from**: auth.ts /register, auth.ts Google OAuth, payments.ts simulated /checkout/guest, bundles.ts simulated /checkout/guest, **and all 6 live-gateway create-order routes** (Cashfree/Paytm/Stripe × course/bundle). Fires at user-creation time, not at payment success — so welcome email lands even if checkout is abandoned.
-  - Known limitation: `wait` steps use `setTimeout` in-process — long delays do NOT survive API restart (needs DB-backed scheduler in a future PR).
-
-## Paytm Integration Notes (2026-04)
-
-- **Flow**: Theia v3 Initiate Transaction API. Backend POSTs signed JSON to `/theia/api/v1/initiateTransaction` → receives `txnToken` → frontend POSTs `{mid, orderId, txnToken}` form to `/theia/api/v1/showPaymentPage` (Paytm hosted page).
-- **CRITICAL — Use the new domain `secure.paytmpayments.com`, NOT `securegw.paytm.in`**:
-  - Production: `https://secure.paytmpayments.com`
-  - Staging:    `https://securestage.paytmpayments.com`
-  - The legacy `securegw.paytm.in` domain returns `resultCode 501 "System Error"` for v3 calls even when credentials are perfect. Verified from official `paytm-pg-node-sdk` v1.0.6 (`constants/MerchantProperties.js`).
-- **CRITICAL — Full SecureRequestHeader is mandatory**: head must include `version: "v1"`, `channelId: "WEB"`, `requestTimestamp: Date.now().toString()`, `signature: <checksum>`. Sending only `{ signature }` (which the older docs imply) causes 501 System Error on the new domain.
-- **Backend**: `payments.ts` and `bundles.ts` `/paytm/create-order` endpoints return `{ paytmParams: { mid, orderId, txnToken }, actionUrl, orderId, ... }`. Frontend builds a hidden HTML form generically from `paytmParams` and auto-submits to `actionUrl`.
-- **Callback**: `/paytm/callback` parses Paytm's form-POST response, verifies CHECKSUMHASH via `PaytmChecksum.verifySignature`, calls `completePaytmPayment()` (idempotent enrollment helper), then 303-redirects browser to `${origin}/payment/verify?gateway=paytm&order_id=...`.
-- **Verify endpoint**: `/paytm/verify` first checks DB status; falls back to `/v3/order/status` (also on `secure.paytmpayments.com`) with the full SecureRequestHeader for pending payments.
-- **websiteName**: Defaults to `DEFAULT` (production) / `WEBSTAGING` (test). Override per-merchant via Webhook Secret = `WS:<your-website-name>`. For most accounts, `DEFAULT` works on production.
-- **Library**: `paytmchecksum` v1.5.1 (NPM). `generateSignature(paramsObj, key)` produces a non-deterministic checksum (uses random IV) and `verifySignature(paramsObj, key, hash)` round-trips correctly.
-- **Diagnostic**: Admin-only endpoint `GET /api/payments/paytm/diag-key-fingerprint` probes both old/new domains, both header formats, and multiple website names — returns SHA256 fingerprint of saved key (no secret leak) plus all probe results. Remove before final deployment if not needed.
-
-## Maintenance Mode (2026-04)
-
-- **Architecture**: Production-grade gate that blocks the page BEFORE React boots — no flash on load/refresh.
-  - **`artifacts/course-platform/index.html`** has an inline `<script>` in `<head>` that:
-    1. Adds class `vka-maintenance-checking` to `<html>` (CSS hides `#root`)
-    2. Fires `fetch('%BASE_URL%api/admin/public/maintenance', { credentials: 'include', cache: 'no-store' })` immediately
-    3. Exposes `window.__vkaMaintenance` Promise for `main.tsx` to await
-    4. If `maintenanceMode && !isAdmin` → removes `#root` from DOM and renders static `.vka-maintenance-page` div (Tailwind-free, inline CSS, theme-aware)
-    5. Else → un-hides `#root` and lets React mount normally
-    6. Hard 4s timeout + try/catch fallback render → can never get stuck or fail-open silently
-  - **`src/main.tsx`** awaits `window.__vkaMaintenance` before calling `createRoot().render(<App />)`. If `blocked: true`, React never mounts.
-  - **`/api/admin/public/maintenance`** (admin.ts) reads the auth cookie via `verifyToken`, returns `{ maintenanceMode, maintenanceMessage, isAdmin }`. Admin/staff bypass server-side. `Cache-Control: no-store`.
-  - **`MaintenanceWatcher`** component (in App.tsx) polls every 30s + on tab visibility — if maintenance turns ON for an already-active session, triggers `window.location.reload()` so the inline gate takes over (no flash).
-- **Edge cases**:
-  - API down / timeout → fail OPEN (boot the app) so a backend hiccup doesn't lock everyone out.
-  - DOM render error → falls back to a minimal hard-coded `<h1>Under Maintenance</h1>` block (still does NOT fail open).
-  - JS disabled → SPA wouldn't work anyway; non-issue for this app.
-- **Removed**: legacy `MaintenanceOverlay` React component (was the source of the flash bug because it mounted via React after the rest of the page paint).
-
-## Deferred Account Creation at Checkout (2026-04)
-
-- **Problem**: Clicking "Proceed to Pay" used to immediately INSERT a user row (with a temp password) into `users` — even if the customer abandoned checkout — across all 3 gateways × (course | bundle).
-- **Fix**: User accounts are now materialised only after the gateway confirms a successful capture.
-  - **Schema**: `payments.user_id` is nullable; new column `payments.pending_password_hash text` stores the bcrypt hash for the would-be account.
-  - **Helper**: `ensureUserForPayment(payment)` (exported from `payments.ts`) — finds user by `billingEmail`, else creates one from `pendingPasswordHash`. Race-tolerant. Triggers `user_signup` funnel + welcome automation, binds `userId` to the payment row, clears the hash.
-  - **Create-order endpoints** (course `payments.ts` cashfree/paytm/stripe + bundle `bundles.ts` cashfree/paytm/stripe): for brand-new emails, persist `userId=null` + `pendingPasswordHash`. No user insert. No auto-login cookie. Existing-user / logged-in path unchanged. Stripe response synthesises a guest `safeUser` from form data so the frontend contract stays intact.
-  - **Completion paths** (cashfree verify+webhook, paytm verify+callback+webhook, stripe verify for both course and bundle) all call `ensureUserForPayment` first, then set the auto-login cookie, then enroll. `completePaytmPayment()` is the shared helper for paytm; the webhook now delegates to it instead of duplicating logic.
-  - **Auto-login cookie** is also set on already-completed branches so the success page works even when the webhook beats the browser.
-  - **Gateway customer_id** falls back to `guest_${id}` when no `userId` exists yet.
-
-## Guest-Checkout Impersonation Fix (2026-04)
-
-- **Problem**: At "Proceed to Pay" time, the create-order endpoints were looking up the user by email and, if a row existed, immediately setting an auth cookie for that account — even though the requester had never authenticated. A guest who simply typed in any known email got logged in as that user, regardless of whether the gateway later captured/cancelled/failed the payment. The Stripe response also returned the existing user's real DB row (`name`, `role`, etc.), leaking profile data.
-- **Fix**: All 6 real-gateway create-order endpoints (cashfree/paytm/stripe in `payments.ts` + `bundles.ts`) now track a local flag `wasAlreadyLoggedIn`, set true ONLY when `verifyToken(req.cookies.token)` succeeds. The `res.cookie("token", ...)` call is gated behind `if (wasAlreadyLoggedIn && userId)`. Matching an existing user by email alone no longer counts as authentication — the cookie is set later by the verify/webhook handlers, after the gateway confirms the payment was actually captured.
-- **Data-leak fix (Stripe responses)**: When the request is unauthenticated, both Stripe create-order endpoints now return a display-only `safeUser` synthesised from the form (`{ id: null, name, email, role: "student" }`) instead of the existing user's real DB row.
-- **Behaviour preserved**: Already-logged-in users still get a cookie refresh during create-order. Brand-new emails still defer account creation per the prior fix. Verify/webhook auto-login on capture is unchanged.
-- **Out of scope**: The legacy `/checkout/guest` simulated endpoints (payments.ts ~line 516, bundles.ts ~line 420) still set the cookie unconditionally — but those mark `status: "completed"` immediately (no real gateway), so the cookie set is appropriate there.
-
-## Security Hardening (2026-04-29)
-
-Comprehensive security pass that closes critical/high/medium findings from a full audit (dependency audit + SAST + 3 deep code reviews).
-
-### Critical fixes
-
-- **CORS lockdown** (`api-server/src/app.ts`) — replaced `cors({ origin: true })` (which reflected ANY origin and enabled cross-site authenticated requests) with an env-driven allowlist (`ALLOWED_ORIGINS`, `SITE_URL`, plus auto-allow of the active `REPLIT_DEV_DOMAIN` and any `*.replit.dev`/`*.repl.co` host). Disallowed origins now get no CORS headers at all (clean `cb(null, false)`, not a thrown error).
-- **CSRF defense** — new Origin/Referer validation middleware on every state-changing request (POST/PUT/PATCH/DELETE). Webhook endpoints (gateway server-to-server) and the Paytm browser-form callback are explicitly exempted because they verify themselves via signature. Combined with `SameSite=lax` cookies, this blocks both XHR and form-POST CSRF.
-- **JWT fallback secret removed** (`api-server/src/middlewares/auth.ts`) — previously `process.env.SESSION_SECRET || "dev-secret-change-in-production"`. Now throws at startup in production if `SESSION_SECRET` is missing/short; in dev falls back to a per-process random secret (so tokens never persist a hardcoded value). `crm.ts:signClickTarget` HMAC also now throws if `SESSION_SECRET` is unset.
-
-### High fixes
-
-- **Rate limiting** (`api-server/src/middlewares/rate-limit.ts`) — `express-rate-limit` applied to `/auth/login`, `/auth/register`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/google-login` (20/15min); `/payments/*`, `/bundles/*` (60/5min); `/coupons/validate`, `/affiliate/track` (60/min). `app.set("trust proxy", 1)` so the limiter keys on the real client IP behind Replit's proxy.
-- **`/api/analytics/recent-activity`** — added `requireAdmin`. Was previously public and leaked user names + course enrollment / payment activity.
-- **SVG uploads blocked** (`api-server/src/routes/upload.ts`) — removed `image/svg+xml` from the media allowlist. SVGs can carry inline `<script>` and would execute on the public Supabase Storage origin.
-- **Debug script deleted** — `artifacts/api-server/inspect_paytm.mts` printed Paytm secret_key + webhook_secret to stdout. Removed from disk so it can't ship in builds.
-- **`sql.raw` SQL-injection footgun fixed** (`crm.ts:879`) — replaced `sql.raw(\`ARRAY[${enrolledIds.join(",")}]\`)` with Drizzle's parameterized `inArray()`.
-
-### Medium fixes
-
-- **Helmet** (`api-server/src/app.ts`) — adds HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, X-Permitted-Cross-Domain-Policies, COOP, etc. CSP intentionally disabled because the API only emits JSON + small unsubscribe HTML; the SPA serves its own CSP.
-- **Single cookie helper** (`auth.ts:authCookieOptions`) — every `res.cookie("token", …)` site (22 total across `auth.ts`, `payments.ts`, `bundles.ts`) now flows through one helper that sets `httpOnly: true`, `sameSite: "lax"`, `path: "/"`, and crucially `secure: NODE_ENV === "production"` so the JWT can never travel over plaintext HTTP in prod.
-
-### Documented (intentionally not patched)
-
-- **DB TLS** (`lib/db/src/index.ts`) — Supabase pooler presents a self-signed cert chain, so `rejectUnauthorized: true` rejects with `SELF_SIGNED_CERT_IN_CHAIN`. We keep `rejectUnauthorized: false` (traffic is still encrypted, only chain validation is skipped) with a documented escape route to load the Supabase CA bundle later.
-- **SMTP TLS** (`crm.ts:34, 50`) — admin-configured SMTP relays often have legitimate cert-chain quirks; we keep `rejectUnauthorized: false`. Admin trust model already required to set up SMTP.
-- **Facebook Pixel base code injection** (`facebook-pixel.ts`) — admin-authored HTML rendered via `innerHTML`. This is the standard "trusted CMS" pattern (same as Google Tag Manager); only admins can write the field, and admin compromise is out of scope for this hardening pass.
-
-### Dependency fixes
-
-- `pnpm update vite postcss --recursive --latest` reduced known vulns from **15 → 7** (vite pinned to `^7.3.2` to keep `@tailwindcss/vite` and `@vitejs/plugin-react` peer deps happy). Remaining 7 are deep transitives in frontend dev deps (recharts → lodash, etc.) with no upstream patch yet.
-
-### Verified end-to-end
-
-- Helmet response headers present on every API response.
-- CORS rejects unknown origin with no `Access-Control-Allow-Origin` header (browser blocks); state-changing POST from disallowed origin → 403 `CSRF: origin not allowed`.
-- Rate limit returns 429 after 20 auth attempts in 15 min (real client IP via trust-proxy).
-- `/api/analytics/recent-activity` → 401 unauthenticated.
-- Same-origin frontend (vite proxy → 8080) continues to work; `/api/pixel-config`, `/api/courses`, `/api/auth/me` all 200.
-- `inspect_paytm.mts` no longer present.
-
-### Critical Payment-Integrity Fixes (round 2)
-
-A second architect pass found two payment-fraud vectors that the first round missed; both are now patched:
-
-- **Paytm webhook signature verification** (`payments.ts:/paytm/webhook`) — the S2S handler previously trusted `{ORDERID, STATUS}` from the request body and called `completePaytmPayment()` with no auth. Anyone could `POST` against any pending order and complete a free enrollment. Now verifies `CHECKSUMHASH` via `PaytmChecksum.verifySignature(params, gw.secretKey, …)` exactly like `/paytm/callback` and returns 401 on mismatch / missing signature.
-- **Stripe `paymentIntentId` binding** (`payments.ts:/stripe/verify`) — the verify handler loaded the payment row by `sessionId` and then independently asked Stripe whether the attacker-supplied `paymentIntentId` had succeeded. Any other succeeded intent could be replayed against any pending session. Now requires `payment.paymentId === paymentIntentId` (the intent we created at `/create-order` time) AND validates `intent.amount === amount * 100` and `intent.currency === payment.currency`.
-
-### CSRF middleware hardening (round 2)
-
-- URL parsing for `Origin`/`Referer` is now wrapped in try/catch (a malformed header used to throw 500).
-- Webhook bypass switched from substring/suffix match to an exact route allowlist (`/api/payments/{cashfree,razorpay,stripe,paytm}/webhook`, `/api/payments/paytm/callback`) so a future state-changing route accidentally containing the word "webhook" in its path can never inherit the bypass.
-
-### Critical Payment-Integrity Fixes (round 3)
-
-A third architect pass found two more endpoints with the same class of issue; both patched:
-
-- **`/api/bundles/stripe/verify`** — same paymentIntentId substitution / amount-replay vulnerability as `/api/payments/stripe/verify`. Now enforces `payment.paymentId === paymentIntentId` BEFORE the Stripe fetch, plus `intent.amount` and `intent.currency` validation against the DB row.
-- **`/api/payments/cashfree/webhook`** — signature verification was conditional (`if (timestamp && signature) { verify }`), so an attacker could omit headers and forge a paid event. Now signature headers + a configured Cashfree gateway are MANDATORY; missing → 401, missing gateway → 503, mismatch → 401.
-
-All payment completion paths (Cashfree create-order verify, Cashfree webhook, Razorpay verify, Stripe verify (course + bundle), Paytm callback, Paytm webhook) now require cryptographic proof of payment from the gateway.
+- **Supabase**: PostgreSQL database and Storage for file uploads.
+- **Drizzle ORM**: Database schema definition and migration.
+- **Express.js**: Backend API framework.
+- **Pino**: Logger for the API server.
+- **React**: Frontend UI library.
+- **Vite**: Frontend build tool.
+- **Wouter**: React router.
+- **TanStack Query**: Data fetching and caching library.
+- **Tailwind CSS**: Utility-first CSS framework.
+- **shadcn/ui**: UI component library.
+- **Orval**: OpenAPI spec to API client code generator.
+- **Zod**: Schema declaration and validation library.
+- **drizzle-zod**: Zod integration for Drizzle ORM.
+- **`express-rate-limit`**: Middleware for rate limiting.
+- **Helmet**: Collection of middleware to secure Express apps.
+- **`paytmchecksum`**: Library for Paytm checksum generation and verification.
+- **Stripe**: Payment gateway (simulated integration).
+- **Razorpay**: Payment gateway (simulated integration).
+- **Cashfree**: Payment gateway.

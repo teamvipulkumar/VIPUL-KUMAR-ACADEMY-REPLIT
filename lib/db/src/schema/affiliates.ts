@@ -44,6 +44,7 @@ export const affiliateApplicationsTable = pgTable("affiliate_applications", {
   status: text("status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"),
   adminNote: text("admin_note"),
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  welcomedAt: timestamp("welcomed_at", { withTimezone: true }),
   isBlocked: boolean("is_blocked").notNull().default(false),
   commissionOverride: integer("commission_override"),
   commissionGroupId: integer("commission_group_id").references(() => commissionGroupsTable.id, { onDelete: "set null" }),
