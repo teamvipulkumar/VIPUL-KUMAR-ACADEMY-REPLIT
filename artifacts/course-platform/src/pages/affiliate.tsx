@@ -389,8 +389,8 @@ function AffiliateDashboard({ user }: { user: any }) {
           </button>
         ))}
       </nav>
-      <div className="p-4 border-t border-border space-y-2">
-        <div className="flex items-center gap-2 px-1 mb-2">
+      <div className="p-3 border-t border-border space-y-1">
+        <div className="flex items-center gap-2 px-2 py-1 mb-1">
           <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold flex-shrink-0">
             {user?.name?.charAt(0)?.toUpperCase() ?? "U"}
           </div>
@@ -399,18 +399,21 @@ function AffiliateDashboard({ user }: { user: any }) {
             <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
           </div>
         </div>
+        {/* Tab-style action buttons — same hover treatment as the main nav
+            tabs above so they feel interactive and grouped with the rest of
+            the sidebar navigation. */}
         <button
           onClick={() => {
             setSidebarOpen(false);
             setReplayingTour(true);
           }}
-          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full px-1 py-1 cursor-pointer"
+          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all text-left cursor-pointer"
         >
-          <Rocket className="w-3.5 h-3.5" />Replay tour
+          <Rocket className="w-4 h-4" />Replay tour
         </button>
         <Link href="/">
-          <button className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full px-1 py-1 cursor-pointer">
-            <ChevronRight className="w-3.5 h-3.5 rotate-180" />Back to Site
+          <button className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all text-left cursor-pointer">
+            <ChevronRight className="w-4 h-4 rotate-180" />Back to Site
           </button>
         </Link>
       </div>
