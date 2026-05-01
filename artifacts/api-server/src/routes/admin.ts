@@ -360,7 +360,15 @@ router.get("/analytics", requireAdmin, async (req, res): Promise<void> => {
 router.get("/revenue", requireAdmin, async (req, res): Promise<void> => {
   const { period = "30d" } = req.query as Record<string, string>;
   const days = period === "7d" ? 7 : period === "90d" ? 90 : period === "1y" ? 365 : 30;
-  const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  // Build the bucket window anchored at UTC midnight today so that today's
+  // payments land in a bucket. The previous implementation used a rolling
+  // `now - N*day` start which generated buckets [now-Nd .. now-1d] and
+  // dropped any payments made today (they still counted in totalRevenue,
+  // causing the chart total to mismatch the bar sum).
+  const now = new Date();
+  const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const startDate = new Date(todayUtc.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
 
   const payments = await db.select().from(paymentsTable).where(and(eq(paymentsTable.status, "completed"), gte(paymentsTable.createdAt, startDate)));
 
