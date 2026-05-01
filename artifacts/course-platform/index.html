@@ -11,16 +11,6 @@
         }
       })();
     </script>
-    <style>
-      /* Paint the theme background BEFORE the CSS bundle parses. Without
-         this the browser flashes white on every refresh while Vite/React
-         load the stylesheet. Values mirror --background in src/index.css
-         (dark: hsl(222 47% 7%), light: hsl(210 40% 98%)). */
-      html { background-color: #0b1020; color-scheme: dark; }
-      html.light { background-color: #f7fafc; color-scheme: light; }
-      html.forest { background-color: #0a1715; color-scheme: dark; }
-      body { background-color: inherit; margin: 0; }
-    </style>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Course Platform</title>
@@ -86,18 +76,6 @@
         // Hard timeout — never block the page longer than 4s waiting on backend.
         var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
         var timeoutId = setTimeout(function() { if (ctrl) ctrl.abort(); }, 4000);
-
-        // Visibility safety net — never keep #root hidden longer than 250ms.
-        // The maintenance API normally responds in <200ms so the gate works
-        // as designed. If it's slower (cold start, network blip), we'd rather
-        // show the page than blank it out for 1-2s on every refresh. The
-        // MaintenanceWatcher (polling every 30s) will reload if maintenance
-        // actually turns on, so worst case is a brief flash for the rare
-        // user hitting refresh during a slow maintenance check while
-        // maintenance is genuinely active.
-        setTimeout(function() {
-          document.documentElement.classList.remove('vka-maintenance-checking');
-        }, 250);
 
         function escapeHtml(s) {
           return String(s).replace(/[&<>"']/g, function(c) {

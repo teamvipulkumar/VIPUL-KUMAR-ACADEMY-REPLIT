@@ -473,11 +473,10 @@ function AffiliateDashboard({ user }: { user: any }) {
             <span className="text-xs font-medium text-foreground capitalize">{TABS.find(t => t.id === tab)?.label}</span>
           </div>
 
-          {/* ── Dashboard loading skeleton ── only shown on the earnings
-              tab. For other tabs we render nothing while loading so the
-              user doesn't see a Dashboard-shaped placeholder on a KYC /
-              Sales / Pixel refresh. */}
-          {tab === "earnings" && loading && (
+          {/* ── Loading skeleton ── shown for ANY tab during initial fetch
+              so users don't briefly see stale/empty data (e.g. "0 sales",
+              empty KYC form) before the real data hydrates. */}
+          {loading && (
             <div className="space-y-6 animate-pulse">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-2">
