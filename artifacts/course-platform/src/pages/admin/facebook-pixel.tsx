@@ -8,9 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ExternalLink, AlertCircle, ShieldCheck, Eye, EyeOff, Send, Loader2, ChevronDown, ChevronRight, Activity } from "lucide-react";
+import { ExternalLink, AlertCircle, ShieldCheck, Eye, EyeOff, Send, Loader2, ChevronDown, ChevronRight, Activity, Lock, Pencil, X } from "lucide-react";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+type PixelForm = { enabled: boolean; pixelId: string; baseCode: string; accessToken: string; testEventCode: string };
+const EMPTY_FORM: PixelForm = { enabled: false, pixelId: "", baseCode: "", accessToken: "", testEventCode: "" };
 
 export default function AdminFacebookPixelPage() {
   const { data: settings } = useGetAdminSettings({ query: { queryKey: getGetAdminSettingsQueryKey() } });
@@ -18,12 +21,16 @@ export default function AdminFacebookPixelPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const [form, setForm] = useState({ enabled: false, pixelId: "", baseCode: "", accessToken: "", testEventCode: "" });
+  const [form, setForm] = useState<PixelForm>(EMPTY_FORM);
+  const [savedSnapshot, setSavedSnapshot] = useState<PixelForm>(EMPTY_FORM);
+  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showToken, setShowToken] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [capiStatus, setCapiStatus] = useState<{ configured: boolean; source: string | null; test_mode: boolean } | null>(null);
+
+  const locked = !editing;
 
   const refreshCapiStatus = () => {
     fetch(`${API_BASE}/api/pixel/capi-status`)
@@ -37,16 +44,26 @@ export default function AdminFacebookPixelPage() {
   useEffect(() => {
     if (settings) {
       const s = settings as Record<string, unknown>;
-      setForm({
+      const next: PixelForm = {
         enabled: s.facebookPixelEnabled as boolean ?? false,
         pixelId: s.facebookPixelId as string ?? "",
         baseCode: s.facebookPixelBaseCode as string ?? "",
         accessToken: s.facebookAccessToken as string ?? "",
         testEventCode: s.facebookTestEventCode as string ?? "",
-      });
+      };
+      setForm(next);
+      setSavedSnapshot(next);
       if (s.facebookPixelBaseCode) setAdvancedOpen(true);
     }
   }, [settings]);
+
+  const handleEdit = () => setEditing(true);
+
+  const handleCancel = () => {
+    setForm(savedSnapshot);
+    setShowToken(false);
+    setEditing(false);
+  };
 
   const handleSave = () => {
     setSaving(true);
@@ -61,6 +78,9 @@ export default function AdminFacebookPixelPage() {
     }, {
       onSuccess: () => {
         toast({ title: "Settings saved" });
+        setSavedSnapshot(form);
+        setEditing(false);
+        setShowToken(false);
         queryClient.invalidateQueries({ queryKey: getGetAdminSettingsQueryKey() });
         refreshCapiStatus();
         setSaving(false);
@@ -162,8 +182,33 @@ export default function AdminFacebookPixelPage() {
         </div>
       )}
 
-      <Card className="bg-card border-border">
+      <Card className={`bg-card border-border transition-colors ${editing ? "ring-1 ring-primary/40" : ""}`}>
         <CardContent className="p-6 space-y-7">
+
+          {/* Lock / edit mode indicator */}
+          <div className={`flex items-center justify-between gap-3 -mx-6 -mt-6 px-6 py-3 border-b border-border ${editing ? "bg-primary/5" : "bg-muted/30"}`}>
+            <div className="flex items-center gap-2 text-xs">
+              {editing ? (
+                <>
+                  <Pencil className="w-3.5 h-3.5 text-primary" />
+                  <span className="font-semibold text-primary">Edit mode</span>
+                  <span className="text-muted-foreground">— changes will be saved when you click Save</span>
+                </>
+              ) : (
+                <>
+                  <Lock className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="font-semibold text-foreground">Locked</span>
+                  <span className="text-muted-foreground">— click Edit to modify</span>
+                </>
+              )}
+            </div>
+            {locked && (
+              <Button type="button" size="sm" variant="outline" onClick={handleEdit} className="h-7 gap-1.5">
+                <Pencil className="w-3.5 h-3.5" />
+                Edit
+              </Button>
+            )}
+          </div>
 
           {/* Enable */}
           <div className="flex items-center justify-between">
@@ -171,7 +216,11 @@ export default function AdminFacebookPixelPage() {
               <p className="text-sm font-medium">Enable Pixel</p>
               <p className="text-xs text-muted-foreground mt-0.5">Inject the pixel on every page</p>
             </div>
-            <Switch checked={form.enabled} onCheckedChange={v => setForm(f => ({ ...f, enabled: v }))} />
+            <Switch
+              checked={form.enabled}
+              onCheckedChange={v => setForm(f => ({ ...f, enabled: v }))}
+              disabled={locked}
+            />
           </div>
 
           <div className="h-px bg-border" />
@@ -187,6 +236,8 @@ export default function AdminFacebookPixelPage() {
                 onChange={e => setForm(f => ({ ...f, pixelId: e.target.value }))}
                 placeholder="1234567890123456"
                 className="bg-background font-mono"
+                disabled={locked}
+                readOnly={locked}
               />
             </div>
 
@@ -201,12 +252,16 @@ export default function AdminFacebookPixelPage() {
                   className="bg-background font-mono pr-10"
                   autoComplete="off"
                   spellCheck={false}
+                  disabled={locked}
+                  readOnly={locked}
                 />
                 <button
                   type="button"
                   onClick={() => setShowToken(s => !s)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                  disabled={locked || !form.accessToken}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
                   aria-label={showToken ? "Hide token" : "Show token"}
+                  title={locked ? "Unlock to view token" : (showToken ? "Hide token" : "Show token")}
                 >
                   {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -233,13 +288,16 @@ export default function AdminFacebookPixelPage() {
                   className="bg-background font-mono"
                   autoComplete="off"
                   spellCheck={false}
+                  disabled={locked}
+                  readOnly={locked}
                 />
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleSendTestEvent}
-                  disabled={sendingTest || !form.testEventCode.trim()}
+                  disabled={sendingTest || !savedSnapshot.testEventCode.trim()}
                   className="shrink-0 gap-2"
+                  title={!savedSnapshot.testEventCode.trim() ? "Save a Test Event Code first" : "Send a test event to Meta"}
                 >
                   {sendingTest ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   {sendingTest ? "Sending" : "Send Test"}
@@ -272,6 +330,8 @@ export default function AdminFacebookPixelPage() {
                   placeholder={`<!-- Meta Pixel Code -->\n<script>\n!function(f,b,e,v,n,t,s)...\n</script>\n<!-- End Meta Pixel Code -->`}
                   className="bg-background font-mono text-xs min-h-[160px] resize-y"
                   spellCheck={false}
+                  disabled={locked}
+                  readOnly={locked}
                 />
                 <p className="text-xs text-muted-foreground mt-2">
                   Leave empty for auto-inject from Pixel ID above. <span className="text-amber-500/90">If you paste Meta's full snippet, remove <code className="bg-background px-1 py-0.5 rounded">fbq('track', 'PageView');</code></span> — we already fire PageView with deduplication.
@@ -280,21 +340,42 @@ export default function AdminFacebookPixelPage() {
             )}
           </div>
 
-          {/* Footer actions */}
+          {/* Footer actions — change based on lock state */}
           <div className="flex items-center gap-3 pt-2">
-            <Button type="button" onClick={handleSave} disabled={saving} className="flex-1">
-              {saving ? "Saving..." : "Save Settings"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => window.open(testEventsUrl, "_blank")}
-              className="gap-2"
-              title="Open Meta Events Manager"
-            >
-              <ExternalLink className="w-4 h-4" />
-              Events Manager
-            </Button>
+            {editing ? (
+              <>
+                <Button type="button" onClick={handleSave} disabled={saving} className="flex-1">
+                  {saving ? "Saving..." : "Save Settings"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancel}
+                  disabled={saving}
+                  className="gap-2"
+                >
+                  <X className="w-4 h-4" />
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button type="button" onClick={handleEdit} className="flex-1 gap-2">
+                  <Pencil className="w-4 h-4" />
+                  Edit Settings
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => window.open(testEventsUrl, "_blank")}
+                  className="gap-2"
+                  title="Open Meta Events Manager"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Events Manager
+                </Button>
+              </>
+            )}
           </div>
 
         </CardContent>
