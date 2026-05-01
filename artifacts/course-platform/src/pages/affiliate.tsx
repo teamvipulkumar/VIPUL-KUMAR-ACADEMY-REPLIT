@@ -20,7 +20,7 @@ import {
   Trash2, Eye, EyeOff, Send, ChevronRight, ChevronLeft, ChevronDown, Activity, Target,
   Calendar, Star, Lock, Loader2, Menu, X, ExternalLink, Share2,
   ArrowUpRight, TrendingDown, Banknote, Info, Percent, Cookie,
-  Upload, FileImage, Rocket
+  Upload, FileImage, Rocket, Edit2
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
@@ -1634,6 +1634,11 @@ function PixelTab({ pixel, onSaved }: { pixel: any; onSaved: (p: any) => void })
   const [accessToken, setAccessToken] = useState(pixel?.accessToken ?? "");
   const [showToken, setShowToken] = useState(false);
   const [saving, setSaving] = useState(false);
+  // After a successful save the form locks itself so a stray keystroke can't
+  // accidentally overwrite a working Pixel + Access Token. User must click
+  // "Edit" to make changes.
+  const isConnected = !!(pixel?.facebookPixelId && pixel?.accessToken);
+  const [editing, setEditing] = useState(!isConnected);
 
   /* Test tool */
   const [testEventCode, setTestEventCode] = useState("");
@@ -1642,7 +1647,12 @@ function PixelTab({ pixel, onSaved }: { pixel: any; onSaved: (p: any) => void })
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message?: string; error?: string } | null>(null);
 
-  const isConnected = !!(pixel?.facebookPixelId && pixel?.accessToken);
+  // While locked, show a masked token (•••• + last 4 chars) so the real value
+  // is never visible. When user clicks Edit we swap back to the live value.
+  const maskedToken = accessToken.length > 4
+    ? `${"•".repeat(Math.max(8, accessToken.length - 4))}${accessToken.slice(-4)}`
+    : "••••••••";
+  const locked = isConnected && !editing;
 
   const save = async () => {
     if (!pixelId.trim()) { toast({ title: "Pixel ID is required", variant: "destructive" }); return; }
@@ -1657,9 +1667,19 @@ function PixelTab({ pixel, onSaved }: { pixel: any; onSaved: (p: any) => void })
       if (!res.ok) throw new Error("Failed");
       const saved = await res.json();
       onSaved(saved);
+      setEditing(false);
+      setShowToken(false);
       toast({ title: "Pixel settings saved!", description: "Events will fire automatically on your referral activity." });
     } catch { toast({ title: "Failed to save pixel settings", variant: "destructive" }); }
     finally { setSaving(false); }
+  };
+
+  const cancelEdit = () => {
+    // Revert any unsaved changes back to the last persisted values
+    setPixelId(pixel?.facebookPixelId ?? "");
+    setAccessToken(pixel?.accessToken ?? "");
+    setShowToken(false);
+    setEditing(false);
   };
 
   const sendTestEvent = async () => {
@@ -1699,14 +1719,21 @@ function PixelTab({ pixel, onSaved }: { pixel: any; onSaved: (p: any) => void })
 
       {/* Setup card */}
       <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
-            <Zap className="w-3.5 h-3.5 text-blue-400" />
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
+              <Zap className="w-3.5 h-3.5 text-blue-400" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-foreground">Facebook Pixel Setup</h3>
+              <p className="text-[11px] text-muted-foreground">Connect via Conversions API — events fire server-side, no browser required.</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Facebook Pixel Setup</h3>
-            <p className="text-[11px] text-muted-foreground">Connect via Conversions API — events fire server-side, no browser required.</p>
-          </div>
+          {locked && (
+            <Badge className="text-[10px] text-green-400 border-green-400/30 bg-green-400/10 gap-1 flex-shrink-0">
+              <Lock className="w-3 h-3" />Saved
+            </Badge>
+          )}
         </div>
 
         <div className="space-y-3">
@@ -1716,40 +1743,62 @@ function PixelTab({ pixel, onSaved }: { pixel: any; onSaved: (p: any) => void })
               value={pixelId}
               onChange={e => setPixelId(e.target.value)}
               placeholder="e.g. 123456789012345"
-              className="bg-background border-border font-mono"
+              className="bg-background border-border font-mono disabled:opacity-100 disabled:cursor-not-allowed"
+              readOnly={locked}
+              disabled={locked}
             />
-            <p className="text-[11px] text-muted-foreground">Found in Meta Events Manager → Data Sources → your Pixel.</p>
+            {!locked && <p className="text-[11px] text-muted-foreground">Found in Meta Events Manager → Data Sources → your Pixel.</p>}
           </div>
 
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Conversions API Access Token <span className="text-red-400">*</span></Label>
             <div className="relative">
               <Input
-                type={showToken ? "text" : "password"}
-                value={accessToken}
+                type={locked ? "text" : (showToken ? "text" : "password")}
+                value={locked ? maskedToken : accessToken}
                 onChange={e => setAccessToken(e.target.value)}
                 placeholder="EAAxxxxxxxxxxxxxxxx…"
-                className="bg-background border-border font-mono pr-10 text-xs"
+                className="bg-background border-border font-mono pr-10 text-xs disabled:opacity-100 disabled:cursor-not-allowed"
+                readOnly={locked}
+                disabled={locked}
               />
-              <button
-                type="button"
-                onClick={() => setShowToken(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                {showToken
-                  ? <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                  : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                }
-              </button>
+              {!locked && (
+                <button
+                  type="button"
+                  onClick={() => setShowToken(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                >
+                  {showToken
+                    ? <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  }
+                </button>
+              )}
             </div>
-            <p className="text-[11px] text-muted-foreground">Generate in Events Manager → Settings → Conversions API → Generate Access Token.</p>
+            {!locked && <p className="text-[11px] text-muted-foreground">Generate in Events Manager → Settings → Conversions API → Generate Access Token.</p>}
           </div>
         </div>
 
-        <Button onClick={save} disabled={saving} className="w-full gap-2">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-          {saving ? "Saving…" : "Save & Connect"}
-        </Button>
+        {locked ? (
+          <Button onClick={() => setEditing(true)} variant="outline" className="w-full gap-2">
+            <Edit2 className="w-4 h-4" />Edit Pixel Settings
+          </Button>
+        ) : isConnected ? (
+          <div className="flex gap-2">
+            <Button onClick={cancelEdit} disabled={saving} variant="outline" className="flex-1 gap-2">
+              Cancel
+            </Button>
+            <Button onClick={save} disabled={saving} className="flex-1 gap-2">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+              {saving ? "Saving…" : "Update"}
+            </Button>
+          </div>
+        ) : (
+          <Button onClick={save} disabled={saving} className="w-full gap-2">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+            {saving ? "Saving…" : "Save & Connect"}
+          </Button>
+        )}
       </div>
 
       {/* Active events info */}
