@@ -473,10 +473,8 @@ function AffiliateDashboard({ user }: { user: any }) {
             <span className="text-xs font-medium text-foreground capitalize">{TABS.find(t => t.id === tab)?.label}</span>
           </div>
 
-          {/* ── Loading skeleton ── shown for ANY tab during initial fetch
-              so users don't briefly see stale/empty data (e.g. "0 sales",
-              empty KYC form) before the real data hydrates. */}
-          {loading && (
+          {/* ── Earnings Tab ── */}
+          {tab === "earnings" && loading && (
             <div className="space-y-6 animate-pulse">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-2">
@@ -670,7 +668,7 @@ function AffiliateDashboard({ user }: { user: any }) {
           )}
 
           {/* ── Sales Tab ── */}
-          {tab === "sales" && !loading && (() => {
+          {tab === "sales" && (() => {
             const pagedSales = sales.slice((salesPage - 1) * PAGE_SIZE, salesPage * PAGE_SIZE);
             return (
               <div className="space-y-5">
@@ -753,7 +751,7 @@ function AffiliateDashboard({ user }: { user: any }) {
           })()}
 
           {/* ── Links Tab ── */}
-          {tab === "links" && !loading && (
+          {tab === "links" && (
             <div className="space-y-4 max-w-2xl">
               <TabHeader title="My Affiliate Links" subtitle="Share your unique link to earn commissions on every sale." />
 
@@ -786,7 +784,7 @@ function AffiliateDashboard({ user }: { user: any }) {
           )}
 
           {/* ── Clicks Tab ── */}
-          {tab === "clicks" && !loading && (
+          {tab === "clicks" && (
             <div className="space-y-6">
               <TabHeader title="Click Analytics" subtitle="Track traffic and conversions from your referral links." />
 
@@ -827,7 +825,7 @@ function AffiliateDashboard({ user }: { user: any }) {
           )}
 
           {/* ── Creatives Tab ── */}
-          {tab === "creatives" && !loading && (
+          {tab === "creatives" && (
             <div>
               <TabHeader title="Marketing Creatives" subtitle="Download banners, copy, and assets to promote your affiliate link." />
               <CreativesTab creatives={creatives} />
@@ -835,7 +833,7 @@ function AffiliateDashboard({ user }: { user: any }) {
           )}
 
           {/* ── KYC Tab ── */}
-          {tab === "kyc" && !loading && (
+          {tab === "kyc" && (
             <div>
               <TabHeader title="KYC Verification" subtitle="Submit identity documents to enable payouts." />
               <KycTab kyc={kyc} onSaved={k => setKyc(k)} />
@@ -843,7 +841,7 @@ function AffiliateDashboard({ user }: { user: any }) {
           )}
 
           {/* ── Payouts Tab ── */}
-          {tab === "payouts" && !loading && (
+          {tab === "payouts" && (
             <div>
               <TabHeader title="Payouts" subtitle="View your earnings and payout history." />
               <PayoutsTab dashboard={dashboard} payouts={payouts} upcomingPayout={upcomingPayout} />
@@ -851,7 +849,7 @@ function AffiliateDashboard({ user }: { user: any }) {
           )}
 
           {/* ── Pixel Tab ── */}
-          {tab === "pixel" && !loading && (
+          {tab === "pixel" && (
             <div>
               <TabHeader title="Tracking Pixel" subtitle="Connect your Facebook Pixel to track conversions from your referrals." />
               <PixelTab pixel={pixel} onSaved={p => setPixel(p)} />
@@ -859,7 +857,7 @@ function AffiliateDashboard({ user }: { user: any }) {
           )}
 
           {/* ── Bank Tab ── */}
-          {tab === "bank" && !loading && (
+          {tab === "bank" && (
             <div>
               <TabHeader title="Bank Account" subtitle="Add your bank details to receive payout transfers." />
               <BankTab bank={bank} onSaved={b => setBank(b)} />
