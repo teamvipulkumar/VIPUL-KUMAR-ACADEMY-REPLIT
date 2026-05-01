@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Chrome, Info, Construction, Check, Upload, Globe, ImageIcon, Loader2, FolderOpen, CheckCircle2 } from "lucide-react";
+import { Eye, EyeOff, Chrome, Info, Construction, Check, Upload, Globe, ImageIcon, Loader2, FolderOpen, CheckCircle2, Lock, Edit2 } from "lucide-react";
 import { useTheme, type Theme } from "@/lib/theme-context";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -185,6 +185,13 @@ export default function AdminSettingsPage() {
   const [googleForm, setGoogleForm] = useState({ clientId: "", clientSecret: "", enabled: false });
   const [showSecret, setShowSecret] = useState(false);
   const [googleSaving, setGoogleSaving] = useState(false);
+  // Lock pattern (same as Pixel/Bank tabs in affiliate page) — once Google
+  // credentials are saved, the form becomes read-only so a stray keystroke
+  // can't accidentally corrupt the OAuth client config. Admin must click
+  // "Edit" to make changes.
+  const [googleSaved, setGoogleSaved] = useState(false);
+  const [googleEditing, setGoogleEditing] = useState(false);
+  const googleLocked = googleSaved && !googleEditing;
 
   const [brandingForm, setBrandingForm] = useState({
     siteName: "", siteLogo: "", logoSize: 34, logoSizeMobile: 28, favicon: "", metaTitle: "", metaDescription: "",
@@ -208,11 +215,18 @@ export default function AdminSettingsPage() {
         maintenanceMode: (settings as Record<string, unknown>).maintenanceMode as boolean ?? false,
         maintenanceMessage: (settings as Record<string, unknown>).maintenanceMessage as string ?? "",
       });
+      const gClientId = (settings as Record<string, unknown>).googleClientId as string ?? "";
+      const gClientSecret = (settings as Record<string, unknown>).googleClientSecret as string ?? "";
       setGoogleForm({
         enabled: (settings as Record<string, unknown>).googleSignInEnabled as boolean ?? false,
-        clientId: (settings as Record<string, unknown>).googleClientId as string ?? "",
-        clientSecret: (settings as Record<string, unknown>).googleClientSecret as string ?? "",
+        clientId: gClientId,
+        clientSecret: gClientSecret,
       });
+      // Treat the credentials as "saved" only when both clientId & clientSecret
+      // are present. That way a fresh / partially-configured install still shows
+      // the editable form by default.
+      setGoogleSaved(!!gClientId && !!gClientSecret);
+      setGoogleEditing(false);
       setBrandingForm({
         siteName: settings.siteName ?? "",
         siteLogo: (settings as Record<string, unknown>).siteLogo as string ?? "",
@@ -294,10 +308,36 @@ export default function AdminSettingsPage() {
         queryClient.invalidateQueries({ queryKey: getGetAdminSettingsQueryKey() });
         queryClient.invalidateQueries({ queryKey: ["google-config"] });
         setGoogleSaving(false);
+        // Re-lock the form after a successful save. The settings useEffect
+        // will also re-run and set googleSaved when fresh data arrives, but
+        // doing this here gives the snappy "lock back" feel immediately.
+        if (googleForm.clientId && googleForm.clientSecret) {
+          setGoogleSaved(true);
+          setGoogleEditing(false);
+          setShowSecret(false);
+        }
       },
       onError: () => { toast({ title: "Error saving Google settings", variant: "destructive" }); setGoogleSaving(false); },
     });
   };
+
+  const cancelGoogleEdit = () => {
+    if (settings) {
+      setGoogleForm({
+        enabled: (settings as Record<string, unknown>).googleSignInEnabled as boolean ?? false,
+        clientId: (settings as Record<string, unknown>).googleClientId as string ?? "",
+        clientSecret: (settings as Record<string, unknown>).googleClientSecret as string ?? "",
+      });
+    }
+    setShowSecret(false);
+    setGoogleEditing(false);
+  };
+
+  // Mask the client secret when locked (show only last 4 chars) so the
+  // sensitive value is never fully visible on screen.
+  const maskedSecret = googleForm.clientSecret.length > 4
+    ? `${"•".repeat(Math.max(8, googleForm.clientSecret.length - 4))}${googleForm.clientSecret.slice(-4)}`
+    : "••••••••";
 
   return (
     <div className="p-6 max-w-2xl">
@@ -672,12 +712,26 @@ export default function AdminSettingsPage() {
             <CardDescription>Allow users to sign in with their Google account.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
+            {googleLocked && (
+              <div className="flex items-center justify-between p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                <div className="flex items-center gap-2 text-xs text-green-400">
+                  <Lock className="w-3.5 h-3.5" />
+                  <span className="font-medium">Google credentials saved &amp; locked</span>
+                </div>
+                <span className="text-[10px] text-green-400/70">Click Edit to change</span>
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Enable Google Sign-In</p>
                 <p className="text-xs text-muted-foreground">Show "Continue with Google" on login &amp; signup pages</p>
               </div>
-              <Switch checked={googleForm.enabled} onCheckedChange={v => setGoogleForm(f => ({ ...f, enabled: v }))} />
+              <Switch
+                checked={googleForm.enabled}
+                onCheckedChange={v => setGoogleForm(f => ({ ...f, enabled: v }))}
+                disabled={googleLocked}
+              />
             </div>
 
             <div className={`space-y-4 transition-opacity ${googleForm.enabled ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
@@ -687,37 +741,60 @@ export default function AdminSettingsPage() {
                   value={googleForm.clientId}
                   onChange={e => setGoogleForm(f => ({ ...f, clientId: e.target.value }))}
                   placeholder="xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com"
-                  className="bg-background font-mono text-xs"
+                  className="bg-background font-mono text-xs disabled:opacity-100 disabled:cursor-not-allowed"
+                  readOnly={googleLocked}
+                  disabled={googleLocked}
                 />
               </div>
               <div>
                 <Label className="text-sm mb-1.5 block">Google Client Secret</Label>
                 <div className="relative">
                   <Input
-                    type={showSecret ? "text" : "password"}
-                    value={googleForm.clientSecret}
+                    type={googleLocked ? "text" : (showSecret ? "text" : "password")}
+                    value={googleLocked ? maskedSecret : googleForm.clientSecret}
                     onChange={e => setGoogleForm(f => ({ ...f, clientSecret: e.target.value }))}
                     placeholder="GOCSPX-xxxxxxxxxxxxxxxxxxxxxxxx"
-                    className="bg-background font-mono text-xs pr-10"
+                    className="bg-background font-mono text-xs pr-10 disabled:opacity-100 disabled:cursor-not-allowed"
+                    readOnly={googleLocked}
+                    disabled={googleLocked}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowSecret(s => !s)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+                  {!googleLocked && (
+                    <button
+                      type="button"
+                      onClick={() => setShowSecret(s => !s)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300">
-                <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                <span>Get your credentials from the <strong>Google Cloud Console</strong> → APIs &amp; Services → Credentials. Set the authorised redirect URI to <code className="bg-blue-500/20 px-1 rounded">/api/auth/google/callback</code>.</span>
-              </div>
+              {!googleLocked && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300">
+                  <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                  <span>Get your credentials from the <strong>Google Cloud Console</strong> → APIs &amp; Services → Credentials. Set the authorised redirect URI to <code className="bg-blue-500/20 px-1 rounded">/api/auth/google/callback</code>.</span>
+                </div>
+              )}
             </div>
 
-            <Button type="button" onClick={handleSaveGoogle} disabled={googleSaving} variant="outline" className="w-full border-border">
-              {googleSaving ? "Saving..." : "Save Google Settings"}
-            </Button>
+            {googleLocked ? (
+              <Button type="button" onClick={() => setGoogleEditing(true)} variant="outline" className="w-full border-border gap-2">
+                <Edit2 className="w-4 h-4" />Edit Google Settings
+              </Button>
+            ) : googleSaved ? (
+              <div className="flex gap-2">
+                <Button type="button" onClick={cancelGoogleEdit} disabled={googleSaving} variant="outline" className="flex-1 border-border">
+                  Cancel
+                </Button>
+                <Button type="button" onClick={handleSaveGoogle} disabled={googleSaving} variant="outline" className="flex-1 border-border">
+                  {googleSaving ? "Saving..." : "Update"}
+                </Button>
+              </div>
+            ) : (
+              <Button type="button" onClick={handleSaveGoogle} disabled={googleSaving} variant="outline" className="w-full border-border">
+                {googleSaving ? "Saving..." : "Save Google Settings"}
+              </Button>
+            )}
           </CardContent>
         </Card>
 
