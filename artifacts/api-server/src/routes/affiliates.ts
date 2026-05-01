@@ -124,24 +124,30 @@ router.get("/dashboard", requireAuth, async (req, res): Promise<void> => {
     .where(and(eq(payoutRequestsTable.userId, authedReq.user.userId), eq(payoutRequestsTable.status, "approved")));
   const paidEarnings = approvedPayouts.reduce((acc, p) => acc + parseFloat(String(p.amount)), 0);
 
-  // Resolve the public base URL with admin-configured siteUrl as the highest
-  // priority. This ensures that when admin connects a custom domain via
-  // Replit Deployments and saves it under Admin → Branding (siteUrl), the
-  // affiliate links use that custom domain instead of the default *.replit.app
-  // URL. Fallback chain (high → low): platform_settings.siteUrl → PUBLIC_BASE_URL
-  // env → SITE_URL env → REPLIT_DEV_DOMAIN → REPLIT_DOMAINS (deployment) →
-  // localhost. Returns full URL with protocol (e.g., "https://academy.com").
-  let baseUrl = await getPublicBaseUrl();
-  if (!baseUrl) {
-    const fallbackDomain = process.env.REPLIT_DOMAINS?.split(",")[0] ?? "localhost:80";
-    baseUrl = `https://${fallbackDomain}`;
+  // Build the affiliate link from the **request's own hostname** so the link
+  // is always rooted at whatever domain the affiliate is currently visiting.
+  // E.g. user on https://vipulkumar.online/affiliate → link starts with
+  // https://vipulkumar.online ; same user later visits the site via
+  // https://vipulkumaracademy.com → link automatically updates without any
+  // admin config change. trust proxy = 1 (set in app.ts) makes req.hostname
+  // honour X-Forwarded-Host, so this works behind the Replit Deployments
+  // edge. We fall back to the admin-configured siteUrl / env vars only if
+  // the request hostname is missing or local — that way the API still works
+  // for server-to-server callers where there is no meaningful Host header.
+  const reqHost = String(req.hostname || "").toLowerCase();
+  const reqProto = (req.protocol === "http" || req.protocol === "https") ? req.protocol : "https";
+  const isLocal = !reqHost || reqHost === "localhost" || reqHost === "127.0.0.1" || reqHost === "0.0.0.0";
+  let canonicalBase = "";
+  if (!isLocal) {
+    canonicalBase = `${reqProto}://${reqHost}`;
+  } else {
+    let baseUrl = await getPublicBaseUrl();
+    if (!baseUrl) {
+      const fallbackDomain = process.env.REPLIT_DOMAINS?.split(",")[0] ?? "localhost:80";
+      baseUrl = `https://${fallbackDomain}`;
+    }
+    try { canonicalBase = new URL(baseUrl).origin; } catch { canonicalBase = baseUrl; }
   }
-  // Normalise to origin-only — strip any path/query the admin may have entered
-  // (e.g. "https://academy.com/app?x=1") so building referral links via string
-  // concatenation never produces malformed URLs like "...?x=1?ref=CODE". If
-  // parsing fails for any reason, fall back to the raw value.
-  let canonicalBase = baseUrl;
-  try { canonicalBase = new URL(baseUrl).origin; } catch { /* keep raw */ }
   const referralLink = (() => {
     try {
       const u = new URL(canonicalBase);
