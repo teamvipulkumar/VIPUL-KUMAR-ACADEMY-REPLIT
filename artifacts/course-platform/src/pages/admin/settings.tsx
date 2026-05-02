@@ -158,12 +158,6 @@ const THEMES: { id: Theme; label: string; description: string; swatches: string[
     description: "Clean white & blue",
     swatches: ["#f8fafc", "#e2e8f0", "#3b5bdb", "#1e293b"],
   },
-  {
-    id: "forest",
-    label: "Forest",
-    description: "Deep forest green",
-    swatches: ["#091413", "#285A48", "#408A71", "#B0E4CC"],
-  },
 ];
 
 export default function AdminSettingsPage() {

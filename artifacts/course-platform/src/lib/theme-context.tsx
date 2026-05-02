@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
-export type Theme = "dark" | "light" | "forest";
+export type Theme = "dark" | "light";
 
 interface ThemeContextValue {
   theme: Theme;
@@ -14,17 +14,18 @@ const ThemeContext = createContext<ThemeContextValue>({
   toggleTheme: () => {},
 });
 
-const ALL_THEMES: Theme[] = ["dark", "light", "forest"];
+const ALL_THEMES: Theme[] = ["dark", "light"];
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     try {
-      // Allow ?theme=light|dark|forest URL query string to preview a theme
+      // Allow ?theme=light|dark URL query string to preview a theme
       // without needing to manually flip localStorage. Useful for design QA.
       const urlTheme = new URLSearchParams(window.location.search).get("theme");
-      if (urlTheme === "light" || urlTheme === "dark" || urlTheme === "forest") return urlTheme;
+      if (urlTheme === "light" || urlTheme === "dark") return urlTheme;
       const stored = localStorage.getItem("vka-theme");
-      if (stored === "light" || stored === "dark" || stored === "forest") return stored;
+      // Migrate any legacy "forest" preference back to dark.
+      if (stored === "light" || stored === "dark") return stored;
     } catch {}
     return "dark";
   });
@@ -35,6 +36,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // saved preference in localStorage.
   useEffect(() => {
     const root = document.documentElement;
+    // Strip the legacy `forest` class as well so users coming from a stale
+    // session don't get a half-applied forest palette.
     root.classList.remove("dark", "light", "forest");
     root.classList.add(theme);
   }, [theme]);
