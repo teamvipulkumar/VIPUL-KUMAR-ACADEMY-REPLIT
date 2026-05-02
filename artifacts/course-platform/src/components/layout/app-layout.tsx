@@ -221,10 +221,10 @@ export function Navbar() {
       <header className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${
         scrolled ? "shadow-[0_2px_20px_0_rgba(0,0,0,0.15)]" : ""
       }`} style={{ backgroundColor: "var(--nav-bg)" }}>
-        {/* Header height is intentionally fixed at h-16 — the user disabled
-            the on-scroll shrink behaviour. Only the subtle shadow toggles
-            on scroll (handled by the parent <header>). */}
-        <div className="max-w-screen-xl mx-auto flex items-center px-4 md:px-8 gap-4 h-16">
+        {/* Header height is fixed (no on-scroll shrink). h-14 = 56px gives
+            slightly tighter top/bottom breathing room than the previous h-16
+            per user preference. Only the subtle shadow toggles on scroll. */}
+        <div className="max-w-screen-xl mx-auto flex items-center px-4 md:px-8 gap-4 h-14">
 
           {/* ── Logo (left) ── */}
           <Link href="/" className="flex items-center gap-2.5 flex-shrink-0 group" onClick={() => setMobileOpen(false)}>
@@ -359,7 +359,7 @@ export function Navbar() {
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <nav className="absolute top-16 left-0 right-0 border-b shadow-2xl max-h-[calc(100vh-4rem)] overflow-y-auto" style={{ backgroundColor: "var(--mobile-drawer-bg)", borderColor: "var(--nav-border)" }}>
+          <nav className="absolute top-14 left-0 right-0 border-b shadow-2xl max-h-[calc(100vh-3.5rem)] overflow-y-auto" style={{ backgroundColor: "var(--mobile-drawer-bg)", borderColor: "var(--nav-border)" }}>
             {isAuthenticated && (
               <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5">
                 <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-white overflow-hidden flex-shrink-0">
