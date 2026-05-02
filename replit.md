@@ -11,7 +11,9 @@ Ask before making major changes.
 ## System Architecture
 
 ### UI/UX Decisions
-The platform features a premium theme with `dark`, `light`, and `forest` options, defaulting to `dark`. Themes can be previewed using URL queries. The frontend is built with React, Vite, Wouter, TanStack Query, Tailwind CSS, and shadcn/ui, ensuring a responsive design across various devices and specific layouts for admin dashboards.
+The platform features a premium theme with `dark` and `light` options, defaulting to `dark` (the legacy `forest` theme has been removed; localStorage migrates old `"forest"` values to `"dark"` automatically). Themes can be previewed using URL queries. The frontend is built with React, Vite, Wouter, TanStack Query, Tailwind CSS, and shadcn/ui, ensuring a responsive design across various devices and specific layouts for admin dashboards.
+
+**Profile page UX**: Personal details (name, phone) start in a read-only "view" mode after each save to prevent accidental edits — a dedicated Edit button toggles into edit mode with explicit Save/Cancel actions. Below the details card is a Change Password card that requires the user's current password before accepting a new one (validated server-side via `POST /api/auth/change-password`, rate-limited the same as login). A "Forgot password?" link routes users to the existing `/forgot-password` flow if they don't remember their current password. On success the auth cookie is re-issued so the active session token is freshly minted post-change.
 
 ### Technical Implementations
 **Monorepo Structure**: Uses pnpm workspaces for `course-platform` (frontend), `api-server` (backend), `api-spec` (API codegen), and `db` (database schema).

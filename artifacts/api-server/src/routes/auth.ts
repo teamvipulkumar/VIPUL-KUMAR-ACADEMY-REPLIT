@@ -253,6 +253,83 @@ router.post("/reset-password", async (req, res): Promise<void> => {
   res.json({ message: "Password reset successfully" });
 });
 
+/* ── Change password while logged in.
+ *
+ * Requires the user to prove ownership of the current password before we
+ * accept a new one — this prevents an attacker who hijacks an active session
+ * (open laptop, stolen cookie, etc.) from silently replacing the password and
+ * locking the real owner out. If the user can't remember their current
+ * password they should use the public /forgot-password flow instead.
+ *
+ * Notes:
+ *  - We use bcrypt.compare to verify the current password against the stored
+ *    hash; never compare plaintext directly.
+ *  - We re-fetch the user from the DB rather than trusting the JWT payload,
+ *    so a stale token can't bypass a recent ban or password rotation.
+ *  - We intentionally use a generic "Current password is incorrect" error to
+ *    avoid leaking which field failed.
+ */
+router.post("/change-password", requireAuth, async (req, res): Promise<void> => {
+  const authReq = req as Request & { user?: JwtPayload };
+  if (!authReq.user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const { currentPassword, newPassword } = req.body ?? {};
+  // Hardened type checks: reject any non-string payloads up-front so a
+  // malformed/JSON-injected body can never reach bcrypt.compare (which throws
+  // on non-string input and would surface as a 500).
+  if (typeof currentPassword !== "string" || typeof newPassword !== "string") {
+    res.status(400).json({ error: "Current and new password are required" });
+    return;
+  }
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ error: "Current and new password are required" });
+    return;
+  }
+  if (newPassword.length < 8) {
+    res.status(400).json({ error: "New password must be at least 8 characters" });
+    return;
+  }
+  if (currentPassword === newPassword) {
+    res.status(400).json({ error: "New password must be different from current password" });
+    return;
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, authReq.user.userId)).limit(1);
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  const ok = await bcrypt.compare(currentPassword, user.password);
+  if (!ok) {
+    res.status(401).json({ error: "Current password is incorrect" });
+    return;
+  }
+
+  const hashed = await bcrypt.hash(newPassword, 10);
+  await db.update(usersTable).set({
+    password: hashed,
+    // Clear any pending reset token so a previously-emailed reset link from
+    // before this change can no longer be used.
+    resetToken: null,
+    resetTokenExpiresAt: null,
+  }).where(eq(usersTable.id, user.id));
+
+  // Re-issue the auth cookie on the current device so the active session
+  // gets a freshly-issued JWT (issued AFTER the password change). Other
+  // existing sessions are not invalidated by this alone — full multi-device
+  // revocation would require a DB-backed token-version check in requireAuth,
+  // which is intentionally out of scope here. Refreshing the current cookie
+  // still helps in the common case where the user just changed their
+  // password from a single device.
+  const [staffRecord] = await db.select().from(adminStaffTable)
+    .where(and(eq(adminStaffTable.userId, user.id), eq(adminStaffTable.status, "active")))
+    .limit(1);
+  const isStaff = !!staffRecord;
+  const staffPermissions = staffRecord?.permissions ?? null;
+  const newToken = signToken({ userId: user.id, email: user.email, role: user.role, isStaff, staffPermissions });
+  res.cookie("token", newToken, authCookieOptions());
+
+  res.json({ message: "Password changed successfully" });
+});
+
 /* ── Update own profile (phone, name, avatarUrl) ── */
 router.patch("/profile", requireAuth, async (req, res): Promise<void> => {
   const { phone, name, avatarUrl } = req.body;

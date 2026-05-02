@@ -186,6 +186,10 @@ app.use("/api/auth/register", authRateLimiter);
 app.use("/api/auth/forgot-password", authRateLimiter);
 app.use("/api/auth/reset-password", authRateLimiter);
 app.use("/api/auth/google-login", authRateLimiter);
+// SECURITY: change-password takes the current password as input, so it is a
+// brute-force surface for an attacker who already has session access. Cap
+// attempts the same way as login.
+app.use("/api/auth/change-password", authRateLimiter);
 app.use("/api/payments", paymentRateLimiter);
 app.use("/api/bundles", paymentRateLimiter);
 app.use("/api/coupons/validate", generalRateLimiter);

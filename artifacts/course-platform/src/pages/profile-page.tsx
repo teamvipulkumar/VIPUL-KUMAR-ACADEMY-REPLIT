@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetMeQueryKey } from "@workspace/api-client-react";
@@ -6,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { User, Phone, Mail, ShieldCheck, Loader2, Check, Camera, X, Pencil } from "lucide-react";
+import { User, Phone, Mail, ShieldCheck, Loader2, Check, Camera, X, Pencil, Lock, KeyRound, Eye, EyeOff } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -28,6 +29,18 @@ export default function ProfilePage() {
 
   const [avatarUrl, setAvatarUrl] = useState<string>((user as any)?.avatarUrl ?? "");
   const [avatarUploading, setAvatarUploading] = useState(false);
+
+  // Change-password card state. Kept separate from the details form so a
+  // password change never accidentally fires when the user only meant to
+  // update their name/phone, and vice versa.
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordChanged, setPasswordChanged] = useState(false);
 
   const isDirty =
     name.trim() !== (user?.name ?? "").trim() ||
@@ -74,6 +87,52 @@ export default function ProfilePage() {
       toast({ title: "Profile updated!" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast({ title: "Please fill in all password fields", variant: "destructive" });
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast({ title: "New password must be at least 8 characters", variant: "destructive" });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({ title: "New passwords do not match", variant: "destructive" });
+      return;
+    }
+    if (currentPassword === newPassword) {
+      toast({ title: "New password must be different from current", variant: "destructive" });
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/change-password`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast({ title: data.error ?? "Failed to change password", variant: "destructive" });
+        return;
+      }
+      // Clear inputs and flash success — keeps the user on the same page so
+      // they can confirm the action worked without being booted back to login.
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setShowCurrent(false);
+      setShowNew(false);
+      setShowConfirm(false);
+      setPasswordChanged(true);
+      setTimeout(() => setPasswordChanged(false), 3000);
+      toast({ title: "Password changed successfully!" });
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -345,6 +404,152 @@ export default function ProfilePage() {
               Saved!
             </div>
           )}
+        </div>
+
+        {/* Change password — kept as a separate card so the destructive,
+            credential-altering action is visually isolated from routine
+            profile edits. The current password is required up-front to
+            prevent a hijacked session from silently rotating credentials. */}
+        <div className="bg-card border border-border rounded-2xl p-6 mt-6 space-y-5">
+          <div className="flex items-center gap-2">
+            <Lock className="w-4 h-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+              Change Password
+            </h2>
+          </div>
+          <p className="text-sm text-muted-foreground -mt-2">
+            For your security, enter your current password to set a new one.
+          </p>
+
+          {/* Current password */}
+          <div className="space-y-1.5">
+            <Label htmlFor="current-password" className="flex items-center gap-1.5 text-sm font-medium">
+              <KeyRound className="w-3.5 h-3.5 text-muted-foreground" />
+              Current Password
+            </Label>
+            <div className="relative">
+              <Input
+                id="current-password"
+                type={showCurrent ? "text" : "password"}
+                value={currentPassword}
+                onChange={e => setCurrentPassword(e.target.value)}
+                placeholder="Enter your current password"
+                className="bg-background border-border pr-10"
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrent(s => !s)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={showCurrent ? "Hide password" : "Show password"}
+                aria-pressed={showCurrent}
+              >
+                {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            {/* Forgot password — opens the public reset flow. We send the
+                user to /forgot-password instead of inline-emailing here so
+                there is one canonical reset path the entire app shares. */}
+            <div className="flex justify-end pt-0.5">
+              <Link
+                href="/forgot-password"
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
+          </div>
+
+          {/* New password */}
+          <div className="space-y-1.5">
+            <Label htmlFor="new-password" className="flex items-center gap-1.5 text-sm font-medium">
+              <Lock className="w-3.5 h-3.5 text-muted-foreground" />
+              New Password
+            </Label>
+            <div className="relative">
+              <Input
+                id="new-password"
+                type={showNew ? "text" : "password"}
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="At least 8 characters"
+                className="bg-background border-border pr-10"
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNew(s => !s)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={showNew ? "Hide password" : "Show password"}
+                aria-pressed={showNew}
+              >
+                {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Confirm new password */}
+          <div className="space-y-1.5">
+            <Label htmlFor="confirm-password" className="flex items-center gap-1.5 text-sm font-medium">
+              <Lock className="w-3.5 h-3.5 text-muted-foreground" />
+              Confirm New Password
+            </Label>
+            <div className="relative">
+              <Input
+                id="confirm-password"
+                type={showConfirm ? "text" : "password"}
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter the new password"
+                className="bg-background border-border pr-10"
+                autoComplete="new-password"
+                onKeyDown={e => { if (e.key === "Enter") handleChangePassword(); }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm(s => !s)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={showConfirm ? "Hide password" : "Show password"}
+                aria-pressed={showConfirm}
+              >
+                {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            {/* Inline mismatch hint — fires only once the user has typed in
+                both fields so we don't flag empty-state as an error. */}
+            {newPassword && confirmPassword && newPassword !== confirmPassword && (
+              <p className="text-[11px] text-destructive">Passwords do not match</p>
+            )}
+          </div>
+
+          {/* Action row */}
+          <div className="flex items-center gap-3 pt-1">
+            <Button
+              onClick={handleChangePassword}
+              disabled={
+                changingPassword ||
+                !currentPassword ||
+                !newPassword ||
+                !confirmPassword ||
+                newPassword !== confirmPassword
+              }
+              className="gap-2 bg-primary hover:bg-primary/90 cursor-pointer"
+            >
+              {changingPassword ? (
+                <><Loader2 className="w-4 h-4 animate-spin" />Updating…</>
+              ) : passwordChanged ? (
+                <><Check className="w-4 h-4" />Updated!</>
+              ) : (
+                "Update Password"
+              )}
+            </Button>
+            {passwordChanged && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-500">
+                <Check className="w-3.5 h-3.5" />
+                Password updated successfully
+              </span>
+            )}
+          </div>
         </div>
 
       </div>
