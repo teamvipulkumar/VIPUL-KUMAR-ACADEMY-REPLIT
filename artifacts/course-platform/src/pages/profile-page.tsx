@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { User, Phone, Mail, ShieldCheck, Loader2, Check, Camera, X } from "lucide-react";
+import { User, Phone, Mail, ShieldCheck, Loader2, Check, Camera, X, Pencil } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -17,6 +17,10 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Profile details start in read-only "view" mode after a save so the user
+  // can't accidentally edit fields just by tapping them. Clicking the Edit
+  // button enters edit mode; saving (or cancelling) returns to view mode.
+  const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user?.name ?? "");
   const [phone, setPhone] = useState((user as any)?.phone ?? "");
   const [saving, setSaving] = useState(false);
@@ -28,6 +32,20 @@ export default function ProfilePage() {
   const isDirty =
     name.trim() !== (user?.name ?? "").trim() ||
     phone.trim() !== ((user as any)?.phone ?? "").trim();
+
+  const enterEditMode = () => {
+    // Re-seed the local form fields from the freshest user data so the form
+    // never shows a stale value left over from a previous edit session.
+    setName(user?.name ?? "");
+    setPhone((user as any)?.phone ?? "");
+    setIsEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setName(user?.name ?? "");
+    setPhone((user as any)?.phone ?? "");
+    setIsEditing(false);
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -50,6 +68,9 @@ export default function ProfilePage() {
       await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+      // Lock the form back into read-only view so subsequent taps don't
+      // accidentally mutate the just-saved values.
+      setIsEditing(false);
       toast({ title: "Profile updated!" });
     } finally {
       setSaving(false);
@@ -206,9 +227,25 @@ export default function ProfilePage() {
           />
         </div>
 
-        {/* Edit form */}
+        {/* Profile details — view-by-default, edit-on-demand. The card title
+            switches between "Your Details" (locked) and "Edit Details"
+            (unlocked) so it's always obvious which mode the user is in. */}
         <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
-          <h2 className="text-sm font-semibold text-foreground uppercase tracking-widest text-muted-foreground">Edit Details</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+              {isEditing ? "Edit Details" : "Your Details"}
+            </h2>
+            {!isEditing && (
+              <button
+                type="button"
+                onClick={enterEditMode}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors cursor-pointer px-2.5 py-1 rounded-md hover:bg-primary/10"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Edit
+              </button>
+            )}
+          </div>
 
           {/* Name */}
           <div className="space-y-1.5">
@@ -221,12 +258,18 @@ export default function ProfilePage() {
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="Your full name"
-              className="bg-background border-border"
-              onKeyDown={e => { if (e.key === "Enter") handleSave(); }}
+              readOnly={!isEditing}
+              tabIndex={isEditing ? 0 : -1}
+              className={
+                isEditing
+                  ? "bg-background border-border"
+                  : "bg-muted/40 border-border text-foreground cursor-default focus-visible:ring-0 focus-visible:ring-offset-0"
+              }
+              onKeyDown={e => { if (e.key === "Enter" && isEditing) handleSave(); }}
             />
           </div>
 
-          {/* Email (read-only) */}
+          {/* Email (always read-only — managed by auth provider) */}
           <div className="space-y-1.5">
             <Label className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
               <Mail className="w-3.5 h-3.5" />
@@ -252,37 +295,56 @@ export default function ProfilePage() {
               value={phone}
               onChange={e => setPhone(e.target.value)}
               placeholder="+91 9876543210"
-              className="bg-background border-border"
+              readOnly={!isEditing}
+              tabIndex={isEditing ? 0 : -1}
+              className={
+                isEditing
+                  ? "bg-background border-border"
+                  : "bg-muted/40 border-border text-foreground cursor-default focus-visible:ring-0 focus-visible:ring-offset-0"
+              }
               type="tel"
-              onKeyDown={e => { if (e.key === "Enter") handleSave(); }}
+              onKeyDown={e => { if (e.key === "Enter" && isEditing) handleSave(); }}
             />
             <p className="text-[11px] text-muted-foreground">Used for GST invoices and support contact</p>
           </div>
 
-          {/* Save button */}
-          <div className="flex items-center gap-3 pt-1">
-            <Button
-              onClick={handleSave}
-              disabled={saving || !isDirty}
-              className="gap-2 bg-primary hover:bg-primary/90 cursor-pointer"
-            >
-              {saving ? (
-                <><Loader2 className="w-4 h-4 animate-spin" />Saving…</>
-              ) : saved ? (
-                <><Check className="w-4 h-4" />Saved!</>
-              ) : (
-                "Save Changes"
-              )}
-            </Button>
-            {isDirty && !saving && (
-              <button
-                onClick={() => { setName(user?.name ?? ""); setPhone((user as any)?.phone ?? ""); }}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          {/* Action buttons — only shown while editing. In view mode the
+              fields are locked and the only affordance is the Edit button
+              in the card header. */}
+          {isEditing && (
+            <div className="flex items-center gap-3 pt-1">
+              <Button
+                onClick={handleSave}
+                disabled={saving || !isDirty}
+                className="gap-2 bg-primary hover:bg-primary/90 cursor-pointer"
               >
-                Discard
+                {saving ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" />Saving…</>
+                ) : saved ? (
+                  <><Check className="w-4 h-4" />Saved!</>
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+              <button
+                onClick={cancelEdit}
+                disabled={saving}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Cancel
               </button>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Saved confirmation chip — appears briefly after a successful
+              save in view mode so the user gets feedback even though the
+              Save button has already disappeared. */}
+          {!isEditing && saved && (
+            <div className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-500">
+              <Check className="w-3.5 h-3.5" />
+              Saved!
+            </div>
+          )}
         </div>
 
       </div>
