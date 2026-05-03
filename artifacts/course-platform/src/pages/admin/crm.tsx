@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useAdminBase } from "@/lib/auth-context";
-import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter, ShieldCheck, ShoppingCart, Flag, Minus, BookOpen, GraduationCap, UserCheck, Gift, XCircle, BookMarked, MousePointerClick, LogIn, KeyRound, MoreVertical, ArrowUpDown, Pencil, TrendingUp, Sparkles } from "lucide-react";
+import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter, ShieldCheck, ShoppingCart, Flag, Minus, BookOpen, GraduationCap, UserCheck, Gift, XCircle, BookMarked, MousePointerClick, LogIn, KeyRound, MoreVertical, ArrowUpDown, Pencil, TrendingUp, Sparkles, FileCheck } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1163,6 +1163,7 @@ const FUNNEL_TRIGGERS = [
   { type: "creator_joined",     label: "User Becomes Creator",   icon: Sparkles,           color: "text-fuchsia-400", bg: "bg-fuchsia-500/10", border: "border-fuchsia-500/20", desc: "Fires when an admin grants a user creator access" },
   { type: "creator_commission_earned", label: "Creator Sale / Commission", icon: TrendingUp,    color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", desc: "Fires when a creator earns a commission from a course sale" },
   { type: "creator_payout_paid",       label: "Creator Payout Sent",      icon: Send,          color: "text-lime-400",    bg: "bg-lime-500/10",    border: "border-lime-500/20",    desc: "Fires when an admin marks a creator's payout as paid" },
+  { type: "creator_kyc_submitted",     label: "Creator KYC Submitted",    icon: FileCheck,     color: "text-cyan-400",    bg: "bg-cyan-500/10",    border: "border-cyan-500/20",    desc: "Fires when a creator submits or resubmits their KYC documents" },
   /* ── Purchases & payments ── */
   { type: "new_purchase",       label: "Purchase Completed",     icon: ShoppingCart,       color: "text-green-400",   bg: "bg-green-500/10",   border: "border-green-500/20",   desc: "Fires when any course purchase succeeds" },
   { type: "payment_failed",     label: "Payment Failed",         icon: XCircle,            color: "text-red-400",     bg: "bg-red-500/10",     border: "border-red-500/20",     desc: "Fires when a payment attempt fails" },
@@ -1511,6 +1512,7 @@ function AutomationTab({ initialFunnelId = null }: { initialFunnelId?: number | 
                       <option value="creator_joined">User Becomes Creator</option>
                       <option value="creator_commission_earned">Creator Sale / Commission</option>
                       <option value="creator_payout_paid">Creator Payout Sent</option>
+                      <option value="creator_kyc_submitted">Creator KYC Submitted</option>
                     </optgroup>
                     <optgroup label="Purchases &amp; Payments">
                       <option value="new_purchase">Purchase Completed</option>
@@ -1779,7 +1781,7 @@ function AutomationTab({ initialFunnelId = null }: { initialFunnelId?: number | 
               <div className="grid grid-cols-3 gap-3">
                 {FUNNEL_TRIGGERS.filter(t => {
                   const catMap: Record<string, string> = {
-                    user_signup: "user_lifecycle", user_login: "user_lifecycle", forgot_password: "user_lifecycle", staff_added: "user_lifecycle", creator_joined: "user_lifecycle", creator_commission_earned: "user_lifecycle", creator_payout_paid: "user_lifecycle",
+                    user_signup: "user_lifecycle", user_login: "user_lifecycle", forgot_password: "user_lifecycle", staff_added: "user_lifecycle", creator_joined: "user_lifecycle", creator_commission_earned: "user_lifecycle", creator_payout_paid: "user_lifecycle", creator_kyc_submitted: "user_lifecycle",
                     new_purchase: "purchases", payment_failed: "purchases", coupon_used: "purchases",
                     course_enrolled: "courses", course_completed: "courses", lesson_completed: "courses",
                     tag_applied: "crm", list_added: "crm",

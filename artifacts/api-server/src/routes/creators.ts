@@ -1138,6 +1138,22 @@ router.patch("/kyc", requireCreator, async (req, res): Promise<void> => {
   } else {
     [updated] = await db.update(creatorsTable).set(updates).where(eq(creatorsTable.id, c.id)).returning();
   }
+
+  // Fire creator_kyc_submitted automation funnel — only on actual KYC document
+  // (re)submission, not on bank-only edits. Distinguishes first submission vs
+  // resubmission for downstream segmentation.
+  if (kycFieldsTouched && updated) {
+    const isResubmission = !!(c.panNumber || c.panName || c.panFrontUrl);
+    triggerFunnel("creator_kyc_submitted", updated.userId, {
+      name: updated.name,
+      email: updated.email,
+      pan_name: updated.panName ?? "",
+      pan_number: updated.panNumber ?? "",
+      is_resubmission: isResubmission ? "true" : "false",
+      submitted_at: new Date().toISOString(),
+    }).catch(e => console.error("[creator kyc submitted] triggerFunnel error:", e));
+  }
+
   res.json({ creator: updated });
 });
 
