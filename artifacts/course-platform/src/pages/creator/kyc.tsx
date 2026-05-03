@@ -339,21 +339,10 @@ function SubmittedDetails({ kyc, label, approved = false }: { kyc: KycData["kyc"
             <div className={`mt-1.5 mx-auto w-full max-w-[340px] aspect-[1.586/1] rounded-lg overflow-hidden border ${approved ? "border-green-400/40" : "border-border"} bg-gradient-to-br from-muted/40 to-muted/10 relative shadow-sm`}>
               <img src={kyc.panFrontUrl} alt="PAN" className="absolute inset-0 w-full h-full object-cover" />
               {approved && (
-                <>
-                  {/* Subtle green tint overlay */}
-                  <div className="absolute inset-0 bg-green-500/15 pointer-events-none" />
-                  {/* Verified badge — top-right */}
-                  <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/90 text-white text-[10px] font-semibold shadow-md backdrop-blur-sm">
-                    <CheckCircle2 className="w-3 h-3" />
-                    Verified
-                  </div>
-                  {/* Diagonal "VERIFIED" watermark */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <span className="text-green-300/40 text-3xl font-black tracking-[0.25em] -rotate-12 select-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
-                      VERIFIED
-                    </span>
-                  </div>
-                </>
+                <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/90 text-white text-[10px] font-semibold shadow-md backdrop-blur-sm">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Verified
+                </div>
               )}
             </div>
           </div>
