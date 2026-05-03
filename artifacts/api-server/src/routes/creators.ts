@@ -703,6 +703,17 @@ adminCreatorPayoutsRouter.patch("/:id", requirePermission("creators"), async (re
       message: `Your payout of ₹${parseFloat(updated.amount).toFixed(2)} has been transferred. Reference: ${paymentReference}`,
       type: "success",
     }).catch(() => {});
+    // Fire creator_payout_paid automation funnel
+    const [crUser] = await db.select({ name: usersTable.name, email: usersTable.email })
+      .from(usersTable).where(eq(usersTable.id, updated.userId)).limit(1);
+    triggerFunnel("creator_payout_paid", updated.userId, {
+      name: crUser?.name ?? "",
+      email: crUser?.email ?? "",
+      payout_amount: parseFloat(updated.amount).toFixed(2),
+      payment_method: updated.paymentMethod ?? "",
+      payment_reference: updated.paymentReference ?? "",
+      paid_at: (updated.paidAt ?? new Date()).toISOString(),
+    }).catch(e => console.error("[creator payout paid] triggerFunnel error:", e));
   } else if (status === "cancelled" || status === "failed") {
     // Unlink commissions so they roll into the next batch
     await db.update(creatorCommissionsTable)
