@@ -225,7 +225,7 @@ function KycSection({ kyc, onSaved }: { kyc: KycData["kyc"]; onSaved: () => void
         </div>
         {kyc.status === "rejected" && kyc.adminNote && (
           <div className="mb-4 p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
-            <p className="text-xs font-medium text-red-400 mb-1">Admin Note:</p>
+            <p className="text-xs font-medium text-red-400 mb-1">Reject Reason:</p>
             <p className="text-sm text-muted-foreground">{kyc.adminNote}</p>
           </div>
         )}
