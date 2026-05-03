@@ -136,15 +136,22 @@ export default function AdminCreatorsPage() {
         <StatCard icon={CheckCircle2} color="green" label="Lifetime Earned" value={fmt(stats.lifetimeEarned)} sub="All creators combined" />
       </div>
 
-      {/* ── Tab bar (affiliate-style pill nav) ── */}
-      <div className="flex flex-wrap items-center gap-1 border-b border-border">
-        <TabBtn active={tab === "all"} onClick={() => setTab("all")}>
-          All Creators {stats.total > 0 && <span className="opacity-70">({stats.total})</span>}
+      {/* ── Tab bar (affiliate-style icon pill nav inside a card) ── */}
+      <div className="bg-card border border-border rounded-xl p-1.5 flex items-center gap-1 overflow-x-auto">
+        <TabBtn active={tab === "all"} onClick={() => setTab("all")} icon={Users}>
+          All Creators {stats.total > 0 && <span className="opacity-80">({stats.total})</span>}
         </TabBtn>
-        <TabBtn active={tab === "kyc"} onClick={() => setTab("kyc")}>
-          KYC Review {stats.pendingKyc > 0 && <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-400/20 text-amber-400 text-[10px] font-semibold">{stats.pendingKyc}</span>}
+        <TabBtn active={tab === "kyc"} onClick={() => setTab("kyc")} icon={ShieldCheck}>
+          KYC Review
+          {stats.pendingKyc > 0 && (
+            <span className={`ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold ${
+              tab === "kyc" ? "bg-white/20 text-white" : "bg-amber-400/20 text-amber-400"
+            }`}>
+              {stats.pendingKyc}
+            </span>
+          )}
         </TabBtn>
-        <TabBtn active={tab === "payouts"} onClick={() => setTab("payouts")}>
+        <TabBtn active={tab === "payouts"} onClick={() => setTab("payouts")} icon={Wallet}>
           Payouts
         </TabBtn>
       </div>
@@ -183,18 +190,23 @@ function StatCard({
   );
 }
 
-/* ─────────────── Tab button ─────────────── */
-function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+/* ─────────────── Tab button (icon pill, fills primary when active) ─────────────── */
+function TabBtn({
+  active, onClick, icon: Icon, children,
+}: {
+  active: boolean; onClick: () => void; icon?: any; children: React.ReactNode;
+}) {
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-2 -mb-px border-b-2 text-sm transition-colors ${
+      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
         active
-          ? "border-primary text-foreground font-medium"
-          : "border-transparent text-muted-foreground hover:text-foreground"
+          ? "bg-primary text-primary-foreground shadow-sm"
+          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
       }`}
     >
-      {children}
+      {Icon && <Icon className="w-4 h-4" />}
+      <span className="flex items-center gap-1">{children}</span>
     </button>
   );
 }
