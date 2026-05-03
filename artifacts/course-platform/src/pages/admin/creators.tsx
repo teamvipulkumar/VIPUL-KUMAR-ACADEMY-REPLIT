@@ -111,15 +111,13 @@ function CopyField({ label, value, mono }: { label: string; value: string; mono?
     }
   };
   return (
-    <div className="flex items-center justify-between gap-2 py-1 border-b border-border/50 last:border-0">
-      <div className="min-w-0 flex-1">
-        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-        <div className={`text-xs font-medium text-foreground truncate ${mono ? "font-mono" : ""}`}>{value}</div>
-      </div>
+    <div className="flex items-center gap-2 py-1.5 border-b border-border/50 last:border-0">
+      <div className="text-[11px] text-muted-foreground w-[88px] flex-shrink-0">{label}</div>
+      <div className={`text-xs font-medium text-foreground truncate flex-1 text-right ${mono ? "font-mono" : ""}`}>{value}</div>
       <button
         type="button"
         onClick={onCopy}
-        className="flex-shrink-0 w-7 h-7 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        className="flex-shrink-0 w-6 h-6 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
         title={`Copy ${label}`}
       >
         {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
