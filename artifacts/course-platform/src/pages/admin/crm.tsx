@@ -1318,11 +1318,12 @@ function AutomationTab({ initialFunnelId = null }: { initialFunnelId?: number | 
 
   /* ── Create funnel ── */
   const createFunnel = async () => {
-    if (!newName.trim()) return;
+    const trig = FUNNEL_TRIGGERS.find(t => t.type === newTrigger);
+    const finalName = newName.trim() || trig?.label || "Untitled Funnel";
     setSaving(true);
     const res = await apiFetch("/api/admin/crm/funnels", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newName.trim(), triggerType: newTrigger }),
+      body: JSON.stringify({ name: finalName, triggerType: newTrigger }),
     }).then(r => r.json());
     setSaving(false);
     setShowCreate(false); setNewName(""); setNewTrigger("user_signup");
@@ -1779,9 +1780,13 @@ function AutomationTab({ initialFunnelId = null }: { initialFunnelId?: number | 
           </div>
           {/* Internal Label */}
           <div className="px-6 py-4 border-b border-border">
-            <Label className="text-sm font-medium mb-1.5 block">Internal Label</Label>
-            <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Internal Label"
-              className="bg-background border-border" onKeyDown={e => e.key === "Enter" && newName.trim() && createFunnel()} />
+            <Label className="text-sm font-medium mb-1.5 block">
+              Internal Label <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+            </Label>
+            <Input value={newName} onChange={e => setNewName(e.target.value)}
+              placeholder={(FUNNEL_TRIGGERS.find(t => t.type === newTrigger)?.label) ?? "Internal Label"}
+              className="bg-background border-border" onKeyDown={e => e.key === "Enter" && createFunnel()} />
+            <p className="text-[11px] text-muted-foreground mt-1.5">Leave blank to use the selected trigger name.</p>
           </div>
           {/* Body: sidebar + grid */}
           <div className="flex" style={{ minHeight: 360, maxHeight: "60vh" }}>
@@ -1838,7 +1843,7 @@ function AutomationTab({ initialFunnelId = null }: { initialFunnelId?: number | 
           {/* Footer */}
           <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
             <Button variant="outline" size="sm" onClick={() => { setShowCreate(false); setNewName(""); setNewTrigger("user_signup"); setNewTriggerCategory("all"); }}>Cancel</Button>
-            <Button size="sm" onClick={createFunnel} disabled={saving || !newName.trim()}>
+            <Button size="sm" onClick={createFunnel} disabled={saving}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Create Funnel
             </Button>
