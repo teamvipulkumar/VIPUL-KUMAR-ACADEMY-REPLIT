@@ -331,9 +331,7 @@ function AllCreatorsTab({ creators }: { creators: Creator[] | undefined }) {
                           Active
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-500/10 text-red-500 border border-red-500/40">
-                          Revoked
-                        </span>
+                        <Badge variant={statusVariant(c.status)} className="capitalize">{c.status}</Badge>
                       )}
                     </td>
                     <td className="py-2.5 px-3">
