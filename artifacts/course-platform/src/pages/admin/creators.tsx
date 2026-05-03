@@ -326,7 +326,13 @@ function AllCreatorsTab({ creators }: { creators: Creator[] | undefined }) {
                       <div className="text-xs text-muted-foreground">{c.email}</div>
                     </td>
                     <td className="py-2.5 px-3">
-                      <Badge variant={statusVariant(c.status)} className="capitalize">{c.status}</Badge>
+                      {c.status === "active" ? (
+                        <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/50">
+                          Active
+                        </span>
+                      ) : (
+                        <Badge variant={statusVariant(c.status)} className="capitalize">{c.status}</Badge>
+                      )}
                     </td>
                     <td className="py-2.5 px-3">
                       <Badge variant={statusVariant(c.kycStatus ?? "")} className="capitalize">
