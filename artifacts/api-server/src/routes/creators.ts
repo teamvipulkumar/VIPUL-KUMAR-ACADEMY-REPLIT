@@ -8,6 +8,7 @@ import {
 } from "@workspace/db";
 import { eq, and, or, desc, isNull, sql, inArray, gte, lte } from "drizzle-orm";
 import { requireAuth, requireAdmin, requireCreator, requirePermission, type JwtPayload } from "../middlewares/auth";
+import { triggerFunnel, getPublicBaseUrl } from "./crm";
 
 const router = Router();
 type AuthedRequest = Request & { user: JwtPayload };
@@ -427,6 +428,11 @@ adminCreatorsRouter.post("/", requirePermission("creators"), async (req, res): P
       .set({ status: "active", notes: notes ?? existing.notes })
       .where(eq(creatorsTable.id, existing.id))
       .returning();
+    const siteUrl = getPublicBaseUrl(req);
+    triggerFunnel("creator_joined", user.id, {
+      name: user.name, email: user.email, site_url: siteUrl,
+      creator_dashboard_url: `${siteUrl}/creator/dashboard`,
+    }).catch(e => console.error("[creator reactivated] triggerFunnel error:", e));
     res.json({ creator: restored, message: "Creator reactivated" });
     return;
   }
@@ -447,6 +453,12 @@ adminCreatorsRouter.post("/", requirePermission("creators"), async (req, res): P
     message: "An admin has granted you creator access. Sign in and visit /creator/dashboard to view your sales and complete your KYC + bank details.",
     type: "success",
   }).catch(() => {});
+
+  const siteUrl = getPublicBaseUrl(req);
+  triggerFunnel("creator_joined", user.id, {
+    name: user.name, email: user.email, site_url: siteUrl,
+    creator_dashboard_url: `${siteUrl}/creator/dashboard`,
+  }).catch(e => console.error("[creator added] triggerFunnel error:", e));
 
   res.status(201).json({ creator: created, message: "Creator added" });
 });

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useAdminBase } from "@/lib/auth-context";
-import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter, ShieldCheck, ShoppingCart, Flag, Minus, BookOpen, GraduationCap, UserCheck, Gift, XCircle, BookMarked, MousePointerClick, LogIn, KeyRound, MoreVertical, ArrowUpDown, Pencil, TrendingUp } from "lucide-react";
+import { Mail, Send, FileText, Users, BarChart2, Plus, Trash2, Edit2, Check, X, Info, RefreshCw, Eye, Zap, Server, TestTube, CheckCircle2, AlertCircle, Loader2, Wand2, List, UserPlus, RotateCcw, Search, ChevronLeft, Tag, GitBranch, Calendar, Clock, ChevronRight, Play, Pause, ArrowRight, Filter, ShieldCheck, ShoppingCart, Flag, Minus, BookOpen, GraduationCap, UserCheck, Gift, XCircle, BookMarked, MousePointerClick, LogIn, KeyRound, MoreVertical, ArrowUpDown, Pencil, TrendingUp, Sparkles } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1160,6 +1160,7 @@ const FUNNEL_TRIGGERS = [
   { type: "user_login",         label: "User Logs In",           icon: LogIn,              color: "text-sky-400",     bg: "bg-sky-500/10",     border: "border-sky-500/20",     desc: "Fires each time a user signs in" },
   { type: "forgot_password",    label: "Forgot Password",        icon: KeyRound,           color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20",   desc: "Fires when a user requests a password reset" },
   { type: "staff_added",        label: "Staff Member Added",     icon: ShieldCheck,        color: "text-indigo-400",  bg: "bg-indigo-500/10",  border: "border-indigo-500/20",  desc: "Fires when a new staff member is added to the platform" },
+  { type: "creator_joined",     label: "User Becomes Creator",   icon: Sparkles,           color: "text-fuchsia-400", bg: "bg-fuchsia-500/10", border: "border-fuchsia-500/20", desc: "Fires when an admin grants a user creator access" },
   /* ── Purchases & payments ── */
   { type: "new_purchase",       label: "Purchase Completed",     icon: ShoppingCart,       color: "text-green-400",   bg: "bg-green-500/10",   border: "border-green-500/20",   desc: "Fires when any course purchase succeeds" },
   { type: "payment_failed",     label: "Payment Failed",         icon: XCircle,            color: "text-red-400",     bg: "bg-red-500/10",     border: "border-red-500/20",     desc: "Fires when a payment attempt fails" },
@@ -1504,6 +1505,8 @@ function AutomationTab({ initialFunnelId = null }: { initialFunnelId?: number | 
                       <option value="user_signup">User Signs Up</option>
                       <option value="user_login">User Logs In</option>
                       <option value="forgot_password">Forgot Password</option>
+                      <option value="staff_added">Staff Member Added</option>
+                      <option value="creator_joined">User Becomes Creator</option>
                     </optgroup>
                     <optgroup label="Purchases &amp; Payments">
                       <option value="new_purchase">Purchase Completed</option>
@@ -1772,7 +1775,7 @@ function AutomationTab({ initialFunnelId = null }: { initialFunnelId?: number | 
               <div className="grid grid-cols-3 gap-3">
                 {FUNNEL_TRIGGERS.filter(t => {
                   const catMap: Record<string, string> = {
-                    user_signup: "user_lifecycle", user_login: "user_lifecycle", forgot_password: "user_lifecycle", staff_added: "user_lifecycle",
+                    user_signup: "user_lifecycle", user_login: "user_lifecycle", forgot_password: "user_lifecycle", staff_added: "user_lifecycle", creator_joined: "user_lifecycle",
                     new_purchase: "purchases", payment_failed: "purchases", coupon_used: "purchases",
                     course_enrolled: "courses", course_completed: "courses", lesson_completed: "courses",
                     tag_applied: "crm", list_added: "crm",
