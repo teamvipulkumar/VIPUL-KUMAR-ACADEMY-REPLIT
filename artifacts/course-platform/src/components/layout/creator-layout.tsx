@@ -34,10 +34,10 @@ function BrandBlock() {
       <BrandMark size={36} />
       <div className="leading-none min-w-0">
         <p className="font-bold text-sm text-foreground tracking-tight">
-          Creator <span className="bg-gradient-to-r from-violet-400 to-blue-400 bg-clip-text text-transparent">Studio</span>
+          Creator <span className="bg-gradient-to-r from-violet-400 to-blue-400 bg-clip-text text-transparent">Panel</span>
         </p>
         <p className="text-[9.5px] text-muted-foreground tracking-[0.14em] uppercase font-semibold mt-0.5">
-          EduPro · Partner Portal
+          VKA · Partner Portal
         </p>
       </div>
     </div>
