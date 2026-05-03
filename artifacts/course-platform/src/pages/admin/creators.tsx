@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   UserPlus, ChevronRight, ShieldOff, ShieldCheck, Sparkles, Search,
   Users, ShieldAlert, Wallet, CheckCircle2, PlayCircle, Eye, Loader2,
@@ -853,18 +854,35 @@ function PayoutsTab() {
                         <div className="text-xs text-muted-foreground">{p.creatorEmail}</div>
                       </td>
                       <td className="py-2.5 px-3 text-xs">
-                        {hasBank ? (
-                          <div className="space-y-0.5">
-                            <div className="font-medium text-foreground">{p.accountHolderName ?? p.creatorName}</div>
-                            <div className="font-mono">A/C {p.accountNumber}</div>
-                            <div className="text-muted-foreground">{p.bankName ?? "—"} · <span className="font-mono">{p.ifscCode}</span></div>
-                            {hasUpi && <div className="text-muted-foreground">UPI: <span className="font-mono">{p.upiId}</span></div>}
-                          </div>
-                        ) : hasUpi ? (
-                          <div className="space-y-0.5">
-                            <div className="font-medium text-foreground">{p.accountHolderName ?? p.creatorName}</div>
-                            <div className="text-muted-foreground">UPI: <span className="font-mono">{p.upiId}</span></div>
-                          </div>
+                        {hasBank || hasUpi ? (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5">
+                                <Wallet className="w-3 h-3" /> View Bank Details
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent align="start" className="w-72 p-3">
+                              <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-2">
+                                Send Payment To
+                              </div>
+                              <div className="space-y-1 text-xs">
+                                {hasBank ? (
+                                  <>
+                                    <div><span className="text-muted-foreground">Account Holder:</span> <span className="font-medium">{p.accountHolderName ?? p.creatorName}</span></div>
+                                    <div><span className="text-muted-foreground">Account No:</span> <span className="font-mono font-medium">{p.accountNumber}</span></div>
+                                    <div><span className="text-muted-foreground">IFSC:</span> <span className="font-mono font-medium">{p.ifscCode}</span></div>
+                                    {p.bankName && <div><span className="text-muted-foreground">Bank:</span> <span className="font-medium">{p.bankName}</span></div>}
+                                    {hasUpi && <div><span className="text-muted-foreground">UPI:</span> <span className="font-mono font-medium">{p.upiId}</span></div>}
+                                  </>
+                                ) : (
+                                  <>
+                                    <div><span className="text-muted-foreground">Account Holder:</span> <span className="font-medium">{p.accountHolderName ?? p.creatorName}</span></div>
+                                    <div><span className="text-muted-foreground">UPI:</span> <span className="font-mono font-medium">{p.upiId}</span></div>
+                                  </>
+                                )}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
                         ) : (
                           <span className="text-amber-400 text-[11px]">No bank details</span>
                         )}
