@@ -106,7 +106,6 @@ const navGroups: { label: string; items: { suffix: string; icon: typeof LayoutDa
     items: [
       { suffix: "/payment-gateways", icon: Landmark, label: "Payment Gateways" },
       { suffix: "/gst-invoicing", icon: FileText, label: "GST Invoicing" },
-      { suffix: "/creator-payouts", icon: Wallet, label: "Creator Payouts" },
     ],
   },
   {
