@@ -401,6 +401,7 @@ function KycReviewTab({ creators }: { creators: Creator[] }) {
   const [reviewId, setReviewId] = useState<number | null>(null);
   const [sub, setSub] = useState<"all" | "pending" | "approved" | "rejected">("all");
   const [search, setSearch] = useState("");
+  const [lightbox, setLightbox] = useState<{ url: string; title: string } | null>(null);
 
   /* Only show creators who have actually submitted KYC (kycStatus !== null) */
   const submitted = useMemo(
@@ -518,15 +519,17 @@ function KycReviewTab({ creators }: { creators: Creator[] }) {
                       <td className="py-3 px-4 font-mono text-xs">{c.panNumber ?? "—"}</td>
                       <td className="py-3 px-4">
                         {c.panFrontUrl ? (
-                          <a
-                            href={c.panFrontUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-block w-12 h-8 rounded border border-border overflow-hidden hover:opacity-80 bg-muted"
-                            title="Click to open full size"
+                          <button
+                            type="button"
+                            onClick={() => setLightbox({ url: c.panFrontUrl!, title: `${c.name} · PAN Card` })}
+                            className="group relative inline-block w-14 h-10 rounded border border-border overflow-hidden hover:border-primary hover:ring-2 hover:ring-primary/30 bg-muted transition-all"
+                            title="Click to preview"
                           >
                             <img src={c.panFrontUrl} alt="PAN" className="w-full h-full object-cover" />
-                          </a>
+                            <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Eye className="w-3.5 h-3.5 text-white" />
+                            </span>
+                          </button>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
@@ -553,6 +556,37 @@ function KycReviewTab({ creators }: { creators: Creator[] }) {
       {reviewId !== null && (
         <KycReviewDialog id={reviewId} onClose={() => setReviewId(null)} />
       )}
+
+      {/* In-page PAN photo lightbox */}
+      <Dialog open={!!lightbox} onOpenChange={(o) => !o && setLightbox(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{lightbox?.title ?? "PAN Card"}</DialogTitle>
+          </DialogHeader>
+          {lightbox && (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-border overflow-hidden bg-muted/30 flex items-center justify-center">
+                <img
+                  src={lightbox.url}
+                  alt="PAN card"
+                  className="max-h-[70vh] w-auto object-contain"
+                />
+              </div>
+              <div className="flex justify-between items-center">
+                <p className="text-[11px] text-muted-foreground truncate flex-1 mr-3">{lightbox.url}</p>
+                <a
+                  href={lightbox.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-primary hover:underline whitespace-nowrap"
+                >
+                  Open in new tab ↗
+                </a>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
