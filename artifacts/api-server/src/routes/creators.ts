@@ -592,6 +592,30 @@ adminCreatorsRouter.patch("/:id", requirePermission("creators"), async (req, res
   if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
   const [updated] = await db.update(creatorsTable).set(updates).where(eq(creatorsTable.id, id)).returning();
   if (!updated) { res.status(404).json({ error: "Creator not found" }); return; }
+
+  // Fire KYC decision automation funnels — ONLY when status actually transitions
+  // (admin saving an unchanged 'approved' row again must not re-fire).
+  if (kycStatus !== undefined && kycStatus !== current.kycStatus) {
+    if (kycStatus === "approved") {
+      triggerFunnel("creator_kyc_approved", updated.userId, {
+        name: updated.name,
+        email: updated.email,
+        pan_name: updated.panName ?? "",
+        pan_number: updated.panNumber ?? "",
+        reviewed_at: new Date().toISOString(),
+      }).catch(e => console.error("[creator kyc approved] triggerFunnel error:", e));
+    } else if (kycStatus === "rejected") {
+      triggerFunnel("creator_kyc_rejected", updated.userId, {
+        name: updated.name,
+        email: updated.email,
+        pan_name: updated.panName ?? "",
+        pan_number: updated.panNumber ?? "",
+        rejection_reason: updated.kycAdminNote ?? "",
+        reviewed_at: new Date().toISOString(),
+      }).catch(e => console.error("[creator kyc rejected] triggerFunnel error:", e));
+    }
+  }
+
   res.json({ creator: updated });
 });
 
