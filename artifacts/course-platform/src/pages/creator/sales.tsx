@@ -118,7 +118,7 @@ export default function CreatorSalesPage() {
                     <th className="py-3 px-4 font-medium text-right">Your sale share</th>
                     <th className="py-3 px-4 font-medium text-right">Rate</th>
                     <th className="py-3 px-4 font-medium text-right">Commission</th>
-                    <th className="py-3 px-4 font-medium">Status</th>
+                    <th className="py-3 px-4 font-medium">Type</th>
                     <th className="py-3 px-4 font-medium">Payout Status</th>
                   </tr>
                 </thead>
@@ -142,7 +142,7 @@ export default function CreatorSalesPage() {
                         <span className="inline-block px-1.5 py-0.5 rounded bg-muted/60 text-[10px] font-mono">{s.commissionPercent}%</span>
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-foreground">{fmt(s.commissionAmount)}</td>
-                      <td className="py-3 px-4"><SaleStatusPill status={s.status} /></td>
+                      <td className="py-3 px-4"><SaleTypePill status={s.status} /></td>
                       <td className="py-3 px-4"><PayoutStatusPill status={s.status} /></td>
                     </tr>
                   ))}
@@ -230,16 +230,17 @@ function TabBtn({
   );
 }
 
-function SaleStatusPill({ status }: { status: string }) {
-  const map: Record<string, { cls: string; label: string }> = {
-    earned:    { cls: "bg-green-500/10 text-green-400 border-green-500/30", label: "Earned" },
-    paid:      { cls: "bg-green-500/10 text-green-400 border-green-500/30", label: "Paid" },
-    cancelled: { cls: "bg-red-500/10   text-red-400   border-red-500/30",   label: "Cancelled" },
-  };
-  const m = map[status] ?? { cls: "bg-muted text-muted-foreground border-border", label: status };
+function SaleTypePill({ status }: { status: string }) {
+  // Type column always reflects the commission's nature, not its payout state.
+  // Refunded sales show "Cancelled"; everything else is an "Earned" commission.
+  const isCancelled = status === "cancelled";
+  const cls = isCancelled
+    ? "bg-red-500/10 text-red-400 border-red-500/30"
+    : "bg-green-500/10 text-green-400 border-green-500/30";
+  const label = isCancelled ? "Cancelled" : "Earned";
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${m.cls}`}>
-      {m.label}
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cls}`}>
+      {label}
     </span>
   );
 }
