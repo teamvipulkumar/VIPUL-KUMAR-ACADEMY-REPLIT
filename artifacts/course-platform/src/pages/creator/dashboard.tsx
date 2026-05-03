@@ -5,7 +5,7 @@ import {
   ArrowUpRight, AlertTriangle, ShieldCheck, BookOpen, Calendar, IndianRupee,
 } from "lucide-react";
 import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  ComposedChart, Area, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -166,11 +166,15 @@ export default function CreatorDashboardPage() {
           </div>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chart} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
+              <ComposedChart data={chart} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="creatorEarn" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
                     <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="creatorEarnBar" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%"   stopColor="#34d399" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity={0.85} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
@@ -189,12 +193,22 @@ export default function CreatorDashboardPage() {
                   width={50}
                 />
                 <Tooltip
+                  cursor={{ fill: "hsl(var(--muted))", opacity: 0.25 }}
                   contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
                   labelFormatter={(d: string) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                  formatter={(v: number, name: string) => name === "amount" ? [fmt(v), "Earned"] : [v, "Sales"]}
+                  formatter={(v: number, name: string) => {
+                    if (name === "Trend") return [fmt(v), "Trend"];
+                    if (name === "Earned") return [fmt(v), "Earned"];
+                    return [v, name];
+                  }}
                 />
-                <Area type="monotone" dataKey="amount" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#creatorEarn)" />
-              </AreaChart>
+                <Legend
+                  iconType="circle"
+                  wrapperStyle={{ fontSize: 11, paddingTop: 4 }}
+                />
+                <Area type="monotone" dataKey="amount" name="Trend" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#creatorEarn)" />
+                <Bar dataKey="amount" name="Earned" fill="url(#creatorEarnBar)" radius={[3, 3, 0, 0]} maxBarSize={14} />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
