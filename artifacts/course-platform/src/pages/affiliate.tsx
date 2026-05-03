@@ -1337,7 +1337,7 @@ function KycTab({ kyc, onSaved }: { kyc: any; onSaved: (k: any) => void }) {
         </div>
         {kyc?.adminNote && (
           <div className="mb-4 p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
-            <p className="text-xs font-medium text-red-400 mb-1">Admin Note:</p>
+            <p className="text-xs font-medium text-red-400 mb-1">Rejection Reason:</p>
             <p className="text-sm text-muted-foreground">{kyc.adminNote}</p>
           </div>
         )}
