@@ -119,6 +119,7 @@ export default function CreatorSalesPage() {
                     <th className="py-3 px-4 font-medium text-right">Rate</th>
                     <th className="py-3 px-4 font-medium text-right">Commission</th>
                     <th className="py-3 px-4 font-medium">Status</th>
+                    <th className="py-3 px-4 font-medium">Payout Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -142,6 +143,7 @@ export default function CreatorSalesPage() {
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-foreground">{fmt(s.commissionAmount)}</td>
                       <td className="py-3 px-4"><SaleStatusPill status={s.status} /></td>
+                      <td className="py-3 px-4"><PayoutStatusPill status={s.status} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -238,6 +240,25 @@ function SaleStatusPill({ status }: { status: string }) {
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${m.cls}`}>
       {m.label}
+    </span>
+  );
+}
+
+function PayoutStatusPill({ status }: { status: string }) {
+  if (status === "cancelled") {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-muted text-muted-foreground border-border">
+        —
+      </span>
+    );
+  }
+  const isPaid = status === "paid";
+  const cls = isPaid
+    ? "bg-green-500/10 text-green-400 border-green-500/30"
+    : "bg-amber-500/10 text-amber-400 border-amber-500/30";
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cls}`}>
+      {isPaid ? "Paid" : "Pending"}
     </span>
   );
 }
