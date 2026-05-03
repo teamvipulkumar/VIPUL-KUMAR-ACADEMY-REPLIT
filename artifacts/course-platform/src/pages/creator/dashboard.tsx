@@ -412,14 +412,15 @@ function StatCard({
 }
 
 function SaleStatusPill({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    earned:    "bg-amber-500/10 text-amber-400 border-amber-500/30",
-    paid:      "bg-green-500/10 text-green-400 border-green-500/30",
-    cancelled: "bg-red-500/10   text-red-400   border-red-500/30",
+  const map: Record<string, { cls: string; label: string }> = {
+    earned:    { cls: "bg-green-500/10 text-green-400 border-green-500/30", label: "Earned" },
+    paid:      { cls: "bg-green-500/10 text-green-400 border-green-500/30", label: "Paid" },
+    cancelled: { cls: "bg-red-500/10   text-red-400   border-red-500/30",   label: "Cancelled" },
   };
+  const m = map[status] ?? { cls: "bg-muted text-muted-foreground border-border", label: status };
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border capitalize ${styles[status] ?? "bg-muted text-muted-foreground border-border"}`}>
-      {status}
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${m.cls}`}>
+      {m.label}
     </span>
   );
 }
