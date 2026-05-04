@@ -172,9 +172,7 @@ export function Navbar() {
   const hasAdminAccess = isAdmin || isStaff;
   // Creators get a dedicated "Creator" nav entry pointing at /creator
   // so they don't have to type the URL manually after logging in.
-  // Admins who happen to also be creators don't see this — they
-  // already have the Admin entry which exposes everything.
-  const showCreatorNav = isCreator && !isAdmin;
+  const showCreatorNav = isCreator === true;
   // Staff users see "Staff Panel" pointing at `/staff`; full admins see
   // "Admin" pointing at `/admin`. Same component renders for both URL
   // prefixes — only the label/href change so a team member's URL bar
