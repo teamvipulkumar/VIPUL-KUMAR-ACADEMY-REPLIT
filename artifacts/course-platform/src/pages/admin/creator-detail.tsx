@@ -9,7 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft } from "lucide-react";
+import {
+  ArrowLeft, User, Mail, Calendar, IndianRupee, BookOpen,
+  TrendingUp, Wallet, CreditCard, FileCheck, Building2,
+  ShieldCheck, ShieldX, Clock, StickyNote, ExternalLink,
+  CheckCircle2, XCircle, AlertCircle, Banknote
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminBase } from "@/lib/auth-context";
 
@@ -46,6 +51,22 @@ async function apiFetch(path: string, options?: RequestInit) {
 function fmt(n: number) {
   return `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 }
+
+function getInitials(name: string) {
+  return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+}
+
+const statusConfig: Record<string, { color: string; icon: typeof CheckCircle2; label: string }> = {
+  active: { color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/30", icon: CheckCircle2, label: "Active" },
+  revoked: { color: "text-red-400 bg-red-400/10 border-red-400/30", icon: XCircle, label: "Revoked" },
+  suspended: { color: "text-amber-400 bg-amber-400/10 border-amber-400/30", icon: AlertCircle, label: "Suspended" },
+};
+
+const kycStatusConfig: Record<string, { color: string; label: string }> = {
+  pending: { color: "text-amber-400 bg-amber-400/10 border-amber-400/30", label: "Pending Review" },
+  approved: { color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/30", label: "Approved" },
+  rejected: { color: "text-red-400 bg-red-400/10 border-red-400/30", label: "Rejected" },
+};
 
 export default function AdminCreatorDetailPage() {
   const [, params] = useRoute("/admin/creators/:id");
@@ -87,224 +108,415 @@ export default function AdminCreatorDetailPage() {
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  if (isLoading || !data) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
+  if (isLoading || !data) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading creator profile…</p>
+        </div>
+      </div>
+    );
+  }
 
   const c = data.creator;
+  const sc = statusConfig[c.status] || statusConfig.active;
+  const StatusIcon = sc.icon;
+
+  const totalEarnings = data.commissions.reduce((s, co) => s + (co.status !== "cancelled" ? co.commissionAmount : 0), 0);
+  const pendingEarnings = data.commissions.reduce((s, co) => s + (co.status === "pending" ? co.commissionAmount : 0), 0);
+  const paidEarnings = data.payouts.reduce((s, p) => s + (p.status === "paid" ? p.amount : 0), 0);
+  const totalSales = data.courses.reduce((s, co) => s + co.salesCount, 0);
+
+  const hasBankDetails = !!(c.bank.accountNumber || c.bank.upiId);
+  const kycDone = c.kyc.status === "approved";
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-3">
-          <Link href={`${base}/creators`}>
-            <Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold">{c.name}</h1>
-            <p className="text-xs text-muted-foreground">{c.email} · joined {new Date(c.createdAt).toLocaleDateString("en-IN")}</p>
+      {/* Back Button */}
+      <Link href={`${base}/creators`}>
+        <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground -ml-2">
+          <ArrowLeft className="w-4 h-4" /> Back to Creators
+        </Button>
+      </Link>
+
+      {/* Profile Header Card */}
+      <Card className="overflow-hidden">
+        <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500" />
+        <CardContent className="p-5 md:p-6">
+          <div className="flex flex-col md:flex-row gap-5">
+            {/* Avatar + Info */}
+            <div className="flex items-start gap-4 flex-1 min-w-0">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500 to-blue-600 flex items-center justify-center text-white text-lg font-bold shrink-0 shadow-lg">
+                {getInitials(c.name)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h1 className="text-xl font-bold truncate">{c.name}</h1>
+                  <Badge className={`text-[11px] gap-1 border ${sc.color}`}>
+                    <StatusIcon className="w-3 h-3" />{sc.label}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-4 mt-1.5 text-sm text-muted-foreground flex-wrap">
+                  <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" />{c.email}</span>
+                  <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />Joined {new Date(c.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+                  <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" />ID #{c.id}</span>
+                </div>
+                {/* Quick status pills */}
+                <div className="flex items-center gap-2 mt-3">
+                  <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${kycDone ? "text-emerald-400 bg-emerald-400/10 border-emerald-400/30" : "text-amber-400 bg-amber-400/10 border-amber-400/30"}`}>
+                    <FileCheck className="w-3 h-3" />KYC {kycDone ? "Verified" : c.kyc.status || "Not Started"}
+                  </span>
+                  <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${hasBankDetails ? "text-emerald-400 bg-emerald-400/10 border-emerald-400/30" : "text-zinc-400 bg-zinc-400/10 border-zinc-400/30"}`}>
+                    <Building2 className="w-3 h-3" />Bank {hasBankDetails ? "Added" : "Missing"}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        <Badge variant={c.status === "active" ? "default" : "destructive"}>{c.status}</Badge>
+        </CardContent>
+      </Card>
+
+      {/* Stats Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: "Total Earnings", value: fmt(totalEarnings), icon: IndianRupee, color: "text-emerald-400" },
+          { label: "Pending", value: fmt(pendingEarnings), icon: Clock, color: "text-amber-400" },
+          { label: "Paid Out", value: fmt(paidEarnings), icon: Wallet, color: "text-blue-400" },
+          { label: "Total Sales", value: totalSales.toString(), icon: TrendingUp, color: "text-purple-400" },
+        ].map(s => (
+          <Card key={s.label}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-wide">{s.label}</p>
+                  <p className="text-lg font-bold mt-1">{s.value}</p>
+                </div>
+                <div className={`w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center ${s.color}`}>
+                  <s.icon className="w-4.5 h-4.5" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <Tabs defaultValue="overview">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="kyc">KYC & Bank</TabsTrigger>
-          <TabsTrigger value="courses">Courses ({data.courses.length})</TabsTrigger>
-          <TabsTrigger value="commissions">Commissions ({data.commissions.length})</TabsTrigger>
-          <TabsTrigger value="payouts">Payouts ({data.payouts.length})</TabsTrigger>
+      {/* Tabs */}
+      <Tabs defaultValue="kyc" className="space-y-4">
+        <TabsList className="w-full justify-start overflow-x-auto">
+          <TabsTrigger value="kyc" className="gap-1.5"><FileCheck className="w-3.5 h-3.5" />KYC & Bank</TabsTrigger>
+          <TabsTrigger value="courses" className="gap-1.5"><BookOpen className="w-3.5 h-3.5" />Courses <span className="text-[10px] ml-0.5 opacity-60">({data.courses.length})</span></TabsTrigger>
+          <TabsTrigger value="commissions" className="gap-1.5"><IndianRupee className="w-3.5 h-3.5" />Commissions <span className="text-[10px] ml-0.5 opacity-60">({data.commissions.length})</span></TabsTrigger>
+          <TabsTrigger value="payouts" className="gap-1.5"><Banknote className="w-3.5 h-3.5" />Payouts <span className="text-[10px] ml-0.5 opacity-60">({data.payouts.length})</span></TabsTrigger>
+          <TabsTrigger value="notes" className="gap-1.5"><StickyNote className="w-3.5 h-3.5" />Notes</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-4">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Internal Notes</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} />
-              <Button size="sm" onClick={() => patchMut.mutate({ notes })} disabled={patchMut.isPending}>Save Notes</Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
+        {/* KYC & Bank Tab */}
         <TabsContent value="kyc" className="space-y-4">
-          <Card>
-            <CardHeader><CardTitle className="text-base">KYC Review</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                <div><b>Name (as on PAN):</b> {c.kyc.panName || "—"}</div>
-                <div><b>PAN Number:</b> {c.kyc.panNumber || "—"}</div>
-                <div><b>Reviewed:</b> {c.kyc.reviewedAt ? new Date(c.kyc.reviewedAt).toLocaleString("en-IN") : "Not reviewed"}</div>
-                <div><b>Current Status:</b> {c.kyc.status || "—"}</div>
-                <div className="md:col-span-2">
-                  <b>PAN Card (front):</b>
-                  {c.kyc.panFrontUrl ? (
-                    <div className="mt-2">
-                      <a href={c.kyc.panFrontUrl} target="_blank" rel="noreferrer" className="inline-block border rounded-md overflow-hidden hover:opacity-90">
-                        <img src={c.kyc.panFrontUrl} alt="PAN card front" className="max-h-64 max-w-full object-contain bg-muted" />
-                      </a>
-                      <div className="text-[11px] text-muted-foreground mt-1">Click image to open full size in new tab</div>
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground"> — not uploaded</span>
-                  )}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* KYC Review */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-primary" />KYC Verification</CardTitle>
+                  {c.kyc.status && (() => {
+                    const ks = kycStatusConfig[c.kyc.status] || kycStatusConfig.pending;
+                    return <Badge className={`text-[10px] border ${ks.color}`}>{ks.label}</Badge>;
+                  })()}
                 </div>
-                {(c.kyc.idProofUrl || c.kyc.addressProofUrl) && (
-                  <div className="md:col-span-2 text-xs text-muted-foreground border-t pt-2">
-                    Legacy: {c.kyc.idProofUrl && <a href={c.kyc.idProofUrl} target="_blank" rel="noreferrer" className="text-primary underline mr-3">ID Proof</a>}
-                    {c.kyc.addressProofUrl && <a href={c.kyc.addressProofUrl} target="_blank" rel="noreferrer" className="text-primary underline">Address Proof</a>}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Name (PAN)</p>
+                    <p className="text-sm font-medium">{c.kyc.panName || "—"}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[11px] text-muted-foreground uppercase tracking-wide">PAN Number</p>
+                    <p className="text-sm font-mono font-medium">{c.kyc.panNumber || "—"}</p>
+                  </div>
+                </div>
+
+                {c.kyc.panFrontUrl && (
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] text-muted-foreground uppercase tracking-wide">PAN Card Image</p>
+                    <a href={c.kyc.panFrontUrl} target="_blank" rel="noreferrer" className="group relative inline-block rounded-lg overflow-hidden border hover:border-primary/50 transition-colors">
+                      <img src={c.kyc.panFrontUrl} alt="PAN card front" className="max-h-48 max-w-full object-contain bg-muted" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <ExternalLink className="w-5 h-5 text-white drop-shadow-lg" />
+                      </div>
+                    </a>
                   </div>
                 )}
-              </div>
-              <div className="border-t pt-3 space-y-3">
-                <div>
-                  <Label>Set Status</Label>
-                  <Select value={kycStatus || "pending"} onValueChange={setKycStatus}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending Review</SelectItem>
-                      <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>
-                    Admin Note {kycStatus === "rejected" && <span className="text-destructive">*</span>}
-                    <span className="text-xs text-muted-foreground font-normal ml-1">
-                      {kycStatus === "rejected"
-                        ? "(required — visible to creator so they know what to fix)"
-                        : "(optional)"}
-                    </span>
-                  </Label>
-                  <Textarea
-                    value={kycNote}
-                    onChange={e => setKycNote(e.target.value)}
-                    rows={3}
-                    placeholder={kycStatus === "rejected" ? "e.g. PAN image is blurry, please re-upload a clearer photo." : ""}
-                  />
-                  {kycStatus === "rejected" && kycNote.trim().length < 5 && (
-                    <p className="text-[11px] text-destructive mt-1">Please write at least 5 characters explaining the rejection reason.</p>
-                  )}
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    if (kycStatus === "rejected" && kycNote.trim().length < 5) {
-                      toast({ title: "Reason required", description: "Add a rejection reason of at least 5 characters.", variant: "destructive" });
-                      return;
-                    }
-                    patchMut.mutate({ kycStatus, kycAdminNote: kycNote });
-                  }}
-                  disabled={patchMut.isPending || (kycStatus === "rejected" && kycNote.trim().length < 5)}
-                  variant={kycStatus === "rejected" ? "destructive" : "default"}
-                  data-testid="button-update-kyc"
-                >
-                  {kycStatus === "approved" ? "Approve KYC" : kycStatus === "rejected" ? "Reject KYC" : "Update KYC"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader><CardTitle className="text-base">Bank Details (read-only)</CardTitle></CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                <div><Label className="text-xs">Holder</Label><Input value={c.bank.accountHolderName ?? "—"} readOnly /></div>
-                <div><Label className="text-xs">Account No.</Label><Input value={c.bank.accountNumber ?? "—"} readOnly /></div>
-                <div><Label className="text-xs">IFSC</Label><Input value={c.bank.ifscCode ?? "—"} readOnly /></div>
-                <div><Label className="text-xs">Bank</Label><Input value={c.bank.bankName ?? "—"} readOnly /></div>
-                <div className="md:col-span-2"><Label className="text-xs">UPI</Label><Input value={c.bank.upiId ?? "—"} readOnly /></div>
-              </div>
-            </CardContent>
-          </Card>
+                {!c.kyc.panFrontUrl && !c.kyc.panName && !c.kyc.panNumber && (
+                  <div className="py-6 flex flex-col items-center text-muted-foreground">
+                    <FileCheck className="w-8 h-8 mb-2 opacity-30" />
+                    <p className="text-sm">KYC not submitted yet</p>
+                  </div>
+                )}
+
+                {(c.kyc.idProofUrl || c.kyc.addressProofUrl) && (
+                  <div className="text-xs text-muted-foreground border-t pt-3 flex items-center gap-3">
+                    <span className="font-medium">Legacy docs:</span>
+                    {c.kyc.idProofUrl && <a href={c.kyc.idProofUrl} target="_blank" rel="noreferrer" className="text-primary underline hover:no-underline">ID Proof</a>}
+                    {c.kyc.addressProofUrl && <a href={c.kyc.addressProofUrl} target="_blank" rel="noreferrer" className="text-primary underline hover:no-underline">Address Proof</a>}
+                  </div>
+                )}
+
+                {c.kyc.reviewedAt && (
+                  <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                    <Clock className="w-3 h-3" />Last reviewed: {new Date(c.kyc.reviewedAt).toLocaleString("en-IN")}
+                  </p>
+                )}
+
+                {/* Admin action */}
+                <div className="border-t pt-4 space-y-3">
+                  <div className="grid grid-cols-1 gap-3">
+                    <div>
+                      <Label className="text-xs">Update Status</Label>
+                      <Select value={kycStatus || "pending"} onValueChange={setKycStatus}>
+                        <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending Review</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">
+                        Admin Note {kycStatus === "rejected" && <span className="text-destructive">*</span>}
+                        <span className="text-muted-foreground font-normal ml-1">
+                          {kycStatus === "rejected" ? "(required — visible to creator)" : "(optional)"}
+                        </span>
+                      </Label>
+                      <Textarea
+                        value={kycNote}
+                        onChange={e => setKycNote(e.target.value)}
+                        rows={2}
+                        className="mt-1"
+                        placeholder={kycStatus === "rejected" ? "e.g. PAN image is blurry, please re-upload." : ""}
+                      />
+                      {kycStatus === "rejected" && kycNote.trim().length < 5 && (
+                        <p className="text-[11px] text-destructive mt-1">Min. 5 characters required for rejection reason.</p>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      if (kycStatus === "rejected" && kycNote.trim().length < 5) {
+                        toast({ title: "Reason required", description: "Add a rejection reason of at least 5 characters.", variant: "destructive" });
+                        return;
+                      }
+                      patchMut.mutate({ kycStatus, kycAdminNote: kycNote });
+                    }}
+                    disabled={patchMut.isPending || (kycStatus === "rejected" && kycNote.trim().length < 5)}
+                    variant={kycStatus === "rejected" ? "destructive" : kycStatus === "approved" ? "default" : "secondary"}
+                    data-testid="button-update-kyc"
+                  >
+                    {kycStatus === "approved" ? (
+                      <><ShieldCheck className="w-3.5 h-3.5 mr-1.5" />Approve KYC</>
+                    ) : kycStatus === "rejected" ? (
+                      <><ShieldX className="w-3.5 h-3.5 mr-1.5" />Reject KYC</>
+                    ) : "Update KYC"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Bank Details */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2"><Building2 className="w-4 h-4 text-primary" />Bank Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {hasBankDetails ? (
+                  <div className="space-y-4">
+                    {[
+                      { label: "Account Holder", value: c.bank.accountHolderName },
+                      { label: "Account Number", value: c.bank.accountNumber, mono: true },
+                      { label: "IFSC Code", value: c.bank.ifscCode, mono: true },
+                      { label: "Bank Name", value: c.bank.bankName },
+                      { label: "UPI ID", value: c.bank.upiId, mono: true },
+                    ].filter(f => f.value).map(f => (
+                      <div key={f.label} className="flex items-center justify-between py-2 border-b last:border-0">
+                        <span className="text-xs text-muted-foreground">{f.label}</span>
+                        <span className={`text-sm font-medium ${f.mono ? "font-mono" : ""}`}>{f.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-10 flex flex-col items-center text-muted-foreground">
+                    <Building2 className="w-8 h-8 mb-2 opacity-30" />
+                    <p className="text-sm">No bank details added yet</p>
+                    <p className="text-[11px] mt-1">Creator needs to add bank info from their dashboard</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
+        {/* Courses Tab */}
         <TabsContent value="courses">
           <Card>
-            <CardContent className="pt-6">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-xs text-muted-foreground uppercase">
-                    <th className="py-2 px-2">Course</th>
-                    <th className="py-2 px-2 text-right">Price</th>
-                    <th className="py-2 px-2 text-right">Sales</th>
-                    <th className="py-2 px-2 text-right">Earnings</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.courses.length === 0 ? (
-                    <tr><td colSpan={4} className="py-6 text-center text-muted-foreground">No courses assigned.</td></tr>
-                  ) : data.courses.map(co => (
-                    <tr key={co.id} className="border-b last:border-0">
-                      <td className="py-2 px-2">{co.title}</td>
-                      <td className="py-2 px-2 text-right">{fmt(co.price)}</td>
-                      <td className="py-2 px-2 text-right">{co.salesCount}</td>
-                      <td className="py-2 px-2 text-right font-medium">{fmt(co.totalEarnings)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <CardContent className="p-0">
+              {data.courses.length === 0 ? (
+                <div className="py-12 flex flex-col items-center text-muted-foreground">
+                  <BookOpen className="w-8 h-8 mb-2 opacity-30" />
+                  <p className="text-sm">No courses assigned</p>
+                  <p className="text-[11px] mt-1">Assign courses to this creator from the Courses page</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/30">
+                        <th className="py-3 px-4 text-left text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Course</th>
+                        <th className="py-3 px-4 text-right text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Price</th>
+                        <th className="py-3 px-4 text-right text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Sales</th>
+                        <th className="py-3 px-4 text-right text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Earnings</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.courses.map(co => (
+                        <tr key={co.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                          <td className="py-3 px-4 font-medium">{co.title}</td>
+                          <td className="py-3 px-4 text-right text-muted-foreground">{fmt(co.price)}</td>
+                          <td className="py-3 px-4 text-right">
+                            <span className="inline-flex items-center gap-1">{co.salesCount}<TrendingUp className="w-3 h-3 text-muted-foreground" /></span>
+                          </td>
+                          <td className="py-3 px-4 text-right font-semibold text-emerald-400">{fmt(co.totalEarnings)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    {data.courses.length > 1 && (
+                      <tfoot>
+                        <tr className="bg-muted/30 font-medium">
+                          <td className="py-3 px-4">Total</td>
+                          <td className="py-3 px-4 text-right" />
+                          <td className="py-3 px-4 text-right">{totalSales}</td>
+                          <td className="py-3 px-4 text-right text-emerald-400">{fmt(totalEarnings)}</td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* Commissions Tab */}
         <TabsContent value="commissions">
           <Card>
-            <CardContent className="pt-6 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-xs text-muted-foreground uppercase">
-                    <th className="py-2 px-2">Date</th>
-                    <th className="py-2 px-2">Source</th>
-                    <th className="py-2 px-2 text-right">Sale share</th>
-                    <th className="py-2 px-2 text-right">Commission</th>
-                    <th className="py-2 px-2">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.commissions.length === 0 ? (
-                    <tr><td colSpan={5} className="py-6 text-center text-muted-foreground">No commissions yet.</td></tr>
-                  ) : data.commissions.slice(0, 100).map(co => (
-                    <tr key={co.id} className="border-b last:border-0">
-                      <td className="py-2 px-2 text-xs">{new Date(co.createdAt).toLocaleDateString("en-IN")}</td>
-                      <td className="py-2 px-2">{co.courseTitle ?? co.bundleName ?? "—"}</td>
-                      <td className="py-2 px-2 text-right">{fmt(co.saleAmount)}</td>
-                      <td className="py-2 px-2 text-right font-medium">{fmt(co.commissionAmount)}</td>
-                      <td className="py-2 px-2"><Badge variant={co.status === "paid" ? "default" : co.status === "cancelled" ? "destructive" : "secondary"}>{co.status}</Badge></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <CardContent className="p-0">
+              {data.commissions.length === 0 ? (
+                <div className="py-12 flex flex-col items-center text-muted-foreground">
+                  <IndianRupee className="w-8 h-8 mb-2 opacity-30" />
+                  <p className="text-sm">No commissions recorded yet</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/30">
+                        <th className="py-3 px-4 text-left text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Date</th>
+                        <th className="py-3 px-4 text-left text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Source</th>
+                        <th className="py-3 px-4 text-right text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Sale Amount</th>
+                        <th className="py-3 px-4 text-right text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Commission</th>
+                        <th className="py-3 px-4 text-center text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.commissions.slice(0, 100).map(co => (
+                        <tr key={co.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                          <td className="py-3 px-4 text-xs text-muted-foreground">{new Date(co.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</td>
+                          <td className="py-3 px-4 font-medium">{co.courseTitle ?? co.bundleName ?? "—"}</td>
+                          <td className="py-3 px-4 text-right text-muted-foreground">{fmt(co.saleAmount)}</td>
+                          <td className="py-3 px-4 text-right font-semibold">{fmt(co.commissionAmount)}</td>
+                          <td className="py-3 px-4 text-center">
+                            <Badge variant="outline" className={`text-[10px] ${co.status === "paid" ? "text-emerald-400 border-emerald-400/30" : co.status === "cancelled" ? "text-red-400 border-red-400/30" : "text-amber-400 border-amber-400/30"}`}>
+                              {co.status}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* Payouts Tab */}
         <TabsContent value="payouts">
           <Card>
-            <CardContent className="pt-6 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-xs text-muted-foreground uppercase">
-                    <th className="py-2 px-2">Released</th>
-                    <th className="py-2 px-2 text-right">Amount</th>
-                    <th className="py-2 px-2">Status</th>
-                    <th className="py-2 px-2">Paid At</th>
-                    <th className="py-2 px-2">Reference</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.payouts.length === 0 ? (
-                    <tr><td colSpan={5} className="py-6 text-center text-muted-foreground">No payouts yet.</td></tr>
-                  ) : data.payouts.map(p => (
-                    <tr key={p.id} className="border-b last:border-0">
-                      <td className="py-2 px-2 text-xs">{new Date(p.createdAt).toLocaleDateString("en-IN")}</td>
-                      <td className="py-2 px-2 text-right font-medium">{fmt(p.amount)}</td>
-                      <td className="py-2 px-2"><Badge variant={p.status === "paid" ? "default" : p.status === "failed" ? "destructive" : "secondary"}>{p.status}</Badge></td>
-                      <td className="py-2 px-2 text-xs">{p.paidAt ? new Date(p.paidAt).toLocaleDateString("en-IN") : "—"}</td>
-                      <td className="py-2 px-2 text-xs font-mono">{p.paymentReference ?? "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <CardContent className="p-0">
+              {data.payouts.length === 0 ? (
+                <div className="py-12 flex flex-col items-center text-muted-foreground">
+                  <CreditCard className="w-8 h-8 mb-2 opacity-30" />
+                  <p className="text-sm">No payouts processed yet</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/30">
+                        <th className="py-3 px-4 text-left text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Released</th>
+                        <th className="py-3 px-4 text-right text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Amount</th>
+                        <th className="py-3 px-4 text-center text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Status</th>
+                        <th className="py-3 px-4 text-left text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Paid At</th>
+                        <th className="py-3 px-4 text-left text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Reference</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.payouts.map(p => (
+                        <tr key={p.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                          <td className="py-3 px-4 text-xs text-muted-foreground">{new Date(p.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</td>
+                          <td className="py-3 px-4 text-right font-semibold">{fmt(p.amount)}</td>
+                          <td className="py-3 px-4 text-center">
+                            <Badge variant="outline" className={`text-[10px] ${p.status === "paid" ? "text-emerald-400 border-emerald-400/30" : p.status === "failed" ? "text-red-400 border-red-400/30" : "text-amber-400 border-amber-400/30"}`}>
+                              {p.status}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4 text-xs text-muted-foreground">{p.paidAt ? new Date(p.paidAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}</td>
+                          <td className="py-3 px-4 text-xs font-mono text-muted-foreground">{p.paymentReference ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Notes Tab */}
+        <TabsContent value="notes">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2"><StickyNote className="w-4 h-4 text-primary" />Internal Notes</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                rows={5}
+                placeholder="Add private notes about this creator (not visible to them)…"
+                className="resize-y"
+              />
+              <Button
+                size="sm"
+                onClick={() => patchMut.mutate({ notes })}
+                disabled={patchMut.isPending}
+              >
+                Save Notes
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
