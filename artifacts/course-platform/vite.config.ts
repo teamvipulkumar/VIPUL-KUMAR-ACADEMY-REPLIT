@@ -70,7 +70,10 @@ export default defineConfig({
     pixelHeadInjectorPlugin(),
     react(),
     tailwindcss(),
-    runtimeErrorOverlay(),
+    runtimeErrorOverlay({
+      filter: (err: { message?: string; name?: string }) =>
+        !(err.message === "signal is aborted without reason" || err.name === "AbortError"),
+    }),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
