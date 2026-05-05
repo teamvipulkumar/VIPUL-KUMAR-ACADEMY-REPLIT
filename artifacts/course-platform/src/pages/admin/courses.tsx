@@ -189,10 +189,10 @@ export default function AdminCoursesPage() {
         ) : !courses || courses.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">No courses yet. Create your first one!</div>
         ) : (
-          <div className="border border-border rounded-xl overflow-hidden">
-            <table className="w-full">
+          <div className="border border-border rounded-xl overflow-x-auto scrollbar-thin">
+            <table className="w-full min-w-[1200px]">
               <thead className="bg-card border-b border-border">
-                <tr>{["", "Title", "Category", "Level", "Price", "Compare At", "Duration", "Status", "On Website", "Students", "Actions"].map((h, i) => <th key={i} className="text-left text-xs font-medium text-muted-foreground px-4 py-3">{h}</th>)}</tr>
+                <tr>{["", "Title", "Category", "Level", "Price", "Compare At", "Duration", "Status", "On Website", "Students", "Actions"].map((h, i) => <th key={i} className="text-left text-xs font-medium text-muted-foreground px-4 py-3 whitespace-nowrap">{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {courses.map(c => {
@@ -209,11 +209,11 @@ export default function AdminCoursesPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 font-medium text-sm max-w-xs"><p className="truncate">{c.title}</p></td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{c.category}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground capitalize">{c.level}</td>
-                    <td className="px-4 py-3 text-sm font-bold">₹{c.price}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground line-through">{(c as unknown as { compareAtPrice?: number }).compareAtPrice ? `₹${(c as unknown as { compareAtPrice: number }).compareAtPrice}` : "—"}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{c.durationMinutes ? `${(c.durationMinutes / 60 % 1 === 0 ? c.durationMinutes / 60 : (c.durationMinutes / 60).toFixed(1))} hr` : "—"}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">{c.category}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground capitalize whitespace-nowrap">{c.level}</td>
+                    <td className="px-4 py-3 text-sm font-bold whitespace-nowrap">₹{c.price}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground line-through whitespace-nowrap">{(c as unknown as { compareAtPrice?: number }).compareAtPrice ? `₹${(c as unknown as { compareAtPrice: number }).compareAtPrice}` : "—"}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">{c.durationMinutes ? `${(c.durationMinutes / 60 % 1 === 0 ? c.durationMinutes / 60 : (c.durationMinutes / 60).toFixed(1))} hr` : "—"}</td>
                     <td className="px-4 py-3">
                       <Badge className={`text-xs cursor-pointer select-none ${c.status === "published" ? "text-green-400 border-green-400/30 bg-green-400/10" : "text-yellow-400 border-yellow-400/30 bg-yellow-400/10"}`} onClick={() => handleToggleStatus(c.id, c.status)} title="Click to toggle">{c.status}</Badge>
                     </td>
@@ -227,8 +227,8 @@ export default function AdminCoursesPage() {
                         {showOnWebsite ? "Visible" : "Hidden"}
                       </button>
                     </td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{c.enrollmentCount}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">{c.enrollmentCount}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         <Button size="sm" variant="ghost" className="h-7 w-7 p-0" asChild>
                           <Link href={`${adminBase}/courses/${c.id}/edit`}><Pencil className="w-3.5 h-3.5" /></Link>
@@ -257,10 +257,10 @@ export default function AdminCoursesPage() {
             <p>No packages yet. Create your first package!</p>
           </div>
         ) : (
-          <div className="border border-border rounded-xl overflow-hidden">
-            <table className="w-full">
+          <div className="border border-border rounded-xl overflow-x-auto scrollbar-thin">
+            <table className="w-full min-w-[900px]">
               <thead className="bg-card border-b border-border">
-                <tr>{["", "Package Name", "Courses", "Package Price", "Compare At", "Status", "Actions"].map((h, i) => <th key={i} className="text-left text-xs font-medium text-muted-foreground px-4 py-3">{h}</th>)}</tr>
+                <tr>{["", "Package Name", "Courses", "Package Price", "Compare At", "Status", "Actions"].map((h, i) => <th key={i} className="text-left text-xs font-medium text-muted-foreground px-4 py-3 whitespace-nowrap">{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {bundles.map(b => (
@@ -284,14 +284,14 @@ export default function AdminCoursesPage() {
                         {b.courses.length > 3 && <span className="text-xs text-muted-foreground">+{b.courses.length - 3} more</span>}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm font-bold text-primary">₹{b.price}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground line-through">{b.compareAtPrice ? `₹${b.compareAtPrice}` : "—"}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-sm font-bold text-primary whitespace-nowrap">₹{b.price}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground line-through whitespace-nowrap">{b.compareAtPrice ? `₹${b.compareAtPrice}` : "—"}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <Badge className={`text-xs ${b.isActive ? "text-green-400 border-green-400/30 bg-green-400/10" : "text-yellow-400 border-yellow-400/30 bg-yellow-400/10"}`}>
                         {b.isActive ? "active" : "inactive"}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEditBundle(b)}><Pencil className="w-3.5 h-3.5" /></Button>
                         <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-300" onClick={() => handleDeleteBundle(b.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
