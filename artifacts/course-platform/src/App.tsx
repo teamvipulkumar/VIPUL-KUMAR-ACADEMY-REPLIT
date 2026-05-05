@@ -144,6 +144,21 @@ import ContactUsPage from "@/pages/contact-us";
 import HelpCenterPage from "@/pages/help-center";
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
+// Stable component reference for the affiliate route. Defined at module
+// scope (not inline inside Router) so wouter sees the same identity on
+// every render — otherwise an inline `() => <...>` recreates the
+// component on each render and remounts the whole AffiliatePage subtree,
+// which kills any in-flight UI like the welcome tour overlay.
+function AffiliateRouteEntry() {
+  return (
+    <AppLayout noFooter>
+      <ProtectedRoute>
+        <AffiliatePage />
+      </ProtectedRoute>
+    </AppLayout>
+  );
+}
+
 function Router() {
   return (
     <Switch>
@@ -157,8 +172,12 @@ function Router() {
 
       <Route path="/my-courses" component={() => <AppLayout><ProtectedRoute><MyCoursesPage /></ProtectedRoute></AppLayout>} />
       <Route path="/learn/:courseId" component={() => <ProtectedRoute><LearnPage /></ProtectedRoute>} />
-      <Route path="/affiliate" component={() => <AppLayout noFooter><ProtectedRoute><AffiliatePage /></ProtectedRoute></AppLayout>} />
-      <Route path="/affiliate/:tab" component={() => <AppLayout noFooter><ProtectedRoute><AffiliatePage /></ProtectedRoute></AppLayout>} />
+      {/* Affiliate dashboard — uses a single Route with an optional `:tab`
+          slug so navigating between tabs (e.g. `/affiliate` →
+          `/affiliate/dashboard`) doesn't switch Route entries and remount
+          the entire AffiliatePage tree. Remounting on every tab click was
+          dropping the WelcomeOnboarding tour mid-flight. */}
+      <Route path="/affiliate/:tab?" component={AffiliateRouteEntry} />
       <Route path="/payments" component={() => <AppLayout><ProtectedRoute><PaymentsPage /></ProtectedRoute></AppLayout>} />
       <Route path="/notifications" component={() => <AppLayout><ProtectedRoute><NotificationsPage /></ProtectedRoute></AppLayout>} />
       <Route path="/profile" component={() => <AppLayout><ProtectedRoute><ProfilePage /></ProtectedRoute></AppLayout>} />
