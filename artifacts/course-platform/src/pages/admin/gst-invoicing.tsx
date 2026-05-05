@@ -456,7 +456,7 @@ function InvoicePrintModal({ invoice, settings, onClose, autoPrint }: {
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
-        <div className="flex items-center justify-between px-6 py-4 border-b">
+        <div className="flex items-center justify-between pl-6 pr-14 py-4 border-b">
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-blue-400" />
             <span className="font-bold text-foreground">{invoice.invoiceNumber}</span>
