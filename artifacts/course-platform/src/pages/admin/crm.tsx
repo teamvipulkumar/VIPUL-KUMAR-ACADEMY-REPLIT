@@ -269,12 +269,12 @@ function DashboardTab() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-foreground">CRM Dashboard</h2>
           <p className="text-sm text-muted-foreground mt-0.5">Email delivery overview</p>
         </div>
-        <Button variant="outline" size="sm" onClick={load} className="gap-1.5 cursor-pointer">
+        <Button variant="outline" size="sm" onClick={load} className="gap-1.5 cursor-pointer self-start sm:self-auto">
           <RefreshCw className="w-3.5 h-3.5" />Refresh
         </Button>
       </div>
@@ -512,7 +512,7 @@ function SmtpTab() {
 
           {/* Saved summary (collapsed view) */}
           {smtp && !showForm && (
-            <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between gap-4">
+            <div className="bg-card border border-border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold text-foreground">{smtp.name || "Primary SMTP"}</p>
@@ -743,7 +743,7 @@ function BackupSmtpAccounts({ onPrimaryChanged }: { onPrimaryChanged?: () => voi
 
   return (
     <div className="border-t border-border pt-6 space-y-5 mt-2">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <h3 className="text-base font-bold flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-primary" />Backup SMTP Accounts</h3>
           <p className="text-sm text-muted-foreground mt-0.5">If your primary SMTP fails, these accounts are tried in priority order as fallbacks.</p>
@@ -1096,7 +1096,7 @@ function TemplatesTab() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div><h2 className="text-xl font-bold text-foreground">Email Templates</h2><p className="text-sm text-muted-foreground mt-0.5">Reusable HTML email templates for campaigns and automation.</p></div>
         <div className="flex items-center gap-2">
           <Button onClick={seedDefaults} disabled={seeding} variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10">
@@ -1789,9 +1789,9 @@ function AutomationTab({ initialFunnelId = null }: { initialFunnelId?: number | 
             <p className="text-[11px] text-muted-foreground mt-1.5">Leave blank to use the selected trigger name.</p>
           </div>
           {/* Body: sidebar + grid */}
-          <div className="flex" style={{ minHeight: 360, maxHeight: "60vh" }}>
-            {/* Left category sidebar */}
-            <div className="w-48 shrink-0 border-r border-border overflow-y-auto py-2">
+          <div className="flex flex-col sm:flex-row" style={{ minHeight: 360, maxHeight: "60vh" }}>
+            {/* Left category sidebar — mobile: horizontal scroll strip; desktop: vertical */}
+            <div className="w-full sm:w-48 shrink-0 border-b sm:border-b-0 sm:border-r border-border flex sm:block overflow-x-auto sm:overflow-x-visible overflow-y-hidden sm:overflow-y-auto scrollbar-hide py-2">
               {[
                 { id: "all",            label: "All Triggers" },
                 { id: "user_lifecycle", label: "User Lifecycle" },
@@ -1803,15 +1803,15 @@ function AutomationTab({ initialFunnelId = null }: { initialFunnelId?: number | 
                 { id: "engagement",     label: "Engagement" },
               ].map(cat => (
                 <button key={cat.id} onClick={() => setNewTriggerCategory(cat.id)}
-                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors ${newTriggerCategory === cat.id ? "bg-primary/10 text-primary border-r-2 border-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}>
+                  className={`flex-shrink-0 sm:w-full text-left whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors ${newTriggerCategory === cat.id ? "bg-primary/10 text-primary border-b-2 sm:border-b-0 sm:border-r-2 border-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}>
                   {cat.label}
                 </button>
               ))}
             </div>
             {/* Right trigger grid */}
-            <div className="flex-1 overflow-y-auto p-5">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5">
               <p className="text-sm font-semibold text-foreground mb-4">Select the trigger for this automation</p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {FUNNEL_TRIGGERS.filter(t => {
                   const catMap: Record<string, string> = {
                     user_signup: "user_lifecycle", user_login: "user_lifecycle", forgot_password: "user_lifecycle", staff_added: "user_lifecycle",
@@ -2125,9 +2125,9 @@ function CampaignsTab() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div><h2 className="text-xl font-bold text-foreground">Campaigns</h2><p className="text-sm text-muted-foreground mt-0.5">Send email blasts to your contacts. Schedule or send immediately.</p></div>
-        <Button onClick={() => setCreating(true)} size="sm" className="bg-primary gap-1.5"><Plus className="w-4 h-4" />New Campaign</Button>
+        <Button onClick={() => setCreating(true)} size="sm" className="bg-primary gap-1.5 self-start sm:self-auto"><Plus className="w-4 h-4" />New Campaign</Button>
       </div>
 
       {loading ? <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
@@ -2380,7 +2380,7 @@ function SubscribersTab() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:flex-wrap">
         <div><h2 className="text-xl font-bold text-foreground">Contacts</h2><p className="text-sm text-muted-foreground mt-0.5">All registered users — <span className="text-foreground font-medium">{total}</span> total</p></div>
         <div className="flex items-center gap-2 flex-wrap">
           {lists.length > 0 && (
@@ -2402,6 +2402,8 @@ function SubscribersTab() {
       </div>
 
       <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="overflow-x-auto scrollbar-hide">
+        <div className="min-w-[760px]">
         <div className="grid grid-cols-[1fr_1fr_1fr_1fr_72px_88px_16px] gap-x-4 px-4 py-2.5 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase tracking-wide items-center">
           <span>Name</span><span>Email</span><span>Lists</span><span>Tags</span><span>Role</span><span>Joined</span><span></span>
         </div>
@@ -2438,10 +2440,12 @@ function SubscribersTab() {
             ))}
           </div>
         )}
+        </div>
+        </div>
       </div>
 
       {total > limit && (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <span className="text-xs text-muted-foreground">Showing {page * limit + 1}–{Math.min((page + 1) * limit, total)} of {total}</span>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Previous</Button>
@@ -2628,7 +2632,7 @@ function EmailLogsTab() {
   return (
     <div className="space-y-5">
       {/* ── Header ── */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h2 className="text-base font-bold text-foreground flex items-center gap-2">
             <Clock className="w-4 h-4 text-muted-foreground" />Email Logs
@@ -2796,6 +2800,8 @@ function EmailLogsTab() {
 
       {/* ── Table ── */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto scrollbar-hide">
+        <div className="min-w-[860px]">
         {/* Column headers */}
         <div className="grid grid-cols-[32px_3fr_2fr_75px_140px_185px] items-center gap-x-4 px-5 py-3 border-b border-border bg-muted/20 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
           <input
@@ -2931,10 +2937,12 @@ function EmailLogsTab() {
           </div>
         )}
 
+        </div>
+        </div>
         {/* Footer pagination */}
         {!loading && data.total > 0 && (
-          <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-muted/10">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-3 border-t border-border bg-muted/10">
+            <div className="flex items-center gap-3 flex-wrap">
               <span className="text-xs text-muted-foreground">
                 Showing {Math.min((page - 1) * pageSize + 1, data.total)}–{Math.min(page * pageSize, data.total)} of <span className="font-medium text-foreground">{data.total.toLocaleString()}</span> logs
               </span>
@@ -3050,7 +3058,7 @@ function EmailLogsTab() {
                 </div>
 
                 {/* ── From / To ── */}
-                <div className="px-6 py-4 grid grid-cols-2 gap-6">
+                <div className="px-6 py-4 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <div>
                     <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">From</p>
                     <p className="text-sm text-foreground font-medium break-all">
@@ -3064,7 +3072,7 @@ function EmailLogsTab() {
                 </div>
 
                 {/* ── Subject / Type / Event ── */}
-                <div className="px-6 py-4 grid grid-cols-2 gap-6">
+                <div className="px-6 py-4 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <div>
                     <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Subject</p>
                     <p className="text-sm text-foreground font-medium">{detailLog.subject || "(no subject)"}</p>
@@ -3319,7 +3327,7 @@ function ListsTab() {
 
         {/* List info card */}
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
-          <div className="px-6 py-5 flex items-start gap-5">
+          <div className="px-4 sm:px-6 py-5 flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-5">
             <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
               <List className="w-5 h-5 text-primary" />
             </div>
@@ -3352,16 +3360,16 @@ function ListsTab() {
           </div>
 
           {/* Stat strip */}
-          <div className="border-t border-border grid grid-cols-3 divide-x divide-border">
-            <div className="px-6 py-3.5">
+          <div className="border-t border-border grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border">
+            <div className="px-4 sm:px-6 py-3.5">
               <p className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Members</p>
               <p className="text-xl font-bold text-foreground mt-0.5">{membersLoading ? "—" : members.length}</p>
             </div>
-            <div className="px-6 py-3.5">
+            <div className="px-4 sm:px-6 py-3.5">
               <p className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Type</p>
               <p className="text-sm font-semibold text-foreground mt-0.5 capitalize">{viewList.type?.replace("_", " ")}</p>
             </div>
-            <div className="px-6 py-3.5">
+            <div className="px-4 sm:px-6 py-3.5">
               <p className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Created</p>
               <p className="text-sm font-semibold text-foreground mt-0.5">{relativeTime(viewList.createdAt)}</p>
             </div>
@@ -3417,6 +3425,8 @@ function ListsTab() {
           </div>
 
           {/* Column header */}
+          <div className="overflow-x-auto scrollbar-hide">
+          <div className="min-w-[560px]">
           {!membersLoading && members.length > 0 && (
             <div className="grid grid-cols-[1fr_100px_110px_36px] gap-x-3 px-5 py-2.5 border-b border-border bg-muted/20">
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Member</span>
@@ -3482,6 +3492,8 @@ function ListsTab() {
               ))}
             </div>
           )}
+          </div>
+          </div>
         </div>
       </div>
     );
@@ -3524,7 +3536,7 @@ function ListsTab() {
 
       {/* ── Summary stat cards ── */}
       {!loading && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { label: "Total Lists", value: lists.length, icon: <List className="w-4 h-4" />, accent: "text-blue-400", bg: "bg-blue-500/10" },
             { label: "Total Subscribers", value: totalSubscribers.toLocaleString(), icon: <Users className="w-4 h-4" />, accent: "text-emerald-400", bg: "bg-emerald-500/10" },
@@ -3545,6 +3557,8 @@ function ListsTab() {
 
       {/* ── Table ── */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto scrollbar-hide">
+        <div className="min-w-[800px]">
         {/* Table header */}
         <div className="grid grid-cols-[32px_1fr_140px_130px_130px_100px] items-center gap-x-4 px-5 py-3 border-b border-border bg-muted/20 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
           <input type="checkbox" className="w-3.5 h-3.5 rounded accent-primary cursor-pointer" />
@@ -3685,9 +3699,11 @@ function ListsTab() {
           </div>
         )}
 
+        </div>
+        </div>
         {/* Table footer / pagination */}
         {!loading && filtered.length > 0 && (
-          <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-muted/10">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-3 border-t border-border bg-muted/10">
             <span className="text-xs text-muted-foreground">
               Showing {Math.min((currentPage - 1) * pageSize + 1, filtered.length)}–{Math.min(currentPage * pageSize, filtered.length)} of {filtered.length} list{filtered.length !== 1 ? "s" : ""}
             </span>
@@ -3961,9 +3977,9 @@ function TagsTab() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div><h2 className="text-xl font-bold">Contact Tags</h2><p className="text-sm text-muted-foreground mt-0.5">Segment your contacts with custom tags for targeted campaigns.</p></div>
-        {!creating && !editing && <Button size="sm" className="gap-1.5 cursor-pointer" onClick={() => setCreating(true)}><Plus className="w-4 h-4" />New Tag</Button>}
+        {!creating && !editing && <Button size="sm" className="gap-1.5 cursor-pointer self-start sm:self-auto" onClick={() => setCreating(true)}><Plus className="w-4 h-4" />New Tag</Button>}
       </div>
       {(creating || editing) && <TagForm />}
       {loading ? (
