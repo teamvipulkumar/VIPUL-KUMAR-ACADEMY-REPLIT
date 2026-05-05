@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Users, BookOpen, Share2, Tag, Settings, ArrowLeft, Menu, X, ShoppingCart, GraduationCap, Landmark, Mail, Layers, FileText, HardDrive, ShieldCheck, Megaphone, Sparkles, Wallet } from "lucide-react";
+import { LayoutDashboard, Users, BookOpen, Share2, Tag, Settings, ArrowLeft, Menu, X, ShoppingCart, GraduationCap, Landmark, Mail, Layers, FileText, HardDrive, ShieldCheck, Megaphone, Sparkles, Wallet, Code2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth, getStaffLandingPath, useAdminBase, adminPathSuffix } from "@/lib/auth-context";
 
@@ -42,6 +42,7 @@ const PERMISSION_MAP: Record<string, string> = {
   "/creator-payouts": "creators",
   "/settings": "settings",
   "/facebook-pixel": "settings",
+  "/code-snippets": "settings",
 };
 
 /**
@@ -113,6 +114,7 @@ const navGroups: { label: string; items: { suffix: string; icon: typeof LayoutDa
     items: [
       { suffix: "/settings", icon: Settings, label: "Settings" },
       { suffix: "/facebook-pixel", icon: Megaphone, label: "Facebook Pixel" },
+      { suffix: "/code-snippets", icon: Code2, label: "Code Snippets" },
       { suffix: "/staff", icon: ShieldCheck, label: "Staff & Access" },
     ],
   },

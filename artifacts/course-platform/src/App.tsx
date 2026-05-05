@@ -11,6 +11,7 @@ import { MaintenanceWatcher } from "@/components/maintenance-watcher";
 import { AdminLayout } from "@/components/layout/admin-layout";
 import NotFound from "@/pages/not-found";
 import { initPixel, injectBaseCode, fbPageView } from "@/lib/facebook-pixel";
+import { CodeSnippetsInjector } from "@/lib/code-snippets-injector";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -109,6 +110,7 @@ import AdminEnrollmentsPage from "@/pages/admin/enrollments";
 import AdminPaymentGatewaysPage from "@/pages/admin/payment-gateways";
 import AdminSettingsPage from "@/pages/admin/settings";
 import AdminFacebookPixelPage from "@/pages/admin/facebook-pixel";
+import AdminCodeSnippetsPage from "@/pages/admin/code-snippets";
 import AdminCrmPage from "@/pages/admin/crm";
 import AutomationReportPage from "@/pages/admin/automation-report";
 import AdminPagesPage from "@/pages/admin/pages";
@@ -217,6 +219,7 @@ function Router() {
         <Route key={`${prefix}/payment-gateways`} path={`${prefix}/payment-gateways`} component={() => <ProtectedRoute adminOnly><AdminLayout><AdminPaymentGatewaysPage /></AdminLayout></ProtectedRoute>} />,
         <Route key={`${prefix}/settings`} path={`${prefix}/settings`} component={() => <ProtectedRoute adminOnly><AdminLayout><AdminSettingsPage /></AdminLayout></ProtectedRoute>} />,
         <Route key={`${prefix}/facebook-pixel`} path={`${prefix}/facebook-pixel`} component={() => <ProtectedRoute adminOnly><AdminLayout><AdminFacebookPixelPage /></AdminLayout></ProtectedRoute>} />,
+        <Route key={`${prefix}/code-snippets`} path={`${prefix}/code-snippets`} component={() => <ProtectedRoute adminOnly><AdminLayout><AdminCodeSnippetsPage /></AdminLayout></ProtectedRoute>} />,
         <Route key={`${prefix}/crm`} path={`${prefix}/crm`} component={() => <ProtectedRoute adminOnly><AdminLayout><AdminCrmPage /></AdminLayout></ProtectedRoute>} />,
         <Route key={`${prefix}/crm/automation/:id/report`} path={`${prefix}/crm/automation/:id/report`} component={() => <ProtectedRoute adminOnly><AdminLayout><AutomationReportPage /></AdminLayout></ProtectedRoute>} />,
         <Route key={`${prefix}/pages`} path={`${prefix}/pages`} component={() => <ProtectedRoute adminOnly><AdminLayout><AdminPagesPage /></AdminLayout></ProtectedRoute>} />,
@@ -258,6 +261,7 @@ function App() {
         <TooltipProvider>
           <RefTracker />
           <PixelTracker />
+          <CodeSnippetsInjector />
           <MaintenanceWatcher />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Router />

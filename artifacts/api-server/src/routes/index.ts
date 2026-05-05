@@ -18,6 +18,7 @@ import bundlesRouter from "./bundles";
 import staffRouter from "./staff";
 import pixelRouter from "./pixel";
 import creatorRouter, { adminCreatorsRouter, adminCreatorPayoutsRouter } from "./creators";
+import codeSnippetsRouter, { publicCodeSnippetsRouter } from "./code-snippets";
 import { db } from "@workspace/db";
 import { platformSettingsTable } from "@workspace/db";
 
@@ -62,5 +63,7 @@ router.use("/admin/creators", adminCreatorsRouter);
 router.use("/admin/creator-payouts", adminCreatorPayoutsRouter);
 router.use("/creator", creatorRouter);
 router.use("/pixel", pixelRouter);
+router.use("/admin/code-snippets", codeSnippetsRouter);
+router.use("/code-snippets", publicCodeSnippetsRouter);
 
 export default router;
