@@ -479,7 +479,7 @@ function ApplicationsTab() {
   const [apps, setApps] = useState<Application[]>([]);
   const [commissionGroups, setCommissionGroups] = useState<CommissionGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
   const [search, setSearch] = useState("");
   const { toast } = useToast();
 
