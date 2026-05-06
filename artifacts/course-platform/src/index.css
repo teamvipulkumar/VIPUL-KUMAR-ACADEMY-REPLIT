@@ -612,15 +612,16 @@ html, body {
 
 /* ──────────────────────────────────────────────────────────────────
    Prevent layout shift when Radix UI components (Select, Dialog,
-   Popover) lock body scroll. By default Radix adds padding-right to
-   compensate for the missing scrollbar, which causes a horizontal
-   shift on pages that don't have a vertical scrollbar.
+   Popover) lock body scroll. Radix's react-remove-scroll adds an
+   inline padding-right on <body> equal to the scrollbar width,
+   which pushes content left. We forcibly override any inline
+   padding/margin on body and reserve scrollbar gutter on html.
    ────────────────────────────────────────────────────────────── */
 html {
   scrollbar-gutter: stable;
 }
+body[style*="padding-right"],
 body[data-scroll-locked] {
-  margin-right: 0 !important;
   padding-right: 0 !important;
-  overflow: hidden !important;
+  margin-right: 0 !important;
 }
