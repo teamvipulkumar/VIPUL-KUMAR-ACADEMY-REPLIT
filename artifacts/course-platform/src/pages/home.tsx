@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import * as Accordion from "@radix-ui/react-accordion";
-import movementImage from "@/assets/movement-workspace.webp";
+import movementImage from "@/assets/movement-workspace.png";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
