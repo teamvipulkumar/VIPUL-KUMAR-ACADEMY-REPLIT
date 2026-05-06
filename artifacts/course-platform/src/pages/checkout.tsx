@@ -555,6 +555,30 @@ export default function CheckoutPage() {
     if (!success && course?.isEnrolled) navigate(`/learn/${courseId}`);
   }, [course?.isEnrolled, success]);
 
+  // Auto-apply coupon code passed via URL query param (?coupon=CODE) from
+  // the course detail page's "Enroll Now" button. Runs once per page load
+  // after the course has loaded so server-side validation succeeds.
+  const couponAutoApplied = useRef(false);
+  useEffect(() => {
+    if (couponAutoApplied.current || courseId <= 0 || !course) return;
+    const urlCoupon = new URLSearchParams(window.location.search).get("coupon");
+    if (!urlCoupon) return;
+    couponAutoApplied.current = true;
+    const code = urlCoupon.trim().toUpperCase();
+    setCouponCode(code);
+    validateCoupon.mutate({ data: { code, courseId } }, {
+      onSuccess: (data) => {
+        if (!data.valid) {
+          toast({ title: "Coupon no longer valid", description: data.message, variant: "destructive" });
+          return;
+        }
+        setAppliedCoupon({ code, discount: data.discountValue ?? 0, type: data.discountType ?? "percentage" });
+        toast({ title: "Coupon applied!", description: data.message });
+      },
+      onError: () => toast({ title: "Could not apply coupon", description: "Please re-enter the code.", variant: "destructive" }),
+    });
+  }, [courseId, course]);
+
   // Fire InitiateCheckout FB pixel event once the course price has loaded (avoid value: 0)
   const initCheckoutFired = useRef(false);
   useEffect(() => {
