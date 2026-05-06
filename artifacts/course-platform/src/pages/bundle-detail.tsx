@@ -209,15 +209,15 @@ export default function BundleDetailPage() {
   return (
     <div className="min-h-screen bg-background w-full overflow-x-hidden">
       {/* ── Hero ── */}
-      <div className="bg-gradient-to-b from-primary/10 via-primary/5 to-background border-b border-border py-8 md:py-12 px-4">
+      <div className="bg-gradient-to-b from-primary/10 via-primary/5 to-background border-b border-border py-6 md:py-12 px-4">
         <div className="w-full max-w-5xl mx-auto">
           {/* Breadcrumb */}
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-4">
-            <button onClick={() => navigate("/courses")} className="hover:text-foreground transition-colors">Courses</button>
-            <ChevronRight className="w-3 h-3" />
-            <span className="flex items-center gap-1"><Package className="w-3 h-3 text-primary" />Packages</span>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-foreground truncate max-w-[180px]">{bundle.name}</span>
+          <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-muted-foreground mb-3 sm:mb-4 overflow-hidden">
+            <button onClick={() => navigate("/courses")} className="hover:text-foreground transition-colors flex-shrink-0">Courses</button>
+            <ChevronRight className="w-3 h-3 flex-shrink-0" />
+            <span className="flex items-center gap-1 flex-shrink-0"><Package className="w-3 h-3 text-primary" />Packages</span>
+            <ChevronRight className="w-3 h-3 flex-shrink-0" />
+            <span className="text-foreground truncate min-w-0">{bundle.name}</span>
           </div>
 
           {/* Mobile layout */}
@@ -287,9 +287,9 @@ export default function BundleDetailPage() {
             <div className="space-y-4">
               {bundle.courses.map((course, idx) => (
                 <div key={course.id} className="bg-card border border-white/10 rounded-2xl overflow-hidden hover:border-primary/30 transition-colors">
-                  <div className="flex gap-4 p-4">
+                  <div className="flex gap-3 sm:gap-4 p-3 sm:p-4">
                     {/* Thumbnail */}
-                    <div className="relative flex-shrink-0 w-28 md:w-36 aspect-video rounded-xl overflow-hidden">
+                    <div className="relative flex-shrink-0 w-24 sm:w-28 md:w-36 aspect-video rounded-lg sm:rounded-xl overflow-hidden">
                       {course.thumbnailUrl ? (
                         <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
                       ) : (
@@ -306,11 +306,11 @@ export default function BundleDetailPage() {
 
                     {/* Info */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap mb-1.5">
                         <Badge variant="outline" className={`text-[10px] px-1.5 py-0 capitalize ${levelColors[course.level] ?? ""}`}>
                           {course.level}
                         </Badge>
-                        <span className="text-xs text-muted-foreground truncate">{course.category}</span>
+                        <span className="text-[11px] sm:text-xs text-muted-foreground truncate">{course.category}</span>
                         <span className="text-xs text-muted-foreground hidden sm:block">·</span>
                         <span className="text-xs text-muted-foreground hidden sm:block">{Math.round((course.durationMinutes ?? 0) / 60)}h</span>
                       </div>
@@ -319,16 +319,21 @@ export default function BundleDetailPage() {
                         {course.title}
                       </h3>
                       {course.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{course.description}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mb-2 hidden sm:block">{course.description}</p>
                       )}
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-primary" />{Math.round((course.durationMinutes ?? 0) / 60)}h content</span>
-                        <span className="flex items-center gap-1"><Lock className="w-3 h-3 text-green-400" />Included in package</span>
+                      {/* Mobile: compact meta row with crossed price + Included */}
+                      <div className="flex items-center gap-2 sm:gap-3 text-[11px] sm:text-xs text-muted-foreground flex-wrap">
+                        <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-primary" />{Math.round((course.durationMinutes ?? 0) / 60)}h<span className="hidden sm:inline"> content</span></span>
+                        <span className="hidden sm:flex items-center gap-1"><Lock className="w-3 h-3 text-green-400" />Included in package</span>
+                        <span className="sm:hidden line-through">₹{course.price}</span>
+                        <span className="sm:hidden flex items-center gap-1 text-green-400 font-medium">
+                          <Check className="w-3 h-3" />Included
+                        </span>
                       </div>
                     </div>
 
-                    {/* Price crossed out */}
-                    <div className="flex-shrink-0 flex flex-col items-end justify-between">
+                    {/* Desktop only: price crossed out / Included column */}
+                    <div className="hidden sm:flex flex-shrink-0 flex-col items-end justify-between">
                       <div className="text-right">
                         <p className="text-xs text-muted-foreground line-through">₹{course.price}</p>
                         <div className="flex items-center gap-1 mt-1">
@@ -344,24 +349,24 @@ export default function BundleDetailPage() {
 
             {/* Value breakdown */}
             {savings > 0 && (
-              <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-2xl">
+              <div className="mt-6 p-3 sm:p-4 bg-primary/5 border border-primary/20 rounded-2xl">
                 <h3 className="font-semibold text-sm text-foreground mb-3">Value Breakdown</h3>
-                <div className="space-y-2 text-sm">
+                <div className="space-y-2 text-xs sm:text-sm">
                   {bundle.courses.map(c => (
-                    <div key={c.id} className="flex justify-between text-muted-foreground">
-                      <span className="truncate mr-4">{c.title}</span>
+                    <div key={c.id} className="flex justify-between gap-3 text-muted-foreground">
+                      <span className="truncate min-w-0">{c.title}</span>
                       <span className="flex-shrink-0 line-through">₹{c.price}</span>
                     </div>
                   ))}
-                  <div className="border-t border-primary/20 pt-2 flex justify-between text-muted-foreground">
+                  <div className="border-t border-primary/20 pt-2 flex justify-between gap-3 text-muted-foreground">
                     <span>Individual total</span>
                     <span className="line-through">₹{compareAt.toFixed(0)}</span>
                   </div>
-                  <div className="flex justify-between text-green-400 font-semibold">
-                    <span>Package savings ({savingsPct}% off)</span>
-                    <span>-₹{savings.toFixed(0)}</span>
+                  <div className="flex justify-between gap-3 text-green-400 font-semibold">
+                    <span className="truncate min-w-0">Package savings ({savingsPct}% off)</span>
+                    <span className="flex-shrink-0">-₹{savings.toFixed(0)}</span>
                   </div>
-                  <div className="flex justify-between font-bold text-foreground text-base pt-1 border-t border-primary/20">
+                  <div className="flex justify-between gap-3 font-bold text-foreground text-sm sm:text-base pt-1 border-t border-primary/20">
                     <span>Package price</span>
                     <span>₹{bundle.price}</span>
                   </div>
