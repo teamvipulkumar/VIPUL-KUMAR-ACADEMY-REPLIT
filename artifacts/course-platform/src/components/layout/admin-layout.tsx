@@ -249,7 +249,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             <div className="min-w-0 flex-shrink overflow-hidden">
               <AdminLogo variant="desktop" />
             </div>
-            <span className="flex-shrink-0 text-[9px] text-foreground/80 tracking-[0.18em] uppercase font-bold leading-none border-l border-border pl-1.5 whitespace-nowrap">
+            <span className="flex-shrink-0 text-[9px] text-foreground/80 tracking-[0.18em] uppercase font-bold leading-none border-l border-foreground/40 pl-1.5 whitespace-nowrap">
               {panelLabel}
             </span>
           </div>
@@ -265,7 +265,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         <div className="min-w-0 flex-shrink overflow-hidden">
           <AdminLogo variant="mobile" />
         </div>
-        <span className="flex-shrink-0 text-[9px] text-foreground/80 tracking-[0.18em] uppercase font-bold leading-none border-l border-border pl-1.5 whitespace-nowrap">
+        <span className="flex-shrink-0 text-[9px] text-foreground/80 tracking-[0.18em] uppercase font-bold leading-none border-l border-foreground/40 pl-1.5 whitespace-nowrap">
           {panelLabel}
         </span>
       </div>
@@ -280,7 +280,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 <div className="min-w-0 flex-shrink overflow-hidden">
                   <AdminLogo variant="desktop" />
                 </div>
-                <span className="flex-shrink-0 text-[9px] text-foreground/80 tracking-[0.18em] uppercase font-bold leading-none border-l border-border pl-1.5 whitespace-nowrap">
+                <span className="flex-shrink-0 text-[9px] text-foreground/80 tracking-[0.18em] uppercase font-bold leading-none border-l border-foreground/40 pl-1.5 whitespace-nowrap">
                   {panelLabel}
                 </span>
               </div>
