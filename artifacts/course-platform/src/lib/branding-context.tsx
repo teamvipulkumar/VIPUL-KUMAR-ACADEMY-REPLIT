@@ -44,21 +44,29 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Update every favicon-ish <link> (icon, shortcut icon, apple-touch-icon)
-    // so desktop AND mobile (iOS home-screen, Android tab) all reflect the
-    // brand favicon. When no brand favicon is set, fall back to a transparent
-    // 1x1 PNG so no default mark is shown anywhere.
+    // Favicon resolution order:
+    //   1. explicit branding.favicon (admin-uploaded favicon)
+    //   2. branding.siteLogo (so a tenant who only uploaded a logo still
+    //      gets a brand mark in the tab / home-screen)
+    //   3. branding.siteLogoLight (last-ditch fallback)
+    //   4. nothing — leave the transparent 1x1 placeholder from index.html
+    //      so the browser never falls back to the built-in default mark.
+    //
+    // We update every favicon-ish <link> (icon, shortcut icon,
+    // apple-touch-icon) so desktop AND mobile (iOS home-screen, Android tab)
+    // all reflect the resolved icon.
     const TRANSPARENT_PNG =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
-    const href = branding.favicon || TRANSPARENT_PNG;
+    const resolved = branding.favicon || branding.siteLogo || branding.siteLogoLight || null;
+    const href = resolved || TRANSPARENT_PNG;
     const links = document.querySelectorAll<HTMLLinkElement>(
       "link[rel='icon'], link[rel='shortcut icon'], link[rel='apple-touch-icon']"
     );
     links.forEach(link => {
-      if (branding.favicon) link.removeAttribute("type");
+      if (resolved) link.removeAttribute("type");
       link.href = href;
     });
-  }, [branding.favicon]);
+  }, [branding.favicon, branding.siteLogo, branding.siteLogoLight]);
 
   useEffect(() => {
     document.title = branding.metaTitle || branding.siteName || "Academy";
