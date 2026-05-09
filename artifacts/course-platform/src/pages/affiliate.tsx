@@ -413,24 +413,18 @@ function AffiliateDashboard({ user }: { user: any }) {
                 key={t.id}
                 data-tour={`nav-${t.id === "earnings" ? "earnings" : t.id}`}
                 onClick={() => navClick(t.id)}
-                className={`group relative w-full flex items-center gap-2.5 pl-2.5 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-left cursor-pointer ${
+                className={`group relative w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all text-left cursor-pointer ${
                   active
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]"
+                    ? "bg-primary/10 text-primary hover:bg-primary/15"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/[0.05]"
                 }`}
               >
-                {/* Left accent bar — only on active row */}
-                <span
-                  className={`absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r-full bg-primary transition-opacity ${
-                    active ? "opacity-100" : "opacity-0"
-                  }`}
-                />
                 {/* Icon tile */}
                 <span
                   className={`flex items-center justify-center w-7 h-7 rounded-md transition-colors ${
                     active
-                      ? "bg-primary/15 text-primary"
-                      : "bg-white/[0.03] text-muted-foreground group-hover:bg-white/[0.06] group-hover:text-foreground"
+                      ? "bg-primary/15 text-primary group-hover:bg-primary/25"
+                      : "bg-white/[0.03] text-muted-foreground group-hover:bg-white/[0.08] group-hover:text-foreground"
                   }`}
                 >
                   {t.icon}
