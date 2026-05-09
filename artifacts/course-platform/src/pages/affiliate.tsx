@@ -360,6 +360,35 @@ function AffiliateDashboard({ user }: { user: any }) {
 
   useEffect(() => { loadDashboard(); }, []);
 
+  // Body scroll lock when the affiliate sidebar slide-over is open on
+  // mobile. Same iOS-Safari-reliable pattern as app-layout's drawer:
+  // freeze body via position:fixed + top:-scrollY, lock html overflow,
+  // restore the exact scroll position on close. The drawer itself has
+  // its own internal overflow-y-auto so it stays scrollable.
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const html = document.documentElement;
+    const prev = {
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyWidth: body.style.width,
+      htmlOverflow: html.style.overflow,
+    };
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    html.style.overflow = "hidden";
+    return () => {
+      body.style.position = prev.bodyPosition;
+      body.style.top = prev.bodyTop;
+      body.style.width = prev.bodyWidth;
+      html.style.overflow = prev.htmlOverflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, [sidebarOpen]);
+
   const loadDashboard = async () => {
     setRefreshing(true);
     const [d, c, s, p, up, cr, k, b, px] = await Promise.all([
