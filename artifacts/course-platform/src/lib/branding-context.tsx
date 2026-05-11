@@ -17,7 +17,7 @@ export interface Branding {
 }
 
 const DEFAULT: Branding = {
-  siteName: "Upcalify",
+  siteName: "Vipul Kumar Academy",
   siteLogo: null,
   siteLogoLight: null,
   logoSize: 34,
@@ -69,7 +69,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   }, [branding.favicon, branding.siteLogo, branding.siteLogoLight]);
 
   useEffect(() => {
-    document.title = branding.metaTitle || branding.siteName || "Upcalify";
+    document.title = branding.metaTitle || branding.siteName || "Vipul Kumar Academy";
   }, [branding.metaTitle, branding.siteName]);
 
   return (

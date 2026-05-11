@@ -1,7 +1,7 @@
 import { useId } from "react";
 
 /**
- * Upcalify wordmark + minimalist icon mark — inline SVG so:
+ * Vipul Kumar Academy wordmark + minimalist icon mark — inline SVG so:
  *   • the icon is a sleek geometric "U + mortarboard" glyph filled with a
  *     premium sky→deep-blue gradient (EdTech startup feel). The fixed
  *     gradient pops cleanly on every theme background (dark / light /
@@ -19,7 +19,7 @@ import { useId } from "react";
 export function UpcalifyLogo({
   height = 32,
   className,
-  title = "Upcalify",
+  title = "Vipul Kumar Academy",
 }: {
   height?: number;
   className?: string;

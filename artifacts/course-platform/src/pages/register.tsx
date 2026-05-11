@@ -53,7 +53,7 @@ export default function Register() {
       onSuccess: async (data) => {
         queryClient.setQueryData(getGetMeQueryKey(), data);
         await queryClient.refetchQueries({ queryKey: getGetMeQueryKey() });
-        toast({ title: "Account created", description: "Welcome to Upcalify!" });
+        toast({ title: "Account created", description: "Welcome to Vipul Kumar Academy!" });
         setLocation("/my-courses");
       },
       onError: (error: any) => {
@@ -71,7 +71,7 @@ export default function Register() {
             Create an account
           </CardTitle>
           <CardDescription className="text-center">
-            Enter your details to get started with Upcalify
+            Enter your details to get started with Vipul Kumar Academy
           </CardDescription>
         </CardHeader>
         <CardContent>
