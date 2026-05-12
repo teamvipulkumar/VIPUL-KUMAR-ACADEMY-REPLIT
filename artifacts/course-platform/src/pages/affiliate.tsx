@@ -492,7 +492,7 @@ function RejectedView({ note, onReapply }: { note?: string | null; onReapply: ()
         </p>
         {note && (
           <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-3 text-left mb-4">
-            <p className="text-xs font-semibold text-red-400 mb-1">Review notes from our team:</p>
+            <p className="text-xs font-semibold text-red-400 mb-1">Reason from our team:</p>
             <p className="text-sm text-muted-foreground">{note}</p>
           </div>
         )}
