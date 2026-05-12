@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { coursesTable, modulesTable, lessonsTable, enrollmentsTable, lessonCompletionsTable } from "@workspace/db";
-import { eq, and, count, sql, ilike, or } from "drizzle-orm";
+import { eq, and, count, sql, ilike, or, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin, type JwtPayload } from "../middlewares/auth";
 import type { Request } from "express";
 
@@ -109,6 +109,88 @@ router.delete("/:courseId", requireAdmin, async (req, res): Promise<void> => {
   const courseId = parseInt(req.params.courseId);
   await db.delete(coursesTable).where(eq(coursesTable.id, courseId));
   res.json({ message: "Course deleted" });
+});
+
+// Duplicate a course as-is — clones the course row plus every module and
+// lesson under it. The clone is created as `draft` + hidden from website so
+// it doesn't accidentally go public, and gets a "(Copy)" suffix on the title.
+// Enrollments / progress are intentionally NOT copied.
+router.post("/:courseId/duplicate", requireAdmin, async (req, res): Promise<void> => {
+  const sourceCourseId = parseInt(req.params.courseId);
+  if (Number.isNaN(sourceCourseId)) { res.status(400).json({ error: "Invalid course id" }); return; }
+
+  const [source] = await db.select().from(coursesTable).where(eq(coursesTable.id, sourceCourseId)).limit(1);
+  if (!source) { res.status(404).json({ error: "Course not found" }); return; }
+
+  // Build a non-colliding "(Copy)" title — increment "(Copy 2)", "(Copy 3)" …
+  // if a previous duplicate already exists, so admins can clone repeatedly.
+  const baseTitle = `${source.title} (Copy)`;
+  const existingCopies = await db.select({ title: coursesTable.title }).from(coursesTable).where(ilike(coursesTable.title, `${source.title} (Copy%`));
+  let newTitle = baseTitle;
+  if (existingCopies.some(c => c.title === baseTitle)) {
+    let n = 2;
+    while (existingCopies.some(c => c.title === `${source.title} (Copy ${n})`)) n++;
+    newTitle = `${source.title} (Copy ${n})`;
+  }
+
+  // Wrap the entire clone in a single transaction so any failure rolls back
+  // every row we've inserted — no orphaned half-cloned course trees.
+  const { newCourse, moduleCount, lessonCount } = await db.transaction(async (tx) => {
+    // 1. Clone the course row. Strip id/timestamps; force draft + hidden so
+    //    an accidental clone never shows on the public site.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id: _id, createdAt: _ca, updatedAt: _ua, ...sourceCols } = source as Record<string, unknown> & { id: number; createdAt: unknown; updatedAt: unknown };
+    const [createdCourse] = await tx.insert(coursesTable).values({
+      ...(sourceCols as object),
+      title: newTitle,
+      status: "draft",
+      showOnWebsite: false,
+    } as typeof coursesTable.$inferInsert).returning();
+
+    // 2. Clone every module under the source course, remembering the
+    //    old→new id mapping so we can re-parent the lessons in step 3.
+    const sourceModules = await tx.select().from(modulesTable).where(eq(modulesTable.courseId, sourceCourseId)).orderBy(modulesTable.order);
+    const moduleIdMap = new Map<number, number>();
+    for (const m of sourceModules) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { id: _mid, createdAt: _mca, courseId: _mcid, ...modCols } = m as Record<string, unknown> & { id: number; createdAt: unknown; courseId: number };
+      const [newModule] = await tx.insert(modulesTable).values({
+        ...(modCols as object),
+        courseId: createdCourse.id,
+      } as typeof modulesTable.$inferInsert).returning();
+      moduleIdMap.set(m.id, newModule.id);
+    }
+
+    // 3. Clone every lesson, swapping its moduleId to the freshly-cloned one.
+    let clonedLessonCount = 0;
+    if (sourceModules.length > 0) {
+      const sourceLessons = await tx.select().from(lessonsTable).where(
+        inArray(lessonsTable.moduleId, sourceModules.map(m => m.id))
+      );
+      for (const l of sourceLessons) {
+        const newModuleId = moduleIdMap.get(l.moduleId);
+        if (!newModuleId) continue;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { id: _lid, createdAt: _lca, moduleId: _lmid, ...lessonCols } = l as Record<string, unknown> & { id: number; createdAt: unknown; moduleId: number };
+        await tx.insert(lessonsTable).values({
+          ...(lessonCols as object),
+          moduleId: newModuleId,
+        } as typeof lessonsTable.$inferInsert);
+        clonedLessonCount++;
+      }
+    }
+
+    return { newCourse: createdCourse, moduleCount: sourceModules.length, lessonCount: clonedLessonCount };
+  });
+
+  res.status(201).json({
+    ...newCourse,
+    price: parseFloat(newCourse.price),
+    compareAtPrice: newCourse.compareAtPrice ? parseFloat(newCourse.compareAtPrice) : null,
+    moduleCount,
+    lessonCount,
+    enrollmentCount: 0,
+  });
 });
 
 router.get("/:courseId/modules", async (req, res): Promise<void> => {

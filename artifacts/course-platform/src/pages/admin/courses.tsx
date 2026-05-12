@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Package, BookOpen, Check, Eye, EyeOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, BookOpen, Check, Eye, EyeOff, Copy } from "lucide-react";
 import { ImageUploader } from "@/components/image-uploader";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -87,6 +87,28 @@ export default function AdminCoursesPage() {
       onSuccess: () => { toast({ title: "Course deleted" }); queryClient.invalidateQueries({ queryKey: getAdminListCoursesQueryKey() }); },
       onError: () => toast({ title: "Failed to delete course", variant: "destructive" }),
     });
+  };
+
+  // Duplicate course: clones the course + all modules + lessons. The new copy
+  // is created as draft + hidden so admins can review/rename before publishing.
+  const [duplicatingId, setDuplicatingId] = useState<number | null>(null);
+  const handleDuplicate = async (id: number, title: string) => {
+    if (!confirm(`Duplicate "${title}"?\n\nThis will create a full copy (with all modules and lessons) as a draft. You can edit and publish it after.`)) return;
+    setDuplicatingId(id);
+    try {
+      const res = await fetch(`${API_BASE}/api/courses/${id}/duplicate`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Failed to duplicate");
+      toast({ title: "Course duplicated!", description: `Created "${data.title}" as draft.` });
+      queryClient.invalidateQueries({ queryKey: getAdminListCoursesQueryKey() });
+    } catch (e) {
+      toast({ title: e instanceof Error ? e.message : "Failed to duplicate course", variant: "destructive" });
+    } finally {
+      setDuplicatingId(null);
+    }
   };
 
   /* ── Bundle handlers ── */
@@ -235,6 +257,16 @@ export default function AdminCoursesPage() {
                           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" asChild>
                             <Link href={`${adminBase}/courses/${c.id}/edit`}><Pencil className="w-3.5 h-3.5" /></Link>
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-blue-400 hover:text-blue-300 disabled:opacity-50"
+                            onClick={() => handleDuplicate(c.id, c.title)}
+                            disabled={duplicatingId === c.id}
+                            title="Duplicate course"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </Button>
                           <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-300" onClick={() => handleDelete(c.id)}>
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>
@@ -309,6 +341,16 @@ export default function AdminCoursesPage() {
                       <div className="ml-auto flex items-center gap-1">
                         <Button size="sm" variant="ghost" className="h-8 w-8 p-0" asChild>
                           <Link href={`${adminBase}/courses/${c.id}/edit`}><Pencil className="w-4 h-4" /></Link>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 text-blue-400 hover:text-blue-300 disabled:opacity-50"
+                          onClick={() => handleDuplicate(c.id, c.title)}
+                          disabled={duplicatingId === c.id}
+                          title="Duplicate course"
+                        >
+                          <Copy className="w-4 h-4" />
                         </Button>
                         <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-400 hover:text-red-300" onClick={() => handleDelete(c.id)}>
                           <Trash2 className="w-4 h-4" />
