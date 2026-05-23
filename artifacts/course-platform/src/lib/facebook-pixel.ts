@@ -1,13 +1,13 @@
 declare global {
   interface Window {
-    fbq: ((...args: unknown[]) => void) & {
+    fbq?: ((...args: unknown[]) => void) & {
       callMethod?: (...args: unknown[]) => void;
       queue?: unknown[];
       loaded?: boolean;
       version?: string;
       push?: (...args: unknown[]) => void;
     };
-    _fbq: Window["fbq"];
+    _fbq?: Window["fbq"];
   }
 }
 
@@ -106,10 +106,11 @@ export function initPixel(pixelId: string): void {
   if (window.fbq) { initialised = true; markReadyAndFlush(); return; }
   initialised = true;
 
+  type FbqFn = NonNullable<Window["fbq"]>;
   const fb = function (...args: unknown[]) {
     if (fb.callMethod) fb.callMethod(...args);
     else { fb.queue = fb.queue ?? []; fb.queue.push(args); }
-  } as Window["fbq"];
+  } as FbqFn;
   if (!window.fbq) window.fbq = fb;
   window._fbq = fb;
   fb.push = fb;
@@ -122,7 +123,7 @@ export function initPixel(pixelId: string): void {
   script.src = "https://connect.facebook.net/en_US/fbevents.js";
   document.head.appendChild(script);
 
-  window.fbq("init", pixelId);
+  window.fbq!("init", pixelId);
   // NOTE: We intentionally do NOT fire PageView here. The route-change effect
   // in App.tsx (PixelTracker) calls fbPageView() on every location change
   // including the initial mount, and that path uses event_id deduplication

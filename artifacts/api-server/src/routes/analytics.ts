@@ -61,8 +61,8 @@ router.get("/recent-activity", requireAdmin, async (req, res): Promise<void> => 
   }
 
   for (const p of recentPayments) {
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, p.userId)).limit(1);
-    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, p.courseId)).limit(1);
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, p.userId!)).limit(1);
+    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, p.courseId!)).limit(1);
     activities.push({
       id: idCounter++,
       type: "payment",

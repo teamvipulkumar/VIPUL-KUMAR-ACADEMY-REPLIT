@@ -28,6 +28,7 @@ const PERMISSION_LABELS: Record<keyof StaffPermissions, string> = {
   paymentGateways: "Payment Gateways",
   gstInvoicing: "GST & Invoicing",
   settings: "Settings",
+  creators: "Creators",
 };
 
 function summarizePermissions(perms: StaffPermissions): string {

@@ -47,7 +47,7 @@ export default function AdminFacebookPixelPage() {
 
   useEffect(() => {
     if (settings) {
-      const s = settings as Record<string, unknown>;
+      const s = settings as unknown as Record<string, unknown>;
       const next: PixelForm = {
         enabled: s.facebookPixelEnabled as boolean ?? false,
         pixelId: s.facebookPixelId as string ?? "",

@@ -267,7 +267,7 @@ export default function AdminSettingsPage() {
   const [confirmEnable, setConfirmEnable] = useState(false);
   // Track the actual DB value separately from the form so we can show a
   // dedicated "Turn Off Now" button when maintenance is currently live.
-  const dbMaintenanceOn = (settings as Record<string, unknown> | undefined)?.maintenanceMode as boolean ?? false;
+  const dbMaintenanceOn = (settings as unknown as Record<string, unknown> | undefined)?.maintenanceMode as boolean ?? false;
   const MAINTENANCE_MSG_MAX = 280;
   const maintenanceTemplates = [
     { label: "Scheduled", text: "We're performing scheduled maintenance to bring you a better experience. We'll be back in a few minutes!" },
@@ -303,21 +303,21 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     if (settings) {
       setForm({
-        siteName: settings.siteName, siteUrl: (settings as Record<string, unknown>).siteUrl as string ?? "", siteDescription: settings.siteDescription,
+        siteName: settings.siteName, siteUrl: (settings as unknown as Record<string, unknown>).siteUrl as string ?? "", siteDescription: settings.siteDescription,
         currency: settings.currency, stripeEnabled: settings.stripeEnabled,
         razorpayEnabled: settings.razorpayEnabled, emailNotificationsEnabled: settings.emailNotificationsEnabled,
         commissionRate: settings.commissionRate,
-        showFeaturedCourses: (settings as Record<string, unknown>).showFeaturedCourses as boolean ?? true,
-        showFeaturedPackages: (settings as Record<string, unknown>).showFeaturedPackages as boolean ?? true,
+        showFeaturedCourses: (settings as unknown as Record<string, unknown>).showFeaturedCourses as boolean ?? true,
+        showFeaturedPackages: (settings as unknown as Record<string, unknown>).showFeaturedPackages as boolean ?? true,
       });
       setMaintenanceForm({
-        maintenanceMode: (settings as Record<string, unknown>).maintenanceMode as boolean ?? false,
-        maintenanceMessage: (settings as Record<string, unknown>).maintenanceMessage as string ?? "",
+        maintenanceMode: (settings as unknown as Record<string, unknown>).maintenanceMode as boolean ?? false,
+        maintenanceMessage: (settings as unknown as Record<string, unknown>).maintenanceMessage as string ?? "",
       });
-      const gClientId = (settings as Record<string, unknown>).googleClientId as string ?? "";
-      const gClientSecret = (settings as Record<string, unknown>).googleClientSecret as string ?? "";
+      const gClientId = (settings as unknown as Record<string, unknown>).googleClientId as string ?? "";
+      const gClientSecret = (settings as unknown as Record<string, unknown>).googleClientSecret as string ?? "";
       setGoogleForm({
-        enabled: (settings as Record<string, unknown>).googleSignInEnabled as boolean ?? false,
+        enabled: (settings as unknown as Record<string, unknown>).googleSignInEnabled as boolean ?? false,
         clientId: gClientId,
         clientSecret: gClientSecret,
       });
@@ -327,19 +327,19 @@ export default function AdminSettingsPage() {
       setGoogleSaved(!!gClientId && !!gClientSecret);
       setGoogleEditing(false);
       const bSiteName = settings.siteName ?? "";
-      const bSiteLogo = (settings as Record<string, unknown>).siteLogo as string ?? "";
-      const bSiteLogoLight = (settings as Record<string, unknown>).siteLogoLight as string ?? "";
-      const bFavicon = (settings as Record<string, unknown>).favicon as string ?? "";
-      const bMetaTitle = (settings as Record<string, unknown>).metaTitle as string ?? "";
+      const bSiteLogo = (settings as unknown as Record<string, unknown>).siteLogo as string ?? "";
+      const bSiteLogoLight = (settings as unknown as Record<string, unknown>).siteLogoLight as string ?? "";
+      const bFavicon = (settings as unknown as Record<string, unknown>).favicon as string ?? "";
+      const bMetaTitle = (settings as unknown as Record<string, unknown>).metaTitle as string ?? "";
       setBrandingForm({
         siteName: bSiteName,
         siteLogo: bSiteLogo,
         siteLogoLight: bSiteLogoLight,
-        logoSize: (settings as Record<string, unknown>).logoSize as number ?? 34,
-        logoSizeMobile: (settings as Record<string, unknown>).logoSizeMobile as number ?? 28,
+        logoSize: (settings as unknown as Record<string, unknown>).logoSize as number ?? 34,
+        logoSizeMobile: (settings as unknown as Record<string, unknown>).logoSizeMobile as number ?? 28,
         favicon: bFavicon,
         metaTitle: bMetaTitle,
-        metaDescription: (settings as Record<string, unknown>).metaDescription as string ?? "",
+        metaDescription: (settings as unknown as Record<string, unknown>).metaDescription as string ?? "",
       });
       // If branding has been configured already, collapse to the compact
       // summary view by default. Fresh installs (no data yet) stay expanded.
@@ -442,13 +442,13 @@ export default function AdminSettingsPage() {
     if (settings) {
       setBrandingForm({
         siteName: settings.siteName ?? "",
-        siteLogo: (settings as Record<string, unknown>).siteLogo as string ?? "",
-        siteLogoLight: (settings as Record<string, unknown>).siteLogoLight as string ?? "",
-        logoSize: (settings as Record<string, unknown>).logoSize as number ?? 34,
-        logoSizeMobile: (settings as Record<string, unknown>).logoSizeMobile as number ?? 28,
-        favicon: (settings as Record<string, unknown>).favicon as string ?? "",
-        metaTitle: (settings as Record<string, unknown>).metaTitle as string ?? "",
-        metaDescription: (settings as Record<string, unknown>).metaDescription as string ?? "",
+        siteLogo: (settings as unknown as Record<string, unknown>).siteLogo as string ?? "",
+        siteLogoLight: (settings as unknown as Record<string, unknown>).siteLogoLight as string ?? "",
+        logoSize: (settings as unknown as Record<string, unknown>).logoSize as number ?? 34,
+        logoSizeMobile: (settings as unknown as Record<string, unknown>).logoSizeMobile as number ?? 28,
+        favicon: (settings as unknown as Record<string, unknown>).favicon as string ?? "",
+        metaTitle: (settings as unknown as Record<string, unknown>).metaTitle as string ?? "",
+        metaDescription: (settings as unknown as Record<string, unknown>).metaDescription as string ?? "",
       });
     }
     setBrandingExpanded(false);
@@ -484,9 +484,9 @@ export default function AdminSettingsPage() {
   const cancelGoogleEdit = () => {
     if (settings) {
       setGoogleForm({
-        enabled: (settings as Record<string, unknown>).googleSignInEnabled as boolean ?? false,
-        clientId: (settings as Record<string, unknown>).googleClientId as string ?? "",
-        clientSecret: (settings as Record<string, unknown>).googleClientSecret as string ?? "",
+        enabled: (settings as unknown as Record<string, unknown>).googleSignInEnabled as boolean ?? false,
+        clientId: (settings as unknown as Record<string, unknown>).googleClientId as string ?? "",
+        clientSecret: (settings as unknown as Record<string, unknown>).googleClientSecret as string ?? "",
       });
     }
     setShowSecret(false);

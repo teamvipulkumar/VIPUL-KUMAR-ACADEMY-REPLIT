@@ -43,7 +43,7 @@ export async function generateGstInvoice(paymentId: number): Promise<void> {
     if (!payment || payment.status !== "completed") return;
 
     const [user] = await db.select({ name: usersTable.name, email: usersTable.email, phone: usersTable.phone })
-      .from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+      .from(usersTable).where(eq(usersTable.id, payment.userId!)).limit(1);
     const [course] = payment.courseId
       ? await db.select({ title: coursesTable.title }).from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1)
       : [null];

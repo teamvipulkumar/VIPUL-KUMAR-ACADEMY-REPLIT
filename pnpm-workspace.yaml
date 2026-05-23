@@ -123,3 +123,6 @@ overrides:
   rollup>@rollup/rollup-win32-ia32-msvc: '-'
   rollup>@rollup/rollup-win32-x64-gnu: '-'
   rollup>@rollup/rollup-win32-x64-msvc: '-'
+
+patchedDependencies:
+  '@types/express-serve-static-core@5.1.1': patches/@types__express-serve-static-core@5.1.1.patch

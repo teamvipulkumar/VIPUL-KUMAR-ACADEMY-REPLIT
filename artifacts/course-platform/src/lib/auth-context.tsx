@@ -97,7 +97,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { data: user, isLoading, isFetching, refetch } = useGetMe({ query: { retry: false } });
+  const { data: user, isLoading, isFetching, refetch } = useGetMe({ query: { retry: false, queryKey: ["/api/auth/me"] } });
 
   const isStaff = !!(user as any)?.isStaff;
   const isCreator = !!(user as any)?.isCreator;

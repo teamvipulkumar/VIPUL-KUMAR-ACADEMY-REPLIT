@@ -441,7 +441,7 @@ adminCreatorsRouter.post("/", requirePermission("creators"), async (req, res): P
       .set({ status: "active", notes: notes ?? existing.notes })
       .where(eq(creatorsTable.id, existing.id))
       .returning();
-    const siteUrl = getPublicBaseUrl(req);
+    const siteUrl = await getPublicBaseUrl();
     triggerFunnel("creator_joined", user.id, {
       name: user.name, email: user.email, site_url: siteUrl,
       creator_dashboard_url: `${siteUrl}/creator/dashboard`,
@@ -467,7 +467,7 @@ adminCreatorsRouter.post("/", requirePermission("creators"), async (req, res): P
     type: "success",
   }).catch(() => {});
 
-  const siteUrl = getPublicBaseUrl(req);
+  const siteUrl = await getPublicBaseUrl();
   triggerFunnel("creator_joined", user.id, {
     name: user.name, email: user.email, site_url: siteUrl,
     creator_dashboard_url: `${siteUrl}/creator/dashboard`,

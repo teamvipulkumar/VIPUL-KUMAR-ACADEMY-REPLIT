@@ -2781,7 +2781,7 @@ router.get("/funnels/:id/executions", requireAdmin, async (req, res): Promise<vo
   const search = String(req.query.search ?? "").trim();
 
   const whereParts: any[] = [eq(funnelExecutionsTable.funnelId, id)];
-  if (statusFilter !== "all") whereParts.push(eq(funnelExecutionsTable.status, statusFilter));
+  if (statusFilter !== "all") whereParts.push(eq(funnelExecutionsTable.status, statusFilter as any));
   if (search) whereParts.push(or(ilike(usersTable.name, `%${search}%`), ilike(usersTable.email, `%${search}%`)));
   const whereClause = and(...whereParts);
 

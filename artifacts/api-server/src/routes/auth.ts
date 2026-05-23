@@ -139,7 +139,7 @@ router.post("/login", async (req, res): Promise<void> => {
     .where(and(eq(creatorsTable.userId, user.id), eq(creatorsTable.status, "active")))
     .limit(1);
   const isCreator = !!creatorRecord;
-  const token = signToken({ userId: user.id, email: user.email, role: user.role, isStaff, staffPermissions, isCreator });
+  const token = signToken({ userId: user.id, email: user.email, role: user.role, isStaff, staffPermissions: staffPermissions as unknown as Record<string, boolean> | null, isCreator });
   res.cookie("token", token, authCookieOptions());
   const { password: _, emailVerifyToken: _vt, emailVerifyTokenExpiresAt: _vte, resetToken: _rt, resetTokenExpiresAt: _rte, ...safeUser } = user;
   res.json({ user: { ...safeUser, isStaff, staffPermissions, isCreator }, message: "Login successful" });
@@ -336,7 +336,7 @@ router.post("/change-password", requireAuth, async (req, res): Promise<void> => 
     .where(and(eq(creatorsTable.userId, user.id), eq(creatorsTable.status, "active")))
     .limit(1);
   const isCreator = !!creatorRecord;
-  const newToken = signToken({ userId: user.id, email: user.email, role: user.role, isStaff, staffPermissions, isCreator });
+  const newToken = signToken({ userId: user.id, email: user.email, role: user.role, isStaff, staffPermissions: staffPermissions as unknown as Record<string, boolean> | null, isCreator });
   res.cookie("token", newToken, authCookieOptions());
 
   res.json({ message: "Password changed successfully" });

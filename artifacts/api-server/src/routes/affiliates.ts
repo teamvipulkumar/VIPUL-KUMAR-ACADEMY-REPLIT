@@ -685,7 +685,7 @@ router.get("/upcoming-payout", requireAuth, async (req, res): Promise<void> => {
   const [lastApproved] = await db.select({ processedAt: payoutRequestsTable.processedAt })
     .from(payoutRequestsTable)
     .where(and(eq(payoutRequestsTable.userId, userId), eq(payoutRequestsTable.status, "approved")))
-    .orderBy(desc(payoutRequestsTable.processedAt)).limit(1);
+    .orderBy(desc(payoutRequestsTable.processedAt as any)).limit(1);
   const lastPayoutDate = lastApproved?.processedAt ?? null;
 
   let nextDueDate: Date | null = null;
@@ -1372,7 +1372,7 @@ router.get("/admin/all-payouts", requireAdmin, async (req, res): Promise<void> =
   const statusFilter = isPayoutStatus(rawStatus) ? rawStatus : undefined;
   const baseQuery = db.select().from(payoutRequestsTable);
   const payouts = await (statusFilter
-    ? baseQuery.where(eq(payoutRequestsTable.status, statusFilter)).orderBy(desc(payoutRequestsTable.processedAt))
+    ? baseQuery.where(eq(payoutRequestsTable.status, statusFilter as any)).orderBy(desc(payoutRequestsTable.processedAt as any))
     : baseQuery.orderBy(desc(payoutRequestsTable.requestedAt)));
   const enriched = await Promise.all(payouts.map(async (p) => {
     const [user] = await db.select({ name: usersTable.name, email: usersTable.email, phone: (usersTable as any).phone })
@@ -1438,7 +1438,7 @@ router.get("/admin/scheduled-payouts", requireAdmin, async (req, res): Promise<v
     const [lastApproved] = await db.select({ processedAt: payoutRequestsTable.processedAt })
       .from(payoutRequestsTable)
       .where(and(eq(payoutRequestsTable.userId, userId), eq(payoutRequestsTable.status, "approved")))
-      .orderBy(desc(payoutRequestsTable.processedAt)).limit(1);
+      .orderBy(desc(payoutRequestsTable.processedAt as any)).limit(1);
     const lastPayoutDate = lastApproved?.processedAt ?? null;
 
     let nextDueDate: Date | null = null;

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { useRoute, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
-import { useGetCourse, useValidateCoupon } from "@workspace/api-client-react";
+import { useGetCourse, useValidateCoupon, getGetCourseQueryKey } from "@workspace/api-client-react";
 import { fbTrack } from "@/lib/facebook-pixel";
 import { useQueryClient } from "@tanstack/react-query";
 import { SiteFooter } from "@/components/layout/app-layout";
@@ -517,7 +517,7 @@ export default function CheckoutPage() {
   });
 
   const { data: course, isLoading } = useGetCourse(courseId, {
-    query: { enabled: courseId > 0 }
+    query: { enabled: courseId > 0, queryKey: getGetCourseQueryKey(courseId) }
   });
 
   const validateCoupon = useValidateCoupon();

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useLocation, useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -218,7 +218,7 @@ export function renderBlock(block: Block, opts?: { editing?: boolean; selected?:
       );
 
     case "heading": {
-      const Tag = (p.level || "h2") as keyof JSX.IntrinsicElements;
+      const Tag = (p.level || "h2") as keyof React.JSX.IntrinsicElements;
       const sizeMap: Record<string, string> = { xs: "text-sm", sm: "text-base", base: "text-lg", lg: "text-xl", xl: "text-2xl", "2xl": "text-3xl", "3xl": "text-4xl", "4xl": "text-5xl" };
       return (
         <div className={`px-6 py-2 text-${p.align || "left"}`}>

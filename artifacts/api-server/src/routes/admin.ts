@@ -149,7 +149,7 @@ router.get("/users/export", requireAdmin, async (req, res): Promise<void> => {
 });
 
 router.get("/users/:userId", requireAdmin, async (req, res): Promise<void> => {
-  const userId = parseInt(req.params.userId);
+  const userId = parseInt(req.params.userId as string);
   const derivedRole = sql<string>`
     CASE
       WHEN ${adminStaffTable.status} = 'active' THEN 'staff'
@@ -229,7 +229,7 @@ router.post("/users", requireAdmin, async (req, res): Promise<void> => {
 });
 
 router.put("/users/:userId", requireAdmin, async (req, res): Promise<void> => {
-  const userId = parseInt(req.params.userId);
+  const userId = parseInt(req.params.userId as string);
   const authReq = req as AuthedRequest;
   const { name, email, role, isBanned, password, phone, grantCreator, revokeCreator } = req.body;
   const updates: Record<string, unknown> = {};
@@ -302,7 +302,7 @@ router.delete("/users/bulk", requireAdmin, async (req, res): Promise<void> => {
   const authedReq = req as AuthedRequest;
   const ids: number[] = req.body?.ids ?? [];
   if (!Array.isArray(ids) || ids.length === 0) { res.status(400).json({ error: "Provide a non-empty ids array" }); return; }
-  const safeIds = ids.filter(id => id !== authedReq.user?.id);
+  const safeIds = ids.filter(id => id !== authedReq.user?.userId);
   if (safeIds.length === 0) { res.status(400).json({ error: "Cannot delete your own account" }); return; }
   await db.delete(usersTable).where(inArray(usersTable.id, safeIds));
   res.json({ deleted: safeIds.length });
@@ -314,22 +314,22 @@ router.post("/users/bulk-ban", requireAdmin, async (req, res): Promise<void> => 
   const ids: number[] = req.body?.ids ?? [];
   const banned: boolean = req.body?.banned ?? true;
   if (!Array.isArray(ids) || ids.length === 0) { res.status(400).json({ error: "Provide a non-empty ids array" }); return; }
-  const safeIds = ids.filter(id => id !== authedReq.user?.id);
+  const safeIds = ids.filter(id => id !== authedReq.user?.userId);
   if (safeIds.length === 0) { res.status(400).json({ error: "Cannot ban your own account" }); return; }
   await db.update(usersTable).set({ isBanned: banned }).where(inArray(usersTable.id, safeIds));
   res.json({ updated: safeIds.length });
 });
 
 router.delete("/users/:userId", requireAdmin, async (req, res): Promise<void> => {
-  const userId = parseInt(req.params.userId);
+  const userId = parseInt(req.params.userId as string);
   const authedReq = req as AuthedRequest;
-  if (authedReq.user?.id === userId) { res.status(400).json({ error: "Cannot delete your own account" }); return; }
+  if (authedReq.user?.userId === userId) { res.status(400).json({ error: "Cannot delete your own account" }); return; }
   await db.delete(usersTable).where(eq(usersTable.id, userId));
   res.json({ message: "User deleted" });
 });
 
 router.post("/users/:userId/ban", requireAdmin, async (req, res): Promise<void> => {
-  const userId = parseInt(req.params.userId);
+  const userId = parseInt(req.params.userId as string);
   const { banned } = req.body;
   await db.update(usersTable).set({ isBanned: banned }).where(eq(usersTable.id, userId));
   res.json({ message: `User ${banned ? "banned" : "unbanned"}` });
@@ -471,7 +471,7 @@ router.get("/analytics", requireAdmin, async (req, res): Promise<void> => {
 
   const recentPayments = await db.select().from(paymentsTable).where(eq(paymentsTable.status, "completed")).orderBy(paymentsTable.createdAt).limit(5);
   const enrichedPayments = await Promise.all(recentPayments.map(async (p) => {
-    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, p.courseId)).limit(1);
+    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, p.courseId!)).limit(1);
     return { ...p, amount: parseFloat(String(p.amount)), course: course ? { ...course, price: parseFloat(course.price), moduleCount: 0, lessonCount: 0, enrollmentCount: 0 } : null };
   }));
 
@@ -677,7 +677,7 @@ router.post("/enrollments", requireAdmin, async (req, res): Promise<void> => {
 });
 
 router.delete("/enrollments/:enrollmentId", requireAdmin, async (req, res): Promise<void> => {
-  const enrollmentId = parseInt(req.params.enrollmentId);
+  const enrollmentId = parseInt(req.params.enrollmentId as string);
   const [enrollment] = await db.select().from(enrollmentsTable).where(eq(enrollmentsTable.id, enrollmentId)).limit(1);
   if (!enrollment) { res.status(404).json({ error: "Enrollment not found" }); return; }
 
@@ -843,7 +843,7 @@ router.get("/orders", requireAdmin, async (req, res): Promise<void> => {
 });
 
 router.post("/orders/:orderId/refund", requireAdmin, async (req, res): Promise<void> => {
-  const orderId = parseInt(req.params.orderId);
+  const orderId = parseInt(req.params.orderId as string);
   const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.id, orderId)).limit(1);
   if (!payment) { res.status(404).json({ error: "Order not found" }); return; }
   if (payment.status === "refunded") { res.status(400).json({ error: "Order already refunded" }); return; }
@@ -878,7 +878,7 @@ router.post("/orders/:orderId/refund", requireAdmin, async (req, res): Promise<v
               refund_note: "Admin initiated refund",
             }),
           });
-          const data = await r.json();
+          const data = await r.json() as any;
           if (r.ok) {
             gatewayRefundId = data.cf_refund_id ?? data.refund_id ?? refundId;
           } else {
@@ -896,7 +896,7 @@ router.post("/orders/:orderId/refund", requireAdmin, async (req, res): Promise<v
             headers: { Authorization: `Basic ${creds}`, "Content-Type": "application/json" },
             body: JSON.stringify({ amount: Math.round(refundAmount * 100) }),
           });
-          const data = await r.json();
+          const data = await r.json() as any;
           if (r.ok) {
             gatewayRefundId = data.id;
           } else {
@@ -914,7 +914,7 @@ router.post("/orders/:orderId/refund", requireAdmin, async (req, res): Promise<v
             headers: { Authorization: `Bearer ${gw.secretKey}`, "Content-Type": "application/x-www-form-urlencoded" },
             body: body.toString(),
           });
-          const data = await r.json();
+          const data = await r.json() as any;
           if (r.ok) {
             gatewayRefundId = data.id;
           } else {
@@ -935,7 +935,7 @@ router.post("/orders/:orderId/refund", requireAdmin, async (req, res): Promise<v
   // tied to this payment. Already-paid rows are flagged for manual claw-back.
   await cancelCreatorCommissionsForPayment(orderId);
 
-  const [refundUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+  const [refundUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId!)).limit(1);
 
   // Collect all course IDs to unenroll from
   const courseIdsToUnenroll: number[] = [];
@@ -972,10 +972,10 @@ router.post("/orders/:orderId/refund", requireAdmin, async (req, res): Promise<v
     for (const mod of courseModules) {
       const modLessons = await db.select({ id: lessonsTable.id }).from(lessonsTable).where(eq(lessonsTable.moduleId, mod.id));
       for (const lesson of modLessons) {
-        await db.delete(lessonCompletionsTable).where(and(eq(lessonCompletionsTable.userId, payment.userId), eq(lessonCompletionsTable.lessonId, lesson.id)));
+        await db.delete(lessonCompletionsTable).where(and(eq(lessonCompletionsTable.userId, payment.userId!), eq(lessonCompletionsTable.lessonId, lesson.id)));
       }
     }
-    await db.delete(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, cid)));
+    await db.delete(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId!), eq(enrollmentsTable.courseId, cid)));
   }
 
   const label = payment.bundleId ? "package" : "course";
@@ -988,7 +988,7 @@ router.post("/orders/:orderId/refund", requireAdmin, async (req, res): Promise<v
 
 // ── Sync Cashfree Transaction ID for an existing order ───────────────────────
 router.post("/orders/:orderId/sync-cashfree-id", requireAdmin, async (req, res): Promise<void> => {
-  const orderId = parseInt(req.params.orderId);
+  const orderId = parseInt(req.params.orderId as string);
   if (isNaN(orderId)) { res.status(400).json({ error: "Invalid order id" }); return; }
 
   const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.id, orderId)).limit(1);
@@ -1004,7 +1004,7 @@ router.post("/orders/:orderId/sync-cashfree-id", requireAdmin, async (req, res):
     const r = await fetch(`${host}/pg/orders/${payment.gatewayOrderId}/payments`, {
       headers: { "x-api-version": "2023-08-01", "x-client-id": gw.apiKey, "x-client-secret": gw.secretKey },
     });
-    const pList = await r.json();
+    const pList = await r.json() as any;
     if (!r.ok) { res.status(400).json({ error: pList.message ?? "Cashfree API error" }); return; }
 
     const successPay = Array.isArray(pList)
@@ -1047,10 +1047,10 @@ router.delete("/orders/bulk", requireAdmin, async (req, res): Promise<void> => {
         for (const mod of courseModules) {
           const modLessons = await db.select({ id: lessonsTable.id }).from(lessonsTable).where(eq(lessonsTable.moduleId, mod.id));
           for (const lesson of modLessons) {
-            await db.delete(lessonCompletionsTable).where(and(eq(lessonCompletionsTable.userId, payment.userId), eq(lessonCompletionsTable.lessonId, lesson.id)));
+            await db.delete(lessonCompletionsTable).where(and(eq(lessonCompletionsTable.userId, payment.userId!), eq(lessonCompletionsTable.lessonId, lesson.id)));
           }
         }
-        await db.delete(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, cid)));
+        await db.delete(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId!), eq(enrollmentsTable.courseId, cid)));
       }
     }
   }
@@ -1060,7 +1060,7 @@ router.delete("/orders/bulk", requireAdmin, async (req, res): Promise<void> => {
 });
 
 router.delete("/orders/:orderId", requireAdmin, async (req, res): Promise<void> => {
-  const orderId = parseInt(req.params.orderId);
+  const orderId = parseInt(req.params.orderId as string);
   if (isNaN(orderId)) { res.status(400).json({ error: "Invalid order id" }); return; }
   const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.id, orderId)).limit(1);
   if (!payment) { res.status(404).json({ error: "Order not found" }); return; }
@@ -1079,10 +1079,10 @@ router.delete("/orders/:orderId", requireAdmin, async (req, res): Promise<void> 
       for (const mod of courseModules) {
         const modLessons = await db.select({ id: lessonsTable.id }).from(lessonsTable).where(eq(lessonsTable.moduleId, mod.id));
         for (const lesson of modLessons) {
-          await db.delete(lessonCompletionsTable).where(and(eq(lessonCompletionsTable.userId, payment.userId), eq(lessonCompletionsTable.lessonId, lesson.id)));
+          await db.delete(lessonCompletionsTable).where(and(eq(lessonCompletionsTable.userId, payment.userId!), eq(lessonCompletionsTable.lessonId, lesson.id)));
         }
       }
-      await db.delete(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, cid)));
+      await db.delete(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId!), eq(enrollmentsTable.courseId, cid)));
     }
   }
 
@@ -1123,7 +1123,7 @@ router.get("/payment-gateways", requireAdmin, async (req, res): Promise<void> =>
 });
 
 router.put("/payment-gateways/:name", requireAdmin, async (req, res): Promise<void> => {
-  const { name } = req.params;
+  const name = req.params.name as string;
   const supported = SUPPORTED_GATEWAYS.find(g => g.name === name);
   if (!supported) { res.status(400).json({ error: "Unsupported gateway" }); return; }
 
@@ -1157,13 +1157,13 @@ router.put("/payment-gateways/:name", requireAdmin, async (req, res): Promise<vo
 });
 
 router.delete("/payment-gateways/:name", requireAdmin, async (req, res): Promise<void> => {
-  const { name } = req.params;
+  const name = req.params.name as string;
   await db.delete(paymentGatewaysTable).where(eq(paymentGatewaysTable.name, name));
   res.json({ message: "Gateway configuration removed" });
 });
 
 router.get("/payment-gateways/:name/test", requireAdmin, async (req, res): Promise<void> => {
-  const { name } = req.params;
+  const name = req.params.name as string;
   const [gw] = await db.select().from(paymentGatewaysTable).where(eq(paymentGatewaysTable.name, name)).limit(1);
   if (!gw || !gw.apiKey || !gw.secretKey) { res.status(400).json({ error: "Gateway not configured" }); return; }
 

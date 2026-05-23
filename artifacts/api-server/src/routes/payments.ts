@@ -394,7 +394,7 @@ router.post("/verify", requireAuth, async (req, res): Promise<void> => {
   // commission / sending duplicate emails on accidental re-verifies.
   if (payment.status === "completed") {
     const [ex] = await db.select().from(enrollmentsTable)
-      .where(and(eq(enrollmentsTable.userId, authedReq.user.userId), eq(enrollmentsTable.courseId, payment.courseId)))
+      .where(and(eq(enrollmentsTable.userId, authedReq.user.userId), eq(enrollmentsTable.courseId, payment.courseId!)))
       .limit(1);
     res.json({ success: true, enrollmentId: ex?.id ?? null, message: "Payment already verified" });
     return;
@@ -403,12 +403,12 @@ router.post("/verify", requireAuth, async (req, res): Promise<void> => {
   await db.update(paymentsTable).set({ status: "completed", paymentId: `sim_${nanoid(12)}` }).where(eq(paymentsTable.id, payment.id));
   generateGstInvoice(payment.id).catch(() => {});
 
-  const existing = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, authedReq.user.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
+  const existing = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, authedReq.user.userId), eq(enrollmentsTable.courseId, payment.courseId!))).limit(1);
   let enrollmentId: number | null = null;
   if (existing.length === 0) {
-    const [enrollment] = await db.insert(enrollmentsTable).values({ userId: authedReq.user.userId, courseId: payment.courseId }).returning();
+    const [enrollment] = await db.insert(enrollmentsTable).values({ userId: authedReq.user.userId, courseId: payment.courseId! }).returning();
     enrollmentId = enrollment.id;
-    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId!)).limit(1);
     await db.insert(notificationsTable).values({ userId: authedReq.user.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success" });
     const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, authedReq.user.userId)).limit(1);
     if (buyer) {
@@ -440,7 +440,7 @@ router.get("/history", requireAuth, async (req, res): Promise<void> => {
       const [bundle] = await db.select().from(bundlesTable).where(eq(bundlesTable.id, p.bundleId)).limit(1);
       return { ...p, amount: parseFloat(String(p.amount)), course: null, bundle: bundle ? { id: bundle.id, name: bundle.name, thumbnailUrl: bundle.thumbnailUrl } : null };
     }
-    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, p.courseId)).limit(1);
+    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, p.courseId!)).limit(1);
     return { ...p, amount: parseFloat(String(p.amount)), bundle: null, course: course ? { ...course, price: parseFloat(course.price), moduleCount: 0, lessonCount: 0, enrollmentCount: 0 } : null };
   }));
   res.json(enriched);
@@ -778,7 +778,7 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
     // email). Guests using an existing user's email get the success page but
     // never the cookie — see /cashfree/create-order for full rationale.
     if (payment.allowAutoLogin && payment.userId) {
-      const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+      const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId!)).limit(1);
       if (authedUser) {
         const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
         res.cookie("token", tk, authCookieOptions());
@@ -789,7 +789,7 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
       const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
       res.json({ success: true, enrolled: true, bundleId: payment.bundleId, bundleName: bundle?.name, courseCount: bundleCourses.length, amount: parseFloat(String(payment.amount)), currency: "INR" });
     } else {
-      const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+      const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId!)).limit(1);
       res.json({ success: true, enrolled: true, courseId: payment.courseId, courseTitle: course?.title, amount: parseFloat(String(payment.amount)), currency: "INR" });
     }
     return;
@@ -845,7 +845,7 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
         const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
         for (const { courseId } of bundleCourses) {
           if (!courseId) continue;
-          const [ex] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, courseId))).limit(1);
+          const [ex] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId!), eq(enrollmentsTable.courseId, courseId))).limit(1);
           if (!ex) await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId });
         }
         await db.insert(notificationsTable).values({ userId: payment.userId, title: "Package Enrolled! 🎉", message: `You now have access to all courses in "${bundle?.name ?? "the package"}".`, type: "success" });
@@ -861,16 +861,16 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
       }
 
       // Single course payment
-      const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
+      const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId!), eq(enrollmentsTable.courseId, payment.courseId!))).limit(1);
       if (!existing) {
-        await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId: payment.courseId });
-        const [c0] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+        await db.insert(enrollmentsTable).values({ userId: payment.userId!, courseId: payment.courseId! });
+        const [c0] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId!)).limit(1);
         await db.insert(notificationsTable).values({ userId: payment.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${c0?.title ?? "the course"}`, type: "success" });
         if (payment.couponCode) {
           const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
           if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
         }
-        const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+        const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId!)).limit(1);
         if (buyer && c0) {
           triggerAutomation("purchase", buyer.id, buyer.email, { name: buyer.name, email: buyer.email, course_name: c0.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
           triggerFunnel("new_purchase", buyer.id, { course_name: c0.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
@@ -882,7 +882,7 @@ router.post("/cashfree/verify", async (req, res): Promise<void> => {
       await recordAffiliateCommission(payment.affiliateRef, payment.userId, payment.courseId, parseFloat(String(payment.amount)));
       if (payment.courseId) await recordCreatorCommissions(payment, [payment.courseId]);
 
-      const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+      const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId!)).limit(1);
       res.json({ success: true, enrolled: true, courseId: payment.courseId, courseTitle: course?.title, amount: parseFloat(String(payment.amount)), currency: "INR" });
     } else if (status === "ACTIVE") {
       res.json({ success: false, pending: true, status, message: "Payment is pending. Please wait." });
@@ -969,7 +969,7 @@ router.post("/cashfree/webhook", async (req, res): Promise<void> => {
     const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
     for (const { courseId } of bundleCourses) {
       if (!courseId) continue;
-      const [ex] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, courseId))).limit(1);
+      const [ex] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId!), eq(enrollmentsTable.courseId, courseId))).limit(1);
       if (!ex) await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId });
     }
     await db.insert(notificationsTable).values({ userId: payment.userId, title: "Package Enrolled! 🎉", message: `You now have access to all courses in "${bundle?.name ?? "the package"}".`, type: "success" });
@@ -981,12 +981,12 @@ router.post("/cashfree/webhook", async (req, res): Promise<void> => {
     await recordAffiliateCommission(payment.affiliateRef, payment.userId, null, parseFloat(String(payment.amount)));
     await recordCreatorCommissions(payment, bundleCourses.map(bc => bc.courseId).filter((x): x is number => x != null));
   } else {
-    const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
+    const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId!), eq(enrollmentsTable.courseId, payment.courseId!))).limit(1);
     if (!existing) {
-      await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId: payment.courseId });
-      const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+      await db.insert(enrollmentsTable).values({ userId: payment.userId!, courseId: payment.courseId! });
+      const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId!)).limit(1);
       await db.insert(notificationsTable).values({ userId: payment.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success" });
-      const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+      const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId!)).limit(1);
       if (buyer && course) {
         triggerAutomation("purchase", buyer.id, buyer.email, { name: buyer.name, email: buyer.email, course_name: course.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
         triggerFunnel("new_purchase", buyer.id, { course_name: course.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
@@ -1336,7 +1336,7 @@ async function completePaytmPayment(payment: typeof paymentsTable.$inferSelect, 
     const bundleCourses = await db.select({ courseId: bundleCoursesTable.courseId }).from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
     for (const { courseId } of bundleCourses) {
       if (!courseId) continue;
-      const [ex] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, courseId))).limit(1);
+      const [ex] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId!), eq(enrollmentsTable.courseId, courseId))).limit(1);
       if (!ex) await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId });
     }
     await db.insert(notificationsTable).values({ userId: payment.userId, title: "Package Enrolled! 🎉", message: `You now have access to all courses in "${bundle?.name ?? "the package"}".`, type: "success" });
@@ -1351,16 +1351,16 @@ async function completePaytmPayment(payment: typeof paymentsTable.$inferSelect, 
   }
 
   // Single course payment
-  const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId))).limit(1);
+  const [existing] = await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.userId, payment.userId!), eq(enrollmentsTable.courseId, payment.courseId!))).limit(1);
   if (!existing) {
-    await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId: payment.courseId });
-    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+    await db.insert(enrollmentsTable).values({ userId: payment.userId!, courseId: payment.courseId! });
+    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId!)).limit(1);
     await db.insert(notificationsTable).values({ userId: payment.userId, title: "Enrollment Confirmed!", message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success" });
     if (payment.couponCode) {
       const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, payment.couponCode)).limit(1);
       if (coupon) await db.update(couponsTable).set({ usedCount: coupon.usedCount + 1 }).where(eq(couponsTable.id, coupon.id));
     }
-    const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+    const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId!)).limit(1);
     if (buyer && course) {
       triggerAutomation("purchase", buyer.id, buyer.email, { name: buyer.name, email: buyer.email, course_name: course.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
       triggerFunnel("new_purchase", buyer.id, { course_name: course.title, amount: String(parseFloat(String(payment.amount)).toFixed(2)) }).catch(() => {});
@@ -1388,7 +1388,7 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
   // /cashfree/create-order for full rationale.
   if (payment.status === "completed") {
     if (payment.allowAutoLogin && payment.userId) {
-      const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+      const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId!)).limit(1);
       if (authedUser) {
         const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
         res.cookie("token", tk, authCookieOptions());
@@ -1400,7 +1400,7 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
       res.json({ success: true, enrolled: true, bundleId: payment.bundleId, bundleName: bundle?.name, courseCount: bundleCourses.length, amount: parseFloat(String(payment.amount)), currency: "INR" });
       return;
     }
-    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId!)).limit(1);
     res.json({ success: true, enrolled: true, courseId: payment.courseId, courseTitle: course?.title, amount: parseFloat(String(payment.amount)), currency: "INR" });
     return;
   }
@@ -1446,7 +1446,7 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
       // SECURITY: only set the auto-login cookie when allowAutoLogin is true.
       // See /cashfree/create-order for full rationale.
       if (payment.allowAutoLogin && payment.userId) {
-        const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+        const [authedUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId!)).limit(1);
         if (authedUser) {
           const tk = signToken({ userId: authedUser.id, email: authedUser.email, role: authedUser.role });
           res.cookie("token", tk, authCookieOptions());
@@ -1458,7 +1458,7 @@ router.post("/paytm/verify", async (req, res): Promise<void> => {
         res.json({ success: true, enrolled: true, bundleId: payment.bundleId, bundleName: bundle?.name, courseCount: bundleCourses.length, amount: parseFloat(String(payment.amount)), currency: "INR" });
         return;
       }
-      const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+      const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId!)).limit(1);
       res.json({ success: true, enrolled: true, courseId: payment.courseId, courseTitle: course?.title, amount: parseFloat(String(payment.amount)), currency: "INR" });
     } else if (resultStatus === "PENDING") {
       res.json({ success: false, pending: true, status: resultStatus, message: "Payment is pending. Please wait a moment and try again." });
@@ -1854,7 +1854,7 @@ router.post("/stripe/verify", async (req, res): Promise<void> => {
   payment.userId = resolvedUserId;
 
   if (payment.status === "completed") {
-    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId!)).limit(1);
     const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, resolvedUserId)).limit(1);
     // SECURITY: only set the auto-login cookie when allowAutoLogin is true.
     // See /cashfree/create-order for full rationale.
@@ -1886,17 +1886,17 @@ router.post("/stripe/verify", async (req, res): Promise<void> => {
   generateGstInvoice(payment.id).catch(() => {});
 
   const [existing] = await db.select().from(enrollmentsTable)
-    .where(and(eq(enrollmentsTable.userId, payment.userId), eq(enrollmentsTable.courseId, payment.courseId)))
+    .where(and(eq(enrollmentsTable.userId, payment.userId!), eq(enrollmentsTable.courseId, payment.courseId!)))
     .limit(1);
 
   if (!existing) {
-    await db.insert(enrollmentsTable).values({ userId: payment.userId, courseId: payment.courseId });
-    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+    await db.insert(enrollmentsTable).values({ userId: payment.userId!, courseId: payment.courseId! });
+    const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId!)).limit(1);
     await db.insert(notificationsTable).values({
       userId: payment.userId, title: "Enrollment Confirmed!",
       message: `You are now enrolled in ${course?.title ?? "the course"}`, type: "success",
     });
-    const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
+    const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId!)).limit(1);
     if (buyer) {
       triggerAutomation("purchase", buyer.id, buyer.email, {
         name: buyer.name, email: buyer.email,
@@ -1919,8 +1919,8 @@ router.post("/stripe/verify", async (req, res): Promise<void> => {
       .where(eq(couponsTable.id, coupon.id));
   }
 
-  const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId)).limit(1);
-  const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId)).limit(1);
+  const [freshUser] = await db.select().from(usersTable).where(eq(usersTable.id, payment.userId!)).limit(1);
+  const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, payment.courseId!)).limit(1);
   // SECURITY: only return DB user fields when allowAutoLogin is true; otherwise
   // hand back a display-only object so we don't leak the existing user's
   // name/role to a guest using their email.

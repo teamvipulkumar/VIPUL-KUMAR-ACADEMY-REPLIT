@@ -905,7 +905,7 @@ export default function AdminUsersPage() {
       limit: PAGE_SIZE,
       offset,
     } as Parameters<typeof useAdminListUsers>[0],
-    { query: { queryKey: getAdminListUsersQueryKey({ search: debouncedSearch, role, status, limit: PAGE_SIZE, offset }) } }
+    { query: { queryKey: getAdminListUsersQueryKey({ search: debouncedSearch, role, limit: PAGE_SIZE, offset }) } }
   );
 
   const banUser = useBanUser();
@@ -1164,7 +1164,7 @@ export default function AdminUsersPage() {
                     {/* Role */}
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
-                        {(u.roles && u.roles.length > 0 ? u.roles : [u.role]).map(r => {
+                        {[u.role].map((r: string) => {
                           const RI = roleIcons[r] ?? GraduationCap;
                           return (
                             <Badge key={r} className={`text-[10px] gap-1 ${roleColors[r] ?? ""}`}>
