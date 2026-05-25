@@ -53,6 +53,15 @@ const SEED_PAGES: Page[] = [
     views: 0,
   },
   {
+    id: "builtin-optin2",
+    title: "Affiliate Marketing Optin (Video)",
+    slug: "optin2",
+    type: "optin",
+    status: "published",
+    createdAt: "2026-04-19T00:00:00.000Z",
+    views: 0,
+  },
+  {
     id: "builtin-vsl",
     title: "Affiliate Marketing VSL",
     slug: "vsl",
