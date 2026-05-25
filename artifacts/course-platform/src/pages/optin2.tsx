@@ -17,7 +17,7 @@ function VidalyticsEmbed() {
     const wrapper = wrapperRef.current;
     if (!wrapper) return;
 
-    wrapper.innerHTML = `<div id="vidalytics_embed_optin2" style="width:100%;position:relative;padding-top:56.25%;"></div>`;
+    wrapper.innerHTML = `<div id="vidalytics_embed_AICY7oQO3SXwDcA1" style="width:100%;position:relative;padding-top:177.78%;"></div>`;
 
     const script = document.createElement("script");
     script.type = "text/javascript";
@@ -31,18 +31,18 @@ function VidalyticsEmbed() {
         i.getElementsByTagName("head")[0].appendChild(s);
       };}
       vsl(l+'loader.min.js',function(){if(!vli){var vlc=v[c][vl];vli=new vlc();}vli.loadScript(l+'player.min.js',function(){var vec=v[d][ve];t=new vec();t.run(a);});});
-    })(window,document,'Vidalytics','vidalytics_embed_optin2','https://fast.vidalytics.com/embeds/gVGT5OOt/I48jnMn3fLUdr24x/');`;
+    })(window,document,'Vidalytics','vidalytics_embed_AICY7oQO3SXwDcA1','https://fast.vidalytics.com/embeds/gVGT5OOt/AICY7oQO3SXwDcA1/');`;
 
     document.head.appendChild(script);
 
     const style = document.createElement("style");
     style.textContent = `
-      #vidalytics_embed_optin2 video::-webkit-media-controls-picture-in-picture-button { display: none !important; }
+      #vidalytics_embed_AICY7oQO3SXwDcA1 video::-webkit-media-controls-picture-in-picture-button { display: none !important; }
     `;
     document.head.appendChild(style);
 
     const pipTimer = setInterval(() => {
-      const videos = document.querySelectorAll<HTMLVideoElement>("#vidalytics_embed_optin2 video");
+      const videos = document.querySelectorAll<HTMLVideoElement>("#vidalytics_embed_AICY7oQO3SXwDcA1 video");
       if (videos.length > 0) {
         videos.forEach(v => { v.disablePictureInPicture = true; });
         clearInterval(pipTimer);
