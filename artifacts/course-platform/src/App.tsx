@@ -148,6 +148,7 @@ import CheckoutPage from "@/pages/checkout";
 import BundleCheckoutPage from "@/pages/bundle-checkout";
 import BundleDetailPage from "@/pages/bundle-detail";
 import OptinPage from "@/pages/optin";
+import Optin2Page from "@/pages/optin2";
 import VslPage from "@/pages/vsl";
 import OrderPage from "@/pages/order";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
@@ -200,6 +201,7 @@ function Router() {
       <Route path="/profile" component={() => <AppLayout><ProtectedRoute><ProfilePage /></ProtectedRoute></AppLayout>} />
 
       <Route path="/optin" component={() => <OptinPage />} />
+      <Route path="/optin2" component={() => <Optin2Page />} />
       <Route path="/vsl" component={() => <VslPage />} />
       <Route path="/order" component={() => <OrderPage />} />
       <Route path="/privacy-policy" component={() => <AppLayout><PrivacyPolicyPage /></AppLayout>} />
