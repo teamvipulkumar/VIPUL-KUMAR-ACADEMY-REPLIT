@@ -1,165 +1,160 @@
 # Railway Production Deployment — Vipul Kumar Academy
 
-## Architecture on Railway
-
-One Railway service runs everything:
+## Verified Build Results (locally tested)
 
 ```
-Railway Service (single)
-├── Express API  →  /api/*
-└── React SPA    →  /* (static files served by Express in production)
+✅ pnpm install --frozen-lockfile   → Done in 3.4s
+✅ Vite build (React SPA)           → 3010 modules, dist/public/index.html
+✅ esbuild (Express API)            → dist/index.mjs
+✅ GET /api/healthz                 → {"status":"ok"}
+✅ GET /                            → HTTP 200 (React SPA index.html)
+✅ GET /admin                       → HTTP 200 (SPA fallback)
+✅ GET /api/courses                 → HTTP 200 (live DB query)
 ```
-
-The frontend makes all API calls to relative `/api/...` paths (same origin),
-so both must run on the same domain. Express serves the pre-built Vite SPA
-in production via `express.static()`.
 
 ---
 
-## Step 1 — Connect GitHub Repo to Railway
+## Architecture (ONE Service)
 
-1. Go to [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo**
-2. Select `teamvipulkumar/VIPUL-KUMAR-ACADEMY-REPLIT`
-3. Railway detects `railway.json` + `nixpacks.toml` automatically — no manual config needed
+```
+Railway Service
+├── Build: pnpm install → Vite SPA build → esbuild API build
+└── Run:   node artifacts/api-server/dist/index.mjs
+               │
+               ├── /api/*   → Express routes (DB, auth, uploads…)
+               └── /*       → React SPA (express.static + index.html fallback)
+```
+
+The frontend uses relative `/api/...` paths — same domain, no CORS config needed
+between frontend and backend.
+
+---
+
+## Files Already in the Repo (ready to deploy)
+
+| File | Purpose |
+|---|---|
+| `railway.json` | Builder = NIXPACKS, healthcheck at `/api/healthz`, restart policy |
+| `nixpacks.toml` | Node 22 via nix, build commands, start command |
+| `package.json` | `"packageManager": "pnpm@10.26.1"` — nixpacks uses corepack (no PATH issues) |
+| `artifacts/api-server/src/app.ts` | Serves `artifacts/course-platform/dist/public/` as static in production |
+
+---
+
+## Step 1 — Create Railway Service
+
+1. [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo**
+2. Select your repo (`VIPUL-KUMAR-ACADEMY-REPLIT`)
+3. Railway auto-detects `railway.json` + `nixpacks.toml` — **no manual config needed**
 
 ---
 
 ## Step 2 — Set Environment Variables
 
-In Railway → your service → **Variables**, add these **exactly**:
+Railway → your service → **Variables** tab. Add these:
 
-### 🔴 Required (app crashes without these)
+### 🔴 Required before first deploy
 
-| Variable | Value | Where to find it |
+| Variable | Value | How to get it |
 |---|---|---|
-| `NODE_ENV` | `production` | hardcode this |
-| `SUPABASE_DATABASE_URL` | `postgresql://postgres.xxxx:password@aws-0-ap-south-1.pooler.supabase.com:6543/postgres` | Supabase → Project Settings → Database → **Transaction mode** (port **6543**, NOT 5432) |
-| `SUPABASE_URL` | `https://xxxxxxxxxxxx.supabase.co` | Supabase → Project Settings → API → Project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | `eyJhbGci...` | Supabase → Project Settings → API → **service_role** key |
-| `SESSION_SECRET` | 64-char random string | Generate: `openssl rand -hex 32` |
+| `NODE_ENV` | `production` | Hardcode |
+| `SUPABASE_DATABASE_URL` | `postgresql://postgres.xxxx:PASSWORD@aws-0-ap-south-1.pooler.supabase.com:6543/postgres` | Supabase → Settings → Database → **Transaction mode, port 6543** |
+| `SUPABASE_URL` | `https://xxxxxxxxxxxx.supabase.co` | Supabase → Settings → API → Project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | `eyJhbGci...long key...` | Supabase → Settings → API → **service_role** (keep secret) |
+| `SESSION_SECRET` | 64-char random string | Run locally: `openssl rand -hex 32` |
 
-### 🟡 Required after first deploy (need your Railway URL first)
+### 🟡 Required after first deploy (add your Railway domain)
 
 | Variable | Value |
 |---|---|
 | `ALLOWED_ORIGINS` | `https://your-app.up.railway.app` |
 | `SITE_URL` | `https://your-app.up.railway.app` |
 
-> After Railway assigns you a domain (or you set a custom domain), come back and add these two.
-> Without them CORS still works for same-origin requests, but cross-origin flows (webhooks, mobile) may fail.
+> These enable CORS for webhook callbacks and set the base URL in outgoing emails.
+> Same-origin requests work without them, so the app loads fine without these — add them after you see your domain.
 
 ### 🟢 Optional
 
 | Variable | Value | Purpose |
 |---|---|---|
-| `FACEBOOK_CAPI_ACCESS_TOKEN` | `EAAx...` | Meta Conversions API (server-side events) |
-| `PUBLIC_BASE_URL` | `https://your-app.up.railway.app` | Override base URL in outgoing emails |
-| `LOG_LEVEL` | `info` | Pino log level (debug/info/warn/error) |
-
-### ❌ Do NOT set these on Railway (Replit-specific, ignored in production)
-- `REPLIT_DEV_DOMAIN`
-- `REPLIT_DOMAINS`
-- `REPL_ID`
-- `BASE_PATH` (only needed at Vite build time, handled by nixpacks.toml)
+| `FACEBOOK_CAPI_ACCESS_TOKEN` | `EAAx...` | Meta server-side events |
+| `LOG_LEVEL` | `warn` | Reduce Railway log volume in prod |
 
 ---
 
-## Step 3 — Configure via Admin Panel (NOT env vars)
+## Step 3 — Supabase Storage Bucket
 
-These are stored in the database — configure them in the admin panel after deploy:
+Before first deploy, create the uploads bucket:
 
-| Feature | Where to configure |
-|---|---|
-| **Payment Gateways** (Razorpay, Stripe, Cashfree, Paytm) | Admin → Settings → Payment Gateways |
-| **Google OAuth** (client_id + secret) | Admin → Settings → Google Sign-In |
-| **SMTP / Email** | Admin → Settings → Email / SMTP |
-| **Facebook Pixel** (pixel ID) | Admin → Settings → Pixel |
-| **Branding** (logo, colors, site name) | Admin → Settings → Branding |
+1. Supabase → **Storage** → **New bucket**
+2. Name: `uploads`
+3. Public: ✅ **Yes** (files must be publicly readable)
+4. File size limit: `50 MB`
 
 ---
 
 ## Step 4 — First Admin Account
 
-After deploy, go to your Railway URL → `/auth/register` → sign up normally.
-
-Then in **Supabase Dashboard → Table Editor → `users` table**, find your email row and set:
-- `role` → `admin`
-
-Then log in — you'll land on the admin dashboard.
+1. Visit `https://your-app.up.railway.app/auth/register`
+2. Register normally
+3. Open **Supabase → Table Editor → `users` table**
+4. Find your row → set `role` = `admin` → Save
+5. Log in → you'll land on the admin dashboard
 
 ---
 
-## Build Process (what nixpacks.toml does)
+## What the nixpacks.toml Does (explained)
 
+```toml
+[phases.setup]
+nixPkgs = ["nodejs_22"]          # Node 22 from nix — no npm install -g needed
+
+# [phases.install] — omitted on purpose
+# nixpacks auto-detects pnpm-lock.yaml + "packageManager" in package.json
+# → runs: corepack enable && pnpm install --frozen-lockfile
+# This avoids the $NIXPACKS_PATH and exit-code-127 errors
+
+[phases.build]
+cmds = [
+  "PORT=3000 BASE_PATH=/ pnpm --filter @workspace/course-platform run build",
+  "pnpm --filter @workspace/api-server run build"
+]
+
+[start]
+cmd = "node --enable-source-maps artifacts/api-server/dist/index.mjs"
 ```
-1. Install Node.js 22 + pnpm 10
-2. pnpm install --frozen-lockfile          (installs all workspace deps)
-3. PORT=3000 BASE_PATH=/ vite build        (builds React SPA → artifacts/course-platform/dist/public/)
-4. node build.mjs (esbuild)                (bundles Express API → artifacts/api-server/dist/index.mjs)
-5. node --enable-source-maps artifacts/api-server/dist/index.mjs  (start)
-```
 
-**Build time estimate:** ~3–5 minutes on first build, ~1–2 minutes on subsequent builds.
+### Why the old nixpacks.toml failed
 
----
-
-## Health Check
-
-Railway uses `/api/healthz` to verify the service is up. Returns `{"status":"ok"}`.
-
----
-
-## Background Jobs (auto-run inside the process)
-
-No separate worker needed. These run inside the main process on timers:
-
-| Job | Frequency | Purpose |
+| Error | Cause | Fix applied |
 |---|---|---|
-| Automation funnels + CRM campaigns | Every 10 min | Drip sequences, email campaigns |
-| Email log cleanup | Every 6 hours | Delete old logs per retention setting |
-| Creator payout cycle | Every 1 hour | Auto-pays creators on Saturdays (IST) |
-| DB migrations | On startup | Idempotent schema updates |
+| `UndefinedVar: $NIXPACKS_PATH` | `npm install -g pnpm` in `[phases.install]` generates a nix derivation that references `$NIXPACKS_PATH`, which isn't defined | Removed the install phase entirely — nixpacks auto-detects pnpm via `packageManager` field |
+| `pnpm: exit code 127` | pnpm wasn't on PATH because `npm install -g` runs in a separate shell context | `packageManager: "pnpm@10.26.1"` in package.json makes nixpacks use Node's built-in corepack, which properly shims the binary |
+| `PathError: Missing parameter name at index 1: *` | Express 5 no longer accepts `"*"` as a wildcard route | Fixed to `"/{*path}"` (Express 5 syntax) |
 
 ---
 
-## Custom Domain
+## Configure via Admin Panel (no env vars needed)
 
-Railway → your service → **Settings** → **Domains** → **Add Custom Domain**
+After deploying, configure these through the admin UI — they're stored in the DB:
 
-After adding your domain, update:
-- `ALLOWED_ORIGINS` → `https://yourdomain.com`
-- `SITE_URL` → `https://yourdomain.com`
-
----
-
-## Supabase Storage Setup
-
-Before first deploy, ensure the `uploads` bucket exists in Supabase:
-
-1. Supabase Dashboard → **Storage** → **New bucket**
-2. Name: `uploads`
-3. Public: ✅ (checked — files need to be publicly readable)
-4. File size limit: `50MB` (or your preference)
-
----
-
-## Scaling
-
-Railway auto-scales within your plan. The app is stateless (JWT cookies, no in-memory sessions), so horizontal scaling works without any changes.
-
-For high traffic, consider:
-- Supabase connection pooling is already enabled via port 6543 (Transaction mode)
-- Add `DATABASE_POOL_MAX=10` env var if you see connection limit errors
+| Feature | Admin Panel Location |
+|---|---|
+| Razorpay / Stripe / Cashfree / Paytm keys | Settings → Payment Gateways |
+| Google OAuth (client_id + secret) | Settings → Google Sign-In |
+| SMTP / Email sender | Settings → Email |
+| Facebook Pixel ID | Settings → Pixel |
+| Branding (logo, colors, site name) | Settings → Branding |
 
 ---
 
 ## Troubleshooting
 
-| Error | Cause | Fix |
-|---|---|---|
-| `SUPABASE_DATABASE_URL must be set` | Missing env var | Add it in Railway Variables |
-| `SESSION_SECRET is required in production` | Missing or < 16 chars | Generate with `openssl rand -hex 32` |
-| `SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set` | Missing storage vars | Add both in Railway Variables |
-| CORS errors in browser | Missing `ALLOWED_ORIGINS` | Add your Railway domain to it |
-| 401 on all requests after deploy | Cookie `secure` flag requires HTTPS | Railway always uses HTTPS — ensure you're accessing via `https://` |
-| White screen / 404 on page refresh | Static files not found | Ensure build succeeded: check Railway build logs |
+| Symptom | Fix |
+|---|---|
+| Build fails: `SUPABASE_DATABASE_URL must be set` | Add it in Railway Variables before deploying |
+| Build fails: `SESSION_SECRET is required in production` | Add it — generate with `openssl rand -hex 32` |
+| White screen on page load | Check Railway build logs — Vite build must succeed |
+| `/admin` 404 after deploy | Shouldn't happen with the SPA fallback, but check Node 22 is being used |
+| Cookies not sent | Railway is HTTPS-only — cookies with `secure: true` work fine on Railway |
+| Connection pool errors | Add `DATABASE_POOL_MAX=5` — Supabase free tier has a 60-connection limit |

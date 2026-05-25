@@ -232,7 +232,7 @@ if (process.env.NODE_ENV === "production") {
   const staticDir = path.resolve(process.cwd(), "artifacts/course-platform/dist/public");
   if (fs.existsSync(staticDir)) {
     app.use(express.static(staticDir, { maxAge: "1y", immutable: true, index: false }));
-    app.get("*", (_req: Request, res: Response) => {
+    app.get("/{*path}", (_req: Request, res: Response) => {
       res.sendFile(path.join(staticDir, "index.html"));
     });
   }

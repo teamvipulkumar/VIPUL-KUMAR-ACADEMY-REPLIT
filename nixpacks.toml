@@ -1,12 +1,6 @@
 [phases.setup]
 nixPkgs = ["nodejs_22"]
 
-[phases.install]
-cmds = [
-  "npm install -g pnpm@10",
-  "pnpm install --frozen-lockfile"
-]
-
 [phases.build]
 cmds = [
   "PORT=3000 BASE_PATH=/ pnpm --filter @workspace/course-platform run build",
