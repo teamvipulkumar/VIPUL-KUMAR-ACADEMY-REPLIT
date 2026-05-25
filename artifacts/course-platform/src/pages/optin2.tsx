@@ -98,7 +98,7 @@ export default function Optin2Page() {
           {/* CTA Button */}
           <Button
             onClick={() => navigate("/vsl")}
-            className="w-full text-base font-bold bg-primary hover:bg-primary/90 text-white rounded-xl gap-2.5 cta-bounce-glow"
+            className="w-full text-base font-bold bg-primary hover:bg-primary/90 text-white rounded-xl gap-2.5 cta-bounce-glow mt-6"
             style={{ height: "52px" }}
           >
             Show Me The System <ArrowRight className="w-4 h-4" />
