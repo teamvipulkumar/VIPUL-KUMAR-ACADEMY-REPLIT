@@ -1,3 +1,5 @@
+import { setDefaultResultOrder } from "node:dns";
+setDefaultResultOrder("ipv4first");
 import app from "./app";
 import { logger } from "./lib/logger";
 import { processSequences, processScheduledCampaigns } from "./routes/crm";
@@ -185,6 +187,8 @@ async function runMigrations() {
     await db.execute(sql`ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS affiliate_fee_enabled boolean NOT NULL DEFAULT false`);
     await db.execute(sql`ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS affiliate_fee_amount integer NOT NULL DEFAULT 99`);
     await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS affiliate_fee_paid_at timestamptz`);
+    await db.execute(sql`ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS send_method text NOT NULL DEFAULT 'smtp'`);
+    await db.execute(sql`ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS api_key text NOT NULL DEFAULT ''`);
 
     logger.info("DB migrations OK");
   } catch (e) {

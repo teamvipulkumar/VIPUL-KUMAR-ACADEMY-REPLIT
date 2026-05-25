@@ -32,7 +32,7 @@ export async function createTransporter(smtp: typeof smtpSettingsTable.$inferSel
     greetingTimeout: 10000,
     socketTimeout: 20000,
     tls: { rejectUnauthorized: false, minVersion: "TLSv1.2" },
-    ...(smtp.secure ? {} : { starttls: { enable: true } }),
+    requireTLS: !smtp.secure,
   } as nodemailer.TransportOptions);
 }
 
@@ -48,7 +48,7 @@ async function trySend(account: { host: string; port: number; secure: boolean; u
       auth: { user: account.username, pass: account.password },
       connectionTimeout: 15000, greetingTimeout: 10000, socketTimeout: 20000,
       tls: { rejectUnauthorized: false, minVersion: "TLSv1.2" },
-      ...(account.secure ? {} : { starttls: { enable: true } }),
+      requireTLS: !account.secure,
     } as nodemailer.TransportOptions);
     await transporter.sendMail({ from: buildFrom(account), to, subject, html });
     return null; // success
@@ -57,29 +57,68 @@ async function trySend(account: { host: string; port: number; secure: boolean; u
   }
 }
 
-/** Send via primary SMTP, falling back to backup accounts in priority order if primary fails */
+/**
+ * Send via Brevo HTTP API — works on Railway/GCP where outbound SMTP ports are blocked.
+ * Railway (GCP) permanently blocks ports 25, 465, 587, 2525 on all instances.
+ * Brevo's REST API runs over HTTPS (port 443) which is never blocked.
+ */
+async function sendViaBrevoApi(apiKey: string, from: { name: string; email: string }, to: string, subject: string, html: string): Promise<void> {
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: { "accept": "application/json", "api-key": apiKey, "content-type": "application/json" },
+    body: JSON.stringify({ sender: { name: from.name, email: from.email }, to: [{ email: to }], subject, htmlContent: html }),
+  });
+  if (!response.ok) {
+    const errText = await response.text().catch(() => String(response.status));
+    throw new Error(`Brevo API ${response.status}: ${errText}`);
+  }
+}
+
+/** Send via primary provider (SMTP or API), falling back to backups in priority order */
 export async function sendEmailWithFallback(to: string, subject: string, html: string): Promise<void> {
   const primary = await getSmtp();
-  if (primary?.isActive && primary.host) {
-    const err = await trySend(primary, to, subject, html);
-    if (!err) return; // sent OK
-    console.warn("[SMTP] Primary failed, trying backups. Error:", err);
+  if (primary?.isActive) {
+    const sendMethod = primary.sendMethod ?? "smtp";
+    if (sendMethod === "brevo_api" && primary.apiKey) {
+      try {
+        await sendViaBrevoApi(primary.apiKey, { name: primary.fromName, email: primary.fromEmail }, to, subject, html);
+        return;
+      } catch (err: any) {
+        console.warn("[email] Primary Brevo API failed:", err?.message);
+      }
+    } else if (primary.host) {
+      const err = await trySend(primary, to, subject, html);
+      if (!err) return;
+      console.warn("[email] Primary SMTP failed, trying backups. Error:", err);
+    }
   }
   // Try backup accounts ordered by priority ascending (1 = highest priority)
   const backups = await db.select().from(smtpAccountsTable)
     .where(and(eq(smtpAccountsTable.isActive, true)))
     .orderBy(asc(smtpAccountsTable.priority));
   for (const backup of backups) {
-    if (!backup.host) continue;
-    const err = await trySend(backup, to, subject, html);
-    if (!err) {
-      await db.update(smtpAccountsTable).set({ lastError: null }).where(eq(smtpAccountsTable.id, backup.id)).catch(() => {});
-      return; // sent OK via backup
+    const backupMethod = (backup as any).sendMethod ?? "smtp";
+    if (backupMethod === "brevo_api" && (backup as any).apiKey) {
+      try {
+        await sendViaBrevoApi((backup as any).apiKey, { name: backup.fromName, email: backup.fromEmail }, to, subject, html);
+        await db.update(smtpAccountsTable).set({ lastError: null }).where(eq(smtpAccountsTable.id, backup.id)).catch(() => {});
+        return;
+      } catch (err: any) {
+        const msg = err?.message ?? String(err);
+        console.warn(`[email] Backup "${backup.name}" Brevo API failed:`, msg);
+        await db.update(smtpAccountsTable).set({ lastError: msg }).where(eq(smtpAccountsTable.id, backup.id)).catch(() => {});
+      }
+    } else if (backup.host) {
+      const err = await trySend(backup, to, subject, html);
+      if (!err) {
+        await db.update(smtpAccountsTable).set({ lastError: null }).where(eq(smtpAccountsTable.id, backup.id)).catch(() => {});
+        return;
+      }
+      console.warn(`[email] Backup "${backup.name}" SMTP failed:`, err);
+      await db.update(smtpAccountsTable).set({ lastError: err }).where(eq(smtpAccountsTable.id, backup.id)).catch(() => {});
     }
-    console.warn(`[SMTP] Backup "${backup.name}" failed:`, err);
-    await db.update(smtpAccountsTable).set({ lastError: err }).where(eq(smtpAccountsTable.id, backup.id)).catch(() => {});
   }
-  throw new Error("All SMTP accounts failed");
+  throw new Error("All email providers failed");
 }
 
 /** Send a single transactional email directly via SMTP (bypasses CRM automations) */
@@ -446,15 +485,16 @@ export async function triggerAutomation(
 router.get("/smtp", requireAdmin, async (_req, res): Promise<void> => {
   const smtp = await getSmtp();
   if (!smtp) { res.json(null); return; }
-  const { password: _pw, ...safe } = smtp;
-  res.json({ ...safe, passwordSet: !!_pw });
+  const { password: _pw, apiKey: _ak, ...safe } = smtp;
+  res.json({ ...safe, passwordSet: !!_pw, apiKeySet: !!_ak });
 });
 
 router.put("/smtp", requireAdmin, async (req, res): Promise<void> => {
-  const { name, host, port, secure, username, password, fromName, fromEmail, isActive } = req.body;
+  const { name, host, port, secure, username, password, fromName, fromEmail, isActive, sendMethod, apiKey } = req.body;
   const existing = await getSmtp();
-  const values: Record<string, unknown> = { name: name || "Primary SMTP", host, port: parseInt(String(port)) || 587, secure: !!secure, username, fromName, fromEmail, isActive: !!isActive };
+  const values: Record<string, unknown> = { name: name || "Primary SMTP", host: host || "", port: parseInt(String(port)) || 587, secure: !!secure, username: username || "", fromName, fromEmail, isActive: !!isActive, sendMethod: sendMethod || "smtp" };
   if (password) values.password = password;
+  if (apiKey) values.apiKey = apiKey;
 
   if (existing) {
     const [updated] = await db.update(smtpSettingsTable).set(values).where(eq(smtpSettingsTable.id, existing.id)).returning();
@@ -470,75 +510,83 @@ router.put("/smtp", requireAdmin, async (req, res): Promise<void> => {
 
 router.post("/smtp/test", requireAdmin, async (req, res): Promise<void> => {
   const smtp = await getSmtp();
-  if (!smtp || !smtp.host) { res.status(400).json({ error: "SMTP not configured" }); return; }
-  if (!smtp.password) { res.status(400).json({ error: "SMTP password not set — save your settings first" }); return; }
+  if (!smtp) { res.status(400).json({ error: "Email not configured — save your settings first" }); return; }
+  const sendMethod = smtp.sendMethod ?? "smtp";
+  if (sendMethod === "smtp" && !smtp.host) { res.status(400).json({ error: "SMTP host not configured" }); return; }
+  if (sendMethod === "smtp" && !smtp.password) { res.status(400).json({ error: "SMTP password not set — save your settings first" }); return; }
+  if (sendMethod === "brevo_api" && !smtp.apiKey) { res.status(400).json({ error: "Brevo API key not set — save your settings first" }); return; }
   const { to } = req.body;
   if (!to) { res.status(400).json({ error: "Recipient email required" }); return; }
+  const subject = "Vipul Kumar Academy — Email Test";
+  const testHtml = `<div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px;background:#0a0f1e;color:#e2e8f0;border-radius:12px;">
+      <h2 style="color:#2563eb;">✅ Email Test Successful</h2>
+      <p>Your email configuration is working correctly.</p>
+      <p style="color:#64748b;font-size:12px;">Method: ${sendMethod === "brevo_api" ? "Brevo API" : `SMTP · ${smtp.host}:${smtp.port}`}</p>
+    </div>`;
   try {
-    const transporter = await createTransporter(smtp);
-    const smtpTestHtml = `<div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px;background:#0a0f1e;color:#e2e8f0;border-radius:12px;">
-        <h2 style="color:#2563eb;">✅ SMTP Test Successful</h2>
-        <p>Your SMTP configuration is working correctly.</p>
-        <p style="color:#64748b;font-size:12px;">Sent from Vipul Kumar Academy CRM · Host: ${smtp.host}:${smtp.port}</p>
-      </div>`;
-    const info = await transporter.sendMail({
-      from: buildFrom(smtp),
-      to,
-      subject: "Vipul Kumar Academy — SMTP Test",
-      html: smtpTestHtml,
-    });
-    console.log("[SMTP test] Sent OK — messageId:", info.messageId);
-    await db.insert(emailSendsTable).values({ type: "test", email: to, subject: "Vipul Kumar Academy — SMTP Test", htmlBody: smtpTestHtml, status: "sent" });
+    if (sendMethod === "brevo_api") {
+      await sendViaBrevoApi(smtp.apiKey, { name: smtp.fromName, email: smtp.fromEmail }, to, subject, testHtml);
+      console.log("[email test] Brevo API sent OK");
+    } else {
+      const transporter = await createTransporter(smtp);
+      const info = await transporter.sendMail({ from: buildFrom(smtp), to, subject, html: testHtml });
+      console.log("[email test] SMTP sent OK — messageId:", info.messageId);
+    }
+    await db.insert(emailSendsTable).values({ type: "test", email: to, subject, htmlBody: testHtml, status: "sent" });
     res.json({ success: true, message: "Test email sent successfully" });
   } catch (err: any) {
     const msg = err?.message ?? "Unknown error";
-    console.error("[SMTP test] Failed —", msg, "| host:", smtp.host, "port:", smtp.port, "user:", smtp.username);
-    await db.insert(emailSendsTable).values({ type: "test", email: to, subject: "Vipul Kumar Academy — SMTP Test", status: "failed", failReason: msg }).catch(() => {});
+    console.error("[email test] Failed —", msg);
+    await db.insert(emailSendsTable).values({ type: "test", email: to, subject, status: "failed", failReason: msg }).catch(() => {});
     res.status(500).json({ error: msg });
   }
 });
 
-/* ── Live SMTP test (uses form values, not saved DB settings) ── */
+/* ── Live email test (uses form values, not saved DB settings) ── */
 router.post("/smtp/test-live", requireAdmin, async (req, res): Promise<void> => {
-  const { host, port, secure, username, password, fromName, fromEmail, to } = req.body;
+  const { host, port, secure, username, password, fromName, fromEmail, to, sendMethod: rawMethod, apiKey: rawApiKey } = req.body;
+  const sendMethod: string = rawMethod ?? "smtp";
   if (!to) { res.status(400).json({ error: "Recipient email required" }); return; }
-  if (!host) { res.status(400).json({ error: "SMTP host required" }); return; }
-  if (!username) { res.status(400).json({ error: "SMTP username required" }); return; }
 
-  // If password omitted (leave-blank-to-keep), fall back to the stored DB password
-  let resolvedPassword = password;
-  if (!resolvedPassword) {
-    const saved = await getSmtp();
-    resolvedPassword = saved?.password ?? "";
-  }
-  if (!resolvedPassword) { res.status(400).json({ error: "Password required — enter a password or save settings first" }); return; }
-
-  const cfg = {
-    host, port: parseInt(String(port)) || 587, secure: !!secure,
-    username, password: resolvedPassword,
-    fromName: fromName || "Vipul Kumar Academy", fromEmail: fromEmail || username,
-  } as typeof smtpSettingsTable.$inferSelect;
+  const subject = "Vipul Kumar Academy — Email Live Test";
+  const liveTestHtml = `<div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px;background:#0a0f1e;color:#e2e8f0;border-radius:12px;">
+      <h2 style="color:#2563eb;">✅ Email Live Test Successful</h2>
+      <p>Your email settings are working correctly.</p>
+      <p style="color:#64748b;font-size:12px;">Method: ${sendMethod === "brevo_api" ? "Brevo API" : `SMTP · ${host}:${port}`}</p>
+    </div>`;
 
   try {
-    const transporter = await createTransporter(cfg);
-    const smtpLiveTestHtml = `<div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px;background:#0a0f1e;color:#e2e8f0;border-radius:12px;">
-        <h2 style="color:#2563eb;">✅ SMTP Live Test Successful</h2>
-        <p>Your unsaved SMTP settings are working correctly.</p>
-        <p style="color:#64748b;font-size:12px;">Host: ${host}:${port} · User: ${username}</p>
-      </div>`;
-    const info = await transporter.sendMail({
-      from: buildFrom(cfg),
-      to,
-      subject: "Vipul Kumar Academy — SMTP Live Test",
-      html: smtpLiveTestHtml,
-    });
-    console.log("[SMTP live-test] Sent OK — messageId:", info.messageId);
-    await db.insert(emailSendsTable).values({ type: "test", email: to, subject: "Vipul Kumar Academy — SMTP Live Test", htmlBody: smtpLiveTestHtml, status: "sent" });
+    if (sendMethod === "brevo_api") {
+      const apiKey: string = rawApiKey ?? "";
+      if (!apiKey) { res.status(400).json({ error: "Brevo API key required" }); return; }
+      const resolvedFromEmail: string = fromEmail ?? "";
+      if (!resolvedFromEmail) { res.status(400).json({ error: "From email required" }); return; }
+      await sendViaBrevoApi(apiKey, { name: fromName || "Vipul Kumar Academy", email: resolvedFromEmail }, to, subject, liveTestHtml);
+      console.log("[email live-test] Brevo API sent OK");
+    } else {
+      if (!host) { res.status(400).json({ error: "SMTP host required" }); return; }
+      if (!username) { res.status(400).json({ error: "SMTP username required" }); return; }
+      let resolvedPassword: string = password ?? "";
+      if (!resolvedPassword) {
+        const saved = await getSmtp();
+        resolvedPassword = saved?.password ?? "";
+      }
+      if (!resolvedPassword) { res.status(400).json({ error: "Password required — enter a password or save settings first" }); return; }
+      const cfg = {
+        host, port: parseInt(String(port)) || 587, secure: !!secure,
+        username, password: resolvedPassword,
+        fromName: fromName || "Vipul Kumar Academy", fromEmail: fromEmail || username,
+      } as typeof smtpSettingsTable.$inferSelect;
+      const transporter = await createTransporter(cfg);
+      const info = await transporter.sendMail({ from: buildFrom(cfg), to, subject, html: liveTestHtml });
+      console.log("[email live-test] SMTP sent OK — messageId:", info.messageId);
+    }
+    await db.insert(emailSendsTable).values({ type: "test", email: to, subject, htmlBody: liveTestHtml, status: "sent" });
     res.json({ success: true, message: "Test email sent with current form settings" });
   } catch (err: any) {
     const msg = err?.message ?? "Unknown error";
-    console.error("[SMTP live-test] Failed —", msg, "| host:", host, "port:", port, "user:", username);
-    await db.insert(emailSendsTable).values({ type: "test", email: to, subject: "Vipul Kumar Academy — SMTP Live Test", status: "failed", failReason: msg }).catch(() => {});
+    console.error("[email live-test] Failed —", msg);
+    await db.insert(emailSendsTable).values({ type: "test", email: to, subject, status: "failed", failReason: msg }).catch(() => {});
     res.status(500).json({ error: msg });
   }
 });

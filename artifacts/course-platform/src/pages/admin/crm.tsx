@@ -426,7 +426,7 @@ function SmtpTab() {
   const [testing, setTesting] = useState(false);
   const [testEmail, setTestEmail] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "Primary SMTP", host: "", port: "587", secure: false, username: "", password: "", fromName: "Vipul Kumar Academy", fromEmail: "", isActive: false });
+  const [form, setForm] = useState({ name: "Primary SMTP", host: "", port: "587", secure: false, username: "", password: "", fromName: "Vipul Kumar Academy", fromEmail: "", isActive: false, sendMethod: "smtp", apiKey: "" });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -435,7 +435,7 @@ function SmtpTab() {
       const data = await res.json();
       if (data) {
         setSmtp(data);
-        setForm(f => ({ ...f, name: data.name || "Primary SMTP", host: data.host, port: String(data.port), secure: data.secure, username: data.username, fromName: data.fromName, fromEmail: data.fromEmail, isActive: data.isActive, password: "" }));
+        setForm(f => ({ ...f, name: data.name || "Primary SMTP", host: data.host, port: String(data.port), secure: data.secure, username: data.username, fromName: data.fromName, fromEmail: data.fromEmail, isActive: data.isActive, password: "", sendMethod: data.sendMethod || "smtp", apiKey: "" }));
         setShowForm(false);
       } else {
         setShowForm(true);
@@ -472,7 +472,7 @@ function SmtpTab() {
       // Use live form values (unsaved settings)
       res = await apiFetch("/api/admin/crm/smtp/test-live", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: testEmail, host: form.host, port: parseInt(form.port) || 587, secure: form.secure, username: form.username, password: form.password, fromName: form.fromName, fromEmail: form.fromEmail }),
+        body: JSON.stringify({ to: testEmail, sendMethod: form.sendMethod, apiKey: form.apiKey, host: form.host, port: parseInt(form.port) || 587, secure: form.secure, username: form.username, password: form.password, fromName: form.fromName, fromEmail: form.fromEmail }),
       });
     } else {
       // Use saved DB settings
@@ -519,15 +519,17 @@ function SmtpTab() {
                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-500/15 text-green-400 border border-green-500/30">PRIMARY</span>
                 </div>
                 <p className="text-xs text-muted-foreground truncate">
-                  {smtp.host}:{smtp.port} · {smtp.username} · From: {smtp.fromName} &lt;{smtp.fromEmail}&gt;
+                  {smtp.sendMethod === "brevo_api"
+                    ? `Brevo API · From: ${smtp.fromName} <${smtp.fromEmail}>`
+                    : `${smtp.host}:${smtp.port} · ${smtp.username} · From: ${smtp.fromName} <${smtp.fromEmail}>`}
                 </p>
                 <div className="flex items-center gap-1.5 text-xs text-green-400 mt-0.5">
                   <CheckCircle2 className="w-3 h-3" />
-                  Password saved securely
+                  {smtp.sendMethod === "brevo_api" ? "API key saved securely" : "Password saved securely"}
                 </div>
               </div>
               <Button variant="outline" size="sm" className="flex-shrink-0 gap-1.5" onClick={() => {
-                setForm({ name: smtp.name || "Primary SMTP", host: smtp.host, port: String(smtp.port), secure: smtp.secure, username: smtp.username, password: "", fromName: smtp.fromName, fromEmail: smtp.fromEmail, isActive: smtp.isActive });
+                setForm({ name: smtp.name || "Primary SMTP", host: smtp.host, port: String(smtp.port), secure: smtp.secure, username: smtp.username, password: "", fromName: smtp.fromName, fromEmail: smtp.fromEmail, isActive: smtp.isActive, sendMethod: smtp.sendMethod || "smtp", apiKey: "" });
                 setShowForm(true);
               }}>
                 <Edit2 className="w-3.5 h-3.5" />
@@ -556,8 +558,27 @@ function SmtpTab() {
                 <div className="space-y-1.5">
                   <Label className="text-xs text-muted-foreground">Account Name</Label>
                   <Input value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. Primary Brevo, Main Gmail" className="bg-background border-border" />
-                  <p className="text-[10px] text-muted-foreground">A label to identify this SMTP provider (e.g. "Primary Brevo")</p>
+                  <p className="text-[10px] text-muted-foreground">A label to identify this email provider</p>
                 </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Send Method</Label>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => set("sendMethod", "smtp")} className={`flex-1 px-3 py-2 text-sm rounded-lg border transition-colors cursor-pointer ${form.sendMethod === "smtp" ? "bg-primary/10 border-primary text-primary font-medium" : "border-border text-muted-foreground hover:text-foreground"}`}>SMTP</button>
+                    <button type="button" onClick={() => set("sendMethod", "brevo_api")} className={`flex-1 px-3 py-2 text-sm rounded-lg border transition-colors cursor-pointer ${form.sendMethod === "brevo_api" ? "bg-primary/10 border-primary text-primary font-medium" : "border-border text-muted-foreground hover:text-foreground"}`}>Brevo API ⚡</button>
+                  </div>
+                  {form.sendMethod === "brevo_api" && (
+                    <p className="text-[10px] text-blue-400 flex items-center gap-1.5"><Info className="w-3 h-3 flex-shrink-0" />Railway/GCP fix — sends via HTTPS, bypasses all SMTP port blocks</p>
+                  )}
+                </div>
+                {form.sendMethod === "brevo_api" && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Brevo API Key</Label>
+                    <Input type="password" value={form.apiKey} onChange={e => set("apiKey", e.target.value)} placeholder={smtp?.apiKeySet ? "Leave blank to keep current" : "xkeysib-..."} className="bg-background border-border" />
+                    {smtp?.apiKeySet && <p className="text-xs text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />API key saved — leave blank to keep</p>}
+                    <p className="text-[10px] text-muted-foreground">Brevo → Settings → SMTP & API → API Keys → Generate a new key</p>
+                  </div>
+                )}
+                {form.sendMethod === "smtp" && (<>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">SMTP Host</Label>
@@ -596,6 +617,7 @@ function SmtpTab() {
                   </div>
                   <Switch checked={form.secure} onCheckedChange={v => set("secure", v)} />
                 </div>
+                </>)}
                 <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
                   <div>
                     <p className="text-sm font-medium text-foreground">Activate SMTP</p>
@@ -610,7 +632,7 @@ function SmtpTab() {
                   </Button>
                   {smtp && (
                     <Button variant="outline" onClick={() => {
-                      setForm({ name: smtp.name || "Primary SMTP", host: smtp.host, port: String(smtp.port), secure: smtp.secure, username: smtp.username, password: "", fromName: smtp.fromName, fromEmail: smtp.fromEmail, isActive: smtp.isActive });
+                      setForm({ name: smtp.name || "Primary SMTP", host: smtp.host, port: String(smtp.port), secure: smtp.secure, username: smtp.username, password: "", fromName: smtp.fromName, fromEmail: smtp.fromEmail, isActive: smtp.isActive, sendMethod: smtp.sendMethod || "smtp", apiKey: "" });
                       setShowForm(false);
                     }} disabled={saving}>
                       Cancel
