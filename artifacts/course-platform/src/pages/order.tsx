@@ -22,7 +22,7 @@ const D = {
 };
 
 /* ─── Countdown Hook ─── */
-const COUNTDOWN_START = 3600;
+const COUNTDOWN_START = 1440;
 function useCountdown() {
   const [left, setLeft] = useState(() => {
     const s = sessionStorage.getItem("vka_order_cd");
