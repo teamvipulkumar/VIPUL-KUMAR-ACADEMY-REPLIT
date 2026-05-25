@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
+import { useLocation } from "wouter";
 import { SiteFooter } from "@/components/layout/app-layout";
-import { ShieldCheck, VideoOff, BadgeDollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ArrowRight, ShieldCheck, VideoOff, BadgeDollarSign } from "lucide-react";
 
 const TRUST_BADGES = [
   { label: "No Upselling",           Icon: ShieldCheck },
@@ -58,6 +60,8 @@ function VidalyticsEmbed() {
 }
 
 export default function Optin2Page() {
+  const [, navigate] = useLocation();
+
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)", color: "var(--foreground)" }}>
       {/* ── Hero / video section ── */}
@@ -90,6 +94,15 @@ export default function Optin2Page() {
           >
             <VidalyticsEmbed />
           </div>
+
+          {/* CTA Button */}
+          <Button
+            onClick={() => navigate("/vsl")}
+            className="w-full text-base font-bold bg-primary hover:bg-primary/90 text-white rounded-xl gap-2.5 cta-bounce-glow"
+            style={{ height: "52px" }}
+          >
+            Show Me The System <ArrowRight className="w-4 h-4" />
+          </Button>
 
           {/* Trust badges */}
           <div className="flex flex-nowrap items-center justify-center gap-3 sm:gap-6 mt-5 w-full">
