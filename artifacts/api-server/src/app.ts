@@ -1,4 +1,6 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
+import path from "path";
+import fs from "fs";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
@@ -220,5 +222,20 @@ if (SUPABASE_URL) {
 app.use((req, _res, next) => { recordPublicHost(req); next(); });
 
 app.use("/api", router);
+
+// ─── Production static frontend serving ──────────────────────────────────────
+// In production (Railway), the Express server serves the pre-built React SPA.
+// The Vite dev proxy (`/api` → localhost:8080) is only active in dev mode, so
+// the API must serve static files itself in production. All non-/api routes
+// fall through to index.html for client-side routing (Wouter).
+if (process.env.NODE_ENV === "production") {
+  const staticDir = path.resolve(process.cwd(), "artifacts/course-platform/dist/public");
+  if (fs.existsSync(staticDir)) {
+    app.use(express.static(staticDir, { maxAge: "1y", immutable: true, index: false }));
+    app.get("*", (_req: Request, res: Response) => {
+      res.sendFile(path.join(staticDir, "index.html"));
+    });
+  }
+}
 
 export default app;
