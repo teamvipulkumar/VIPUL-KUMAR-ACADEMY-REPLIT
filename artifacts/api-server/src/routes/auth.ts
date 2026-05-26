@@ -67,8 +67,8 @@ function buildVerificationEmailHtml(name: string, verifyLink: string): string {
 }
 
 router.post("/register", async (req, res): Promise<void> => {
-  const { email, password, name, phone, referralCode: referredBy } = req.body;
-  if (!email || !password || !name) {
+  const { email: rawEmail, password, name, phone, referralCode: referredBy } = req.body;
+  if (!rawEmail || !password || !name) {
     res.status(400).json({ error: "email, password, and name are required" });
     return;
   }
@@ -76,6 +76,7 @@ router.post("/register", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Mobile number is required" });
     return;
   }
+  const email = rawEmail.trim().toLowerCase();
   const existing = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (existing.length > 0) {
     res.status(400).json({ error: "Email already in use" });
@@ -116,11 +117,12 @@ router.post("/register", async (req, res): Promise<void> => {
 });
 
 router.post("/login", async (req, res): Promise<void> => {
-  const { email, password } = req.body;
-  if (!email || !password) {
+  const { email: rawEmail, password } = req.body;
+  if (!rawEmail || !password) {
     res.status(400).json({ error: "email and password are required" });
     return;
   }
+  const email = rawEmail.trim().toLowerCase();
   const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (!user || !(await bcrypt.compare(password, user.password))) {
     res.status(401).json({ error: "Invalid credentials" });
@@ -227,11 +229,12 @@ router.post("/resend-verify-email", requireAuth, async (req, res): Promise<void>
 });
 
 router.post("/forgot-password", async (req, res): Promise<void> => {
-  const { email } = req.body;
-  if (!email) {
+  const { email: rawEmail } = req.body;
+  if (!rawEmail) {
     res.status(400).json({ error: "email is required" });
     return;
   }
+  const email = rawEmail.trim().toLowerCase();
   const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (user) {
     const token = nanoid(32);
