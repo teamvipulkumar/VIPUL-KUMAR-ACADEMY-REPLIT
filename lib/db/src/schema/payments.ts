@@ -16,7 +16,7 @@ export const paymentsTable = pgTable("payments", {
   amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
   currency: text("currency").notNull().default("INR"),
   status: text("status", { enum: ["pending", "completed", "failed", "refunded"] }).notNull().default("pending"),
-  gateway: text("gateway", { enum: ["stripe", "razorpay", "cashfree", "paytm", "payu"] }).notNull(),
+  gateway: text("gateway", { enum: ["stripe", "razorpay", "cashfree", "paytm", "payu", "manual"] }).notNull(),
   sessionId: text("session_id").notNull().unique(),
   paymentId: text("payment_id"),
   gatewayOrderId: text("gateway_order_id"),

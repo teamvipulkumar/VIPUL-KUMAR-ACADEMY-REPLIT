@@ -8,8 +8,9 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Search, BadgeIndianRupee, ShoppingCart, Clock, RefreshCw, Upload,
   User, BookOpen, Calendar, CreditCard, Tag, Hash, Mail, AlertTriangle, RotateCcw, Phone, MapPin, Trash2,
-  CheckSquare, Square, X, Loader2
+  CheckSquare, Square, X, Loader2, PlusCircle, ChevronDown
 } from "lucide-react";
+import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
 } from "@/components/ui/dialog";
@@ -57,6 +58,7 @@ const gatewayConfig: Record<string, { label: string; className: string }> = {
   cashfree: { label: "Cashfree", className: "text-green-400  border-green-400/30  bg-green-400/10" },
   paytm:    { label: "Paytm",    className: "text-sky-400    border-sky-400/30    bg-sky-400/10" },
   payu:     { label: "PayU",     className: "text-orange-400 border-orange-400/30 bg-orange-400/10" },
+  manual:   { label: "Manual",   className: "text-slate-400  border-slate-400/30  bg-slate-400/10" },
 };
 
 function formatDate(dateStr: string) {
@@ -80,6 +82,264 @@ function AvatarInitial({ name }: { name: string }) {
     <div className={`w-8 h-8 ${color} rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0`}>
       {name.charAt(0).toUpperCase()}
     </div>
+  );
+}
+
+// ── Add Manual Order Dialog ───────────────────────────────────────────────────
+type CourseOption = { id: number; title: string };
+type BundleOption = { id: number; name: string };
+
+const GATEWAYS = ["manual", "stripe", "razorpay", "cashfree", "paytm", "payu"] as const;
+const STATUSES = ["completed", "pending", "failed", "refunded"] as const;
+
+function toLocalDatetimeValue(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function AddOrderDialog({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+  const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [bundles, setBundles] = useState<BundleOption[]>([]);
+  const [itemType, setItemType] = useState<"course" | "bundle">("course");
+  const [showOptional, setShowOptional] = useState(false);
+
+  const [form, setForm] = useState({
+    email: "",
+    courseId: "",
+    bundleId: "",
+    amount: "",
+    currency: "INR",
+    gateway: "manual",
+    status: "completed",
+    createdAt: toLocalDatetimeValue(new Date()),
+    paymentId: "",
+    billingName: "",
+    billingMobile: "",
+    billingState: "",
+  });
+
+  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/courses`, { credentials: "include" })
+      .then(r => r.json()).then((d: any) => setCourses(Array.isArray(d) ? d : (d.courses ?? [])))
+      .catch(() => {});
+    fetch(`${API_BASE}/api/bundles`, { credentials: "include" })
+      .then(r => r.json()).then((d: any) => setBundles(Array.isArray(d) ? d : (d.bundles ?? [])))
+      .catch(() => {});
+  }, []);
+
+  const handleSubmit = async () => {
+    if (!form.email.trim()) { toast({ title: "Customer email is required", variant: "destructive" }); return; }
+    if (!form.amount || isNaN(parseFloat(form.amount))) { toast({ title: "Enter a valid amount", variant: "destructive" }); return; }
+    if (itemType === "course" && !form.courseId) { toast({ title: "Select a course", variant: "destructive" }); return; }
+    if (itemType === "bundle" && !form.bundleId) { toast({ title: "Select a bundle", variant: "destructive" }); return; }
+
+    setSaving(true);
+    try {
+      const body: Record<string, string> = {
+        email: form.email.trim(),
+        amount: form.amount,
+        currency: form.currency,
+        gateway: form.gateway,
+        status: form.status,
+        createdAt: new Date(form.createdAt).toISOString(),
+      };
+      if (itemType === "course") body.courseId = form.courseId;
+      else body.bundleId = form.bundleId;
+      if (form.paymentId.trim()) body.paymentId = form.paymentId.trim();
+      if (form.billingName.trim()) body.billingName = form.billingName.trim();
+      if (form.billingMobile.trim()) body.billingMobile = form.billingMobile.trim();
+      if (form.billingState.trim()) body.billingState = form.billingState.trim();
+
+      const res = await fetch(`${API_BASE}/api/admin/orders/manual`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to create order");
+      toast({ title: "Order created successfully!" });
+      onCreated();
+      onClose();
+    } catch (err: unknown) {
+      toast({ title: "Error", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const fieldCls = "w-full bg-card border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary";
+  const selectCls = "w-full bg-card border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer";
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg bg-[#0d1424] border-white/10 max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-foreground">
+            <PlusCircle className="w-4 h-4 text-primary" /> Add Manual Order
+          </DialogTitle>
+          <DialogDescription className="text-muted-foreground text-sm">
+            Create an order record for any past or future date.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-1">
+          {/* Customer email */}
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1.5 block">Customer Email <span className="text-red-400">*</span></Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <input className={`${fieldCls} pl-9`} placeholder="student@example.com" value={form.email} onChange={e => set("email", e.target.value)} />
+            </div>
+          </div>
+
+          {/* Course / Bundle toggle */}
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1.5 block">Item Type <span className="text-red-400">*</span></Label>
+            <div className="flex rounded-lg border border-border overflow-hidden mb-2">
+              {(["course", "bundle"] as const).map(t => (
+                <button key={t} type="button" onClick={() => setItemType(t)}
+                  className={`flex-1 py-1.5 text-xs font-medium transition-colors cursor-pointer capitalize ${itemType === t ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground hover:bg-card/60"}`}>
+                  {t === "course" ? <><BookOpen className="inline w-3 h-3 mr-1" />Course</> : <><BookOpen className="inline w-3 h-3 mr-1" />Bundle</>}
+                </button>
+              ))}
+            </div>
+            {itemType === "course" ? (
+              <div className="relative">
+                <select className={selectCls} value={form.courseId} onChange={e => set("courseId", e.target.value)}>
+                  <option value="">— Select a course —</option>
+                  {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="relative">
+                <select className={selectCls} value={form.bundleId} onChange={e => set("bundleId", e.target.value)}>
+                  <option value="">— Select a bundle —</option>
+                  {bundles.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              </div>
+            )}
+          </div>
+
+          {/* Amount + currency */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-2">
+              <Label className="text-xs text-muted-foreground mb-1.5 block">Amount <span className="text-red-400">*</span></Label>
+              <div className="relative">
+                <BadgeIndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <input type="number" min="0" step="0.01" className={`${fieldCls} pl-9`} placeholder="0.00" value={form.amount} onChange={e => set("amount", e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1.5 block">Currency</Label>
+              <div className="relative">
+                <select className={selectCls} value={form.currency} onChange={e => set("currency", e.target.value)}>
+                  <option value="INR">INR</option>
+                  <option value="USD">USD</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              </div>
+            </div>
+          </div>
+
+          {/* Gateway + Status */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1.5 block">Payment Method <span className="text-red-400">*</span></Label>
+              <div className="relative">
+                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <select className={`${selectCls} pl-9`} value={form.gateway} onChange={e => set("gateway", e.target.value)}>
+                  {GATEWAYS.map(g => <option key={g} value={g}>{gatewayConfig[g]?.label ?? g}</option>)}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1.5 block">Status <span className="text-red-400">*</span></Label>
+              <div className="relative">
+                <select className={selectCls} value={form.status} onChange={e => set("status", e.target.value)}>
+                  {STATUSES.map(s => <option key={s} value={s}>{statusConfig[s]?.label ?? s}</option>)}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              </div>
+            </div>
+          </div>
+
+          {/* Order date */}
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1.5 block">Order Date & Time <span className="text-red-400">*</span></Label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <input type="datetime-local" className={`${fieldCls} pl-9`} value={form.createdAt} onChange={e => set("createdAt", e.target.value)} />
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">Pick any past or future date.</p>
+          </div>
+
+          {/* Optional section toggle */}
+          <button type="button" onClick={() => setShowOptional(v => !v)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer w-full py-1">
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showOptional ? "rotate-180" : ""}`} />
+            {showOptional ? "Hide" : "Show"} optional fields (Transaction ID, Billing details)
+          </button>
+
+          {showOptional && (
+            <div className="space-y-3 pt-1 border-t border-border/50">
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1.5 block">Transaction / Payment ID</Label>
+                <div className="relative">
+                  <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <input className={`${fieldCls} pl-9`} placeholder="pay_xxx / pi_xxx" value={form.paymentId} onChange={e => set("paymentId", e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1.5 block">Billing Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <input className={`${fieldCls} pl-9`} placeholder="Full name (defaults to user's name)" value={form.billingName} onChange={e => set("billingName", e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">Mobile</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                    <input className={`${fieldCls} pl-9`} placeholder="+91 98765 43210" value={form.billingMobile} onChange={e => set("billingMobile", e.target.value)} />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">State</Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                    <input className={`${fieldCls} pl-9`} placeholder="e.g. Maharashtra" value={form.billingState} onChange={e => set("billingState", e.target.value)} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {form.status === "completed" && (
+            <div className="flex gap-2 items-start p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-xs text-green-400">
+              <BookOpen className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+              <span>Setting status to <strong>Completed</strong> will automatically grant the student access to the selected course/bundle.</span>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="gap-2 pt-2">
+          <Button variant="outline" className="border-white/10" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={saving} className="gap-2">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlusCircle className="w-4 h-4" />}
+            {saving ? "Creating…" : "Create Order"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -383,6 +643,7 @@ export default function AdminOrdersPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [addOrderOpen, setAddOrderOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -518,9 +779,14 @@ export default function AdminOrdersPage() {
           <h1 className="text-2xl font-bold text-foreground">Orders</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{total} total orders</p>
         </div>
-        <Button onClick={exportCsv} variant="outline" className="border-white/10 gap-2 self-start sm:self-auto hover:bg-white/5">
-          <Upload className="w-4 h-4" />Export CSV
-        </Button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Button onClick={() => setAddOrderOpen(true)} className="gap-2">
+            <PlusCircle className="w-4 h-4" />Add Order
+          </Button>
+          <Button onClick={exportCsv} variant="outline" className="border-white/10 gap-2 hover:bg-white/5">
+            <Upload className="w-4 h-4" />Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -728,6 +994,14 @@ export default function AdminOrdersPage() {
       {/* Pagination */}
       {orders.length > 0 && (
         <Pagination page={page} total={total} pageSize={PAGE_SIZE} onChange={p => { setPage(p); setSelectedIds(new Set()); }} />
+      )}
+
+      {/* Add Manual Order */}
+      {addOrderOpen && (
+        <AddOrderDialog
+          onClose={() => setAddOrderOpen(false)}
+          onCreated={() => { setPage(1); fetchOrders(1); }}
+        />
       )}
 
       {/* Dialogs */}

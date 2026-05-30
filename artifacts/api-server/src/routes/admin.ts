@@ -779,6 +779,83 @@ router.put("/settings", requireAdmin, async (req, res): Promise<void> => {
   res.json({ ...updated, commissionRate: updated.commissionRate / 100 });
 });
 
+// ── Create manual order ───────────────────────────────────────────────────────
+router.post("/orders/manual", requireAdmin, async (req, res): Promise<void> => {
+  const {
+    email, courseId, bundleId, amount, currency = "INR",
+    gateway, status, createdAt, paymentId,
+    billingName, billingEmail, billingMobile, billingState,
+  } = req.body as Record<string, string>;
+
+  if (!email?.trim() || !amount || !gateway || !status) {
+    res.status(400).json({ error: "email, amount, gateway, and status are required" });
+    return;
+  }
+  if (!courseId && !bundleId) {
+    res.status(400).json({ error: "Either a course or a bundle must be selected" });
+    return;
+  }
+
+  const [user] = await db.select().from(usersTable)
+    .where(eq(usersTable.email, email.trim().toLowerCase())).limit(1);
+  if (!user) {
+    res.status(404).json({ error: "No user found with that email address" });
+    return;
+  }
+
+  if (courseId) {
+    const [c] = await db.select({ id: coursesTable.id }).from(coursesTable)
+      .where(eq(coursesTable.id, Number(courseId))).limit(1);
+    if (!c) { res.status(404).json({ error: "Course not found" }); return; }
+  }
+  if (bundleId) {
+    const [b] = await db.select({ id: bundlesTable.id }).from(bundlesTable)
+      .where(eq(bundlesTable.id, Number(bundleId))).limit(1);
+    if (!b) { res.status(404).json({ error: "Bundle not found" }); return; }
+  }
+
+  const sessionId = nanoid(24);
+  const orderDate = createdAt ? new Date(createdAt) : new Date();
+
+  const [payment] = await db.insert(paymentsTable).values({
+    userId: user.id,
+    courseId: courseId ? Number(courseId) : null,
+    bundleId: bundleId ? Number(bundleId) : null,
+    amount: parseFloat(amount).toFixed(2),
+    currency,
+    status: status as "pending" | "completed" | "failed" | "refunded",
+    gateway: gateway as "stripe" | "razorpay" | "cashfree" | "paytm" | "payu" | "manual",
+    sessionId,
+    paymentId: paymentId?.trim() || null,
+    billingName: billingName?.trim() || user.name,
+    billingEmail: billingEmail?.trim() || user.email,
+    billingMobile: billingMobile?.trim() || null,
+    billingState: billingState?.trim() || null,
+    createdAt: orderDate,
+  }).returning();
+
+  // Grant enrollments when status is completed
+  if (status === "completed") {
+    const courseIds: number[] = [];
+    if (payment.courseId) {
+      courseIds.push(payment.courseId);
+    } else if (payment.bundleId) {
+      const bcs = await db.select({ courseId: bundleCoursesTable.courseId })
+        .from(bundleCoursesTable).where(eq(bundleCoursesTable.bundleId, payment.bundleId));
+      for (const bc of bcs) courseIds.push(bc.courseId);
+    }
+    for (const cid of courseIds) {
+      const [existing] = await db.select({ id: enrollmentsTable.id }).from(enrollmentsTable)
+        .where(and(eq(enrollmentsTable.userId, user.id), eq(enrollmentsTable.courseId, cid))).limit(1);
+      if (!existing) {
+        await db.insert(enrollmentsTable).values({ userId: user.id, courseId: cid });
+      }
+    }
+  }
+
+  res.status(201).json({ success: true, payment });
+});
+
 router.get("/orders", requireAdmin, async (req, res): Promise<void> => {
   const { search, status, gateway, limit = "50", offset = "0" } = req.query as Record<string, string>;
 
