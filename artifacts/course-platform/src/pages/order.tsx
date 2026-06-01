@@ -263,7 +263,7 @@ export default function OrderPage() {
         .grid-students { display: grid; grid-template-columns: 1fr; gap: 14px; }
         .grid-students .student-img { max-width: 85%; margin: 0 auto; }
         @media (min-width: 560px) { .grid-students { grid-template-columns: repeat(2, 1fr); } .grid-students .student-img { max-width: 100%; } }
-        @media (min-width: 820px) { .grid-students { grid-template-columns: repeat(4, 1fr); } }
+        @media (min-width: 820px) { .grid-students { grid-template-columns: repeat(5, 1fr); } }
 
         .grid-proof { display: grid; grid-template-columns: 1fr; gap: 14px; max-width: 1100px; margin: 0 auto; }
         @media (min-width: 560px) { .grid-proof { grid-template-columns: repeat(2, 1fr); } }
