@@ -375,6 +375,7 @@ export default function OrderPage() {
                 { src: `https://shjwpdgcdeuvtaohtrok.supabase.co/storage/v1/object/public/uploads/964249bf75f7602bc339ad4a.jpg`, label: "STUDENT #2" },
                 { src: `https://shjwpdgcdeuvtaohtrok.supabase.co/storage/v1/object/public/uploads/6fe2de6bae918f8dd531bb90.jpg`, label: "STUDENT #3" },
                 { src: `https://shjwpdgcdeuvtaohtrok.supabase.co/storage/v1/object/public/uploads/e49830a459f19fb7933d649b.jpg`, label: "STUDENT #4" },
+                { src: `/student5.jpg`, label: "STUDENT #5" },
               ].map(({ src, label }, i) => (
                 <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
                   <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: 13, color: "#94a3b8", letterSpacing: "0.05em", textTransform: "uppercase" }}>{label}</span>
