@@ -25,7 +25,7 @@ function VidalyticsEmbed() {
         i.getElementsByTagName("head")[0].appendChild(s);
       };}
       vsl(l+'loader.min.js',function(){if(!vli){var vlc=v[c][vl];vli=new vlc();}vli.loadScript(l+'player.min.js',function(){var vec=v[d][ve];t=new vec();t.run(a);});});
-    })(window,document,'Vidalytics','vidalytics_embed_k5WgxgRJYKv_BGKK','https://fast.vidalytics.com/embeds/gVGT5OOt/k5WgxgRJYKv_BGKK/');
+    })(window,document,'Vidalytics','vidalytics_embed_k5WgxgRJYKv_BGKK','https://fast.vidalytics.com/embeds/gVGT5OOt/k5WgxgRJYKv_BGKK/');`;
 
     document.head.appendChild(script);
 
