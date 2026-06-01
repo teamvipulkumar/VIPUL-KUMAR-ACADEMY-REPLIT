@@ -862,6 +862,20 @@ router.get("/orders", requireAdmin, async (req, res): Promise<void> => {
   const conditions: ReturnType<typeof eq>[] = [];
   if (status && status !== "all") conditions.push(eq(paymentsTable.status, status as "pending" | "completed" | "failed" | "refunded"));
   if (gateway && gateway !== "all") conditions.push(eq(paymentsTable.gateway, gateway as "stripe" | "razorpay"));
+  if (search && search.trim()) {
+    const s = `%${search.trim()}%`;
+    conditions.push(
+      or(
+        ilike(usersTable.name, s),
+        ilike(usersTable.email, s),
+        ilike(coursesTable.title, s),
+        ilike(bundlesTable.name, s),
+        sql`${paymentsTable.id}::text ilike ${s}`,
+      )!
+    );
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
   const baseQuery = db
     .select({
@@ -889,20 +903,15 @@ router.get("/orders", requireAdmin, async (req, res): Promise<void> => {
     .leftJoin(coursesTable, eq(paymentsTable.courseId, coursesTable.id))
     .leftJoin(bundlesTable, eq(paymentsTable.bundleId, bundlesTable.id));
 
-  let orders = await baseQuery.where(conditions.length > 0 ? and(...conditions) : undefined).orderBy(desc(paymentsTable.createdAt)).limit(parseInt(limit)).offset(parseInt(offset));
+  const orders = await baseQuery.where(whereClause).orderBy(desc(paymentsTable.createdAt)).limit(parseInt(limit)).offset(parseInt(offset));
 
-  if (search) {
-    const s = search.toLowerCase();
-    orders = orders.filter(o =>
-      o.userName.toLowerCase().includes(s) ||
-      o.userEmail.toLowerCase().includes(s) ||
-      (o.courseTitle ?? "").toLowerCase().includes(s) ||
-      (o.bundleTitle ?? "").toLowerCase().includes(s) ||
-      String(o.id).includes(s)
-    );
-  }
-
-  const [totalResult] = await db.select({ total: count() }).from(paymentsTable).where(conditions.length > 0 ? and(...conditions) : undefined);
+  const [totalResult] = await db
+    .select({ total: count() })
+    .from(paymentsTable)
+    .innerJoin(usersTable, eq(paymentsTable.userId, usersTable.id))
+    .leftJoin(coursesTable, eq(paymentsTable.courseId, coursesTable.id))
+    .leftJoin(bundlesTable, eq(paymentsTable.bundleId, bundlesTable.id))
+    .where(whereClause);
   const [revenueResult] = await db.select({ total: sum(paymentsTable.amount) }).from(paymentsTable).where(eq(paymentsTable.status, "completed"));
   const [pendingResult] = await db.select({ total: count() }).from(paymentsTable).where(eq(paymentsTable.status, "pending"));
   const [refundedResult] = await db.select({ total: count() }).from(paymentsTable).where(eq(paymentsTable.status, "refunded"));
