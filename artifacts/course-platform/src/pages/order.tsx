@@ -365,7 +365,7 @@ export default function OrderPage() {
 
         {/* ── Student Results ── */}
         <section style={{ background: D.sectionAlt, padding: "52px 16px", borderTop: `1px solid ${D.border}` }}>
-          <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ maxWidth: 1500, margin: "0 auto" }}>
             <SectionHeading sub="These ordinary people followed the exact system you're about to discover...">
               PROOF: Real Student Results
             </SectionHeading>
